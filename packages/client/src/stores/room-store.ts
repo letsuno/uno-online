@@ -23,13 +23,19 @@ interface RoomState {
 }
 
 export const useRoomStore = create<RoomState>((set) => ({
-  roomCode: null,
+  roomCode: sessionStorage.getItem('roomCode'),
   players: [],
   room: null,
-  setRoom: (roomCode, players, room) => set({ roomCode, players, room }),
+  setRoom: (roomCode, players, room) => {
+    sessionStorage.setItem('roomCode', roomCode);
+    set({ roomCode, players, room });
+  },
   updateRoom: (data) => set((state) => ({
     players: data.players ?? state.players,
     room: data.room ?? state.room,
   })),
-  clearRoom: () => set({ roomCode: null, players: [], room: null }),
+  clearRoom: () => {
+    sessionStorage.removeItem('roomCode');
+    set({ roomCode: null, players: [], room: null });
+  },
 }));
