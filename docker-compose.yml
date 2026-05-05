@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: uno_online
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: >
+      sh -c "if [ -n '${REDIS_PASSWORD}' ]; then
+        redis-server --requirepass '${REDIS_PASSWORD}';
+      else
+        redis-server;
+      fi"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  server:
+    build:
+      context: .
+      target: server
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/uno_online}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:-uno-online-dev-secret-at-least-32-chars}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:${HTTP_PORT:-6679}}
+      PORT: "3001"
+      RTC_PORT: ${RTC_PORT:-40000}
+    ports:
+      - "${RTC_PORT:-40000}:${RTC_PORT:-40000}/udp"
+      - "${RTC_PORT:-40000}:${RTC_PORT:-40000}/tcp"
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: .
+      target: nginx
+      args:
+        VITE_GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+    depends_on:
+      - server
+    ports:
+      - "${HTTP_PORT:-6679}:80"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
