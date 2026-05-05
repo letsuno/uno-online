@@ -16,6 +16,13 @@ export interface Config {
   clientUrl: string;
 }
 
+function resolveClientUrl(): string {
+  if (process.env['CLIENT_URL']) return process.env['CLIENT_URL'];
+  const domain = process.env['DOMAIN'] ?? 'localhost';
+  if (domain === 'localhost') return 'http://localhost';
+  return `https://${domain}`;
+}
+
 export function loadConfig(): Config {
   return {
     port: parseInt(process.env['PORT'] ?? '3001', 10),
@@ -24,6 +31,6 @@ export function loadConfig(): Config {
     githubClientId: required('GITHUB_CLIENT_ID'),
     githubClientSecret: required('GITHUB_CLIENT_SECRET'),
     jwtSecret: required('JWT_SECRET'),
-    clientUrl: process.env['CLIENT_URL'] ?? 'http://localhost:5173',
+    clientUrl: resolveClientUrl(),
   };
 }
