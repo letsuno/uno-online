@@ -13,7 +13,9 @@ type SoundName =
   | 'win'
   | 'lose'
   | 'player_join'
-  | 'player_leave';
+  | 'player_leave'
+  | 'your_turn'
+  | 'error';
 
 const FREQUENCIES: Record<SoundName, { freq: number; duration: number; type: OscillatorType }> = {
   play_card:    { freq: 800, duration: 0.08, type: 'square' },
@@ -29,6 +31,8 @@ const FREQUENCIES: Record<SoundName, { freq: number; duration: number; type: Osc
   lose:         { freq: 250, duration: 0.4, type: 'triangle' },
   player_join:  { freq: 700, duration: 0.1, type: 'sine' },
   player_leave: { freq: 350, duration: 0.15, type: 'sine' },
+  your_turn:    { freq: 880, duration: 0.15, type: 'sine' },
+  error:        { freq: 200, duration: 0.2, type: 'square' },
 };
 
 let audioCtx: AudioContext | null = null;

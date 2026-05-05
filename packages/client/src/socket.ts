@@ -2,6 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import { API_URL } from './env.js';
 import { useGameStore } from './stores/game-store.js';
 import { useRoomStore } from './stores/room-store.js';
+import { useToastStore } from './stores/toast-store.js';
 import { playSound } from './sound/sound-manager.js';
 
 let socket: Socket | null = null;
@@ -48,7 +49,8 @@ export function getSocket(): Socket {
     });
 
     socket.on('game:action_rejected', (data) => {
-      console.warn('Action rejected:', data);
+      useToastStore.getState().addToast(data.reason || '操作无效', 'error');
+      playSound('error');
     });
 
     socket.on('player:timeout', (data) => {
@@ -56,12 +58,14 @@ export function getSocket(): Socket {
     });
 
     socket.on('player:disconnected', (data) => {
-      console.log('Player disconnected:', data.playerId);
+      const player = useGameStore.getState().players.find(p => p.id === data.playerId);
+      if (player) useToastStore.getState().addToast(`${player.name} 掉线了`, 'info');
       playSound('player_leave');
     });
 
     socket.on('player:reconnected', (data) => {
-      console.log('Player reconnected:', data.playerId);
+      const player = useGameStore.getState().players.find(p => p.id === data.playerId);
+      if (player) useToastStore.getState().addToast(`${player.name} 重新连接`, 'success');
       playSound('player_join');
     });
 

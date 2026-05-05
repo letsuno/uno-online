@@ -20,6 +20,8 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   const phase = useGameStore((s) => s.phase);
   const settings = useGameStore((s) => s.settings);
 
+  const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
+
   const me = players.find((p) => p.id === userId);
   const isMyTurn = players[currentPlayerIndex]?.id === userId;
   const topCard = discardPile[discardPile.length - 1];
@@ -31,10 +33,17 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
     return new Set(playable.map((c) => c.id));
   }, [me?.hand, topCard, currentColor, isMyTurn, phase, settings]);
 
+  const showNoPlayableHint = isMyTurn && phase === 'playing' && playableIds.size === 0 && !hasDrawnThisTurn && !settings?.houseRules?.noHints;
+
   if (!me) return null;
 
   return (
     <div className="player-hand">
+      {showNoPlayableHint && (
+        <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>
+          无牌可出，请摸牌
+        </div>
+      )}
       <div className="player-hand__cards">
         <AnimatePresence mode="popLayout">
           {me.hand.map((card, i) => {

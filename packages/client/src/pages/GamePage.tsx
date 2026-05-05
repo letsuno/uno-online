@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { Color } from '@uno-online/shared';
 import { Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../stores/game-store.js';
 import { useAuthStore } from '../stores/auth-store.js';
 import { getSocket, connectSocket, onConnectionStatus } from '../socket.js';
@@ -35,6 +36,14 @@ export default function GamePage() {
   const showScoreBoard = phase === 'round_end' || phase === 'game_over';
   const setGameState = useGameStore((s) => s.setGameState);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
+  const prevTurnRef = useRef(false);
+
+  useEffect(() => {
+    if (isMyTurn && phase === 'playing' && !prevTurnRef.current) {
+      playSound('your_turn');
+    }
+    prevTurnRef.current = isMyTurn && phase === 'playing';
+  }, [isMyTurn, phase]);
 
   useEffect(() => {
     connectSocket();
@@ -156,6 +165,21 @@ export default function GamePage() {
         onPass={pass}
         onSwapTarget={swapTarget}
       />
+      <AnimatePresence>
+        {isMyTurn && phase === 'playing' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            style={{
+              textAlign: 'center', fontFamily: 'var(--font-game)', fontSize: 16,
+              color: 'var(--text-accent)', animation: 'timerFlash 1s ease-in-out infinite alternate',
+            }}
+          >
+            你的回合
+          </motion.div>
+        )}
+      </AnimatePresence>
       <PlayerHand onPlayCard={playCard} />
       <ChatBox />
       <VoicePanel />
