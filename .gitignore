@@ -9,3 +9,4 @@ coverage/
 .superpowers/
 .claude/
 docs/
+.playwright-mcp/

@@ -62,6 +62,7 @@ services:
       - server
     environment:
       DOMAIN: ${DOMAIN:-localhost}
+      CADDY_SITE_ADDRESS: ${CADDY_SITE_ADDRESS:-:80}
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
