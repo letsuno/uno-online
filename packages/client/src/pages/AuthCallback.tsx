@@ -10,7 +10,9 @@ export default function AuthCallback() {
   useEffect(() => {
     const code = params.get('code');
     if (!code) { navigate('/'); return; }
-    login(code).then(() => navigate('/lobby')).catch(() => navigate('/'));
+    const target = sessionStorage.getItem('loginRedirect') || '/lobby';
+    sessionStorage.removeItem('loginRedirect');
+    login(code).then(() => navigate(target)).catch(() => navigate('/'));
   }, [params, login, navigate]);
 
   return (
