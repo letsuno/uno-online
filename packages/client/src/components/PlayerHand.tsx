@@ -45,7 +45,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
                 layoutId={card.id}
                 card={card}
                 playable={playableIds.has(card.id)}
-                onClick={() => onPlayCard(card.id)}
+                onClick={() => playableIds.has(card.id) && onPlayCard(card.id)}
                 style={{ transform: `rotate(${angle}deg)` }}
               />
             );

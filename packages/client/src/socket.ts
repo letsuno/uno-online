@@ -67,21 +67,6 @@ export function getSocket(): Socket {
 
     socket.on('connect', () => {
       connectionStatusCallback?.('connected');
-      const roomCode = useRoomStore.getState().roomCode;
-      if (roomCode) {
-        socket!.emit('room:rejoin', roomCode, (res: any) => {
-          if (res.success) {
-            if (res.gameState) {
-              useGameStore.getState().setGameState(res.gameState);
-            }
-            if (res.players && res.room) {
-              useRoomStore.getState().updateRoom({ players: res.players, room: res.room });
-            }
-          } else {
-            useRoomStore.getState().clearRoom();
-          }
-        });
-      }
     });
 
     socket.on('disconnect', () => {
@@ -96,8 +81,10 @@ export function getSocket(): Socket {
       connectionStatusCallback?.('disconnected');
     });
 
-    socket.on('auth:kicked', (data: { reason: string }) => {
-      alert(data.reason);
+    socket.on('auth:kicked', (_data: { reason: string }) => {
+      useRoomStore.getState().clearRoom();
+      useGameStore.getState().clearGame();
+      localStorage.removeItem('token');
       window.location.href = '/';
     });
   }

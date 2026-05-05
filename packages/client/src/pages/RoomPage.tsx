@@ -21,7 +21,7 @@ export default function RoomPage() {
     connectSocket();
     const socket = getSocket();
 
-    if (!useRoomStore.getState().roomCode && roomCode) {
+    if (useRoomStore.getState().players.length === 0 && roomCode) {
       socket.emit('room:rejoin', roomCode, (res: any) => {
         if (res.success) {
           if (res.players && res.room) {
