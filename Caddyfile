@@ -2,7 +2,7 @@
 	encode gzip
 
 	@auth_api {
-		path /auth/github /auth/me
+		path /auth/github /auth/me /auth/dev-login
 	}
 	handle @auth_api {
 		reverse_proxy server:3001

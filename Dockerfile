@@ -18,8 +18,10 @@ COPY packages/shared/ packages/shared/
 COPY packages/client/ packages/client/
 ARG VITE_API_URL=""
 ARG VITE_GITHUB_CLIENT_ID=""
+ARG VITE_DEV_MODE=""
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_GITHUB_CLIENT_ID=$VITE_GITHUB_CLIENT_ID
+ENV VITE_DEV_MODE=$VITE_DEV_MODE
 RUN cd packages/client && npx vite build
 
 # ---- Stage 4: Build server ----

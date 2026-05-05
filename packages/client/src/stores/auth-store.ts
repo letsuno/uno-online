@@ -12,6 +12,7 @@ interface AuthState {
   token: string | null;
   loading: boolean;
   login: (code: string) => Promise<void>;
+  devLogin: (username: string) => Promise<void>;
   loadUser: () => Promise<void>;
   logout: () => void;
 }
@@ -24,6 +25,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (code: string) => {
     set({ loading: true });
     const data = await apiPost<{ token: string; user: User }>('/auth/callback', { code });
+    localStorage.setItem('token', data.token);
+    set({ user: data.user, token: data.token, loading: false });
+  },
+
+  devLogin: async (username: string) => {
+    set({ loading: true });
+    const data = await apiPost<{ token: string; user: User }>('/auth/dev-login', { username });
     localStorage.setItem('token', data.token);
     set({ user: data.user, token: data.token, loading: false });
   },
