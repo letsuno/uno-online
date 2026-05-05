@@ -37,7 +37,7 @@ RUN rm -rf packages/client/src
 
 EXPOSE 3001
 
-CMD ["npx", "tsx", "packages/server/src/index.ts"]
+CMD ["sh", "-c", "cd packages/server && npx prisma db push --skip-generate && cd /app && npx tsx packages/server/src/index.ts"]
 
 # ---- Stage 6: Caddy (client) ----
 FROM caddy:2-alpine AS caddy
