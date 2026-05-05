@@ -129,7 +129,17 @@ export function setupSocketHandlers(io: SocketIOServer, redis: Redis, jwtSecret:
         }
       } else {
         const players = await getRoomPlayers(redis, roomCode);
-        callback?.({ success: true, players, room });
+        const alreadyInRoom = players.some(p => p.userId === userId);
+        if (!alreadyInRoom) {
+          try {
+            await roomManager.joinRoom(roomCode, userId, socket.data.user.username);
+          } catch {
+            return callback?.({ success: false, error: 'Cannot rejoin room' });
+          }
+        }
+        const updatedPlayers = await getRoomPlayers(redis, roomCode);
+        io.to(roomCode).emit('room:updated', { players: updatedPlayers, room });
+        callback?.({ success: true, players: updatedPlayers, room });
       }
     });
 
@@ -180,12 +190,17 @@ export function setupSocketHandlers(io: SocketIOServer, redis: Redis, jwtSecret:
         }, RECONNECT_TIMEOUT_MS);
         disconnectTimers.set(userId, timer);
       } else {
-        const { deleted } = await roomManager.leaveRoom(roomCode, userId);
-        if (!deleted) {
-          const room = await getRoom(redis, roomCode);
-          const players = await getRoomPlayers(redis, roomCode);
-          io.to(roomCode).emit('room:updated', { players, room });
-        }
+        // Start reconnect window before removing from room
+        const timer = setTimeout(async () => {
+          disconnectTimers.delete(userId);
+          const { deleted } = await roomManager.leaveRoom(roomCode, userId);
+          if (!deleted) {
+            const room = await getRoom(redis, roomCode);
+            const players = await getRoomPlayers(redis, roomCode);
+            io.to(roomCode).emit('room:updated', { players, room });
+          }
+        }, RECONNECT_TIMEOUT_MS);
+        disconnectTimers.set(userId, timer);
       }
     });
   });

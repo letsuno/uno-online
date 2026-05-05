@@ -34,8 +34,9 @@ export function registerRoomEvents(
     const code = await roomManager.createRoom(data.user.userId, data.user.username, roomSettings);
     data.roomCode = code;
     await socket.join(code);
+    const room = await getRoom(redis, code);
     const players = await getRoomPlayers(redis, code);
-    callback({ success: true, roomCode: code, players });
+    callback({ success: true, roomCode: code, players, room });
   });
 
   socket.on('room:join', async (roomCode: string, callback) => {

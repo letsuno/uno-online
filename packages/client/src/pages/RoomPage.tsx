@@ -13,13 +13,30 @@ import type { HouseRules } from '@uno-online/shared';
 export default function RoomPage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const user = useAuthStore((s) => s.user);
-  const { players, room, clearRoom } = useRoomStore();
+  const { players, room, clearRoom, setRoom, updateRoom } = useRoomStore();
   const setGameState = useGameStore((s) => s.setGameState);
   const navigate = useNavigate();
 
   useEffect(() => {
     connectSocket();
     const socket = getSocket();
+
+    if (!useRoomStore.getState().roomCode && roomCode) {
+      socket.emit('room:rejoin', roomCode, (res: any) => {
+        if (res.success) {
+          if (res.players && res.room) {
+            setRoom(roomCode, res.players, res.room);
+          }
+          if (res.gameState) {
+            setGameState(res.gameState);
+            navigate(`/game/${roomCode}`);
+          }
+        } else {
+          navigate('/lobby');
+        }
+      });
+    }
+
     const onState = (view: any) => {
       setGameState(view);
       navigate(`/game/${roomCode}`);

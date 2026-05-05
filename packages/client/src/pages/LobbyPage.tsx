@@ -17,7 +17,7 @@ export default function LobbyPage() {
     connectSocket();
     getSocket().emit('room:create', {}, (res: any) => {
       if (res.success) {
-        setRoom(res.roomCode, res.players, null);
+        setRoom(res.roomCode, res.players, res.room);
         navigate(`/room/${res.roomCode}`);
       }
     });
