@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useGameStore } from '../stores/game-store.js';
 import { useAuthStore } from '../stores/auth-store.js';
 import { playSound } from '../sound/sound-manager.js';
@@ -20,19 +21,27 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   const pendingDrawPlayerId = useGameStore((s) => s.pendingDrawPlayerId);
   const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
   const settings = useGameStore((s) => s.settings);
+  const [cooldown, setCooldown] = useState(false);
 
   const me = players.find((p) => p.id === userId);
   const isMyTurn = players[currentPlayerIndex]?.id === userId;
   const catchTargets = players.filter((p) => p.id !== userId && p.handCount === 1 && !p.calledUno);
   const noChallengeWD4 = settings?.houseRules?.noChallengeWildFour ?? false;
 
+  const withCooldown = (fn: () => void) => () => {
+    if (cooldown) return;
+    setCooldown(true);
+    fn();
+    setTimeout(() => setCooldown(false), 1000);
+  };
+
   return (
     <div className="game-actions">
       {me && me.hand.length <= 2 && !me.calledUno && (
-        <button className="btn-primary" onClick={onCallUno}>喊 UNO!</button>
+        <button className="btn-primary" onClick={withCooldown(onCallUno)} disabled={cooldown}>喊 UNO!</button>
       )}
       {catchTargets.map((t) => (
-        <button key={t.id} className="btn-danger" onClick={() => { playSound('uno_catch'); onCatchUno(t.id); }}>抓 {t.name}!</button>
+        <button key={t.id} className="btn-danger" onClick={withCooldown(() => { playSound('uno_catch'); onCatchUno(t.id); })} disabled={cooldown}>抓 {t.name}!</button>
       ))}
       {phase === 'challenging' && pendingDrawPlayerId === userId && (
         <>

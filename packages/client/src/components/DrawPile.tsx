@@ -3,14 +3,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CardBack from './CardBack.js';
 import Card from './Card.js';
 import { useGameStore } from '../stores/game-store.js';
+import { useAuthStore } from '../stores/auth-store.js';
 
 interface DrawPileProps { onDraw: () => void; }
 
 export default function DrawPile({ onDraw }: DrawPileProps) {
   const deckCount = useGameStore((s) => s.deckCount);
   const lastDrawnCard = useGameStore((s) => s.lastDrawnCard);
+  const phase = useGameStore((s) => s.phase);
+  const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
+  const players = useGameStore((s) => s.players);
+  const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
+  const userId = useAuthStore((s) => s.user?.id);
   const [flipping, setFlipping] = useState(false);
   const [flipCard, setFlipCard] = useState(lastDrawnCard);
+
+  const isMyTurn = players[currentPlayerIndex]?.id === userId;
+  const canDraw = isMyTurn && !hasDrawnThisTurn && phase === 'playing';
 
   useEffect(() => {
     if (lastDrawnCard) {
@@ -23,8 +32,17 @@ export default function DrawPile({ onDraw }: DrawPileProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, zIndex: 1, position: 'relative' }}>
-      <CardBack onClick={onDraw} style={{ cursor: 'pointer' }} />
-      <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>牌堆 ({deckCount})</span>
+      <CardBack
+        onClick={canDraw ? onDraw : undefined}
+        style={{
+          cursor: canDraw ? 'pointer' : 'default',
+          opacity: canDraw ? 1 : 0.5,
+          transition: 'opacity 0.2s, transform 0.2s',
+        }}
+      />
+      <span style={{ fontSize: 10, color: deckCount <= 10 ? 'var(--color-red)' : 'var(--text-secondary)', fontWeight: deckCount <= 10 ? 'bold' : 'normal' }}>
+        牌堆 ({deckCount})
+      </span>
       <AnimatePresence>
         {flipping && flipCard && (
           <motion.div

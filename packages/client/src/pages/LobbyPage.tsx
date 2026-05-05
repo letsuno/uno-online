@@ -12,10 +12,13 @@ export default function LobbyPage() {
   const navigate = useNavigate();
   const [joinCode, setJoinCode] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleCreate = () => {
+    setLoading(true);
     connectSocket();
     getSocket().emit('room:create', {}, (res: any) => {
+      setLoading(false);
       if (res.success) {
         setRoom(res.roomCode, res.players, res.room);
         navigate(`/room/${res.roomCode}`);
@@ -25,8 +28,10 @@ export default function LobbyPage() {
 
   const handleJoin = () => {
     if (joinCode.length !== 6) { setError('请输入 6 位房间码'); return; }
+    setLoading(true);
     connectSocket();
     getSocket().emit('room:join', joinCode.toUpperCase(), (res: any) => {
+      setLoading(false);
       if (res.success) {
         setRoom(joinCode.toUpperCase(), res.players, res.room);
         navigate(`/room/${joinCode.toUpperCase()}`);
@@ -45,8 +50,8 @@ export default function LobbyPage() {
         <Spade size={24} style={{ verticalAlign: 'middle' }} /> 游戏大厅
       </h1>
       <p style={{ color: 'var(--text-secondary)' }}>欢迎, {user?.username}!</p>
-      <button className="btn-primary" onClick={handleCreate} style={{ fontSize: 20, padding: '16px 40px' }}>
-        创建房间
+      <button className="btn-primary" onClick={handleCreate} disabled={loading} style={{ fontSize: 20, padding: '16px 40px' }}>
+        {loading ? '创建中...' : '创建房间'}
       </button>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <input
@@ -60,7 +65,7 @@ export default function LobbyPage() {
             textAlign: 'center', width: 160, letterSpacing: 4, textTransform: 'uppercase',
           }}
         />
-        <button className="btn-primary" onClick={handleJoin}>加入</button>
+        <button className="btn-primary" onClick={handleJoin} disabled={loading}>加入</button>
       </div>
       {error && <p style={{ color: 'var(--color-red)', fontSize: 14 }}>{error}</p>}
       <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>

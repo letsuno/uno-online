@@ -6,10 +6,12 @@ import RoomPage from './pages/RoomPage.js';
 import GamePage from './pages/GamePage.js';
 import ProfilePage from './pages/ProfilePage.js';
 import ProtectedRoute from './components/ProtectedRoute.js';
+import ToastContainer from './components/Toast.js';
 
 export default function App() {
   return (
     <BrowserRouter>
+      <ToastContainer />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
