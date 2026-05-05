@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { Color } from '@uno-online/shared';
+import { Loader2 } from 'lucide-react';
 import { useGameStore } from '../stores/game-store.js';
 import { useAuthStore } from '../stores/auth-store.js';
-import { getSocket, onConnectionStatus } from '../socket.js';
+import { getSocket, connectSocket, onConnectionStatus } from '../socket.js';
 import { playSound } from '../sound/sound-manager.js';
 import TopBar from '../components/TopBar.js';
 import OpponentRow from '../components/OpponentRow.js';
@@ -32,12 +33,37 @@ export default function GamePage() {
   const isMyTurn = players[currentPlayerIndex]?.id === userId;
   const needsColorPick = phase === 'choosing_color' && isMyTurn;
   const showScoreBoard = phase === 'round_end' || phase === 'game_over';
+  const setGameState = useGameStore((s) => s.setGameState);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
 
   useEffect(() => {
-    onConnectionStatus(setConnectionStatus);
-    return () => onConnectionStatus(() => {});
+    connectSocket();
+    const socket = getSocket();
+    if (!phase && roomCode) {
+      socket.emit('room:rejoin', roomCode, (res: any) => {
+        if (res.success && res.gameState) {
+          setGameState(res.gameState);
+        } else {
+          navigate(`/room/${roomCode}`);
+        }
+      });
+    }
   }, []);
+
+  useEffect(() => {
+    onConnectionStatus((status) => {
+      setConnectionStatus(status);
+      if (status === 'connected' && roomCode) {
+        const socket = getSocket();
+        socket.emit('room:rejoin', roomCode, (res: any) => {
+          if (res.success && res.gameState) {
+            setGameState(res.gameState);
+          }
+        });
+      }
+    });
+    return () => onConnectionStatus(() => {});
+  }, [roomCode]);
 
   useEffect(() => {
     if (!phase || phase === 'game_over') return;
@@ -109,7 +135,7 @@ export default function GamePage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 200, flexDirection: 'column', gap: 12,
         }}>
-          <div style={{ fontSize: 36, animation: 'spin 1s linear infinite' }}>⟳</div>
+          <Loader2 size={36} style={{ animation: 'spin 1s linear infinite', color: '#fff' }} />
           <p style={{ color: '#fff', fontSize: 18, fontFamily: 'var(--font-game)' }}>
             {connectionStatus === 'reconnecting' ? '重新连接中...' : '连接已断开，尝试重连...'}
           </p>
