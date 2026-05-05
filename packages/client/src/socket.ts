@@ -70,8 +70,15 @@ export function getSocket(): Socket {
       const roomCode = useRoomStore.getState().roomCode;
       if (roomCode) {
         socket!.emit('room:rejoin', roomCode, (res: any) => {
-          if (res.success && res.gameState) {
-            useGameStore.getState().setGameState(res.gameState);
+          if (res.success) {
+            if (res.gameState) {
+              useGameStore.getState().setGameState(res.gameState);
+            }
+            if (res.players && res.room) {
+              useRoomStore.getState().updateRoom({ players: res.players, room: res.room });
+            }
+          } else {
+            useRoomStore.getState().clearRoom();
           }
         });
       }
