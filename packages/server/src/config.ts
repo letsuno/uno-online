@@ -19,7 +19,6 @@ export interface Config {
 function resolveClientUrl(): string {
   if (process.env['CLIENT_URL']) return process.env['CLIENT_URL'];
   const domain = process.env['DOMAIN'] ?? 'localhost';
-  if (domain === 'localhost') return 'http://localhost';
   return `https://${domain}`;
 }
 
