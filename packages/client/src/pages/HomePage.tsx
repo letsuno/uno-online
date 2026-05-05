@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LogIn, Spade } from 'lucide-react';
 import { useAuthStore } from '../stores/auth-store.js';
 import { GITHUB_CLIENT_ID, DEV_MODE } from '../env.js';
@@ -7,11 +7,27 @@ import { GITHUB_CLIENT_ID, DEV_MODE } from '../env.js';
 export default function HomePage() {
   const { user, token, loading, loadUser, devLogin } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [devUsername, setDevUsername] = useState('');
   const [error, setError] = useState('');
+  const redirect = searchParams.get('redirect');
 
-  useEffect(() => { loadUser(); }, [loadUser]);
-  useEffect(() => { if (user) navigate('/lobby'); }, [user, navigate]);
+  const getRedirectTarget = () => redirect || sessionStorage.getItem('loginRedirect') || '/lobby';
+
+  useEffect(() => {
+    if (redirect) sessionStorage.setItem('loginRedirect', redirect);
+  }, [redirect]);
+
+  useEffect(() => {
+    loadUser().then(() => {
+      const u = useAuthStore.getState().user;
+      if (u) {
+        const target = getRedirectTarget();
+        sessionStorage.removeItem('loginRedirect');
+        navigate(target);
+      }
+    });
+  }, []);
 
   const loginUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&scope=read:user`;
 
@@ -20,6 +36,9 @@ export default function HomePage() {
     setError('');
     try {
       await devLogin(devUsername.trim());
+      const target = getRedirectTarget();
+      sessionStorage.removeItem('loginRedirect');
+      navigate(target);
     } catch {
       setError('登录失败');
     }
