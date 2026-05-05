@@ -61,6 +61,7 @@ export default function RoomPage() {
   };
 
   const leaveRoom = () => {
+    if (!window.confirm('确定要离开房间吗？')) return;
     getSocket().emit('room:leave', () => {
       clearRoom();
       navigate('/lobby');
