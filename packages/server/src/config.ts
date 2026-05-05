@@ -14,6 +14,7 @@ export interface Config {
   githubClientSecret: string;
   jwtSecret: string;
   clientUrl: string;
+  devMode: boolean;
 }
 
 function resolveClientUrl(): string {
@@ -23,13 +24,15 @@ function resolveClientUrl(): string {
 }
 
 export function loadConfig(): Config {
+  const devMode = process.env['DEV_MODE'] === 'true';
   return {
     port: parseInt(process.env['PORT'] ?? '3001', 10),
     databaseUrl: required('DATABASE_URL'),
     redisUrl: process.env['REDIS_URL'] ?? 'redis://localhost:6379',
-    githubClientId: required('GITHUB_CLIENT_ID'),
-    githubClientSecret: required('GITHUB_CLIENT_SECRET'),
+    githubClientId: devMode ? (process.env['GITHUB_CLIENT_ID'] ?? '') : required('GITHUB_CLIENT_ID'),
+    githubClientSecret: devMode ? (process.env['GITHUB_CLIENT_SECRET'] ?? '') : required('GITHUB_CLIENT_SECRET'),
     jwtSecret: required('JWT_SECRET'),
     clientUrl: resolveClientUrl(),
+    devMode,
   };
 }

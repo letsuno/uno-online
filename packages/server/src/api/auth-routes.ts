@@ -10,6 +10,22 @@ interface AuthenticatedRequest extends FastifyRequest {
 }
 
 export async function registerAuthRoutes(fastify: FastifyInstance, config: Config) {
+  if (config.devMode) {
+    fastify.post<{ Body: { username: string } }>('/auth/dev-login', async (request, reply) => {
+      const { username } = request.body;
+      if (!username?.trim()) {
+        return reply.code(400).send({ error: 'Missing username' });
+      }
+      const user = await findOrCreateUser({
+        githubId: `dev_${username.trim()}`,
+        username: username.trim(),
+        avatarUrl: null,
+      });
+      const token = signToken({ userId: user.id, username: user.username }, config.jwtSecret);
+      return { token, user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl } };
+    });
+  }
+
   fastify.get('/auth/github', async (_request, reply) => {
     const params = new URLSearchParams({
       client_id: config.githubClientId,
