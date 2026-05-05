@@ -1,7 +1,18 @@
 {$DOMAIN:localhost} {
 	encode gzip
 
-	handle /auth/* {
+	@auth_api {
+		path /auth/github /auth/me
+	}
+	handle @auth_api {
+		reverse_proxy server:3001
+	}
+
+	@auth_callback_post {
+		path /auth/callback
+		method POST
+	}
+	handle @auth_callback_post {
 		reverse_proxy server:3001
 	}
 
