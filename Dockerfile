@@ -39,8 +39,8 @@ EXPOSE 3001
 
 CMD ["npx", "tsx", "packages/server/src/index.ts"]
 
-# ---- Stage 6: Nginx (client) ----
-FROM nginx:alpine AS nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build-client /app/packages/client/dist/ /usr/share/nginx/html/
-EXPOSE 80
+# ---- Stage 6: Caddy (client) ----
+FROM caddy:2-alpine AS caddy
+COPY Caddyfile /etc/caddy/Caddyfile
+COPY --from=build-client /app/packages/client/dist/ /srv/
+EXPOSE 80 443

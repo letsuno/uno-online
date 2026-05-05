@@ -1,0 +1,28 @@
+{$DOMAIN:localhost} {
+	encode gzip
+
+	handle /auth/* {
+		reverse_proxy server:3001
+	}
+
+	handle /profile {
+		reverse_proxy server:3001
+	}
+
+	handle /health {
+		reverse_proxy server:3001
+	}
+
+	handle /socket.io/* {
+		reverse_proxy server:3001
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+
+		@static path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+		header @static Cache-Control "public, max-age=2592000, immutable"
+	}
+}
