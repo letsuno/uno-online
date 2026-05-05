@@ -1,39 +1,39 @@
-{$DOMAIN:localhost} {
-	encode gzip
+{$CADDY_SITE_ADDRESS}
 
-	@auth_api {
-		path /auth/github /auth/me /auth/dev-login
-	}
-	handle @auth_api {
-		reverse_proxy server:3001
-	}
+encode gzip
 
-	@auth_callback_post {
-		path /auth/callback
-		method POST
-	}
-	handle @auth_callback_post {
-		reverse_proxy server:3001
-	}
+@auth_api {
+	path /auth/github /auth/me /auth/dev-login
+}
+handle @auth_api {
+	reverse_proxy server:3001
+}
 
-	handle /profile {
-		reverse_proxy server:3001
-	}
+@auth_callback_post {
+	path /auth/callback
+	method POST
+}
+handle @auth_callback_post {
+	reverse_proxy server:3001
+}
 
-	handle /health {
-		reverse_proxy server:3001
-	}
+handle /profile {
+	reverse_proxy server:3001
+}
 
-	handle /socket.io/* {
-		reverse_proxy server:3001
-	}
+handle /health {
+	reverse_proxy server:3001
+}
 
-	handle {
-		root * /srv
-		try_files {path} /index.html
-		file_server
+handle /socket.io/* {
+	reverse_proxy server:3001
+}
 
-		@static path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
-		header @static Cache-Control "public, max-age=2592000, immutable"
-	}
+handle {
+	root * /srv
+	try_files {path} /index.html
+	file_server
+
+	@static path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+	header @static Cache-Control "public, max-age=2592000, immutable"
 }
