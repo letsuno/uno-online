@@ -1,0 +1,47 @@
+import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+
+const COLORS = ['#ff3366', '#4488ff', '#33cc66', '#fbbf24', '#a855f7', '#ec4899'];
+
+interface Particle {
+  id: number;
+  x: number;
+  color: string;
+  delay: number;
+  size: number;
+}
+
+export default function Confetti() {
+  const [particles, setParticles] = useState<Particle[]>([]);
+
+  useEffect(() => {
+    const items: Particle[] = Array.from({ length: 40 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)]!,
+      delay: Math.random() * 0.5,
+      size: 6 + Math.random() * 8,
+    }));
+    setParticles(items);
+  }, []);
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 85, overflow: 'hidden' }}>
+      {particles.map((p) => (
+        <motion.div
+          key={p.id}
+          initial={{ y: -20, x: `${p.x}vw`, opacity: 1, rotate: 0 }}
+          animate={{ y: '110vh', rotate: 720, opacity: 0 }}
+          transition={{ duration: 2.5 + Math.random(), delay: p.delay, ease: 'linear' }}
+          style={{
+            position: 'absolute',
+            width: p.size,
+            height: p.size,
+            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+            background: p.color,
+          }}
+        />
+      ))}
+    </div>
+  );
+}

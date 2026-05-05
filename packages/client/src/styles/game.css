@@ -1,0 +1,186 @@
+.game-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.game-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--bg-surface);
+  font-size: 13px;
+  z-index: 10;
+}
+
+.game-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.game-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.game-topbar__brand {
+  font-weight: bold;
+  color: var(--text-accent);
+  font-family: var(--font-game);
+}
+
+.opponent-row {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 20px;
+  flex-wrap: wrap;
+}
+
+.opponent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.opponent__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  transition: border 0.3s ease, box-shadow 0.3s ease;
+}
+
+.opponent__avatar--active {
+  border: 3px solid var(--text-accent);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.6);
+}
+
+.opponent__name {
+  font-size: 11px;
+  color: var(--text-primary);
+  transition: color 0.3s ease;
+}
+
+.opponent__name--active {
+  color: var(--text-accent);
+  font-weight: bold;
+}
+
+.opponent__cards {
+  display: flex;
+  gap: 1px;
+}
+
+.opponent__count {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.game-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  position: relative;
+}
+
+.direction-ring {
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  border: 2px dashed rgba(251, 191, 36, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.direction-ring__arrow {
+  font-size: 28px;
+  color: rgba(251, 191, 36, 0.4);
+}
+
+.game-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.player-hand {
+  background: var(--bg-surface);
+  padding: 14px 20px 18px;
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scroll-padding: 0 20px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.player-hand::-webkit-scrollbar {
+  display: none;
+}
+
+.player-hand__cards {
+  display: flex;
+  justify-content: center;
+}
+
+.player-hand__cards .card {
+  margin-right: -10px;
+  scroll-snap-align: center;
+}
+
+.player-hand__cards .card:last-child {
+  margin-right: 0;
+}
+
+@media (max-width: 768px) {
+  .opponent-row {
+    gap: 8px;
+    padding: 6px 10px;
+  }
+  .opponent__avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+  .game-center {
+    gap: 24px;
+  }
+  .direction-ring {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+@keyframes shake {
+  0% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  100% { transform: translateX(-4px); }
+}
+
+@keyframes timerFlash {
+  0% { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

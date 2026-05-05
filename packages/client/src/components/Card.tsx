@@ -1,0 +1,55 @@
+import type { Card as CardType } from '@uno-online/shared';
+import '../styles/cards.css';
+import { useSettingsStore } from '../stores/settings-store.js';
+import ColorBlindOverlay from './ColorBlindOverlay.js';
+
+const COLOR_SYMBOLS: Record<string, string> = {
+  red: '♦',
+  blue: '♠',
+  green: '♣',
+  yellow: '♥',
+};
+
+function getCardLabel(card: CardType): string {
+  switch (card.type) {
+    case 'number': return String(card.value);
+    case 'skip': return '⊘';
+    case 'reverse': return '⟲';
+    case 'draw_two': return '+2';
+    case 'wild': return 'W';
+    case 'wild_draw_four': return '+4';
+  }
+}
+
+function getColorClass(card: CardType): string {
+  if (card.type === 'wild' || card.type === 'wild_draw_four') return 'card--wild';
+  return `card--${card.color}`;
+}
+
+interface CardProps {
+  card: CardType;
+  playable?: boolean;
+  onClick?: () => void;
+  style?: React.CSSProperties;
+}
+
+export default function Card({ card, playable = false, onClick, style }: CardProps) {
+  const colorBlindMode = useSettingsStore((s) => s.colorBlindMode);
+  const colorClass = getColorClass(card);
+  const typeClass = `card--${card.type}`;
+  const playableClass = playable ? 'card--playable' : '';
+
+  return (
+    <div
+      className={`card ${colorClass} ${typeClass} ${playableClass}`}
+      onClick={playable ? onClick : undefined}
+      style={style}
+    >
+      {card.color && (
+        <span className="card__symbol">{COLOR_SYMBOLS[card.color]}</span>
+      )}
+      <span className="card__value">{getCardLabel(card)}</span>
+      {colorBlindMode && card.color && <ColorBlindOverlay color={card.color} />}
+    </div>
+  );
+}
