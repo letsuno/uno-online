@@ -45,24 +45,26 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
 
   return (
     <div className="player-hand">
-      <div className="player-hand__cards">
-        <AnimatePresence mode="popLayout">
-          {sortedHand.map((card, i) => {
-            const angle = (i - (sortedHand.length - 1) / 2) * 4;
-            return (
-              <AnimatedCard
-                key={card.id}
-                layoutId={card.id}
-                card={card}
-                playable={hintedIds.has(card.id)}
-                clickable={playableIds.has(card.id)}
-                dimmed={isMyTurn && phase === 'playing' && !hintedIds.has(card.id)}
-                onClick={() => playableIds.has(card.id) && onPlayCard(card.id)}
-                style={{ transform: `rotate(${angle}deg)`, zIndex: i }}
-              />
-            );
-          })}
-        </AnimatePresence>
+      <div className="player-hand__scroll">
+        <div className="player-hand__cards">
+          <AnimatePresence mode="popLayout">
+            {sortedHand.map((card, i) => {
+              const angle = (i - (sortedHand.length - 1) / 2) * 4;
+              return (
+                <AnimatedCard
+                  key={card.id}
+                  layoutId={card.id}
+                  card={card}
+                  playable={hintedIds.has(card.id)}
+                  clickable={playableIds.has(card.id)}
+                  dimmed={isMyTurn && phase === 'playing' && !hintedIds.has(card.id)}
+                  onClick={() => playableIds.has(card.id) && onPlayCard(card.id)}
+                  style={{ transform: `rotate(${angle}deg)`, zIndex: i }}
+                />
+              );
+            })}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );

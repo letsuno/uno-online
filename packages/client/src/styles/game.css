@@ -183,19 +183,20 @@
 
 .player-hand {
   background: var(--bg-surface);
-  padding: 24px 20px 18px;
-  display: flex;
-  justify-content: center;
+  padding: 0 0 18px;
+}
+
+.player-hand__scroll {
   overflow-x: auto;
-  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x proximity;
   scroll-padding: 0 20px;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  padding: 24px 20px 0;
 }
 
-.player-hand::-webkit-scrollbar {
+.player-hand__scroll::-webkit-scrollbar {
   display: none;
 }
 

@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { LogIn, Spade, Type } from 'lucide-react';
+import { LogIn, Spade, Type, Upload, X } from 'lucide-react';
 import { useAuthStore } from '../stores/auth-store.js';
 import { useSettingsStore, FONT_OPTIONS, type FontOption } from '../stores/settings-store.js';
+import { loadCardPack, clearCardPack, isPackLoaded } from '../utils/card-images.js';
 import { GITHUB_CLIENT_ID, DEV_MODE } from '../env.js';
 
 export default function HomePage() {
   const { user, token, loading, loadUser, devLogin } = useAuthStore();
-  const { fontFamily, setFontFamily } = useSettingsStore();
+  const { fontFamily, setFontFamily, cardImagePack, setCardImagePack } = useSettingsStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [devUsername, setDevUsername] = useState('');
@@ -95,23 +96,65 @@ export default function HomePage() {
 
       <div style={{
         position: 'absolute', bottom: 24, right: 24,
-        display: 'flex', alignItems: 'center', gap: 8,
+        display: 'flex', alignItems: 'center', gap: 16,
       }}>
-        <Type size={16} style={{ color: 'var(--text-secondary)' }} />
-        <select
-          value={fontFamily}
-          onChange={(e) => setFontFamily(e.target.value as FontOption)}
-          style={{
-            background: 'var(--bg-surface)', color: 'var(--text-primary)',
-            border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8,
-            padding: '6px 10px', fontSize: 14, cursor: 'pointer',
-            fontFamily: FONT_OPTIONS[fontFamily].value,
-          }}
-        >
-          {(Object.keys(FONT_OPTIONS) as FontOption[]).map((k) => (
-            <option key={k} value={k}>{FONT_OPTIONS[k].label}</option>
-          ))}
-        </select>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {cardImagePack && isPackLoaded() ? (
+            <button
+              onClick={() => { clearCardPack(); setCardImagePack(false); }}
+              style={{
+                background: 'var(--bg-surface)', color: 'var(--text-primary)',
+                border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8,
+                padding: '6px 10px', fontSize: 14, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              <X size={14} /> 卸载资源包
+            </button>
+          ) : (
+            <label style={{
+              background: 'var(--bg-surface)', color: 'var(--text-primary)',
+              border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8,
+              padding: '6px 10px', fontSize: 14, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 4,
+            }}>
+              <Upload size={14} /> 加载卡面资源包
+              <input
+                type="file"
+                accept=".zip"
+                hidden
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    await loadCardPack(file);
+                    setCardImagePack(true);
+                  } catch {
+                    setCardImagePack(false);
+                  }
+                  e.target.value = '';
+                }}
+              />
+            </label>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Type size={16} style={{ color: 'var(--text-secondary)' }} />
+          <select
+            value={fontFamily}
+            onChange={(e) => setFontFamily(e.target.value as FontOption)}
+            style={{
+              background: 'var(--bg-surface)', color: 'var(--text-primary)',
+              border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8,
+              padding: '6px 10px', fontSize: 14, cursor: 'pointer',
+              fontFamily: FONT_OPTIONS[fontFamily].value,
+            }}
+          >
+            {(Object.keys(FONT_OPTIONS) as FontOption[]).map((k) => (
+              <option key={k} value={k}>{FONT_OPTIONS[k].label}</option>
+            ))}
+          </select>
+        </div>
       </div>
     </div>
   );
