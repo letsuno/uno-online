@@ -48,6 +48,7 @@ interface PlayerNodeProps {
   index: number;
   isActive: boolean;
   isMe: boolean;
+  isHost: boolean;
   position: { x: number; y: number };
   turnEndTime?: number | null;
   turnTimeLimit?: number;
@@ -62,6 +63,7 @@ export default function PlayerNode({
   index,
   isActive,
   isMe,
+  isHost,
   position,
   turnEndTime,
   turnTimeLimit,
@@ -209,6 +211,11 @@ export default function PlayerNode({
         >
           {AVATAR_EMOJIS[index % AVATAR_EMOJIS.length]}
         </div>
+
+        {/* Host crown */}
+        {isHost && (
+          <div className="absolute -top-1.5 -left-1.5 text-sm leading-none drop-shadow">👑</div>
+        )}
 
         {/* Disconnected indicator */}
         {!player.connected && (
