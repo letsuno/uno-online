@@ -240,7 +240,7 @@ export default function GamePage() {
       <AnimatePresence>
         {showTurnBanner && isMyTurn && phase === 'playing' && (
           <motion.div
-            className="absolute left-1/2 top-turn-top -translate-x-1/2 -translate-y-1/2 z-actions pointer-events-none font-game text-title-responsive font-black text-primary text-shadow-bold"
+            className="absolute left-1/2 top-turn-top -translate-x-1/2 -translate-y-1/2 z-actions pointer-events-none font-game text-title-responsive font-black text-white text-shadow-bold"
             initial={{ opacity: 0, scale: 0.92, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -8 }}

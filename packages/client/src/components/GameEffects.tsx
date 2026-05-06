@@ -79,18 +79,15 @@ export default function GameEffects() {
             exit={{ scale: 2, opacity: 0, y: -30 }}
             transition={{ type: 'spring', stiffness: 300, damping: 15 }}
             className={cn(
-              'absolute font-game font-black whitespace-nowrap flex flex-col items-center gap-1 text-shadow-bold',
-              effect.type === 'victory' ? 'text-effect-xl text-accent' :
-              effect.type === 'draw' ? 'text-effect text-destructive' :
-              effect.type === 'skip' ? 'text-effect text-effect-skip' :
-              effect.type === 'reverse' ? 'text-effect text-uno-blue' :
-              'text-effect text-accent'
+              'absolute font-game font-black whitespace-nowrap flex flex-col items-center gap-1 text-shadow-bold text-white',
+              effect.type === 'victory' ? 'text-effect-xl' :
+              'text-effect'
             )}
           >
             <span className="flex items-center gap-2">
-              {effect.type === 'skip' && <Ban size={32} />}
-              {effect.type === 'reverse' && <RotateCcw size={32} />}
-              {effect.type === 'victory' && <Trophy size={36} />}
+              {effect.type === 'skip' && <Ban size={48} />}
+              {effect.type === 'reverse' && <RotateCcw size={48} />}
+              {effect.type === 'victory' && <Trophy size={56} />}
               {effect.text}
             </span>
             {effect.targetName && effect.type === 'skip' && (
