@@ -1,15 +1,33 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Card as CardType } from '@uno-online/shared';
 import DrawPile from './DrawPile';
 import DiscardPile from './DiscardPile';
 import PlayerNode from './PlayerNode';
+import ThrowAnimation from './ThrowAnimation';
 import { useGameStore } from '../stores/game-store';
 import { useAuthStore } from '../stores/auth-store';
+import { getSocket } from '../socket';
+
+interface ThrowEvent {
+  id: string;
+  fromPlayerId: string;
+  toPlayerId: string;
+  item: string;
+}
+
+interface ActiveThrow {
+  id: string;
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  item: string;
+}
 
 interface GameTableProps {
   onDraw: () => void;
 }
+
+let throwIdCounter = 0;
 
 export default function GameTable({ onDraw }: GameTableProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -24,6 +42,13 @@ export default function GameTable({ onDraw }: GameTableProps) {
   const authUserId = useAuthStore((s) => s.user?.id);
   const viewerId = useGameStore((s) => s.viewerId);
   const userId = viewerId ?? authUserId;
+
+  // Chat messages per player
+  const [chatMessages, setChatMessages] = useState<Map<string, string>>(new Map());
+  const chatTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  // Active throw animations
+  const [activeThrows, setActiveThrows] = useState<ActiveThrow[]>([]);
 
   // Track container dimensions with ResizeObserver
   useEffect(() => {
@@ -76,6 +101,58 @@ export default function GameTable({ onDraw }: GameTableProps) {
     }
   }, [lastAction]);
 
+  // Listen for chat messages from socket
+  useEffect(() => {
+    const socket = getSocket();
+    const handler = (data: { userId: string; text: string }) => {
+      setChatMessages((prev) => {
+        const next = new Map(prev);
+        next.set(data.userId, data.text);
+        return next;
+      });
+
+      // Clear previous timer for this player
+      const existing = chatTimers.current.get(data.userId);
+      if (existing) clearTimeout(existing);
+
+      // Auto-dismiss after 3s
+      const timer = setTimeout(() => {
+        setChatMessages((prev) => {
+          const next = new Map(prev);
+          next.delete(data.userId);
+          return next;
+        });
+        chatTimers.current.delete(data.userId);
+      }, 3000);
+      chatTimers.current.set(data.userId, timer);
+    };
+
+    socket.on('chat:message', handler);
+    return () => {
+      socket.off('chat:message', handler);
+      // Clean up timers
+      chatTimers.current.forEach((t) => clearTimeout(t));
+      chatTimers.current.clear();
+    };
+  }, []);
+
+  // Listen for throw:item events from socket
+  useEffect(() => {
+    const socket = getSocket();
+    const handler = (data: { fromPlayerId: string; toPlayerId: string; item: string }) => {
+      const fromPos = getPlayerPosition(data.fromPlayerId);
+      const toPos = getPlayerPosition(data.toPlayerId);
+      if (!fromPos || !toPos) return;
+
+      const id = `throw_${++throwIdCounter}`;
+      setActiveThrows((prev) => [...prev, { id, from: fromPos, to: toPos, item: data.item }]);
+    };
+
+    socket.on('throw:item', handler);
+    return () => { socket.off('throw:item', handler); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [players, dimensions]);
+
   // Calculate player positions on ellipse
   const playerPositions = useMemo(() => {
     const { width, height } = dimensions;
@@ -106,6 +183,28 @@ export default function GameTable({ onDraw }: GameTableProps) {
 
     return positions;
   }, [dimensions, players, userId]);
+
+  // Helper: get position for a player by ID
+  const getPlayerPosition = useCallback((playerId: string) => {
+    const idx = players.findIndex((p) => p.id === playerId);
+    if (idx < 0 || idx >= playerPositions.length) return null;
+    return playerPositions[idx];
+  }, [players, playerPositions]);
+
+  // Handle reaction from quick reaction menu
+  const handleReaction = useCallback((emoji: string) => {
+    getSocket().emit('chat:message', { text: emoji });
+  }, []);
+
+  // Handle throw item
+  const handleThrowItem = useCallback((targetPlayerId: string, item: string) => {
+    getSocket().emit('throw:item', { toPlayerId: targetPlayerId, item });
+  }, []);
+
+  // Remove completed throw animation
+  const handleThrowComplete = useCallback((id: string) => {
+    setActiveThrows((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
   // Direction arc path for SVG overlay
   const directionArc = useMemo(() => {
@@ -214,9 +313,25 @@ export default function GameTable({ onDraw }: GameTableProps) {
             turnEndTime={isActive ? turnEndTime : null}
             turnTimeLimit={settings?.turnTimeLimit}
             lastPlayedCard={lastPlayed?.card ?? null}
+            chatMessage={chatMessages.get(player.id) ?? null}
+            onReaction={handleReaction}
+            onThrowItem={(item) => handleThrowItem(player.id, item)}
           />
         );
       })}
+
+      {/* Throw animations */}
+      <AnimatePresence>
+        {activeThrows.map((t) => (
+          <ThrowAnimation
+            key={t.id}
+            from={t.from}
+            to={t.to}
+            item={t.item}
+            onComplete={() => handleThrowComplete(t.id)}
+          />
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
