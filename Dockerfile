@@ -1,6 +1,36 @@
 # ---- Stage 1: Base ----
 FROM node:22-slim AS base
+
+ARG DEBIAN_MIRROR="http://mirrors.ustc.edu.cn/debian"
+ARG DEBIAN_SECURITY_MIRROR="http://mirrors.ustc.edu.cn/debian-security"
+ARG NPM_REGISTRY="https://mirrors.cloud.tencent.com/npm/"
+
+ENV NPM_CONFIG_REGISTRY=$NPM_REGISTRY
+ENV COREPACK_NPM_REGISTRY=$NPM_REGISTRY
+
+RUN set -eux; \
+  if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+    sed -i \
+      -e "s|https://deb.debian.org/debian|${DEBIAN_MIRROR}|g" \
+      -e "s|http://deb.debian.org/debian|${DEBIAN_MIRROR}|g" \
+      -e "s|https://deb.debian.org/debian-security|${DEBIAN_SECURITY_MIRROR}|g" \
+      -e "s|http://deb.debian.org/debian-security|${DEBIAN_SECURITY_MIRROR}|g" \
+      -e "s|https://security.debian.org/debian-security|${DEBIAN_SECURITY_MIRROR}|g" \
+      -e "s|http://security.debian.org/debian-security|${DEBIAN_SECURITY_MIRROR}|g" \
+      /etc/apt/sources.list.d/debian.sources; \
+  elif [ -f /etc/apt/sources.list ]; then \
+    sed -i \
+      -e "s|https://deb.debian.org/debian|${DEBIAN_MIRROR}|g" \
+      -e "s|http://deb.debian.org/debian|${DEBIAN_MIRROR}|g" \
+      -e "s|https://deb.debian.org/debian-security|${DEBIAN_SECURITY_MIRROR}|g" \
+      -e "s|http://deb.debian.org/debian-security|${DEBIAN_SECURITY_MIRROR}|g" \
+      -e "s|https://security.debian.org/debian-security|${DEBIAN_SECURITY_MIRROR}|g" \
+      -e "s|http://security.debian.org/debian-security|${DEBIAN_SECURITY_MIRROR}|g" \
+      /etc/apt/sources.list; \
+  fi
+
 RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
+RUN pnpm config set registry "$NPM_REGISTRY"
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 python3-pip make g++ ca-certificates \
   && rm -rf /var/lib/apt/lists/*
