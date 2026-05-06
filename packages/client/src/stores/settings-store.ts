@@ -15,11 +15,13 @@ interface SettingsState {
   colorBlindMode: boolean;
   fontFamily: FontOption;
   cardImagePack: boolean; // whether a card image pack is loaded
+  autoPlay: boolean;
   setSoundVolume: (v: number) => void;
   toggleSound: () => void;
   toggleColorBlind: () => void;
   setFontFamily: (f: FontOption) => void;
   setCardImagePack: (loaded: boolean) => void;
+  toggleAutoPlay: () => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -28,6 +30,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   colorBlindMode: localStorage.getItem('colorBlindMode') === 'true',
   fontFamily: (localStorage.getItem('fontFamily') as FontOption) || 'default',
   cardImagePack: localStorage.getItem('cardImagePack') === 'true',
+  autoPlay: localStorage.getItem('autoPlay') === 'true',
   setSoundVolume: (v) => {
     localStorage.setItem('soundVolume', String(v));
     set({ soundVolume: v });
@@ -52,4 +55,9 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     localStorage.setItem('cardImagePack', String(loaded));
     set({ cardImagePack: loaded });
   },
+  toggleAutoPlay: () => set((s) => {
+    const next = !s.autoPlay;
+    localStorage.setItem('autoPlay', String(next));
+    return { autoPlay: next };
+  }),
 }));
