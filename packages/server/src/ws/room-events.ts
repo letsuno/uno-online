@@ -41,13 +41,26 @@ export function registerRoomEvents(
 
   socket.on('room:join', async (roomCode: string, callback) => {
     try {
+      const room = await getRoom(redis, roomCode);
+      if (!room) return callback({ success: false, error: 'Room not found' });
+
+      const players = await getRoomPlayers(redis, roomCode);
+      const alreadyInRoom = players.some(p => p.userId === data.user.userId);
+
+      if (alreadyInRoom && room.status !== 'waiting') {
+        // Player reconnecting to an in-progress game — delegate to rejoin flow
+        data.roomCode = roomCode;
+        await socket.join(roomCode);
+        socket.emit('room:rejoin_redirect', { roomCode });
+        return callback({ success: true, players, room, rejoin: true });
+      }
+
       await roomManager.joinRoom(roomCode, data.user.userId, data.user.username);
       data.roomCode = roomCode;
       await socket.join(roomCode);
-      const room = await getRoom(redis, roomCode);
-      const players = await getRoomPlayers(redis, roomCode);
-      io.to(roomCode).emit('room:updated', { players, room });
-      callback({ success: true, players, room });
+      const updatedPlayers = await getRoomPlayers(redis, roomCode);
+      io.to(roomCode).emit('room:updated', { players: updatedPlayers, room });
+      callback({ success: true, players: updatedPlayers, room });
     } catch (err) {
       callback({ success: false, error: (err as Error).message });
     }

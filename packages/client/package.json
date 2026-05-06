@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@uno-online/shared": "workspace:*",
+    "fflate": "^0.8.2",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.14.0",
     "mediasoup-client": "^3.20.0",

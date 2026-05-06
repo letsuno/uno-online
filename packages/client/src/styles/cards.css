@@ -38,6 +38,21 @@
   transform: translateY(-12px) scale(1.05);
 }
 
+.card--image {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: hidden;
+  padding: 0;
+}
+
+.card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
 .card--dimmed::after {
   content: '';
   position: absolute;

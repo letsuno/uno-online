@@ -33,8 +33,9 @@ export default function LobbyPage() {
     getSocket().emit('room:join', joinCode.toUpperCase(), (res: any) => {
       setLoading(false);
       if (res.success) {
-        setRoom(joinCode.toUpperCase(), res.players, res.room);
-        navigate(`/room/${joinCode.toUpperCase()}`);
+        const code = joinCode.toUpperCase();
+        setRoom(code, res.players, res.room);
+        navigate(res.rejoin ? `/game/${code}` : `/room/${code}`);
       } else {
         setError(res.error || '加入失败');
       }
