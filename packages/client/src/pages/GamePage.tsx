@@ -40,11 +40,15 @@ export default function GamePage() {
   const showScoreBoard = phase === 'round_end' || phase === 'game_over';
   const setGameState = useGameStore((s) => s.setGameState);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
+  const [showTurnBanner, setShowTurnBanner] = useState(false);
   const prevTurnRef = useRef(false);
 
   useEffect(() => {
     if (isMyTurn && phase === 'playing' && !prevTurnRef.current) {
       playSound('your_turn');
+      setShowTurnBanner(true);
+      const timer = window.setTimeout(() => setShowTurnBanner(false), 1600);
+      return () => window.clearTimeout(timer);
     }
     prevTurnRef.current = isMyTurn && phase === 'playing';
   }, [isMyTurn, phase]);
@@ -171,6 +175,19 @@ export default function GamePage() {
         <DirectionIndicator />
         <DrawPile onDraw={drawCard} />
         <DiscardPile />
+        <AnimatePresence>
+          {showTurnBanner && isMyTurn && phase === 'playing' && (
+            <motion.div
+              className="turn-banner"
+              initial={{ opacity: 0, scale: 0.92, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: -8 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+            >
+              轮到你了
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       <GameActions
         onCallUno={callUno}
@@ -180,21 +197,6 @@ export default function GamePage() {
         onPass={pass}
         onSwapTarget={swapTarget}
       />
-      <AnimatePresence>
-        {isMyTurn && phase === 'playing' && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            style={{
-              textAlign: 'center', fontFamily: 'var(--font-game)', fontSize: 16,
-              color: 'var(--text-accent)', animation: 'timerFlash 1s ease-in-out infinite alternate',
-            }}
-          >
-            你的回合
-          </motion.div>
-        )}
-      </AnimatePresence>
       <PlayerHand onPlayCard={playCard} />
       <ChatBox />
       <VoicePanel />
