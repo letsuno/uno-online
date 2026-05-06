@@ -22,7 +22,7 @@ export default function AnimatedCard({ card, playable, clickable = playable, onC
       animate={{ scale: 1, opacity: 1, y: 0 }}
       exit={{ scale: 0.5, opacity: 0, y: -40, rotate: 15 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      whileHover={clickable ? { y: -16, scale: 1.08 } : undefined}
+      whileHover={clickable ? { y: -24, scale: 1.1, zIndex: 10 } : undefined}
       whileTap={clickable ? { scale: 0.95 } : undefined}
       style={style}
     >
