@@ -114,15 +114,15 @@
   --font-size-card-wild: 1.375rem;
   --font-size-card-wild4: 1.25rem;
   --font-size-zero: 0px;
-  --font-size-effect: 3rem;
-  --font-size-effect-xl: 4rem;
-  --font-size-throw: 6rem;
+  --font-size-effect: 10rem;
+  --font-size-effect-xl: 12rem;
+  --font-size-throw: 10rem;
   --font-size-timer-critical: 4.5rem;
   --font-size-uno-call: 4rem;
   --font-size-heading-xl: 3rem;
   --font-size-heading-lg: 2rem;
   --font-size-direction: 1.75rem;
-  --font-size-title-responsive: clamp(3rem, 8vw, 5rem);
+  --font-size-title-responsive: clamp(8rem, 15vw, 12rem);
 
   --shadow-card: 3px 4px 0px rgba(0, 0, 0, 0.2);
   --shadow-card-sm: 2px 3px 0px rgba(0, 0, 0, 0.3);
