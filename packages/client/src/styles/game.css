@@ -74,10 +74,6 @@
   gap: 1px;
 }
 
-.opponent__count {
-  font-size: 10px;
-  color: var(--text-secondary);
-}
 
 .game-table {
   flex: 1;

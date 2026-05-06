@@ -125,6 +125,10 @@
     height: 76px;
     font-size: 12px;
   }
+  .card-back--small {
+    width: 12px;
+    height: 18px;
+  }
 }
 
 @keyframes drawReadyPulse {
