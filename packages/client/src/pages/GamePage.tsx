@@ -170,12 +170,13 @@ export default function GamePage() {
         </div>
       )}
       <TopBar roomCode={roomCode ?? ''} />
-      <OpponentRow />
-      <div className="game-center">
-        <DirectionIndicator />
-        <DrawPile onDraw={drawCard} />
-        <DiscardPile />
-        <AnimatePresence>
+      <div className="game-table">
+        <OpponentRow />
+        <div className="game-center">
+          <DirectionIndicator />
+          <DrawPile onDraw={drawCard} />
+          <DiscardPile />
+          <AnimatePresence>
           {showTurnBanner && isMyTurn && phase === 'playing' && (
             <motion.div
               className="turn-banner"
@@ -188,6 +189,7 @@ export default function GamePage() {
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </div>
       <GameActions
         onCallUno={callUno}

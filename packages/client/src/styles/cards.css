@@ -31,13 +31,20 @@
 .card--wild_draw_four .card__value { font-size: 16px; }
 
 .card--playable {
-  border: var(--card-border-playable);
-  box-shadow: var(--card-glow), var(--card-shadow);
   cursor: pointer;
 }
 
 .card--playable:hover {
   transform: translateY(-12px) scale(1.05);
+}
+
+.card--dimmed::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
 }
 
 .card__symbol {
