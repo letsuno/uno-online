@@ -8,10 +8,7 @@ import { useAuthStore } from '../stores/auth-store';
 import { getSocket, connectSocket, onConnectionStatus } from '../socket';
 import { playSound } from '../sound/sound-manager';
 import TopBar from '../components/TopBar';
-import OpponentRow from '../components/OpponentRow';
-import DirectionIndicator from '../components/DirectionIndicator';
-import DrawPile from '../components/DrawPile';
-import DiscardPile from '../components/DiscardPile';
+import GameTable from '../components/GameTable';
 import GameActions from '../components/GameActions';
 import PlayerHand from '../components/PlayerHand';
 import ColorPicker from '../components/ColorPicker';
@@ -165,25 +162,20 @@ export default function GamePage() {
         </div>
       )}
       <TopBar roomCode={roomCode ?? ''} />
-      <OpponentRow />
-      <div className="flex flex-1 items-center justify-center gap-10 relative">
-        <DirectionIndicator />
-        <DrawPile onDraw={drawCard} />
-        <DiscardPile />
-        <AnimatePresence>
-          {showTurnBanner && isMyTurn && phase === 'playing' && (
-            <motion.div
-              className="absolute left-1/2 top-turn-top -translate-x-1/2 -translate-y-1/2 z-actions pointer-events-none font-game text-title-responsive font-black text-primary"
-              initial={{ opacity: 0, scale: 0.92, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: -8 }}
-              transition={{ duration: 0.22, ease: 'easeOut' }}
-            >
-              轮到你了
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      <GameTable onDraw={drawCard} />
+      <AnimatePresence>
+        {showTurnBanner && isMyTurn && phase === 'playing' && (
+          <motion.div
+            className="absolute left-1/2 top-turn-top -translate-x-1/2 -translate-y-1/2 z-actions pointer-events-none font-game text-title-responsive font-black text-primary"
+            initial={{ opacity: 0, scale: 0.92, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -8 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+          >
+            轮到你了
+          </motion.div>
+        )}
+      </AnimatePresence>
       <GameActions
         onCallUno={callUno}
         onCatchUno={catchUno}
