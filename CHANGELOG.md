@@ -10,10 +10,23 @@ Branch: `feat/ui`
 
 ### Added
 - Add UIUX enhancement design spec — round table layout, card visual upgrade, chat bubbles, throw items, house rules info card, game log, mobile FAB (7d6d68e)
+- Host crown badge on player avatar during gameplay
+- Dissolve room button in TopBar for room owner
+- Server `room:dissolve` event — owner can kick all players and delete room
+- Throw item CD toast feedback when cooldown active
 
 ### Changed
 - Migrate all styles to TailwindCSS v4 with unified dark theme (d9102ea)
 - Remove unnecessary .js extensions from TypeScript imports (4b41cbc)
+
+### Fixed
+- Fix direction arc SVG drawing two overlapping ellipses
+- Fix card corners: remove suit symbols, add mini mode for log/teaching cards
+- Fix avatar click: single click other → throw items, click self → quick reactions
+- Fix menus clipped by overflow-hidden — render via portal to document.body
+- Fix hand card hover: forwardRef for AnimatedCard, smooth tween transition
+- Fix throw:item socket field names to match server (fromId/targetId)
+- Fix throw animation coordinates (container-relative → viewport)
 
 ## [0.1.0] - 2026-05-06
 
