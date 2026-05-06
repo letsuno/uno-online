@@ -89,7 +89,7 @@ export default function ThrowAnimation({ from, to, item, onComplete }: ThrowAnim
       <AnimatePresence>
         {phase === 'flying' && (
           <motion.div
-            className="absolute text-effect"
+            className="absolute text-effect-xl"
             style={{ left: 0, top: 0 }}
             initial={{ x: from.x, y: from.y, scale: 1 }}
             animate={controls}
@@ -104,7 +104,7 @@ export default function ThrowAnimation({ from, to, item, onComplete }: ThrowAnim
           <>
             {/* Scale pulse at destination */}
             <motion.div
-              className="absolute text-effect"
+              className="absolute text-effect-xl"
               style={{ left: to.x, top: to.y, transform: 'translate(-50%, -50%)' }}
               initial={{ scale: 1, opacity: 1 }}
               animate={{ scale: [1, 1.3, 0], opacity: [1, 1, 0] }}
