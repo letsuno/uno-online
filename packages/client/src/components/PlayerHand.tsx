@@ -4,7 +4,6 @@ import AnimatedCard from './AnimatedCard';
 import { useGameStore } from '../stores/game-store';
 import { useAuthStore } from '../stores/auth-store';
 import { getPlayableCardIds } from '../utils/playable-cards';
-import '../styles/game.css';
 
 interface PlayerHandProps {
   onPlayCard: (cardId: string) => void;
@@ -41,8 +40,8 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   if (!me) return null;
 
   return (
-    <div className="player-hand">
-      <div className="player-hand__cards">
+    <div className="bg-black/30 px-5 pt-3.5 pb-[18px] flex justify-center overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="flex justify-center">
         <AnimatePresence mode="popLayout">
           {me.hand.map((card, i) => {
             const angle = (i - (me.hand.length - 1) / 2) * 4;
@@ -54,6 +53,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
                 playable={hintedIds.has(card.id)}
                 clickable={playableIds.has(card.id)}
                 onClick={() => playableIds.has(card.id) && onPlayCard(card.id)}
+                className="-mr-2.5 last:mr-0 snap-center"
                 style={{ transform: `rotate(${angle}deg)` }}
               />
             );

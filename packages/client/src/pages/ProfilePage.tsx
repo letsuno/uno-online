@@ -18,28 +18,22 @@ export default function ProfilePage() {
   }, []);
 
   return (
-    <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: 40, gap: 24,
-    }}>
-      <h2 style={{ fontFamily: 'var(--font-game)', color: 'var(--text-accent)' }}>个人信息</h2>
+    <div className="flex flex-1 flex-col items-center gap-6 p-10">
+      <h2 className="font-game text-primary">个人信息</h2>
       {profile && (
         <>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 20, fontWeight: 'bold' }}>{profile.user.username}</p>
-            <p style={{ color: 'var(--text-secondary)', marginTop: 8 }}>
+          <div className="text-center">
+            <p className="text-xl font-bold">{profile.user.username}</p>
+            <p className="mt-2 text-muted-foreground">
               总场次: {profile.user.totalGames} | 胜场: {profile.user.totalWins} |
               胜率: {profile.user.totalGames > 0 ? Math.round(profile.user.totalWins / profile.user.totalGames * 100) : 0}%
             </p>
           </div>
           {profile.recentGames.length > 0 && (
-            <div style={{ background: 'var(--bg-surface)', borderRadius: 12, padding: 16, width: '100%', maxWidth: 500 }}>
-              <h3 style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12 }}>最近对局</h3>
+            <div className="w-full max-w-[500px] rounded-xl bg-card p-4">
+              <h3 className="mb-3 text-sm text-muted-foreground">最近对局</h3>
               {profile.recentGames.map((g) => (
-                <div key={g.id} style={{
-                  display: 'flex', justifyContent: 'space-between', padding: '6px 0',
-                  borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: 13,
-                }}>
+                <div key={g.id} className="flex justify-between border-b border-white/5 py-1.5 text-[13px]">
                   <span>房间 {g.game.roomCode}</span>
                   <span>第 {g.placement} 名 | {g.finalScore} 分</span>
                 </div>
@@ -48,7 +42,7 @@ export default function ProfilePage() {
           )}
         </>
       )}
-      <button className="btn-secondary" onClick={() => navigate('/lobby')}>返回大厅</button>
+      <button className="bg-secondary text-foreground px-5 py-2 rounded-[20px] text-sm border border-white/20" onClick={() => navigate('/lobby')}>返回大厅</button>
     </div>
   );
 }

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useGameStore } from '../stores/game-store';
 import { useAuthStore } from '../stores/auth-store';
 import { playSound } from '../sound/sound-manager';
-import '../styles/game.css';
 
 interface GameActionsProps {
   onCallUno: () => void;
@@ -12,6 +11,10 @@ interface GameActionsProps {
   onPass: () => void;
   onSwapTarget: (targetId: string) => void;
 }
+
+const btnPrimary = 'bg-primary text-primary-foreground px-6 py-2.5 rounded-3xl text-base font-bold shadow-[3px_4px_0px_rgba(0,0,0,0.2)] transition-transform duration-150 hover:scale-105 active:scale-[0.97]';
+const btnDanger = 'bg-destructive text-white px-5 py-2 rounded-[20px] text-sm font-bold shadow-[3px_4px_0px_rgba(0,0,0,0.2)]';
+const btnSecondary = 'bg-secondary text-foreground px-5 py-2 rounded-[20px] text-sm border border-white/20';
 
 export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAccept, onPass, onSwapTarget }: GameActionsProps) {
   const authUserId = useAuthStore((s) => s.user?.id);
@@ -38,27 +41,27 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   };
 
   return (
-    <div className="game-actions">
+    <div className="flex justify-center gap-2.5 py-2">
       {me && me.hand.length <= 2 && !me.calledUno && (
-        <button className="btn-primary" onClick={withCooldown(onCallUno)} disabled={cooldown}>喊 UNO!</button>
+        <button className={btnPrimary} onClick={withCooldown(onCallUno)} disabled={cooldown}>喊 UNO!</button>
       )}
       {catchTargets.map((t) => (
-        <button key={t.id} className="btn-danger" onClick={withCooldown(() => { playSound('uno_catch'); onCatchUno(t.id); })} disabled={cooldown}>抓 {t.name}!</button>
+        <button key={t.id} className={btnDanger} onClick={withCooldown(() => { playSound('uno_catch'); onCatchUno(t.id); })} disabled={cooldown}>抓 {t.name}!</button>
       ))}
       {phase === 'challenging' && pendingDrawPlayerId === userId && (
         <>
-          {!noChallengeWD4 && <button className="btn-danger" onClick={onChallenge}>质疑!</button>}
-          <button className="btn-secondary" onClick={onAccept}>接受</button>
+          {!noChallengeWD4 && <button className={btnDanger} onClick={onChallenge}>质疑!</button>}
+          <button className={btnSecondary} onClick={onAccept}>接受</button>
         </>
       )}
       {isMyTurn && hasDrawnThisTurn && phase === 'playing' && (
-        <button className="btn-secondary" onClick={onPass}>跳过</button>
+        <button className={btnSecondary} onClick={onPass}>跳过</button>
       )}
       {phase === 'choosing_swap_target' && isMyTurn && (
         <>
-          <span style={{ color: 'var(--text-accent)', fontSize: 13, fontFamily: 'var(--font-game)' }}>选择交换对象:</span>
+          <span className="text-accent text-[13px] font-game">选择交换对象:</span>
           {players.filter(p => p.id !== userId).map(p => (
-            <button key={p.id} className="btn-primary" onClick={() => onSwapTarget(p.id)} style={{ fontSize: 13 }}>
+            <button key={p.id} className={`${btnPrimary} !text-[13px]`} onClick={() => onSwapTarget(p.id)}>
               {p.name}
             </button>
           ))}

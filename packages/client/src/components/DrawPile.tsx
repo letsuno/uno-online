@@ -4,6 +4,7 @@ import CardBack from './CardBack';
 import { useGameStore } from '../stores/game-store';
 import { useAuthStore } from '../stores/auth-store';
 import { getPlayableCardIds } from '../utils/playable-cards';
+import { cn } from '@/lib/utils';
 
 interface DrawPileProps { onDraw: () => void; }
 
@@ -41,11 +42,11 @@ export default function DrawPile({ onDraw }: DrawPileProps) {
   const emphasizeDraw = canDraw && !settings?.houseRules?.noHints;
 
   return (
-    <div className="draw-pile">
+    <div className="flex flex-col items-center gap-1.5 z-[1] relative min-w-[92px]">
       <AnimatePresence>
         {showNoPlayableHint && (
           <motion.div
-            className="draw-pile__hint"
+            className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 whitespace-nowrap font-game text-[13px] text-primary [text-shadow:0_2px_8px_rgba(0,0,0,0.45)]"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
@@ -56,13 +57,25 @@ export default function DrawPile({ onDraw }: DrawPileProps) {
       </AnimatePresence>
       <CardBack
         onClick={canDraw ? onDraw : undefined}
-        className={emphasizeDraw ? 'card-back--draw-ready' : undefined}
+        className={cn(
+          emphasizeDraw && [
+            'border-primary',
+            'shadow-[0_0_0_4px_rgba(251,191,36,0.28),0_0_26px_rgba(251,191,36,0.72),3px_4px_0px_rgba(0,0,0,0.2)]',
+            'animate-[drawReadyPulse_1s_ease-in-out_infinite_alternate]',
+            'hover:-translate-y-2 hover:scale-[1.04]',
+          ],
+        )}
         style={{
           cursor: canDraw ? 'pointer' : 'default',
           opacity: canDraw ? 1 : 0.5,
         }}
       />
-      <span className={deckCount <= 10 ? 'draw-pile__count draw-pile__count--low' : 'draw-pile__count'}>
+      <span
+        className={cn(
+          'text-[10px] text-muted-foreground',
+          deckCount <= 10 && 'text-destructive font-bold',
+        )}
+      >
         牌堆 ({deckCount})
       </span>
     </div>

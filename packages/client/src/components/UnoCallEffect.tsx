@@ -25,12 +25,7 @@ export default function UnoCallEffect() {
           animate={{ scale: 1, rotate: 0 }}
           exit={{ scale: 0, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 500, damping: 15 }}
-          style={{
-            position: 'fixed', top: '40%', left: '50%', transform: 'translateX(-50%)',
-            zIndex: 95, pointerEvents: 'none',
-            fontFamily: 'var(--font-game)', fontSize: 64, fontWeight: 900,
-            color: 'var(--text-accent)', textShadow: '4px 5px 0px rgba(0,0,0,0.4)',
-          }}
+          className="fixed top-[40%] left-1/2 -translate-x-1/2 z-[95] pointer-events-none font-game text-[64px] font-black text-accent [text-shadow:4px_5px_0px_rgba(0,0,0,0.4)]"
         >
           UNO!
         </motion.div>
