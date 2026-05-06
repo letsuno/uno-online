@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/auth-store.js';
-import { apiGet } from '../api.js';
+import { useAuthStore } from '../stores/auth-store';
+import { apiGet } from '../api';
 
 interface ProfileData {
   user: { id: string; username: string; avatarUrl: string | null; totalGames: number; totalWins: number };

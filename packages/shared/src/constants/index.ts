@@ -1,2 +1,2 @@
-export * from './deck.js';
-export * from './scoring.js';
+export * from './deck';
+export * from './scoring';

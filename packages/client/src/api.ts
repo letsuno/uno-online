@@ -1,4 +1,4 @@
-import { API_URL } from './env.js';
+import { API_URL } from './env';
 
 export async function apiPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
   const token = localStorage.getItem('token');

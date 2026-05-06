@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { applyActionWithHouseRules } from '../src/rules/house-rules-engine.js';
-import type { GameState } from '../src/types/game.js';
-import type { Card, Color } from '../src/types/card.js';
-import { DEFAULT_HOUSE_RULES } from '../src/types/house-rules.js';
+import { applyActionWithHouseRules } from '../src/rules/house-rules-engine';
+import type { GameState } from '../src/types/game';
+import type { Card, Color } from '../src/types/card';
+import { DEFAULT_HOUSE_RULES } from '../src/types/house-rules';
 
 function makeCard(type: Card['type'], color: Color | null, extra?: { value?: number; id?: string }): Card {
   const id = extra?.id ?? `card_${Math.random().toString(36).slice(2, 8)}`;

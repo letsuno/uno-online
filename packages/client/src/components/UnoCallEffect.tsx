@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useGameStore } from '../stores/game-store.js';
+import { useGameStore } from '../stores/game-store';
 
 export default function UnoCallEffect() {
   const [show, setShow] = useState(false);

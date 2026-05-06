@@ -1,15 +1,15 @@
 import type { Server as SocketIOServer } from 'socket.io';
 import type Redis from 'ioredis';
-import { authenticateSocket } from '../auth/middleware.js';
-import { RoomManager } from '../room/room-manager.js';
-import { TurnTimer } from '../game/turn-timer.js';
-import { GameSession } from '../game/game-session.js';
-import { registerRoomEvents, emitGameUpdate, startTurnTimer } from './room-events.js';
-import { registerGameEvents } from './game-events.js';
-import { registerVoiceEvents, removeVoicePeer } from '../voice/voice-events.js';
-import { getRoom, getRoomPlayers, setRoomOwner } from '../room/room-store.js';
-import { saveGameState, loadGameState } from '../game/game-store.js';
-import { checkRateLimit, clearRateLimit } from './rate-limiter.js';
+import { authenticateSocket } from '../auth/middleware';
+import { RoomManager } from '../room/room-manager';
+import { TurnTimer } from '../game/turn-timer';
+import { GameSession } from '../game/game-session';
+import { registerRoomEvents, emitGameUpdate, startTurnTimer } from './room-events';
+import { registerGameEvents } from './game-events';
+import { registerVoiceEvents, removeVoicePeer } from '../voice/voice-events';
+import { getRoom, getRoomPlayers, setRoomOwner } from '../room/room-store';
+import { saveGameState, loadGameState } from '../game/game-store';
+import { checkRateLimit, clearRateLimit } from './rate-limiter';
 
 const RECONNECT_TIMEOUT_MS = 60_000;
 

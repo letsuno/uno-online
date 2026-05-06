@@ -1,10 +1,10 @@
-import type { GameState, GameAction } from '../types/game.js';
-import type { Card } from '../types/card.js';
-import { isWildCard } from '../types/card.js';
-import { applyAction, checkRoundEnd } from './game-engine.js';
-import { canPlayCard } from './validation.js';
-import { reshuffleDiscardIntoDeck } from './deck.js';
-import { getNextPlayerIndex } from './turn.js';
+import type { GameState, GameAction } from '../types/game';
+import type { Card } from '../types/card';
+import { isWildCard } from '../types/card';
+import { applyAction, checkRoundEnd } from './game-engine';
+import { canPlayCard } from './validation';
+import { reshuffleDiscardIntoDeck } from './deck';
+import { getNextPlayerIndex } from './turn';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Internal helper: draw `count` cards into a player's hand

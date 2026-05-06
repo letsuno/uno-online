@@ -1,6 +1,6 @@
-import type { Card } from '../types/card.js';
-import type { Player } from '../types/game.js';
-import { getCardScore } from '../constants/scoring.js';
+import type { Card } from '../types/card';
+import type { Player } from '../types/game';
+import { getCardScore } from '../constants/scoring';
 
 export function calculateRoundScore(hand: readonly Card[]): number {
   return hand.reduce((sum, card) => sum + getCardScore(card), 0);

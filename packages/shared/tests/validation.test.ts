@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { canPlayCard, getPlayableCards, isValidWildDrawFour } from '../src/rules/validation.js';
-import type { Card, Color } from '../src/types/card.js';
+import { canPlayCard, getPlayableCards, isValidWildDrawFour } from '../src/rules/validation';
+import type { Card, Color } from '../src/types/card';
 
 function numberCard(color: Color, value: number, id = 'c1'): Card {
   return { id, type: 'number', color, value };

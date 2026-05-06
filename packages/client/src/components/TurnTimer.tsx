@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Timer } from 'lucide-react';
-import { useGameStore } from '../stores/game-store.js';
-import { playSound } from '../sound/sound-manager.js';
+import { useGameStore } from '../stores/game-store';
+import { playSound } from '../sound/sound-manager';
 
 export default function TurnTimer() {
   const turnEndTime = useGameStore((s) => s.turnEndTime);

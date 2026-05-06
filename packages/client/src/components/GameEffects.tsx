@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Ban, RotateCcw, Trophy } from 'lucide-react';
-import { useGameStore } from '../stores/game-store.js';
-import { useAuthStore } from '../stores/auth-store.js';
-import { playSound } from '../sound/sound-manager.js';
+import { useGameStore } from '../stores/game-store';
+import { useAuthStore } from '../stores/auth-store';
+import { playSound } from '../sound/sound-manager';
 
 interface Effect {
   id: string;

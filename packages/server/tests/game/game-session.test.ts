@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_HOUSE_RULES } from '@uno-online/shared';
-import { GameSession } from '../../src/game/game-session.js';
-import { makeCard, makeGameState, makePlayer } from '../helpers/test-utils.js';
+import { GameSession } from '../../src/game/game-session';
+import { makeCard, makeGameState, makePlayer } from '../helpers/test-utils';
 
 describe('GameSession', () => {
   it('initializes a game with players', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { TurnTimer } from '../../src/game/turn-timer.js';
+import { TurnTimer } from '../../src/game/turn-timer';
 
 describe('TurnTimer', () => {
   beforeEach(() => { vi.useFakeTimers(); });

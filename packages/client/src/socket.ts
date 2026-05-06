@@ -1,9 +1,9 @@
 import { io, Socket } from 'socket.io-client';
-import { API_URL } from './env.js';
-import { useGameStore } from './stores/game-store.js';
-import { useRoomStore } from './stores/room-store.js';
-import { useToastStore } from './stores/toast-store.js';
-import { playSound } from './sound/sound-manager.js';
+import { API_URL } from './env';
+import { useGameStore } from './stores/game-store';
+import { useRoomStore } from './stores/room-store';
+import { useToastStore } from './stores/toast-store';
+import { playSound } from './sound/sound-manager';
 
 let socket: Socket | null = null;
 let connectionStatusCallback: ((status: 'connected' | 'disconnected' | 'reconnecting') => void) | null = null;

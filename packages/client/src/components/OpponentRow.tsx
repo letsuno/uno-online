@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import CardBack from './CardBack.js';
-import Card from './Card.js';
-import { useGameStore } from '../stores/game-store.js';
-import { useAuthStore } from '../stores/auth-store.js';
+import CardBack from './CardBack';
+import Card from './Card';
+import { useGameStore } from '../stores/game-store';
+import { useAuthStore } from '../stores/auth-store';
 import '../styles/game.css';
 
 const AVATAR_COLORS = ['#ff3366', '#33cc66', '#4488ff', '#f97316', '#a855f7', '#ec4899', '#14b8a6', '#eab308', '#6366f1'];

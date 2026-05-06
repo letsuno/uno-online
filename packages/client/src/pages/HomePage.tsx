@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LogIn, Spade } from 'lucide-react';
-import { useAuthStore } from '../stores/auth-store.js';
-import { GITHUB_CLIENT_ID, DEV_MODE } from '../env.js';
+import { useAuthStore } from '../stores/auth-store';
+import { GITHUB_CLIENT_ID, DEV_MODE } from '../env';
 
 export default function HomePage() {
   const { user, token, loading, loadUser, devLogin } = useAuthStore();
