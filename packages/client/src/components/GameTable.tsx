@@ -8,11 +8,12 @@ import ThrowAnimation from './ThrowAnimation';
 import { useGameStore } from '../stores/game-store';
 import { useAuthStore } from '../stores/auth-store';
 import { getSocket } from '../socket';
+import { useToastStore } from '../stores/toast-store';
 
 interface ThrowEvent {
   id: string;
-  fromPlayerId: string;
-  toPlayerId: string;
+  fromId: string;
+  targetId: string;
   item: string;
 }
 
@@ -139,13 +140,22 @@ export default function GameTable({ onDraw }: GameTableProps) {
   // Listen for throw:item events from socket
   useEffect(() => {
     const socket = getSocket();
-    const handler = (data: { fromPlayerId: string; toPlayerId: string; item: string }) => {
-      const fromPos = getPlayerPosition(data.fromPlayerId);
-      const toPos = getPlayerPosition(data.toPlayerId);
+    const handler = (data: { fromId: string; targetId: string; item: string }) => {
+      const fromPos = getPlayerPosition(data.fromId);
+      const toPos = getPlayerPosition(data.targetId);
       if (!fromPos || !toPos) return;
 
+      const rect = containerRef.current?.getBoundingClientRect();
+      const ox = rect?.left ?? 0;
+      const oy = rect?.top ?? 0;
+
       const id = `throw_${++throwIdCounter}`;
-      setActiveThrows((prev) => [...prev, { id, from: fromPos, to: toPos, item: data.item }]);
+      setActiveThrows((prev) => [...prev, {
+        id,
+        from: { x: fromPos.x + ox, y: fromPos.y + oy },
+        to: { x: toPos.x + ox, y: toPos.y + oy },
+        item: data.item,
+      }]);
     };
 
     socket.on('throw:item', handler);
@@ -198,7 +208,11 @@ export default function GameTable({ onDraw }: GameTableProps) {
 
   // Handle throw item
   const handleThrowItem = useCallback((targetPlayerId: string, item: string) => {
-    getSocket().emit('throw:item', { toPlayerId: targetPlayerId, item });
+    getSocket().emit('throw:item', { targetId: targetPlayerId, item }, (res: { success: boolean; error?: string }) => {
+      if (!res?.success && res?.error) {
+        useToastStore.getState().addToast(res.error, 'error');
+      }
+    });
   }, []);
 
   // Remove completed throw animation
@@ -217,15 +231,12 @@ export default function GameTable({ onDraw }: GameTableProps) {
     const rx = width * 0.38;
     const ry = height * 0.38;
 
-    // Create full ellipse path
-    // SVG elliptical arc doesn't directly support full ellipse,
-    // so we use two arcs
-    const startX = cx + rx;
-    const startY = cy;
     const isClockwise = direction === 'clockwise';
+    const leftX = cx - rx;
+    const rightX = cx + rx;
 
     return {
-      path: `M ${startX} ${startY} A ${rx} ${ry} 0 1 1 ${startX - 0.001} ${startY} A ${rx} ${ry} 0 1 1 ${startX} ${startY}`,
+      path: `M ${rightX} ${cy} A ${rx} ${ry} 0 1 1 ${leftX} ${cy} A ${rx} ${ry} 0 1 1 ${rightX} ${cy}`,
       isClockwise,
       circumference: 2 * Math.PI * Math.sqrt((rx * rx + ry * ry) / 2),
     };
