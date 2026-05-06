@@ -3,13 +3,6 @@ import { useSettingsStore } from '../stores/settings-store';
 import ColorBlindOverlay from './ColorBlindOverlay';
 import { cn } from '@/lib/utils';
 
-const COLOR_SYMBOLS: Record<string, string> = {
-  red: '♦',
-  blue: '♠',
-  green: '♣',
-  yellow: '♥',
-};
-
 function getCardLabel(card: CardType): string {
   switch (card.type) {
     case 'number': return String(card.value);
@@ -42,12 +35,13 @@ interface CardProps {
   playable?: boolean;
   clickable?: boolean;
   dimmed?: boolean;
+  mini?: boolean;
   onClick?: () => void;
   style?: React.CSSProperties;
   className?: string;
 }
 
-export default function Card({ card, playable = false, clickable = playable, dimmed = false, onClick, style, className }: CardProps) {
+export default function Card({ card, playable = false, clickable = playable, dimmed = false, mini = false, onClick, style, className }: CardProps) {
   const colorBlindMode = useSettingsStore((s) => s.colorBlindMode);
 
   const isWild = card.type === 'wild' || card.type === 'wild_draw_four';
@@ -56,8 +50,7 @@ export default function Card({ card, playable = false, clickable = playable, dim
     : colorClasses[card.color!] ?? '';
 
   const label = getCardLabel(card);
-  const symbol = card.color ? COLOR_SYMBOLS[card.color] : undefined;
-  const showCorners = !isWild;
+  const showCorners = !isWild && !mini;
 
   return (
     <div
@@ -82,20 +75,18 @@ export default function Card({ card, playable = false, clickable = playable, dim
       style={style}
     >
       {showCorners && (
-        <span className="absolute top-0.5 left-1 flex flex-col items-center leading-none">
+        <span className="absolute top-0.5 left-1 leading-none">
           <span className="text-2xs font-bold">{label}</span>
-          {symbol && <span className="text-2xs opacity-70">{symbol}</span>}
         </span>
       )}
 
-      <span className={typeFontClasses[card.type] ?? ''}>
+      <span className={mini ? 'text-2xs font-bold leading-none' : typeFontClasses[card.type] ?? ''}>
         {label}
       </span>
 
       {showCorners && (
-        <span className="absolute bottom-0.5 right-1 flex flex-col items-center leading-none rotate-180">
+        <span className="absolute bottom-0.5 right-1 leading-none rotate-180">
           <span className="text-2xs font-bold">{label}</span>
-          {symbol && <span className="text-2xs opacity-70">{symbol}</span>}
         </span>
       )}
 
