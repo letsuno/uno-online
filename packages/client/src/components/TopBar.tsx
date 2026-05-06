@@ -1,12 +1,23 @@
-import { Eye, Volume2, VolumeX, Spade } from 'lucide-react';
+import { Eye, Volume2, VolumeX, Spade, DoorOpen } from 'lucide-react';
 import TurnTimer from './TurnTimer';
 import { useSettingsStore } from '../stores/settings-store';
+import { useRoomStore } from '../stores/room-store';
+import { useAuthStore } from '../stores/auth-store';
+import { getSocket } from '../socket';
 import { cn } from '@/lib/utils';
 
 interface TopBarProps { roomCode: string; }
 
 export default function TopBar({ roomCode }: TopBarProps) {
   const { colorBlindMode, toggleColorBlind, soundEnabled, toggleSound } = useSettingsStore();
+  const ownerId = useRoomStore((s) => s.room?.ownerId);
+  const userId = useAuthStore((s) => s.user?.id);
+  const isHost = ownerId === userId;
+
+  const handleDissolve = () => {
+    if (!window.confirm('确定要解散房间吗？所有玩家将被踢出。')) return;
+    getSocket().emit('room:dissolve', () => {});
+  };
 
   return (
     <div className="flex justify-between items-center px-4 py-2 bg-black/30 text-caption z-topbar">
@@ -36,6 +47,15 @@ export default function TopBar({ roomCode }: TopBarProps) {
           {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
         </button>
         <TurnTimer />
+        {isHost && (
+          <button
+            onClick={handleDissolve}
+            className="bg-transparent border-none text-sm cursor-pointer text-destructive hover:text-destructive/80 transition-colors"
+            title="解散房间"
+          >
+            <DoorOpen size={16} />
+          </button>
+        )}
       </div>
     </div>
   );

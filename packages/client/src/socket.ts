@@ -91,6 +91,13 @@ export function getSocket(): Socket {
       localStorage.removeItem('token');
       window.location.href = '/';
     });
+
+    socket.on('room:dissolved', () => {
+      useRoomStore.getState().clearRoom();
+      useGameStore.getState().clearGame();
+      useToastStore.getState().addToast('房间已被房主解散', 'info');
+      window.location.href = '/lobby';
+    });
   }
   return socket;
 }
