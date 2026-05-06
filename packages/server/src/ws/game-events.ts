@@ -47,6 +47,20 @@ async function persistGameResult(roomCode: string, session: GameSession, startTi
   }
 }
 
+const chatTimestamps = new Map<string, number[]>();
+const CHAT_LIMIT = 2;
+const CHAT_WINDOW_MS = 5000;
+
+function checkChatRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const timestamps = chatTimestamps.get(userId) ?? [];
+  const recent = timestamps.filter(t => now - t < CHAT_WINDOW_MS);
+  if (recent.length >= CHAT_LIMIT) return false;
+  recent.push(now);
+  chatTimestamps.set(userId, recent);
+  return true;
+}
+
 const gameStartTimes = new Map<string, number>();
 
 export function setGameStartTime(roomCode: string): void {
@@ -238,6 +252,12 @@ export function registerGameEvents(
   socket.on('chat:message', (payload: { text: string }) => {
     const roomCode = data.roomCode;
     if (!roomCode || !payload.text) return;
+
+    if (!checkChatRateLimit(data.user.userId)) {
+      socket.emit('chat:rate_limited', { message: '发言太快，请稍后再试' });
+      return;
+    }
+
     const text = payload.text.slice(0, 500);
     io.to(roomCode).emit('chat:message', {
       userId: data.user.userId,
