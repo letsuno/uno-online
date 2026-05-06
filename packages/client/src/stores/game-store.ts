@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Card, Color, HouseRules } from '@uno-online/shared';
+import type { Card, Color, GameAction, HouseRules } from '@uno-online/shared';
 
 interface PlayerInfo {
   id: string;
@@ -14,6 +14,7 @@ interface PlayerInfo {
 }
 
 interface GameState {
+  viewerId: string | null;
   phase: string | null;
   players: PlayerInfo[];
   currentPlayerIndex: number;
@@ -26,6 +27,7 @@ interface GameState {
   winnerId: string | null;
   pendingDrawPlayerId: string | null;
   settings: { turnTimeLimit: number; targetScore: number; houseRules?: HouseRules } | null;
+  lastAction: GameAction | null;
   turnEndTime: number | null;
   lastDrawnCard: Card | null;
   hasDrawnThisTurn: boolean;
@@ -38,6 +40,7 @@ interface GameState {
 
 export const useGameStore = create<GameState>((set) => ({
   phase: null,
+  viewerId: null,
   players: [],
   currentPlayerIndex: 0,
   direction: 'clockwise',
@@ -49,25 +52,41 @@ export const useGameStore = create<GameState>((set) => ({
   winnerId: null,
   pendingDrawPlayerId: null,
   settings: null,
+  lastAction: null,
   turnEndTime: null,
   lastDrawnCard: null,
   hasDrawnThisTurn: false,
   setGameState: (view) =>
-    set({
-      phase: view.phase as string,
-      players: view.players as PlayerInfo[],
-      currentPlayerIndex: view.currentPlayerIndex as number,
-      direction: view.direction as 'clockwise' | 'counter_clockwise',
-      discardPile: view.discardPile as Card[],
-      currentColor: view.currentColor as Color | null,
-      drawStack: view.drawStack as number,
-      deckCount: view.deckCount as number,
-      roundNumber: view.roundNumber as number,
-      winnerId: view.winnerId as string | null,
-      pendingDrawPlayerId: view.pendingDrawPlayerId as string | null,
-      settings: view.settings as { turnTimeLimit: number; targetScore: number; houseRules?: HouseRules },
-      hasDrawnThisTurn: false,
-      lastDrawnCard: null,
+    set((state) => {
+      const players = view.players as PlayerInfo[];
+      const viewerId = (view.viewerId as string | undefined) ?? state.viewerId;
+      const currentPlayerIndex = view.currentPlayerIndex as number;
+      const phase = view.phase as string;
+      const lastAction = (view.lastAction as GameAction | null) ?? null;
+      const currentPlayerId = players[currentPlayerIndex]?.id;
+      const hasDrawnThisTurn =
+        phase === 'playing' &&
+        lastAction?.type === 'DRAW_CARD' &&
+        lastAction.playerId === currentPlayerId;
+
+      return {
+        phase,
+        viewerId,
+        players,
+        currentPlayerIndex,
+        direction: view.direction as 'clockwise' | 'counter_clockwise',
+        discardPile: view.discardPile as Card[],
+        currentColor: view.currentColor as Color | null,
+        drawStack: view.drawStack as number,
+        deckCount: view.deckCount as number,
+        roundNumber: view.roundNumber as number,
+        winnerId: view.winnerId as string | null,
+        pendingDrawPlayerId: view.pendingDrawPlayerId as string | null,
+        settings: view.settings as { turnTimeLimit: number; targetScore: number; houseRules?: HouseRules },
+        lastAction,
+        hasDrawnThisTurn,
+        lastDrawnCard: hasDrawnThisTurn ? state.lastDrawnCard : null,
+      };
     }),
   setDrawnCard: (card) => set({ lastDrawnCard: card, hasDrawnThisTurn: true }),
   setHasDrawn: (v) => set({ hasDrawnThisTurn: v }),
@@ -75,6 +94,7 @@ export const useGameStore = create<GameState>((set) => ({
   clearGame: () =>
     set({
       phase: null,
+      viewerId: null,
       players: [],
       currentPlayerIndex: 0,
       direction: 'clockwise',
@@ -86,6 +106,7 @@ export const useGameStore = create<GameState>((set) => ({
       winnerId: null,
       pendingDrawPlayerId: null,
       settings: null,
+      lastAction: null,
       turnEndTime: null,
       lastDrawnCard: null,
       hasDrawnThisTurn: false,

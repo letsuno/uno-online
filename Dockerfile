@@ -1,7 +1,9 @@
 # ---- Stage 1: Base ----
-FROM node:20-alpine AS base
+FROM node:22-slim AS base
 RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
-RUN apk add --no-cache python3 make g++ linux-headers
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 python3-pip make g++ ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # ---- Stage 2: Install dependencies ----
@@ -22,13 +24,16 @@ ARG VITE_DEV_MODE=""
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_GITHUB_CLIENT_ID=$VITE_GITHUB_CLIENT_ID
 ENV VITE_DEV_MODE=$VITE_DEV_MODE
-RUN cd packages/client && npx vite build
+RUN pnpm --filter @uno-online/shared build && pnpm --filter @uno-online/client build
 
 # ---- Stage 4: Build server ----
 FROM deps AS build-server
 COPY packages/shared/ packages/shared/
 COPY packages/server/ packages/server/
-RUN cd packages/server && npx prisma generate && npx tsc
+RUN pnpm --filter @uno-online/shared build \
+  && pnpm --filter @uno-online/server db:generate \
+  && pnpm --filter @uno-online/server build \
+  && node -e "const fs = require('fs'); const p = 'packages/shared/package.json'; const pkg = JSON.parse(fs.readFileSync(p, 'utf8')); pkg.main = './dist/index.js'; pkg.types = './dist/index.d.ts'; fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');"
 
 # ---- Stage 5: Server runtime ----
 FROM base AS server
@@ -39,7 +44,7 @@ RUN rm -rf packages/client/src
 
 EXPOSE 3001
 
-CMD ["sh", "-c", "cd packages/server && npx prisma db push --skip-generate && cd /app && npx tsx packages/server/src/index.ts"]
+CMD ["sh", "-c", "pnpm --filter @uno-online/server db:push --skip-generate && pnpm --filter @uno-online/server start"]
 
 # ---- Stage 6: Caddy (client) ----
 FROM caddy:2-alpine AS caddy

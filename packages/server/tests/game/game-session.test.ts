@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { DEFAULT_HOUSE_RULES } from '@uno-online/shared';
 import { GameSession } from '../../src/game/game-session.js';
+import { makeCard, makeGameState, makePlayer } from '../helpers/test-utils.js';
 
 describe('GameSession', () => {
   it('initializes a game with players', () => {
@@ -22,6 +24,37 @@ describe('GameSession', () => {
     expect(view.players[1]!.hand).toEqual([]);
     expect(view.players[1]!.handCount).toBeGreaterThan(0);
     expect(view.deck).toBeUndefined();
+    expect(view.viewerId).toBe('p1');
+  });
+
+  it('only reveals opponent hands when the reveal threshold rule allows it', () => {
+    const p1Hand = [makeCard('number', 'red', { value: 1, id: 'p1c' })];
+    const p2Hand = [
+      makeCard('number', 'blue', { value: 1, id: 'p2c1' }),
+      makeCard('number', 'blue', { value: 2, id: 'p2c2' }),
+    ];
+    const state = makeGameState({
+      players: [makePlayer('p1', p1Hand), makePlayer('p2', p2Hand)],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, handRevealThreshold: null },
+      },
+    });
+
+    const hiddenView = GameSession.fromState(state).getPlayerView('p1');
+    expect(hiddenView.players[0]!.hand.map((c) => c.id)).toEqual(['p1c']);
+    expect(hiddenView.players[1]!.hand).toEqual([]);
+    expect(hiddenView.players[1]!.handCount).toBe(2);
+
+    const revealedView = GameSession.fromState({
+      ...state,
+      settings: {
+        ...state.settings,
+        houseRules: { ...state.settings.houseRules, handRevealThreshold: 2 },
+      },
+    }).getPlayerView('p1');
+    expect(revealedView.players[1]!.hand.map((c) => c.id)).toEqual(['p2c1', 'p2c2']);
   });
 
   it('applies a valid action', () => {
