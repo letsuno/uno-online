@@ -79,7 +79,7 @@ export function handleFirstDiscard(deck: readonly Card[], skipWild?: boolean): F
 }
 
 export function initializeGame(
-  playerData: readonly { id: string; name: string }[],
+  playerData: readonly { id: string; name: string; avatarUrl?: string | null }[],
   houseRules?: HouseRules,
 ): GameState {
   const deck = shuffleDeck(createDeck());
@@ -98,6 +98,7 @@ export function initializeGame(
     calledUno: false,
     eliminated: false,
     teamId: (houseRules?.teamMode && playerData.length % 2 === 0) ? (i % 2) : undefined,
+    avatarUrl: p.avatarUrl ?? null,
   }));
 
   let direction: GameState['direction'] = 'clockwise';

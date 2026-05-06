@@ -133,7 +133,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
         const alreadyInRoom = players.some(p => p.userId === userId);
         if (!alreadyInRoom) {
           try {
-            await roomManager.joinRoom(roomCode, userId, socket.data.user.username);
+            await roomManager.joinRoom(roomCode, userId, socket.data.user.username, socket.data.user.avatarUrl);
           } catch {
             return callback?.({ success: false, error: 'Cannot rejoin room' });
           }
