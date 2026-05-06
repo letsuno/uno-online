@@ -31,14 +31,14 @@ export default function TurnTimer() {
     <>
       <span className={cn(
         isWarning
-          ? 'text-destructive font-bold animate-[timerFlash_0.5s_ease-in-out_infinite_alternate]'
+          ? 'text-destructive font-bold animate-timer-flash'
           : 'text-muted-foreground font-normal'
       )}>
         <Timer size={14} className="inline align-middle" /> {secondsLeft}s
       </span>
       {isCritical && secondsLeft > 0 && (
-        <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-[95]">
-          <span className="text-[72px] font-black font-game text-destructive animate-[timerFlash_0.5s_ease-in-out_infinite_alternate] opacity-80 [text-shadow:3px_4px_0_rgba(0,0,0,0.3)]">
+        <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-timer-overlay">
+          <span className="text-timer-critical font-black font-game text-destructive animate-timer-flash opacity-80 text-shadow-bold">
             {secondsLeft}
           </span>
         </div>
