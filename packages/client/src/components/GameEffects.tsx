@@ -69,7 +69,7 @@ export default function GameEffects() {
   }, [phase]);
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-[90] flex items-center justify-center">
+    <div className="fixed inset-0 pointer-events-none z-effects flex items-center justify-center">
       <AnimatePresence>
         {effects.map((effect) => (
           <motion.div
@@ -79,12 +79,12 @@ export default function GameEffects() {
             exit={{ scale: 2, opacity: 0, y: -30 }}
             transition={{ type: 'spring', stiffness: 300, damping: 15 }}
             className={cn(
-              'absolute font-game font-black whitespace-nowrap flex flex-col items-center gap-1 [text-shadow:3px_4px_0px_rgba(0,0,0,0.3)]',
-              effect.type === 'victory' ? 'text-[48px] text-accent' :
-              effect.type === 'draw' ? 'text-[36px] text-destructive' :
-              effect.type === 'skip' ? 'text-[36px] text-[#ff6b6b]' :
-              effect.type === 'reverse' ? 'text-[36px] text-uno-blue' :
-              'text-[36px] text-accent'
+              'absolute font-game font-black whitespace-nowrap flex flex-col items-center gap-1 text-shadow-bold',
+              effect.type === 'victory' ? 'text-effect-xl text-accent' :
+              effect.type === 'draw' ? 'text-effect text-destructive' :
+              effect.type === 'skip' ? 'text-effect text-effect-skip' :
+              effect.type === 'reverse' ? 'text-effect text-uno-blue' :
+              'text-effect text-accent'
             )}
           >
             <span className="flex items-center gap-2">
@@ -98,7 +98,7 @@ export default function GameEffects() {
                 initial={{ y: -20, opacity: 0 }}
                 animate={{ y: 40, opacity: [1, 1, 0] }}
                 transition={{ duration: 1, ease: 'easeOut' }}
-                className="text-lg text-[#ff6b6b] flex items-center gap-1"
+                className="text-lg text-effect-skip flex items-center gap-1"
               >
                 <Ban size={14} /> → {effect.targetName}
               </motion.span>

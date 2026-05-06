@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth-store';
 import { apiGet } from '../api';
+import { Button } from '../components/ui/Button';
 
 interface ProfileData {
   user: { id: string; username: string; avatarUrl: string | null; totalGames: number; totalWins: number };
@@ -30,10 +31,10 @@ export default function ProfilePage() {
             </p>
           </div>
           {profile.recentGames.length > 0 && (
-            <div className="w-full max-w-[500px] rounded-xl bg-card p-4">
+            <div className="w-full max-w-profile-max rounded-xl bg-card p-4">
               <h3 className="mb-3 text-sm text-muted-foreground">最近对局</h3>
               {profile.recentGames.map((g) => (
-                <div key={g.id} className="flex justify-between border-b border-white/5 py-1.5 text-[13px]">
+                <div key={g.id} className="flex justify-between border-b border-white/5 py-1.5 text-caption">
                   <span>房间 {g.game.roomCode}</span>
                   <span>第 {g.placement} 名 | {g.finalScore} 分</span>
                 </div>
@@ -42,7 +43,7 @@ export default function ProfilePage() {
           )}
         </>
       )}
-      <button className="bg-secondary text-foreground px-5 py-2 rounded-[20px] text-sm border border-white/20" onClick={() => navigate('/lobby')}>返回大厅</button>
+      <Button variant="secondary" onClick={() => navigate('/lobby')}>返回大厅</Button>
     </div>
   );
 }

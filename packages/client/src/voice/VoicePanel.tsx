@@ -76,12 +76,12 @@ export default function VoicePanel() {
   const voiceBtn = (active: boolean) => cn(
     'w-9 h-9 rounded-full border-2 flex items-center justify-center text-sm cursor-pointer text-foreground',
     active
-      ? 'bg-[rgba(34,197,94,0.3)] border-[#22c55e]'
-      : 'bg-[rgba(148,163,184,0.2)] border-[rgba(148,163,184,0.3)]'
+      ? 'bg-voice-active border-voice-active-border'
+      : 'bg-voice-inactive border-voice-inactive-border'
   );
 
   return (
-    <div className="fixed right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-50">
+    <div className="fixed right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-fab">
       {!connected ? (
         <button
           onClick={joinVoice}
@@ -104,15 +104,15 @@ export default function VoicePanel() {
           </button>
           <button
             onClick={leaveVoice}
-            className={cn(voiceBtn(false), 'bg-[rgba(239,68,68,0.3)] border-[#ef4444]')}
+            className={cn(voiceBtn(false), 'bg-voice-leave border-voice-leave-border')}
             title="退出语音"
           >
             <X size={16} />
           </button>
           {peerCount > 0 && (
             <span className={cn(
-              'text-[10px] text-center bg-black/40 rounded-lg px-1.5 py-0.5',
-              speakingCount > 0 ? 'text-[#22c55e]' : 'text-muted-foreground'
+              'text-xs text-center bg-black/40 rounded-lg px-1.5 py-0.5',
+              speakingCount > 0 ? 'text-speaking' : 'text-muted-foreground'
             )}>
               {speakingCount > 0 && <Volume2 size={10} className="inline align-middle mr-0.5" />}{peerCount + 1}人
             </span>
@@ -120,7 +120,7 @@ export default function VoicePanel() {
         </>
       )}
       {error && (
-        <span className="text-[9px] text-[#ef4444] max-w-[60px] text-center">
+        <span className="text-2xs text-error-text max-w-voice-error-max text-center">
           {error}
         </span>
       )}

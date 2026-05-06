@@ -29,7 +29,7 @@ export default function ChatBox() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-[100px] right-3 w-10 h-10 rounded-full bg-black/30 border border-white/20 text-foreground text-lg cursor-pointer z-50 flex items-center justify-center"
+        className="fixed bottom-chat-bottom right-3 w-10 h-10 rounded-full bg-black/30 border border-white/20 text-foreground text-lg cursor-pointer z-fab flex items-center justify-center"
       >
         <MessageCircle size={18} />
       </button>
@@ -37,9 +37,9 @@ export default function ChatBox() {
   }
 
   return (
-    <div className="fixed bottom-[100px] right-3 w-[280px] h-[320px] bg-card rounded-xl border border-white/15 flex flex-col z-50 overflow-hidden">
+    <div className="fixed bottom-chat-bottom right-3 w-chat-w h-chat-h bg-card rounded-xl border border-white/15 flex flex-col z-fab overflow-hidden">
       <div className="px-3 py-2 bg-muted flex justify-between items-center">
-        <span className="text-[13px] font-bold">聊天</span>
+        <span className="text-caption font-bold">聊天</span>
         <button onClick={() => setOpen(false)} className="bg-transparent text-muted-foreground text-base cursor-pointer flex items-center border-none">
           <X size={16} />
         </button>

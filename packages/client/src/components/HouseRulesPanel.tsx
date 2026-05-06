@@ -1,6 +1,7 @@
 import type { HouseRules } from '@uno-online/shared';
 import { DEFAULT_HOUSE_RULES, HOUSE_RULES_PRESETS } from '@uno-online/shared';
 import { cn } from '@/lib/utils';
+import { Button } from './ui/Button';
 
 interface RuleDef {
   key: keyof HouseRules;
@@ -45,8 +46,6 @@ const RULES: RuleDef[] = [
   { key: 'blitzTimeLimit', label: '闪电战', description: '总时间限制（秒），超时手牌最少者赢', type: 'select', options: [{ value: null, label: '关闭' }, { value: 120, label: '2分钟' }, { value: 300, label: '5分钟' }, { value: 600, label: '10分钟' }] },
 ];
 
-const btnSecondary = 'bg-secondary text-foreground px-5 py-2 rounded-[20px] text-sm border border-white/20';
-
 interface HouseRulesPanelProps {
   houseRules: HouseRules;
   onChange: (rules: HouseRules) => void;
@@ -70,23 +69,22 @@ export default function HouseRulesPanel({ houseRules, onChange, disabled = false
   };
 
   return (
-    <div className="bg-muted rounded-xl p-4 max-w-[400px] w-full max-h-[400px] overflow-y-auto">
+    <div className="bg-muted rounded-xl p-4 max-w-houserules-max w-full max-h-houserules-max-h overflow-y-auto">
       <h3 className="text-sm text-accent mb-3 font-game">
         村规设置
       </h3>
       <div className="flex gap-2 mb-3 flex-wrap">
         {['classic', 'party', 'crazy'].map((p) => (
-          <button key={p} onClick={() => applyPreset(p)} disabled={disabled}
-            className={cn(btnSecondary, 'text-xs !px-3 !py-1')}>
+          <Button key={p} variant="secondary" size="sm" onClick={() => applyPreset(p)} disabled={disabled}>
             {p === 'classic' ? '经典' : p === 'party' ? '派对' : '疯狂'}
-          </button>
+          </Button>
         ))}
       </div>
       {RULES.map((rule) => (
         <div key={rule.key} className="flex justify-between items-center py-1.5 border-b border-white/5">
           <div className="flex-1">
-            <div className="text-[13px]">{rule.label}</div>
-            <div className="text-[10px] text-muted-foreground">{rule.description}</div>
+            <div className="text-caption">{rule.label}</div>
+            <div className="text-xs text-muted-foreground">{rule.description}</div>
           </div>
           {rule.type === 'boolean' ? (
             <button
@@ -95,12 +93,12 @@ export default function HouseRulesPanel({ houseRules, onChange, disabled = false
               className={cn(
                 'w-11 h-6 rounded-xl border-none relative transition-colors duration-200',
                 disabled ? 'cursor-default' : 'cursor-pointer',
-                houseRules[rule.key] ? 'bg-uno-green' : 'bg-[rgba(148,163,184,0.3)]'
+                houseRules[rule.key] ? 'bg-uno-green' : 'bg-switch-off'
               )}
             >
               <div className={cn(
-                'w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-[left] duration-200',
-                houseRules[rule.key] ? 'left-[23px]' : 'left-[3px]'
+                'w-toggle-knob h-toggle-knob rounded-full bg-white absolute top-toggle-off transition-[left] duration-200',
+                houseRules[rule.key] ? 'left-toggle-on' : 'left-toggle-off'
               )} />
             </button>
           ) : (

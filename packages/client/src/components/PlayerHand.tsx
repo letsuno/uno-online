@@ -40,7 +40,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   if (!me) return null;
 
   return (
-    <div className="bg-black/30 px-5 pt-3.5 pb-[18px] flex justify-center overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+    <div className="bg-black/30 px-5 pt-3.5 pb-hand-pb flex justify-center overflow-x-auto scrollbar-hidden">
       <div className="flex justify-center">
         <AnimatePresence mode="popLayout">
           {me.hand.map((card, i) => {

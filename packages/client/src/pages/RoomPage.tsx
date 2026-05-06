@@ -10,6 +10,7 @@ import VoicePanel from '../voice/VoicePanel';
 import HouseRulesPanel from '../components/HouseRulesPanel';
 import { DEFAULT_HOUSE_RULES } from '@uno-online/shared';
 import type { HouseRules } from '@uno-online/shared';
+import { Button } from '../components/ui/Button';
 
 export default function RoomPage() {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -84,7 +85,7 @@ export default function RoomPage() {
       <h2 className="font-game text-primary">
         房间 {roomCode}
       </h2>
-      <div className="min-w-[300px] rounded-2xl bg-card p-5">
+      <div className="min-w-room-min rounded-2xl bg-card p-5">
         <h3 className="mb-3 text-sm text-muted-foreground">
           玩家 ({players.length}/10)
         </h3>
@@ -106,16 +107,15 @@ export default function RoomPage() {
         disabled={!isOwner}
       />
       <div className="flex gap-3">
-        <button className="bg-primary text-primary-foreground px-6 py-2.5 rounded-3xl text-base font-bold shadow-[3px_4px_0px_rgba(0,0,0,0.2)] transition-transform duration-150 hover:scale-105 active:scale-[0.97]" onClick={toggleReady}>
+        <Button variant="primary" onClick={toggleReady}>
           {myPlayer?.ready ? '取消准备' : '准备'}
-        </button>
+        </Button>
         {isOwner && (
-          <button className={cn('bg-primary text-primary-foreground px-6 py-2.5 rounded-3xl text-base font-bold shadow-[3px_4px_0px_rgba(0,0,0,0.2)] transition-transform duration-150 hover:scale-105 active:scale-[0.97]', !allReady && 'opacity-50')} onClick={startGame}
-            disabled={!allReady}>
+          <Button variant="primary" className={cn(!allReady && 'opacity-50')} onClick={startGame} disabled={!allReady}>
             开始游戏
-          </button>
+          </Button>
         )}
-        <button className="bg-destructive text-white px-5 py-2 rounded-[20px] text-sm font-bold shadow-[3px_4px_0px_rgba(0,0,0,0.2)]" onClick={leaveRoom}>离开房间</button>
+        <Button variant="danger" onClick={leaveRoom}>离开房间</Button>
       </div>
       <VoicePanel />
     </div>
