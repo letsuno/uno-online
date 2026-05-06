@@ -20,6 +20,7 @@ import UnoCallEffect from '../components/UnoCallEffect';
 import Confetti from '../components/Confetti';
 import HouseRulesCard from '../components/HouseRulesCard';
 import GameLog from '../components/GameLog';
+import MobileFAB from '../components/MobileFAB';
 import { useGameLogStore } from '../stores/game-log-store';
 
 export default function GamePage() {
@@ -262,6 +263,7 @@ export default function GamePage() {
       <VoicePanel />
       <HouseRulesCard />
       <GameLog />
+      <MobileFAB />
       <GameEffects />
       <UnoCallEffect />
       {(phase === 'round_end' || phase === 'game_over') && <Confetti />}

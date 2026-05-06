@@ -9,26 +9,26 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev"
+    "db:generate": "echo 'No codegen needed with Kysely'",
+    "db:push": "echo 'Tables auto-created on startup'",
+    "db:migrate": "echo 'Tables auto-created on startup'"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.0",
     "@fastify/cors": "^11.0.0",
     "@octokit/oauth-app": "^7.1.0",
-    "@prisma/client": "^6.9.0",
     "@uno-online/shared": "workspace:*",
+    "dotenv": "^17.4.2",
     "fastify": "^5.3.0",
     "ioredis": "^5.6.0",
     "jsonwebtoken": "^9.0.2",
+    "kysely": "^0.28.0",
     "mediasoup": "^3.19.22",
     "nanoid": "^5.1.0",
     "socket.io": "^4.8.0"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.9",
-    "prisma": "^6.9.0",
     "tsx": "^4.19.0",
     "typescript": "^5.8.0",
     "vitest": "^3.2.0"

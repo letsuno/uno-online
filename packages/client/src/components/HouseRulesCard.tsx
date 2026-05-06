@@ -67,7 +67,11 @@ function formatRuleValue(key: keyof HouseRules, value: unknown): string | null {
   return null;
 }
 
-export default function HouseRulesCard() {
+interface HouseRulesCardProps {
+  embedded?: boolean;
+}
+
+export default function HouseRulesCard({ embedded = false }: HouseRulesCardProps) {
   const houseRules = useGameStore((s) => s.settings?.houseRules);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -81,21 +85,23 @@ export default function HouseRulesCard() {
 
   if (activeRules.length === 0) return null;
 
-  return (
-    <div className="hidden md:block fixed left-4 bottom-24 w-chat-w max-h-[60vh] overflow-y-auto scrollbar-hidden z-fab bg-card/80 backdrop-blur-sm rounded-xl border border-white/10 p-3">
-      <div
-        className="flex items-center justify-between cursor-pointer mb-2"
-        onClick={() => setCollapsed((c) => !c)}
-      >
-        <h3 className="text-sm font-game font-bold text-accent">
-          {'📋'} 本局村规
-        </h3>
-        <button className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-          {collapsed ? '展开' : '收起'}
-        </button>
-      </div>
+  const content = (
+    <>
+      {!embedded && (
+        <div
+          className="flex items-center justify-between cursor-pointer mb-2"
+          onClick={() => setCollapsed((c) => !c)}
+        >
+          <h3 className="text-sm font-game font-bold text-accent">
+            {'📋'} 本局村规
+          </h3>
+          <button className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            {collapsed ? '展开' : '收起'}
+          </button>
+        </div>
+      )}
 
-      {!collapsed && (
+      {(embedded || !collapsed) && (
         <div className="flex flex-col gap-2">
           {activeRules.map((rule, idx) => {
             const borderColor = BORDER_COLORS[idx % BORDER_COLORS.length];
@@ -124,6 +130,16 @@ export default function HouseRulesCard() {
           })}
         </div>
       )}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="w-full">{content}</div>;
+  }
+
+  return (
+    <div className="hidden md:block fixed left-4 bottom-24 w-chat-w max-h-[60vh] overflow-y-auto scrollbar-hidden z-fab bg-card/80 backdrop-blur-sm rounded-xl border border-white/10 p-3">
+      {content}
     </div>
   );
 }
