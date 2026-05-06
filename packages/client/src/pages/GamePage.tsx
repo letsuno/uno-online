@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { Color } from '@uno-online/shared';
 import { Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useGameStore } from '../stores/game-store.js';
 import { useAuthStore } from '../stores/auth-store.js';
 import { getSocket, connectSocket, onConnectionStatus } from '../socket.js';
@@ -170,6 +170,7 @@ export default function GamePage() {
         </div>
       )}
       <TopBar roomCode={roomCode ?? ''} />
+      <LayoutGroup>
       <div className="game-table">
         <OpponentRow />
         <div className="game-center">
@@ -200,6 +201,7 @@ export default function GamePage() {
         onSwapTarget={swapTarget}
       />
       <PlayerHand onPlayCard={playCard} />
+      </LayoutGroup>
       <ChatBox />
       <VoicePanel />
       <GameEffects />
