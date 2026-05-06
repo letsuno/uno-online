@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Card as CardType } from '@uno-online/shared';
 import Card from './Card';
 import CountdownRing from './CountdownRing';
+import ChatBubble from './ChatBubble';
+import QuickReaction from './QuickReaction';
+import ThrowItemPicker from './ThrowItemPicker';
 import { cn } from '@/lib/utils';
 
 export const AVATAR_COLORS = [
@@ -49,6 +52,9 @@ interface PlayerNodeProps {
   turnEndTime?: number | null;
   turnTimeLimit?: number;
   lastPlayedCard?: CardType | null;
+  chatMessage?: string | null;
+  onReaction?: (emoji: string) => void;
+  onThrowItem?: (item: string) => void;
 }
 
 export default function PlayerNode({
@@ -60,8 +66,14 @@ export default function PlayerNode({
   turnEndTime,
   turnTimeLimit,
   lastPlayedCard,
+  chatMessage,
+  onReaction,
+  onThrowItem,
 }: PlayerNodeProps) {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [showReaction, setShowReaction] = useState(false);
+  const [showThrowPicker, setShowThrowPicker] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (!isActive || !turnEndTime) {
@@ -80,6 +92,47 @@ export default function PlayerNode({
     return () => clearInterval(id);
   }, [isActive, turnEndTime]);
 
+  const handleDoubleClick = useCallback(() => {
+    if (isMe) return;
+    setShowReaction(true);
+    setShowThrowPicker(false);
+  }, [isMe]);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    if (isMe) return;
+    e.preventDefault();
+    setShowThrowPicker(true);
+    setShowReaction(false);
+  }, [isMe]);
+
+  // Long press for mobile (touch)
+  const handleTouchStart = useCallback(() => {
+    if (isMe) return;
+    longPressTimer.current = setTimeout(() => {
+      setShowThrowPicker(true);
+      setShowReaction(false);
+    }, 500);
+  }, [isMe]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+  }, []);
+
+  const handleReactionSelect = useCallback((emoji: string) => {
+    onReaction?.(emoji);
+    setShowReaction(false);
+  }, [onReaction]);
+
+  const handleThrowSelect = useCallback((item: string) => {
+    onThrowItem?.(item);
+    setShowThrowPicker(false);
+  }, [onThrowItem]);
+
+  const closeReaction = useCallback(() => setShowReaction(false), []);
+  const closeThrowPicker = useCallback(() => setShowThrowPicker(false), []);
+
   const avatarSize = isMe ? 48 : 44;
   const displayName =
     player.name.length > 8 ? player.name.slice(0, 8) + '...' : player.name;
@@ -96,8 +149,29 @@ export default function PlayerNode({
           : {}),
       }}
     >
+      {/* Chat bubble */}
+      <ChatBubble message={chatMessage ?? ''} visible={!!chatMessage} />
+
+      {/* Quick reaction menu */}
+      {showReaction && (
+        <QuickReaction onSelect={handleReactionSelect} onClose={closeReaction} />
+      )}
+
+      {/* Throw item picker */}
+      {showThrowPicker && (
+        <ThrowItemPicker onSelect={handleThrowSelect} onClose={closeThrowPicker} />
+      )}
+
       {/* Avatar container */}
-      <div className="relative" style={{ width: avatarSize, height: avatarSize }}>
+      <div
+        className="relative pointer-events-auto"
+        style={{ width: avatarSize, height: avatarSize }}
+        onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+      >
         {/* Countdown ring overlay */}
         {isActive && secondsLeft !== null && turnTimeLimit && (
           <CountdownRing

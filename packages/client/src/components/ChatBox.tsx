@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X } from 'lucide-react';
 import { getSocket } from '../socket';
+import { useToastStore } from '../stores/toast-store';
+
+const QUICK_PHRASES = ['嘻嘻😜', '嘿嘿😏', '哈哈😂', '饶命🙏', '稳了💪', '完蛋😱', '好牌!👍', '等等✋'];
 
 interface ChatMessage { userId: string; username: string; text: string; timestamp: number; }
 
@@ -14,7 +17,16 @@ export default function ChatBox() {
     const socket = getSocket();
     const handler = (msg: ChatMessage) => { setMessages((prev) => [...prev.slice(-50), msg]); };
     socket.on('chat:message', handler);
-    return () => { socket.off('chat:message', handler); };
+
+    const rateLimitHandler = (data: { message: string }) => {
+      useToastStore.getState().addToast(data.message, 'error');
+    };
+    socket.on('chat:rate_limited', rateLimitHandler);
+
+    return () => {
+      socket.off('chat:message', handler);
+      socket.off('chat:rate_limited', rateLimitHandler);
+    };
   }, []);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
@@ -23,6 +35,10 @@ export default function ChatBox() {
     if (!input.trim()) return;
     getSocket().emit('chat:message', { text: input.trim() });
     setInput('');
+  };
+
+  const sendPhrase = (text: string) => {
+    getSocket().emit('chat:message', { text });
   };
 
   if (!open) {
@@ -55,9 +71,17 @@ export default function ChatBox() {
       </div>
       <div className="flex gap-0.5 px-1.5 py-0.5 flex-wrap">
         {['👍', '😂', '😭', '🎉', '💪', '😱', '🤔', '❤️'].map((emoji) => (
-          <button key={emoji} onClick={() => { getSocket().emit('chat:message', { text: emoji }); }}
+          <button key={emoji} onClick={() => sendPhrase(emoji)}
             className="bg-transparent border-none text-sm cursor-pointer p-0.5">
             {emoji}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-1 px-1.5 py-0.5 flex-wrap">
+        {QUICK_PHRASES.map((phrase) => (
+          <button key={phrase} onClick={() => sendPhrase(phrase)}
+            className="bg-white/10 rounded-lg text-2xs px-2 py-0.5 text-foreground cursor-pointer transition-colors duration-150 hover:bg-white/20">
+            {phrase}
           </button>
         ))}
       </div>
