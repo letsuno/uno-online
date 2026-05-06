@@ -114,15 +114,15 @@
   --font-size-card-wild: 22px;
   --font-size-card-wild4: 20px;
   --font-size-zero: 0px;
-  --font-size-effect: 36px;
-  --font-size-effect-xl: 48px;
+  --font-size-effect: 48px;
+  --font-size-effect-xl: 64px;
   --font-size-throw: 96px;
   --font-size-timer-critical: 72px;
   --font-size-uno-call: 64px;
   --font-size-heading-xl: 48px;
   --font-size-heading-lg: 32px;
   --font-size-direction: 28px;
-  --font-size-title-responsive: clamp(30px, 5vw, 56px);
+  --font-size-title-responsive: clamp(40px, 7vw, 72px);
 
   --shadow-card: 3px 4px 0px rgba(0, 0, 0, 0.2);
   --shadow-card-sm: 2px 3px 0px rgba(0, 0, 0, 0.3);
