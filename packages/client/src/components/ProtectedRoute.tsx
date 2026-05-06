@@ -13,6 +13,6 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   }, [token, user, loadUser]);
 
   if (!token) return <Navigate to={`/?redirect=${encodeURIComponent(location.pathname)}`} replace />;
-  if (!user) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><p style={{ color: 'var(--text-secondary)' }}>加载中...</p></div>;
+  if (!user) return <div className="flex-1 flex items-center justify-center"><p className="text-muted-foreground">加载中...</p></div>;
   return <>{children}</>;
 }

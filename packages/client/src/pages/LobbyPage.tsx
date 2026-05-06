@@ -42,35 +42,28 @@ export default function LobbyPage() {
   };
 
   return (
-    <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'center', gap: 32, padding: 20,
-    }}>
-      <h1 style={{ fontFamily: 'var(--font-game)', color: 'var(--text-accent)', fontSize: 32 }}>
-        <Spade size={24} style={{ verticalAlign: 'middle' }} /> 游戏大厅
+    <div className="flex flex-1 flex-col items-center justify-center gap-8 p-5">
+      <h1 className="font-game text-[32px] text-primary">
+        <Spade size={24} className="inline-block align-middle" /> 游戏大厅
       </h1>
-      <p style={{ color: 'var(--text-secondary)' }}>欢迎, {user?.username}!</p>
-      <button className="btn-primary" onClick={handleCreate} disabled={loading} style={{ fontSize: 20, padding: '16px 40px' }}>
+      <p className="text-muted-foreground">欢迎, {user?.username}!</p>
+      <button className="bg-primary text-primary-foreground px-10 py-4 rounded-3xl text-xl font-bold shadow-[3px_4px_0px_rgba(0,0,0,0.2)] transition-transform duration-150 hover:scale-105 active:scale-[0.97]" onClick={handleCreate} disabled={loading}>
         {loading ? '创建中...' : '创建房间'}
       </button>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div className="flex items-center gap-2">
         <input
           value={joinCode}
           onChange={(e) => { setJoinCode(e.target.value.toUpperCase()); setError(''); }}
           placeholder="输入房间码"
           maxLength={6}
-          style={{
-            padding: '12px 16px', borderRadius: 12, border: '2px solid rgba(255,255,255,0.2)',
-            background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 18,
-            textAlign: 'center', width: 160, letterSpacing: 4, textTransform: 'uppercase',
-          }}
+          className="w-[160px] rounded-xl border-2 border-white/20 bg-card px-4 py-3 text-center text-lg uppercase tracking-[4px] text-foreground"
         />
-        <button className="btn-primary" onClick={handleJoin} disabled={loading}>加入</button>
+        <button className="bg-primary text-primary-foreground px-6 py-2.5 rounded-3xl text-base font-bold shadow-[3px_4px_0px_rgba(0,0,0,0.2)] transition-transform duration-150 hover:scale-105 active:scale-[0.97]" onClick={handleJoin} disabled={loading}>加入</button>
       </div>
-      {error && <p style={{ color: 'var(--color-red)', fontSize: 14 }}>{error}</p>}
-      <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-        <button className="btn-secondary" onClick={() => navigate('/profile')}>个人信息</button>
-        <button className="btn-secondary" onClick={() => { logout(); navigate('/'); }}>退出登录</button>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <div className="mt-5 flex gap-3">
+        <button className="bg-secondary text-foreground px-5 py-2 rounded-[20px] text-sm border border-white/20" onClick={() => navigate('/profile')}>个人信息</button>
+        <button className="bg-secondary text-foreground px-5 py-2 rounded-[20px] text-sm border border-white/20" onClick={() => { logout(); navigate('/'); }}>退出登录</button>
       </div>
     </div>
   );

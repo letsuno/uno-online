@@ -45,51 +45,38 @@ export default function HomePage() {
   };
 
   return (
-    <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'center', gap: 32, textAlign: 'center', padding: 20,
-    }}>
-      <h1 style={{
-        fontFamily: 'var(--font-game)', fontSize: 48, color: 'var(--text-accent)',
-        textShadow: '3px 4px 0px rgba(0,0,0,0.3)',
-      }}>
-        <Spade size={36} style={{ verticalAlign: 'middle' }} /> UNO Online
+    <div className="flex flex-1 flex-col items-center justify-center gap-8 p-5 text-center">
+      <h1 className="font-game text-[48px] text-primary drop-shadow-[3px_4px_0px_rgba(0,0,0,0.3)]">
+        <Spade size={36} className="inline-block align-middle" /> UNO Online
       </h1>
-      <p style={{ color: 'var(--text-secondary)', fontSize: 18, maxWidth: 400 }}>
+      <p className="max-w-[400px] text-lg text-muted-foreground">
         和朋友一起玩 UNO！支持 2-10 人在线对战、语音通话、自定义村规。
       </p>
       {!loading && !token && (
         DEV_MODE ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex items-center gap-2">
               <input
                 value={devUsername}
                 onChange={(e) => { setDevUsername(e.target.value); setError(''); }}
                 onKeyDown={(e) => e.key === 'Enter' && handleDevLogin()}
                 placeholder="输入用户名"
-                style={{
-                  padding: '12px 16px', borderRadius: 12, border: '2px solid rgba(255,255,255,0.2)',
-                  background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 18,
-                  textAlign: 'center', width: 200,
-                }}
+                className="w-[200px] rounded-xl border-2 border-white/20 bg-card px-4 py-3 text-center text-lg text-foreground"
               />
-              <button className="btn-primary" onClick={handleDevLogin} style={{ fontSize: 18, padding: '12px 24px' }}>
-                <LogIn size={20} style={{ verticalAlign: 'middle', marginRight: 6 }} />登录
+              <button className="bg-primary text-primary-foreground px-6 py-3 rounded-3xl text-lg font-bold shadow-[3px_4px_0px_rgba(0,0,0,0.2)] transition-transform duration-150 hover:scale-105 active:scale-[0.97]" onClick={handleDevLogin}>
+                <LogIn size={20} className="mr-1.5 inline-block align-middle" />登录
               </button>
             </div>
-            {error && <p style={{ color: 'var(--color-red)', fontSize: 14 }}>{error}</p>}
-            <p style={{ color: 'var(--text-secondary)', fontSize: 12 }}>开发模式</p>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <p className="text-xs text-muted-foreground">开发模式</p>
           </div>
         ) : (
-          <a href={loginUrl} className="btn-primary" style={{
-            textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8,
-            fontSize: 18, padding: '14px 32px',
-          }}>
+          <a href={loginUrl} className="bg-primary text-primary-foreground inline-flex items-center gap-2 px-8 py-3.5 rounded-3xl text-lg font-bold shadow-[3px_4px_0px_rgba(0,0,0,0.2)] transition-transform duration-150 hover:scale-105 active:scale-[0.97] no-underline">
             <LogIn size={20} /> GitHub 登录
           </a>
         )
       )}
-      {loading && <p style={{ color: 'var(--text-secondary)' }}>加载中...</p>}
+      {loading && <p className="text-muted-foreground">加载中...</p>}
     </div>
   );
 }

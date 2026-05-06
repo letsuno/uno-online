@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Color } from '@uno-online/shared';
 
-const COLORS: { color: Color; bg: string; label: string }[] = [
-  { color: 'red', bg: 'var(--color-red)', label: '红' },
-  { color: 'blue', bg: 'var(--color-blue)', label: '蓝' },
-  { color: 'green', bg: 'var(--color-green)', label: '绿' },
-  { color: 'yellow', bg: 'var(--color-yellow)', label: '黄' },
+const COLORS: { color: Color; bgClass: string; label: string }[] = [
+  { color: 'red', bgClass: 'bg-uno-red', label: '红' },
+  { color: 'blue', bgClass: 'bg-uno-blue', label: '蓝' },
+  { color: 'green', bgClass: 'bg-uno-green', label: '绿' },
+  { color: 'yellow', bgClass: 'bg-uno-yellow', label: '黄' },
 ];
 
 const BG_MAP: Record<Color, string> = {
@@ -24,7 +24,7 @@ export default function ColorPicker({ onPick }: ColorPickerProps) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100]">
       <AnimatePresence>
         {picked && (
           <motion.div
@@ -32,11 +32,8 @@ export default function ColorPicker({ onPick }: ColorPickerProps) {
             initial={{ scale: 0, opacity: 0.8, borderRadius: '50%' }}
             animate={{ scale: 30, opacity: 0 }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
-            style={{
-              position: 'absolute', width: 60, height: 60,
-              background: BG_MAP[picked], borderRadius: '50%',
-              pointerEvents: 'none',
-            }}
+            className="absolute w-[60px] h-[60px] rounded-full pointer-events-none"
+            style={{ background: BG_MAP[picked] }}
           />
         )}
       </AnimatePresence>
@@ -45,21 +42,17 @@ export default function ColorPicker({ onPick }: ColorPickerProps) {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-          style={{ background: 'var(--bg-secondary)', borderRadius: 20, padding: '24px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}
+          className="bg-card rounded-[20px] px-8 py-6 flex flex-col items-center gap-4"
         >
-          <h3 style={{ fontFamily: 'var(--font-game)', color: 'var(--text-accent)' }}>选择颜色</h3>
-          <div style={{ display: 'flex', gap: 12 }}>
-            {COLORS.map(({ color, bg, label }) => (
+          <h3 className="font-game text-accent">选择颜色</h3>
+          <div className="flex gap-3">
+            {COLORS.map(({ color, bgClass, label }) => (
               <motion.button
                 key={color}
                 whileHover={{ scale: 1.15 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => handlePick(color)}
-                style={{
-                  width: 60, height: 60, borderRadius: '50%', background: bg, border: '3px solid white',
-                  fontSize: 18, fontWeight: 'bold', color: 'white', cursor: 'pointer',
-                  boxShadow: 'var(--card-shadow)', fontFamily: 'var(--font-game)',
-                }}
+                className={`${bgClass} w-15 h-15 rounded-full border-3 border-white text-lg font-bold text-white cursor-pointer shadow-[3px_4px_0px_rgba(0,0,0,0.2)] font-game`}
               >{label}</motion.button>
             ))}
           </div>

@@ -9,6 +9,7 @@ interface Particle {
   color: string;
   delay: number;
   size: number;
+  isCircle: boolean;
 }
 
 export default function Confetti() {
@@ -21,23 +22,24 @@ export default function Confetti() {
       color: COLORS[Math.floor(Math.random() * COLORS.length)]!,
       delay: Math.random() * 0.5,
       size: 6 + Math.random() * 8,
+      isCircle: Math.random() > 0.5,
     }));
     setParticles(items);
   }, []);
 
   return (
-    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 85, overflow: 'hidden' }}>
+    <div className="fixed inset-0 pointer-events-none z-[85] overflow-hidden">
       {particles.map((p) => (
         <motion.div
           key={p.id}
           initial={{ y: -20, x: `${p.x}vw`, opacity: 1, rotate: 0 }}
           animate={{ y: '110vh', rotate: 720, opacity: 0 }}
           transition={{ duration: 2.5 + Math.random(), delay: p.delay, ease: 'linear' }}
+          className="absolute"
           style={{
-            position: 'absolute',
             width: p.size,
             height: p.size,
-            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+            borderRadius: p.isCircle ? '50%' : '2px',
             background: p.color,
           }}
         />

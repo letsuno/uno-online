@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Crown, Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useAuthStore } from '../stores/auth-store';
 import { useRoomStore } from '../stores/room-store';
 import { useGameStore } from '../stores/game-store';
@@ -79,25 +80,19 @@ export default function RoomPage() {
   };
 
   return (
-    <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'center', gap: 24, padding: 20,
-    }}>
-      <h2 style={{ fontFamily: 'var(--font-game)', color: 'var(--text-accent)' }}>
+    <div className="flex flex-1 flex-col items-center justify-center gap-6 p-5">
+      <h2 className="font-game text-primary">
         房间 {roomCode}
       </h2>
-      <div style={{ background: 'var(--bg-surface)', borderRadius: 16, padding: 20, minWidth: 300 }}>
-        <h3 style={{ marginBottom: 12, fontSize: 14, color: 'var(--text-secondary)' }}>
+      <div className="min-w-[300px] rounded-2xl bg-card p-5">
+        <h3 className="mb-3 text-sm text-muted-foreground">
           玩家 ({players.length}/10)
         </h3>
         {players.map((p) => (
-          <div key={p.userId} style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)',
-          }}>
-            <span>{p.username}{room?.ownerId === p.userId && <> <Crown size={14} style={{ verticalAlign: 'middle' }} /></>}</span>
-            <span style={{ color: p.ready ? 'var(--color-green)' : 'var(--text-secondary)', fontSize: 12 }}>
-              {p.ready ? <><Check size={12} style={{ verticalAlign: 'middle' }} /> 已准备</> : '未准备'}
+          <div key={p.userId} className="flex items-center justify-between border-b border-white/5 py-2">
+            <span>{p.username}{room?.ownerId === p.userId && <> <Crown size={14} className="inline-block align-middle" /></>}</span>
+            <span className={cn('text-xs', p.ready ? 'text-uno-green' : 'text-muted-foreground')}>
+              {p.ready ? <><Check size={12} className="inline-block align-middle" /> 已准备</> : '未准备'}
             </span>
           </div>
         ))}
@@ -110,17 +105,17 @@ export default function RoomPage() {
         }}
         disabled={!isOwner}
       />
-      <div style={{ display: 'flex', gap: 12 }}>
-        <button className="btn-primary" onClick={toggleReady}>
+      <div className="flex gap-3">
+        <button className="bg-primary text-primary-foreground px-6 py-2.5 rounded-3xl text-base font-bold shadow-[3px_4px_0px_rgba(0,0,0,0.2)] transition-transform duration-150 hover:scale-105 active:scale-[0.97]" onClick={toggleReady}>
           {myPlayer?.ready ? '取消准备' : '准备'}
         </button>
         {isOwner && (
-          <button className="btn-primary" onClick={startGame}
-            style={{ opacity: allReady ? 1 : 0.5 }} disabled={!allReady}>
+          <button className={cn('bg-primary text-primary-foreground px-6 py-2.5 rounded-3xl text-base font-bold shadow-[3px_4px_0px_rgba(0,0,0,0.2)] transition-transform duration-150 hover:scale-105 active:scale-[0.97]', !allReady && 'opacity-50')} onClick={startGame}
+            disabled={!allReady}>
             开始游戏
           </button>
         )}
-        <button className="btn-danger" onClick={leaveRoom}>离开房间</button>
+        <button className="bg-destructive text-white px-5 py-2 rounded-[20px] text-sm font-bold shadow-[3px_4px_0px_rgba(0,0,0,0.2)]" onClick={leaveRoom}>离开房间</button>
       </div>
       <VoicePanel />
     </div>

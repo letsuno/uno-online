@@ -21,7 +21,6 @@ import VoicePanel from '../voice/VoicePanel';
 import GameEffects from '../components/GameEffects';
 import UnoCallEffect from '../components/UnoCallEffect';
 import Confetti from '../components/Confetti';
-import '../styles/game.css';
 
 export default function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -150,35 +149,31 @@ export default function GamePage() {
   }, []);
 
   if (!phase) {
-    return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: 'var(--text-secondary)' }}>加载游戏中...</p>
+    return <div className="flex flex-1 items-center justify-center">
+      <p className="text-muted-foreground">加载游戏中...</p>
     </div>;
   }
 
   return (
-    <div className="game-layout">
+    <div className="flex h-screen flex-col relative overflow-hidden">
       {connectionStatus !== 'connected' && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 200, flexDirection: 'column', gap: 12,
-        }}>
-          <Loader2 size={36} style={{ animation: 'spin 1s linear infinite', color: '#fff' }} />
-          <p style={{ color: '#fff', fontSize: 18, fontFamily: 'var(--font-game)' }}>
+        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-3 bg-black/75">
+          <Loader2 size={36} className="animate-spin text-white" />
+          <p className="font-game text-lg text-white">
             {connectionStatus === 'reconnecting' ? '重新连接中...' : '连接已断开，尝试重连...'}
           </p>
         </div>
       )}
       <TopBar roomCode={roomCode ?? ''} />
       <OpponentRow />
-      <div className="game-center">
+      <div className="flex flex-1 items-center justify-center gap-10 relative">
         <DirectionIndicator />
         <DrawPile onDraw={drawCard} />
         <DiscardPile />
         <AnimatePresence>
           {showTurnBanner && isMyTurn && phase === 'playing' && (
             <motion.div
-              className="turn-banner"
+              className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none font-game text-[clamp(30px,5vw,56px)] font-black text-primary"
               initial={{ opacity: 0, scale: 0.92, y: 12 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: -8 }}

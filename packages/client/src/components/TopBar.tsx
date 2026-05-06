@@ -1,7 +1,7 @@
 import { Eye, Volume2, VolumeX, Spade } from 'lucide-react';
 import TurnTimer from './TurnTimer';
 import { useSettingsStore } from '../stores/settings-store';
-import '../styles/game.css';
+import { cn } from '@/lib/utils';
 
 interface TopBarProps { roomCode: string; }
 
@@ -9,22 +9,30 @@ export default function TopBar({ roomCode }: TopBarProps) {
   const { colorBlindMode, toggleColorBlind, soundEnabled, toggleSound } = useSettingsStore();
 
   return (
-    <div className="game-topbar">
-      <div className="game-topbar__left">
-        <span className="game-topbar__brand"><Spade size={18} style={{ verticalAlign: 'middle' }} /> UNO Online</span>
-        <span style={{ color: 'var(--text-secondary)' }}>房间: {roomCode}</span>
+    <div className="flex justify-between items-center px-4 py-2 bg-black/30 text-[13px] z-10">
+      <div className="flex items-center gap-3">
+        <span className="font-bold text-primary font-game"><Spade size={18} className="inline align-middle" /> UNO Online</span>
+        <span className="text-muted-foreground">房间: {roomCode}</span>
       </div>
-      <div className="game-topbar__right">
-        <button onClick={toggleColorBlind} style={{
-          background: 'none', border: 'none', fontSize: 14, cursor: 'pointer',
-          color: colorBlindMode ? 'var(--text-accent)' : 'var(--text-secondary)',
-        }} title={colorBlindMode ? '关闭色盲模式' : '开启色盲模式'}>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={toggleColorBlind}
+          className={cn(
+            'bg-transparent border-none text-sm cursor-pointer',
+            colorBlindMode ? 'text-accent' : 'text-muted-foreground'
+          )}
+          title={colorBlindMode ? '关闭色盲模式' : '开启色盲模式'}
+        >
           <Eye size={16} />
         </button>
-        <button onClick={toggleSound} style={{
-          background: 'none', border: 'none', fontSize: 14, cursor: 'pointer',
-          color: soundEnabled ? 'var(--text-accent)' : 'var(--text-secondary)',
-        }} title={soundEnabled ? '关闭音效' : '开启音效'}>
+        <button
+          onClick={toggleSound}
+          className={cn(
+            'bg-transparent border-none text-sm cursor-pointer',
+            soundEnabled ? 'text-accent' : 'text-muted-foreground'
+          )}
+          title={soundEnabled ? '关闭音效' : '开启音效'}
+        >
           {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
         </button>
         <TurnTimer />
