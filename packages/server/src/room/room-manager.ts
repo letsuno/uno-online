@@ -1,4 +1,4 @@
-import type Redis from 'ioredis';
+import type { KvStore } from '../kv/types.js';
 import type { RoomSettings } from '@uno-online/shared';
 import { MAX_PLAYERS, ROOM_CODE_LENGTH, ROOM_CODE_CHARS, DEFAULT_HOUSE_RULES } from '@uno-online/shared';
 import {
@@ -15,7 +15,7 @@ function generateRoomCode(): string {
 }
 
 export class RoomManager {
-  constructor(private redis: Redis) {}
+  constructor(private redis: KvStore) {}
 
   async createRoom(ownerId: string, ownerName: string, settings: RoomSettings = { turnTimeLimit: 30, targetScore: 500, houseRules: DEFAULT_HOUSE_RULES }): Promise<string> {
     let code = generateRoomCode();

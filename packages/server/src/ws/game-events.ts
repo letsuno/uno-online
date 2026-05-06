@@ -1,5 +1,5 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
-import type Redis from 'ioredis';
+import type { KvStore } from '../kv/types.js';
 import type { Color } from '@uno-online/shared';
 import { GameSession } from '../game/game-session.js';
 import { saveGameState } from '../game/game-store.js';
@@ -79,7 +79,7 @@ async function emitTerminalStateIfNeeded(
 export function registerGameEvents(
   socket: Socket,
   io: SocketIOServer,
-  redis: Redis,
+  redis: KvStore,
   turnTimer: TurnTimer,
   sessions: Map<string, GameSession>,
 ) {

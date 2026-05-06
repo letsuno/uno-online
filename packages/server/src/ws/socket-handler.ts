@@ -1,5 +1,5 @@
 import type { Server as SocketIOServer } from 'socket.io';
-import type Redis from 'ioredis';
+import type { KvStore } from '../kv/types.js';
 import { authenticateSocket } from '../auth/middleware.js';
 import { RoomManager } from '../room/room-manager.js';
 import { TurnTimer } from '../game/turn-timer.js';
@@ -13,7 +13,7 @@ import { checkRateLimit, clearRateLimit } from './rate-limiter.js';
 
 const RECONNECT_TIMEOUT_MS = 60_000;
 
-export function setupSocketHandlers(io: SocketIOServer, redis: Redis, jwtSecret: string) {
+export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecret: string) {
   const roomManager = new RoomManager(redis);
   const turnTimer = new TurnTimer();
   const sessions = new Map<string, GameSession>();

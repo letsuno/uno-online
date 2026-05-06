@@ -18,10 +18,11 @@
     "@fastify/cors": "^11.0.0",
     "@octokit/oauth-app": "^7.1.0",
     "@uno-online/shared": "workspace:*",
-    "kysely": "^0.28.0",
+    "dotenv": "^17.4.2",
     "fastify": "^5.3.0",
     "ioredis": "^5.6.0",
     "jsonwebtoken": "^9.0.2",
+    "kysely": "^0.28.0",
     "mediasoup": "^3.19.22",
     "nanoid": "^5.1.0",
     "socket.io": "^4.8.0"

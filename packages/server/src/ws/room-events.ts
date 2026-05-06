@@ -1,5 +1,5 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
-import type Redis from 'ioredis';
+import type { KvStore } from '../kv/types.js';
 import type { RoomSettings } from '@uno-online/shared';
 import { MIN_PLAYERS, DEFAULT_HOUSE_RULES } from '@uno-online/shared';
 import { RoomManager } from '../room/room-manager.js';
@@ -18,7 +18,7 @@ interface SocketData {
 export function registerRoomEvents(
   socket: Socket,
   io: SocketIOServer,
-  redis: Redis,
+  redis: KvStore,
   roomManager: RoomManager,
   turnTimer: TurnTimer,
   sessions: Map<string, GameSession>,
@@ -168,7 +168,7 @@ export function registerRoomEvents(
 
 export function startTurnTimer(
   io: SocketIOServer,
-  redis: Redis,
+  redis: KvStore,
   roomCode: string,
   session: GameSession,
   turnTimer: TurnTimer,
