@@ -3,7 +3,16 @@
   "private": true,
   "packageManager": "pnpm@10.11.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "mediasoup",
+      "prisma"
+    ]
   },
   "scripts": {
     "test": "pnpm -r test",

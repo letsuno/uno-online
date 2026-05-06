@@ -43,7 +43,7 @@ services:
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
       JWT_SECRET: ${JWT_SECRET:-uno-online-dev-secret-at-least-32-chars}
       DOMAIN: ${DOMAIN:-localhost}
-      DEV_MODE: ${DEV_MODE:-false}
+      DEV_MODE: ${DEV_MODE:-true}
       PORT: "3001"
       RTC_PORT: ${RTC_PORT:-40000}
     ports:
@@ -57,7 +57,7 @@ services:
       target: caddy
       args:
         VITE_GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
-        VITE_DEV_MODE: ${DEV_MODE:-false}
+        VITE_DEV_MODE: ${DEV_MODE:-true}
     depends_on:
       - server
     environment:
