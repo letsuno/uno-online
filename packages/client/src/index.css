@@ -260,3 +260,54 @@
 @utility bg-wild-gradient {
   background: conic-gradient(#ff3366 0deg 90deg, #4488ff 90deg 180deg, #33cc66 180deg 270deg, #fbbf24 270deg 360deg);
 }
+@utility text-effect {
+  font-size: var(--font-size-effect);
+}
+@utility text-effect-xl {
+  font-size: var(--font-size-effect-xl);
+}
+@utility text-throw {
+  font-size: var(--font-size-throw);
+}
+@utility text-title-responsive {
+  font-size: var(--font-size-title-responsive);
+}
+@utility text-direction {
+  font-size: var(--font-size-direction);
+}
+@utility text-card-number {
+  font-size: var(--font-size-card-number);
+}
+@utility text-card-number-md {
+  font-size: var(--font-size-card-number-md);
+}
+@utility text-card-symbol {
+  font-size: var(--font-size-card-symbol);
+}
+@utility text-card-symbol-md {
+  font-size: var(--font-size-card-symbol-md);
+}
+@utility text-card-draw {
+  font-size: var(--font-size-card-draw);
+}
+@utility text-card-wild {
+  font-size: var(--font-size-card-wild);
+}
+@utility text-card-wild4 {
+  font-size: var(--font-size-card-wild4);
+}
+@utility text-card-back {
+  font-size: var(--font-size-card-back);
+}
+@utility text-timer-critical {
+  font-size: var(--font-size-timer-critical);
+}
+@utility text-uno-call {
+  font-size: var(--font-size-uno-call);
+}
+@utility text-heading-xl {
+  font-size: var(--font-size-heading-xl);
+}
+@utility text-heading-lg {
+  font-size: var(--font-size-heading-lg);
+}
