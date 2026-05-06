@@ -8,7 +8,7 @@ function required(name: string): string {
 
 export interface Config {
   port: number;
-  databaseUrl: string;
+  databasePath: string;
   redisUrl: string;
   githubClientId: string;
   githubClientSecret: string;
@@ -27,7 +27,7 @@ export function loadConfig(): Config {
   const devMode = process.env['DEV_MODE'] === 'true';
   return {
     port: parseInt(process.env['PORT'] ?? '3001', 10),
-    databaseUrl: required('DATABASE_URL'),
+    databasePath: process.env['DATABASE_PATH'] ?? 'uno.db',
     redisUrl: process.env['REDIS_URL'] ?? 'redis://localhost:6379',
     githubClientId: devMode ? (process.env['GITHUB_CLIENT_ID'] ?? '') : required('GITHUB_CLIENT_ID'),
     githubClientSecret: devMode ? (process.env['GITHUB_CLIENT_SECRET'] ?? '') : required('GITHUB_CLIENT_SECRET'),

@@ -10,3 +10,5 @@ coverage/
 .claude/
 docs/
 .playwright-mcp/
+.yarn/
+.omc/
