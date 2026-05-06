@@ -70,7 +70,8 @@ export default function GameLogEntry({ entry }: GameLogEntryProps) {
       {entry.card && (
         <Card
           card={entry.card}
-          className="!w-card-log-w !h-card-log-h !text-2xs !border !rounded-sm shrink-0"
+          mini
+          className="!w-card-log-w !h-card-log-h !text-2xs !border !rounded-none shrink-0"
         />
       )}
 
