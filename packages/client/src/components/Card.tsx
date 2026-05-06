@@ -54,20 +54,21 @@ export default function Card({ card, playable = false, clickable = playable, onC
     ? 'bg-wild-gradient'
     : colorClasses[card.color!] ?? '';
 
+  const label = getCardLabel(card);
+  const symbol = card.color ? COLOR_SYMBOLS[card.color] : undefined;
+  const showCorners = !isWild;
+
   return (
     <div
       className={cn(
-        // base
         'w-card-w h-card-h md:w-card-w-md md:h-card-h-md rounded-card md:rounded-card-md',
-        'border-[3px] md:border-4 border-white',
+        'border-card-border md:border-4 border-white',
         'flex items-center justify-center',
         'font-game font-black text-white select-none shrink-0 relative',
         'transition-[transform,box-shadow] duration-200',
         'shadow-card',
         'text-shadow-card',
-        // color
         bgClass,
-        // playable
         playable && [
           'border-3 border-primary',
           'shadow-card-playable',
@@ -78,14 +79,24 @@ export default function Card({ card, playable = false, clickable = playable, onC
       onClick={clickable ? onClick : undefined}
       style={style}
     >
-      {card.color && (
-        <span className="absolute top-1 left-1.5 text-xs opacity-70">
-          {COLOR_SYMBOLS[card.color]}
+      {showCorners && (
+        <span className="absolute top-0.5 left-1 flex flex-col items-center leading-none">
+          <span className="text-2xs font-bold">{label}</span>
+          {symbol && <span className="text-2xs opacity-70">{symbol}</span>}
         </span>
       )}
+
       <span className={typeFontClasses[card.type] ?? ''}>
-        {getCardLabel(card)}
+        {label}
       </span>
+
+      {showCorners && (
+        <span className="absolute bottom-0.5 right-1 flex flex-col items-center leading-none rotate-180">
+          <span className="text-2xs font-bold">{label}</span>
+          {symbol && <span className="text-2xs opacity-70">{symbol}</span>}
+        </span>
+      )}
+
       {colorBlindMode && card.color && <ColorBlindOverlay color={card.color} />}
     </div>
   );
