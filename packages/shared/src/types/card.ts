@@ -53,6 +53,32 @@ export function isWildCard(card: Card): card is WildCardType {
   return card.type === 'wild' || card.type === 'wild_draw_four';
 }
 
+const COLOR_ORDER: Record<string, number> = { red: 0, yellow: 1, blue: 2, green: 3 };
+const TYPE_ORDER: Record<string, number> = {
+  number: 0,
+  skip: 1,
+  reverse: 2,
+  draw_two: 3,
+  wild: 4,
+  wild_draw_four: 5,
+};
+
+export function sortHand(hand: Card[]): Card[] {
+  return [...hand].sort((a, b) => {
+    const colorA = COLOR_ORDER[a.color ?? ''] ?? 99;
+    const colorB = COLOR_ORDER[b.color ?? ''] ?? 99;
+    if (colorA !== colorB) return colorA - colorB;
+
+    const typeA = TYPE_ORDER[a.type] ?? 99;
+    const typeB = TYPE_ORDER[b.type] ?? 99;
+    if (typeA !== typeB) return typeA - typeB;
+
+    const valA = a.type === 'number' ? a.value : 0;
+    const valB = b.type === 'number' ? b.value : 0;
+    return valA - valB;
+  });
+}
+
 export function getEffectiveColor(card: Card): Color | null {
   if (isWildCard(card)) {
     return card.chosenColor ?? null;

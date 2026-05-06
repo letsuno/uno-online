@@ -10,4 +10,7 @@ coverage/
 .claude/
 docs/
 .playwright-mcp/
-.superpowers/
+.yarn/
+.omc/
+uno.db*
+yarn.lock

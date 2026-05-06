@@ -5,7 +5,7 @@ import type { Config } from './config';
 import { registerAuthRoutes } from './api/auth-routes';
 import { registerProfileRoutes } from './api/profile-routes';
 import { setupSocketHandlers } from './ws/socket-handler';
-import { getRedis } from './redis/client';
+import { createKvStore } from './kv/index';
 
 export async function createApp(config: Config) {
   const fastify = Fastify({ logger: true });
@@ -22,14 +22,14 @@ export async function createApp(config: Config) {
     },
   });
 
-  const redis = getRedis(config.redisUrl);
+  const kv = createKvStore(config.redisUrl);
 
   await registerAuthRoutes(fastify, config);
   await registerProfileRoutes(fastify, config);
 
-  const wsContext = setupSocketHandlers(io, redis, config.jwtSecret);
+  const wsContext = setupSocketHandlers(io, kv, config.jwtSecret);
 
   fastify.get('/health', async () => ({ status: 'ok' }));
 
-  return { fastify, io, redis, ...wsContext };
+  return { fastify, io, kv, ...wsContext };
 }

@@ -41,12 +41,13 @@ interface CardProps {
   card: CardType;
   playable?: boolean;
   clickable?: boolean;
+  dimmed?: boolean;
   onClick?: () => void;
   style?: React.CSSProperties;
   className?: string;
 }
 
-export default function Card({ card, playable = false, clickable = playable, onClick, style, className }: CardProps) {
+export default function Card({ card, playable = false, clickable = playable, dimmed = false, onClick, style, className }: CardProps) {
   const colorBlindMode = useSettingsStore((s) => s.colorBlindMode);
 
   const isWild = card.type === 'wild' || card.type === 'wild_draw_four';
@@ -65,7 +66,7 @@ export default function Card({ card, playable = false, clickable = playable, onC
         'border-card-border md:border-4 border-white',
         'flex items-center justify-center',
         'font-game font-black text-white select-none shrink-0 relative',
-        'transition-[transform,box-shadow] duration-200',
+        'transition-[transform,box-shadow,opacity] duration-200',
         'shadow-card',
         'text-shadow-card',
         bgClass,
@@ -74,6 +75,7 @@ export default function Card({ card, playable = false, clickable = playable, onC
           'shadow-card-playable',
           'cursor-pointer hover:-translate-y-3 hover:scale-105',
         ],
+        dimmed && 'opacity-40',
         className,
       )}
       onClick={clickable ? onClick : undefined}

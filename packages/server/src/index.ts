@@ -1,19 +1,19 @@
-import { loadConfig } from './config';
-import { createApp } from './app';
-import { disconnectPrisma } from './db/prisma';
-import { disconnectRedis } from './redis/client';
-import { closeWorkers } from './voice/media-worker';
+import { loadConfig } from './config.js';
+import { createApp } from './app.js';
+import { destroyDb, migrateDb } from './db/database.js';
+import { closeWorkers } from './voice/media-worker.js';
 
 async function main() {
   const config = loadConfig();
-  const { fastify, turnTimer } = await createApp(config);
+  await migrateDb();
+  const { fastify, turnTimer, kv } = await createApp(config);
 
   const shutdown = async () => {
     turnTimer.stopAll();
     await closeWorkers();
     await fastify.close();
-    await disconnectPrisma();
-    await disconnectRedis();
+    await destroyDb();
+    await kv.disconnect();
     process.exit(0);
   };
 
