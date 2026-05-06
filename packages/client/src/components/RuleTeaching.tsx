@@ -96,7 +96,8 @@ export default function RuleTeaching({ ruleKey }: RuleTeachingProps) {
             <Card
               key={i}
               card={cardData}
-              className="!w-card-log-w !h-card-log-h !text-2xs !border !rounded-sm"
+              mini
+              className="!w-card-log-w !h-card-log-h !text-2xs !border !rounded-none"
             />
           );
         }
