@@ -97,7 +97,6 @@ export default function OpponentRow() {
                   ))
               }
             </div>
-            <span className="opponent__count">{opp.handCount}张</span>
             {!opp.connected && <span style={{ fontSize: 10, color: '#ef4444' }}>掉线</span>}
           </div>
         );
