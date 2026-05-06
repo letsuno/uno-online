@@ -56,8 +56,9 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
                 card={card}
                 playable={hintedIds.has(card.id)}
                 clickable={playableIds.has(card.id)}
+                dimmed={isMyTurn && phase === 'playing' && !hintedIds.has(card.id)}
                 onClick={() => playableIds.has(card.id) && onPlayCard(card.id)}
-                style={{ transform: `rotate(${angle}deg)` }}
+                style={{ transform: `rotate(${angle}deg)`, zIndex: i }}
               />
             );
           })}

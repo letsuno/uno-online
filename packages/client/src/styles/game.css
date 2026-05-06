@@ -34,14 +34,6 @@
   font-family: var(--font-game);
 }
 
-.opponent-row {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  padding: 10px 20px;
-  flex-wrap: wrap;
-}
-
 .opponent {
   display: flex;
   flex-direction: column;
@@ -87,13 +79,33 @@
   color: var(--text-secondary);
 }
 
-.game-center {
+.game-table {
   flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.seat {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  z-index: 5;
+  transition: left 0.4s ease, top 0.4s ease;
+}
+
+.game-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 40px;
-  position: relative;
+  z-index: 1;
 }
 
 .turn-banner {
@@ -171,10 +183,11 @@
 
 .player-hand {
   background: var(--bg-surface);
-  padding: 14px 20px 18px;
+  padding: 24px 20px 18px;
   display: flex;
   justify-content: center;
   overflow-x: auto;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x proximity;
   scroll-padding: 0 20px;
@@ -201,11 +214,7 @@
 }
 
 @media (max-width: 768px) {
-  .opponent-row {
-    gap: 8px;
-    padding: 6px 10px;
-  }
-  .opponent__avatar {
+  .seat .opponent__avatar {
     width: 36px;
     height: 36px;
     font-size: 14px;

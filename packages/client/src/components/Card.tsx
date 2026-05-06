@@ -30,19 +30,21 @@ interface CardProps {
   card: CardType;
   playable?: boolean;
   clickable?: boolean;
+  dimmed?: boolean;
   onClick?: () => void;
   style?: React.CSSProperties;
 }
 
-export default function Card({ card, playable = false, clickable = playable, onClick, style }: CardProps) {
+export default function Card({ card, playable = false, clickable = playable, dimmed = false, onClick, style }: CardProps) {
   const colorBlindMode = useSettingsStore((s) => s.colorBlindMode);
   const colorClass = getColorClass(card);
   const typeClass = `card--${card.type}`;
   const playableClass = playable ? 'card--playable' : '';
+  const dimmedClass = dimmed ? 'card--dimmed' : '';
 
   return (
     <div
-      className={`card ${colorClass} ${typeClass} ${playableClass}`}
+      className={`card ${colorClass} ${typeClass} ${playableClass} ${dimmedClass}`}
       onClick={clickable ? onClick : undefined}
       style={style}
     >
