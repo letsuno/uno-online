@@ -67,7 +67,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
     <div className="relative">
       <div className="absolute inset-x-0 top-0 h-px bg-primary/15" />
       <div
-        className="relative rounded-t-2xl px-5 pt-5 pb-hand-pb flex justify-center overflow-x-auto scrollbar-hidden"
+        className="relative rounded-t-2xl px-5 pt-8 pb-hand-pb flex justify-center overflow-x-auto overflow-y-visible scrollbar-hidden"
         style={{
           background: 'radial-gradient(ellipse at 50% 100%, rgba(251,191,36,0.08) 0%, rgba(0,0,0,0.35) 60%)',
         }}
@@ -91,11 +91,11 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
                   clickable={isPlayable}
                   dimmed={isDimmed}
                   onClick={() => isPlayable && onPlayCard(card.id)}
-                  className="-mr-2.5 last:mr-0 snap-center"
+                  className="snap-center"
                   style={{
                     transform: `rotate(${angle}deg)`,
                     transformOrigin: 'bottom center',
-                    marginLeft: boundary ? 8 : undefined,
+                    marginLeft: boundary ? 12 : 4,
                     marginBottom: isPlayable ? 10 : 0,
                     zIndex: i,
                   }}
