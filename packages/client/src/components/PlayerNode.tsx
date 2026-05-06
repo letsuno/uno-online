@@ -73,7 +73,9 @@ export default function PlayerNode({
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [showReaction, setShowReaction] = useState(false);
   const [showThrowPicker, setShowThrowPicker] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState({ x: 0, y: 0 });
   const longPressTimer = useRef<ReturnType<typeof setTimeout>>();
+  const avatarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isActive || !turnEndTime) {
@@ -92,27 +94,31 @@ export default function PlayerNode({
     return () => clearInterval(id);
   }, [isActive, turnEndTime]);
 
-  const handleDoubleClick = useCallback(() => {
-    if (isMe) return;
-    setShowReaction(true);
-    setShowThrowPicker(false);
-  }, [isMe]);
+  const getAnchor = useCallback(() => {
+    const rect = avatarRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    return { x: rect.left + rect.width / 2, y: rect.top - 8 };
+  }, []);
 
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    if (isMe) return;
-    e.preventDefault();
-    setShowThrowPicker(true);
-    setShowReaction(false);
-  }, [isMe]);
-
-  // Long press for mobile (touch)
-  const handleTouchStart = useCallback(() => {
-    if (isMe) return;
-    longPressTimer.current = setTimeout(() => {
+  const handleClick = useCallback(() => {
+    if (isMe) {
+      setMenuAnchor(getAnchor());
+      setShowReaction(true);
+      setShowThrowPicker(false);
+    } else {
+      setMenuAnchor(getAnchor());
       setShowThrowPicker(true);
       setShowReaction(false);
-    }, 500);
-  }, [isMe]);
+    }
+  }, [isMe, getAnchor]);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+  }, []);
+
+  const handleTouchStart = useCallback(() => {
+    // no-op, single tap handles everything
+  }, []);
 
   const handleTouchEnd = useCallback(() => {
     if (longPressTimer.current) {
@@ -143,7 +149,8 @@ export default function PlayerNode({
       style={{
         left: position.x,
         top: position.y,
-        transform: 'translate(-50%, -50%)',
+        transform: `translate(-50%, -${avatarSize / 2}px)`,
+        zIndex: showReaction || showThrowPicker ? 100 : undefined,
         ...(player.eliminated
           ? { opacity: 0.35, filter: 'grayscale(0.8)' }
           : {}),
@@ -154,19 +161,20 @@ export default function PlayerNode({
 
       {/* Quick reaction menu */}
       {showReaction && (
-        <QuickReaction onSelect={handleReactionSelect} onClose={closeReaction} />
+        <QuickReaction onSelect={handleReactionSelect} onClose={closeReaction} anchorX={menuAnchor.x} anchorY={menuAnchor.y} />
       )}
 
       {/* Throw item picker */}
       {showThrowPicker && (
-        <ThrowItemPicker onSelect={handleThrowSelect} onClose={closeThrowPicker} />
+        <ThrowItemPicker onSelect={handleThrowSelect} onClose={closeThrowPicker} anchorX={menuAnchor.x} anchorY={menuAnchor.y} />
       )}
 
       {/* Avatar container */}
       <div
+        ref={avatarRef}
         className="relative pointer-events-auto"
         style={{ width: avatarSize, height: avatarSize }}
-        onDoubleClick={handleDoubleClick}
+        onClick={handleClick}
         onContextMenu={handleContextMenu}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
@@ -219,7 +227,8 @@ export default function PlayerNode({
             >
               <Card
                 card={lastPlayedCard}
-                className="!w-card-mini-w !h-card-mini-h !text-2xs !border !rounded-sm !shadow-none"
+                mini
+                className="!w-card-mini-w !h-card-mini-h !text-2xs !border !rounded-none !shadow-none"
               />
             </motion.div>
           )}
