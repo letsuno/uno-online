@@ -12,3 +12,5 @@ docs/
 .playwright-mcp/
 .yarn/
 .omc/
+uno.db*
+yarn.lock

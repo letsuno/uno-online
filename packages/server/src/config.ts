@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 function required(name: string): string {
   const value = process.env[name];
   if (!value) {
@@ -9,7 +11,7 @@ function required(name: string): string {
 export interface Config {
   port: number;
   databasePath: string;
-  redisUrl: string;
+  redisUrl?: string;
   githubClientId: string;
   githubClientSecret: string;
   jwtSecret: string;
@@ -28,7 +30,7 @@ export function loadConfig(): Config {
   return {
     port: parseInt(process.env['PORT'] ?? '3001', 10),
     databasePath: process.env['DATABASE_PATH'] ?? 'uno.db',
-    redisUrl: process.env['REDIS_URL'] ?? 'redis://localhost:6379',
+    redisUrl: process.env['REDIS_URL'] || undefined,
     githubClientId: devMode ? (process.env['GITHUB_CLIENT_ID'] ?? '') : required('GITHUB_CLIENT_ID'),
     githubClientSecret: devMode ? (process.env['GITHUB_CLIENT_SECRET'] ?? '') : required('GITHUB_CLIENT_SECRET'),
     jwtSecret: required('JWT_SECRET'),
