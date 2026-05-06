@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import { sortHand } from '@uno-online/shared';
 import AnimatedCard from './AnimatedCard.js';
 import { useGameStore } from '../stores/game-store.js';
 import { useAuthStore } from '../stores/auth-store.js';
@@ -38,14 +39,16 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   }, [currentColor, drawStack, isMyTurn, me?.hand, phase, settings?.houseRules, topCard]);
   const hintedIds = settings?.houseRules?.noHints ? new Set<string>() : playableIds;
 
+  const sortedHand = useMemo(() => sortHand(me?.hand ?? []), [me?.hand]);
+
   if (!me) return null;
 
   return (
     <div className="player-hand">
       <div className="player-hand__cards">
         <AnimatePresence mode="popLayout">
-          {me.hand.map((card, i) => {
-            const angle = (i - (me.hand.length - 1) / 2) * 4;
+          {sortedHand.map((card, i) => {
+            const angle = (i - (sortedHand.length - 1) / 2) * 4;
             return (
               <AnimatedCard
                 key={card.id}

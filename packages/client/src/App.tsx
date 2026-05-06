@@ -7,6 +7,14 @@ import GamePage from './pages/GamePage.js';
 import ProfilePage from './pages/ProfilePage.js';
 import ProtectedRoute from './components/ProtectedRoute.js';
 import ToastContainer from './components/Toast.js';
+import { useSettingsStore, FONT_OPTIONS } from './stores/settings-store.js';
+
+// Apply saved font on initial load
+const savedFont = useSettingsStore.getState().fontFamily;
+if (savedFont !== 'default') {
+  document.documentElement.style.setProperty('--font-game', FONT_OPTIONS[savedFont].value);
+  document.documentElement.style.setProperty('--font-ui', FONT_OPTIONS[savedFont].value);
+}
 
 export default function App() {
   return (
