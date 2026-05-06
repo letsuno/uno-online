@@ -85,9 +85,9 @@ export default function GameEffects() {
             )}
           >
             <span className="flex items-center gap-2">
-              {effect.type === 'skip' && <Ban size={48} />}
-              {effect.type === 'reverse' && <RotateCcw size={48} />}
-              {effect.type === 'victory' && <Trophy size={56} />}
+              {effect.type === 'skip' && <Ban size={120} />}
+              {effect.type === 'reverse' && <RotateCcw size={120} />}
+              {effect.type === 'victory' && <Trophy size={140} />}
               {effect.text}
             </span>
             {effect.targetName && effect.type === 'skip' && (
