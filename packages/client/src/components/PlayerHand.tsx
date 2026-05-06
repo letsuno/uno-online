@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import type { Card as CardType } from '@uno-online/shared';
+import { sortHand } from '@uno-online/shared';
 import AnimatedCard from './AnimatedCard';
 import { useGameStore } from '../stores/game-store';
 import { useAuthStore } from '../stores/auth-store';
@@ -8,24 +9,6 @@ import { getPlayableCardIds } from '../utils/playable-cards';
 
 interface PlayerHandProps {
   onPlayCard: (cardId: string) => void;
-}
-
-const COLOR_ORDER: Record<string, number> = { red: 0, blue: 1, green: 2, yellow: 3 };
-const TYPE_ORDER: Record<string, number> = { number: 0, skip: 1, reverse: 2, draw_two: 3, wild: 0, wild_draw_four: 1 };
-
-function sortCards(cards: CardType[]): CardType[] {
-  return [...cards].sort((a, b) => {
-    const aIsWild = a.type === 'wild' || a.type === 'wild_draw_four';
-    const bIsWild = b.type === 'wild' || b.type === 'wild_draw_four';
-    if (aIsWild !== bIsWild) return aIsWild ? 1 : -1;
-    if (aIsWild && bIsWild) return (TYPE_ORDER[a.type] ?? 0) - (TYPE_ORDER[b.type] ?? 0);
-    const colorDiff = (COLOR_ORDER[a.color!] ?? 99) - (COLOR_ORDER[b.color!] ?? 99);
-    if (colorDiff !== 0) return colorDiff;
-    const typeDiff = (TYPE_ORDER[a.type] ?? 99) - (TYPE_ORDER[b.type] ?? 99);
-    if (typeDiff !== 0) return typeDiff;
-    if (a.type === 'number' && b.type === 'number') return (a.value ?? 0) - (b.value ?? 0);
-    return 0;
-  });
 }
 
 function getSpreadAngle(count: number): number {
@@ -73,7 +56,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   }, [currentColor, drawStack, isMyTurn, me?.hand, phase, settings?.houseRules, topCard]);
   const hintedIds = settings?.houseRules?.noHints ? new Set<string>() : playableIds;
 
-  const sorted = useMemo(() => sortCards(me?.hand ?? []), [me?.hand]);
+  const sorted = useMemo(() => sortHand(me?.hand ?? []), [me?.hand]);
 
   if (!me) return null;
 
@@ -97,6 +80,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
             {sorted.map((card, i) => {
               const angle = (i - center) * spreadAngle;
               const isPlayable = playableIds.has(card.id);
+              const isDimmed = isMyTurn && phase === 'playing' && !hintedIds.has(card.id);
               const boundary = isColorBoundary(sorted, i);
               return (
                 <AnimatedCard
@@ -105,6 +89,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
                   card={card}
                   playable={hintedIds.has(card.id)}
                   clickable={isPlayable}
+                  dimmed={isDimmed}
                   onClick={() => isPlayable && onPlayCard(card.id)}
                   className="-mr-2.5 last:mr-0 snap-center"
                   style={{
@@ -112,6 +97,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
                     transformOrigin: 'bottom center',
                     marginLeft: boundary ? 8 : undefined,
                     marginBottom: isPlayable ? 10 : 0,
+                    zIndex: i,
                   }}
                 />
               );
