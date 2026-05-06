@@ -4,6 +4,7 @@ import type { GameState, GameAction, RoomSettings } from '@uno-online/shared';
 import type { Card } from '@uno-online/shared';
 
 export interface PlayerView {
+  viewerId: string;
   phase: GameState['phase'];
   players: {
     id: string;
@@ -26,6 +27,7 @@ export interface PlayerView {
   winnerId: string | null;
   settings: GameState['settings'];
   pendingDrawPlayerId: string | null;
+  lastAction: GameState['lastAction'];
 }
 
 export interface ActionResult {
@@ -59,6 +61,7 @@ export class GameSession {
 
   getPlayerView(playerId: string): PlayerView {
     return {
+      viewerId: playerId,
       phase: this.state.phase,
       players: this.state.players.map((p) => {
         const threshold = this.state.settings.houseRules.handRevealThreshold;
@@ -87,6 +90,7 @@ export class GameSession {
       winnerId: this.state.winnerId,
       settings: this.state.settings,
       pendingDrawPlayerId: this.state.pendingDrawPlayerId,
+      lastAction: this.state.lastAction,
     };
   }
 
@@ -130,6 +134,14 @@ export class GameSession {
 
   isRoundEnd(): boolean {
     return this.state.phase === 'round_end';
+  }
+
+  forceGameOver(winnerId: string): void {
+    this.state = {
+      ...this.state,
+      phase: 'game_over',
+      winnerId,
+    };
   }
 
   startNextRound(): void {

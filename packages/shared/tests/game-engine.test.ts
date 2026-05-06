@@ -258,6 +258,24 @@ describe('DRAW_CARD', () => {
     const next = applyAction(state, action);
     expect(next.lastAction).toStrictEqual(action);
   });
+
+  it('draws from the top/front of the deck', () => {
+    const firstCard = makeCard('number', 'blue', { value: 3, id: 'd1' });
+    const secondCard = makeCard('number', 'green', { value: 4, id: 'd2' });
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+      deck: [firstCard, secondCard],
+    });
+
+    const next = applyAction(state, { type: 'DRAW_CARD', playerId: 'p1' });
+
+    expect(next.players[0]!.hand[0]!.id).toBe('d1');
+    expect(next.deck.map(c => c.id)).toEqual(['d2']);
+  });
 });
 
 describe('DRAW_CARD - wrong player', () => {
@@ -347,6 +365,25 @@ describe('CHOOSE_COLOR', () => {
     expect(next.phase).toBe('challenging');
     expect(next.currentColor).toBe('green');
   });
+
+  it('ends the round after the last plain wild color is chosen', () => {
+    const wild = makeCard('wild', null, { id: 'wild_last' });
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [wild], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 4, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 6, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+      ],
+    });
+
+    const afterPlay = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wild_last' });
+    const afterColor = applyAction(afterPlay, { type: 'CHOOSE_COLOR', playerId: 'p1', color: 'blue' });
+
+    expect(afterColor.phase).toBe('round_end');
+    expect(afterColor.winnerId).toBe('p1');
+    expect(afterColor.currentColor).toBe('blue');
+    expect(afterColor.discardPile.at(-1)).toMatchObject({ id: 'wild_last', chosenColor: 'blue' });
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -424,6 +461,38 @@ describe('CHALLENGE - WD4 was illegal (challenge wins)', () => {
     expect(next.phase).toBe('playing');
     expect(next.pendingDrawPlayerId).toBeNull();
   });
+
+  it('uses the previous wild card chosen color when checking legality', () => {
+    const deckCards = Array.from({ length: 10 }, (_, i) =>
+      makeCard('number', 'blue', { value: i % 9, id: `d${i}` })
+    );
+    const state = makeState({
+      phase: 'challenging',
+      players: [
+        {
+          id: 'p1', name: 'Alice',
+          hand: [makeCard('number', 'red', { value: 3, id: 'p1_red' })],
+          score: 0, connected: true, calledUno: false
+        },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+      currentPlayerIndex: 0,
+      currentColor: 'green',
+      pendingDrawPlayerId: 'p2',
+      deck: deckCards,
+      discardPile: [
+        { id: 'prev_wild', type: 'wild', color: null, chosenColor: 'red' },
+        makeCard('wild_draw_four', null, { id: 'wd4_card' }),
+      ],
+    });
+
+    const next = applyAction(state, { type: 'CHALLENGE', playerId: 'p2' });
+
+    expect(next.players[0]!.hand).toHaveLength(5);
+    expect(next.players[1]!.hand).toHaveLength(0);
+    expect(next.phase).toBe('playing');
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -460,6 +529,29 @@ describe('ACCEPT', () => {
     });
     const next = applyAction(state, { type: 'ACCEPT', playerId: 'p3' });
     expect(next).toStrictEqual(state);
+  });
+
+  it('ends the round after accepting the penalty from a last-card wild draw four', () => {
+    const wd4 = makeCard('wild_draw_four', null, { id: 'wd4_last' });
+    const deckCards = Array.from({ length: 6 }, (_, i) =>
+      makeCard('number', 'blue', { value: i % 9, id: `d${i}` })
+    );
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [wd4], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'yellow', { value: 4, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+      ],
+      deck: deckCards,
+    });
+
+    const afterPlay = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4_last' });
+    const afterColor = applyAction(afterPlay, { type: 'CHOOSE_COLOR', playerId: 'p1', color: 'green' });
+    const afterAccept = applyAction(afterColor, { type: 'ACCEPT', playerId: 'p2' });
+
+    expect(afterAccept.phase).toBe('round_end');
+    expect(afterAccept.winnerId).toBe('p1');
+    expect(afterAccept.players[1]!.hand).toHaveLength(5);
   });
 });
 
@@ -521,6 +613,20 @@ describe('CALL_UNO', () => {
     });
     const next = applyAction(state, { type: 'CALL_UNO', playerId: 'p1' });
     expect(next.players[0]!.calledUno).toBe(false);
+  });
+
+  it('does not set flag for a player with no cards', () => {
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+    });
+
+    const next = applyAction(state, { type: 'CALL_UNO', playerId: 'p1' });
+
+    expect(next).toStrictEqual(state);
   });
 });
 

@@ -120,6 +120,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: Redis, jwtSecret:
       if (session) {
         session.setPlayerConnected(userId, true);
         await saveGameState(redis, roomCode, session.getFullState());
+        await emitGameUpdate(io, roomCode, session);
         io.to(roomCode).emit('player:reconnected', { playerId: userId });
         callback?.({ success: true, gameState: session.getPlayerView(userId) });
         const state = session.getFullState();
@@ -159,6 +160,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: Redis, jwtSecret:
       if (session) {
         session.setPlayerConnected(userId, false);
         await saveGameState(redis, roomCode, session.getFullState());
+        await emitGameUpdate(io, roomCode, session);
         io.to(roomCode).emit('player:disconnected', { playerId: userId });
 
         const state = session.getFullState();
@@ -173,7 +175,9 @@ export function setupSocketHandlers(io: SocketIOServer, redis: Redis, jwtSecret:
           const nextOwner = state.players.find(p => p.id !== userId && p.connected);
           if (nextOwner) {
             await setRoomOwner(redis, roomCode, nextOwner.id);
-            io.to(roomCode).emit('room:updated', { newOwnerId: nextOwner.id });
+            const updatedRoom = await getRoom(redis, roomCode);
+            const players = await getRoomPlayers(redis, roomCode);
+            io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
           }
         }
 

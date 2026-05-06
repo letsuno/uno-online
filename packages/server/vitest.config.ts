@@ -5,7 +5,7 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     testTimeout: 10000,
     env: {
-      REDIS_URL: 'redis://:123456@localhost:6379',
+      REDIS_URL: process.env['REDIS_URL'] ?? 'redis://localhost:6379',
     },
   },
 });
