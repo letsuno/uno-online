@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils';
 const ICON = { info: Info, error: AlertCircle, success: CheckCircle } as const;
 
 const BG_CLASS = {
-  info: 'bg-[rgba(59,130,246,0.9)]',
-  error: 'bg-[rgba(239,68,68,0.9)]',
-  success: 'bg-[rgba(34,197,94,0.9)]',
+  info: 'bg-toast-info',
+  error: 'bg-toast-error',
+  success: 'bg-toast-success',
 } as const;
 
 export default function ToastContainer() {
@@ -16,7 +16,7 @@ export default function ToastContainer() {
   const removeToast = useToastStore((s) => s.removeToast);
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[300] flex flex-col gap-2 items-center pointer-events-none">
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-toast flex flex-col gap-2 items-center pointer-events-none">
       <AnimatePresence>
         {toasts.map((t) => {
           const Icon = ICON[t.type];
@@ -29,7 +29,7 @@ export default function ToastContainer() {
               transition={{ duration: 0.2 }}
               className={cn(
                 BG_CLASS[t.type],
-                'text-white px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm font-medium shadow-[0_4px_12px_rgba(0,0,0,0.3)] pointer-events-auto max-w-[360px]'
+                'text-white px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm font-medium shadow-toast pointer-events-auto max-w-toast-max'
               )}
             >
               <Icon size={16} />

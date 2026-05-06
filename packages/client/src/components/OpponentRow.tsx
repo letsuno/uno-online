@@ -40,7 +40,7 @@ export default function OpponentRow() {
         return (
           <div
             key={opp.id}
-            className="flex flex-col items-center gap-[3px]"
+            className="flex flex-col items-center gap-opponent-gap"
             style={{
               ...(opp.eliminated ? { opacity: 0.35, filter: 'grayscale(0.8)' } : {}),
               ...(shakenId === opp.id ? { animation: 'shake 0.1s ease-in-out 3' } : {}),
@@ -52,7 +52,7 @@ export default function OpponentRow() {
                 'text-sm md:text-lg',
                 'border-2 border-white/30',
                 'transition-[border,box-shadow] duration-300 ease-in-out',
-                isActive && 'border-3 border-primary shadow-[0_0_12px_rgba(251,191,36,0.6)]',
+                isActive && 'border-3 border-primary shadow-glow-active',
                 isTeammate && 'border-2 border-accent',
               )}
               style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
@@ -61,7 +61,7 @@ export default function OpponentRow() {
             </div>
             <span
               className={cn(
-                'text-[11px] text-foreground transition-colors duration-300 ease-in-out',
+                'text-sm text-foreground transition-colors duration-300 ease-in-out',
                 isActive && 'text-primary font-bold',
               )}
             >
@@ -73,7 +73,7 @@ export default function OpponentRow() {
                     <Card
                       key={card.id}
                       card={card}
-                      className="!w-7 !h-10 !text-[10px] !border-2 !rounded-md"
+                      className="!w-7 !h-10 !text-xs !border-2 !rounded-md"
                     />
                   ))
                 : Array.from({ length: Math.min(opp.handCount, 10) }).map((_, j) => (
@@ -81,8 +81,8 @@ export default function OpponentRow() {
                   ))
               }
             </div>
-            <span className="text-[10px] text-muted-foreground">{opp.handCount}张</span>
-            {!opp.connected && <span className="text-[10px] text-destructive">掉线</span>}
+            <span className="text-xs text-muted-foreground">{opp.handCount}张</span>
+            {!opp.connected && <span className="text-xs text-destructive">掉线</span>}
           </div>
         );
       })}

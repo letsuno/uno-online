@@ -28,7 +28,7 @@ export default function Confetti() {
   }, []);
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-[85] overflow-hidden">
+    <div className="fixed inset-0 pointer-events-none z-confetti overflow-hidden">
       {particles.map((p) => (
         <motion.div
           key={p.id}

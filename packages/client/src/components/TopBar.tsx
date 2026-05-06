@@ -9,7 +9,7 @@ export default function TopBar({ roomCode }: TopBarProps) {
   const { colorBlindMode, toggleColorBlind, soundEnabled, toggleSound } = useSettingsStore();
 
   return (
-    <div className="flex justify-between items-center px-4 py-2 bg-black/30 text-[13px] z-10">
+    <div className="flex justify-between items-center px-4 py-2 bg-black/30 text-caption z-topbar">
       <div className="flex items-center gap-3">
         <span className="font-bold text-primary font-game"><Spade size={18} className="inline align-middle" /> UNO Online</span>
         <span className="text-muted-foreground">房间: {roomCode}</span>

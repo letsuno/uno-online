@@ -9,7 +9,7 @@ export default function DiscardPile() {
   if (!topCard) return null;
 
   return (
-    <div className="flex flex-col items-center gap-1.5 z-[1] relative">
+    <div className="flex flex-col items-center gap-1.5 z-card relative">
       <AnimatePresence mode="wait">
         <motion.div
           key={topCard.id}
@@ -25,12 +25,12 @@ export default function DiscardPile() {
           key={`stack-${drawStack}`}
           initial={{ scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="absolute -top-3 -right-3 bg-destructive text-white rounded-full w-8 h-8 flex items-center justify-center font-black text-sm font-game border-2 border-white shadow-[2px_3px_0px_rgba(0,0,0,0.3)]"
+          className="absolute -top-3 -right-3 bg-destructive text-white rounded-full w-8 h-8 flex items-center justify-center font-black text-sm font-game border-2 border-white shadow-card-sm"
         >
           +{drawStack}
         </motion.div>
       )}
-      <span className="text-[10px] text-muted-foreground">弃牌堆</span>
+      <span className="text-xs text-muted-foreground">弃牌堆</span>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LogIn, Spade } from 'lucide-react';
 import { useAuthStore } from '../stores/auth-store';
 import { GITHUB_CLIENT_ID, DEV_MODE } from '../env';
+import { Button } from '../components/ui/Button';
 
 export default function HomePage() {
   const { user, token, loading, loadUser, devLogin } = useAuthStore();
@@ -46,10 +47,10 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-8 p-5 text-center">
-      <h1 className="font-game text-[48px] text-primary drop-shadow-[3px_4px_0px_rgba(0,0,0,0.3)]">
+      <h1 className="font-game text-heading-xl text-primary text-shadow-bold">
         <Spade size={36} className="inline-block align-middle" /> UNO Online
       </h1>
-      <p className="max-w-[400px] text-lg text-muted-foreground">
+      <p className="max-w-houserules-max text-lg text-muted-foreground">
         和朋友一起玩 UNO！支持 2-10 人在线对战、语音通话、自定义村规。
       </p>
       {!loading && !token && (
@@ -61,17 +62,17 @@ export default function HomePage() {
                 onChange={(e) => { setDevUsername(e.target.value); setError(''); }}
                 onKeyDown={(e) => e.key === 'Enter' && handleDevLogin()}
                 placeholder="输入用户名"
-                className="w-[200px] rounded-xl border-2 border-white/20 bg-card px-4 py-3 text-center text-lg text-foreground"
+                className="w-dev-input rounded-xl border-2 border-white/20 bg-card px-4 py-3 text-center text-lg text-foreground"
               />
-              <button className="bg-primary text-primary-foreground px-6 py-3 rounded-3xl text-lg font-bold shadow-[3px_4px_0px_rgba(0,0,0,0.2)] transition-transform duration-150 hover:scale-105 active:scale-[0.97]" onClick={handleDevLogin}>
+              <Button variant="primary" className="px-6 py-3 text-lg" onClick={handleDevLogin}>
                 <LogIn size={20} className="mr-1.5 inline-block align-middle" />登录
-              </button>
+              </Button>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <p className="text-xs text-muted-foreground">开发模式</p>
           </div>
         ) : (
-          <a href={loginUrl} className="bg-primary text-primary-foreground inline-flex items-center gap-2 px-8 py-3.5 rounded-3xl text-lg font-bold shadow-[3px_4px_0px_rgba(0,0,0,0.2)] transition-transform duration-150 hover:scale-105 active:scale-[0.97] no-underline">
+          <a href={loginUrl} className="bg-primary text-primary-foreground inline-flex items-center gap-2 px-8 py-3.5 rounded-3xl text-lg font-bold shadow-card transition-transform duration-150 hover:scale-105 active:scale-click no-underline">
             <LogIn size={20} /> GitHub 登录
           </a>
         )

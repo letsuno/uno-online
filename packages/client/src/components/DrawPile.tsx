@@ -42,11 +42,11 @@ export default function DrawPile({ onDraw }: DrawPileProps) {
   const emphasizeDraw = canDraw && !settings?.houseRules?.noHints;
 
   return (
-    <div className="flex flex-col items-center gap-1.5 z-[1] relative min-w-[92px]">
+    <div className="flex flex-col items-center gap-1.5 z-card relative min-w-draw-pile-min">
       <AnimatePresence>
         {showNoPlayableHint && (
           <motion.div
-            className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 whitespace-nowrap font-game text-[13px] text-primary [text-shadow:0_2px_8px_rgba(0,0,0,0.45)]"
+            className="absolute bottom-hint-bottom left-1/2 -translate-x-1/2 whitespace-nowrap font-game text-caption text-primary text-shadow-glow"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
@@ -60,9 +60,9 @@ export default function DrawPile({ onDraw }: DrawPileProps) {
         className={cn(
           emphasizeDraw && [
             'border-primary',
-            'shadow-[0_0_0_4px_rgba(251,191,36,0.28),0_0_26px_rgba(251,191,36,0.72),3px_4px_0px_rgba(0,0,0,0.2)]',
-            'animate-[drawReadyPulse_1s_ease-in-out_infinite_alternate]',
-            'hover:-translate-y-2 hover:scale-[1.04]',
+            'shadow-draw-ready',
+            'animate-draw-pulse',
+            'hover:-translate-y-2 hover:scale-draw-hover',
           ],
         )}
         style={{
@@ -72,7 +72,7 @@ export default function DrawPile({ onDraw }: DrawPileProps) {
       />
       <span
         className={cn(
-          'text-[10px] text-muted-foreground',
+          'text-xs text-muted-foreground',
           deckCount <= 10 && 'text-destructive font-bold',
         )}
       >

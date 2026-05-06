@@ -7,12 +7,12 @@ export default function DirectionIndicator() {
 
   return (
     <motion.div
-      className="absolute w-[120px] h-[120px] md:w-40 md:h-40 border-2 border-dashed border-primary/50 rounded-full flex items-center justify-center"
+      className="absolute w-direction-sm h-direction-sm md:w-40 md:h-40 border-2 border-dashed border-primary/50 rounded-full flex items-center justify-center"
       animate={{ rotate: isClockwise ? 0 : 180 }}
       transition={{ type: 'spring', stiffness: 200, damping: 20 }}
     >
       <motion.span
-        className="text-[28px] text-primary/70"
+        className="text-direction text-primary/70"
         key={direction}
         initial={{ scale: 1.6, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
