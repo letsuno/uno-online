@@ -27,7 +27,9 @@ export default function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
   const phase = useGameStore((s) => s.phase);
-  const userId = useAuthStore((s) => s.user?.id);
+  const authUserId = useAuthStore((s) => s.user?.id);
+  const viewerId = useGameStore((s) => s.viewerId);
+  const userId = viewerId ?? authUserId;
   const players = useGameStore((s) => s.players);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
 

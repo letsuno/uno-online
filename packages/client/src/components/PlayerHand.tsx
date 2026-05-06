@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Card as CardType } from '@uno-online/shared';
+import type { Card as CardType, HouseRules } from '@uno-online/shared';
 import { getPlayableCards } from '@uno-online/shared';
 import { AnimatePresence } from 'framer-motion';
 import AnimatedCard from './AnimatedCard.js';
@@ -11,14 +11,38 @@ interface PlayerHandProps {
   onPlayCard: (cardId: string) => void;
 }
 
+function canRespondToDrawStack(card: CardType, topCard: CardType, houseRules?: HouseRules): boolean {
+  if (!houseRules) return false;
+
+  const canStack =
+    (houseRules.stackDrawTwo && card.type === 'draw_two' && topCard.type === 'draw_two') ||
+    (houseRules.stackDrawFour && card.type === 'wild_draw_four' && topCard.type === 'wild_draw_four') ||
+    (
+      houseRules.crossStack &&
+      (
+        (card.type === 'draw_two' && topCard.type === 'wild_draw_four') ||
+        (card.type === 'wild_draw_four' && topCard.type === 'draw_two')
+      )
+    );
+  const canDeflect =
+    (houseRules.reverseDeflectDrawTwo && card.type === 'reverse' && topCard.type === 'draw_two') ||
+    (houseRules.reverseDeflectDrawFour && card.type === 'reverse' && topCard.type === 'wild_draw_four') ||
+    (houseRules.skipDeflect && card.type === 'skip');
+
+  return canStack || canDeflect;
+}
+
 export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
-  const userId = useAuthStore((s) => s.user?.id);
+  const authUserId = useAuthStore((s) => s.user?.id);
+  const viewerId = useGameStore((s) => s.viewerId);
+  const userId = viewerId ?? authUserId;
   const players = useGameStore((s) => s.players);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
   const discardPile = useGameStore((s) => s.discardPile);
   const currentColor = useGameStore((s) => s.currentColor);
   const phase = useGameStore((s) => s.phase);
   const settings = useGameStore((s) => s.settings);
+  const drawStack = useGameStore((s) => s.drawStack);
 
   const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
 
@@ -27,11 +51,13 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   const topCard = discardPile[discardPile.length - 1];
 
   const playableIds = useMemo(() => {
-    if (settings?.houseRules?.noHints) return new Set<string>();
     if (!isMyTurn || !topCard || !currentColor || phase !== 'playing') return new Set<string>();
-    const playable = getPlayableCards(me?.hand ?? [], topCard, currentColor);
+    const playable = drawStack > 0
+      ? (me?.hand ?? []).filter((card) => canRespondToDrawStack(card, topCard, settings?.houseRules))
+      : getPlayableCards(me?.hand ?? [], topCard, currentColor);
     return new Set(playable.map((c) => c.id));
-  }, [me?.hand, topCard, currentColor, isMyTurn, phase, settings]);
+  }, [me?.hand, topCard, currentColor, isMyTurn, phase, settings, drawStack]);
+  const hintedIds = settings?.houseRules?.noHints ? new Set<string>() : playableIds;
 
   const showNoPlayableHint = isMyTurn && phase === 'playing' && playableIds.size === 0 && !hasDrawnThisTurn && !settings?.houseRules?.noHints;
 
@@ -53,7 +79,8 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
                 key={card.id}
                 layoutId={card.id}
                 card={card}
-                playable={playableIds.has(card.id)}
+                playable={hintedIds.has(card.id)}
+                clickable={playableIds.has(card.id)}
                 onClick={() => playableIds.has(card.id) && onPlayCard(card.id)}
                 style={{ transform: `rotate(${angle}deg)` }}
               />

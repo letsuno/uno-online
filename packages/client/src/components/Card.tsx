@@ -29,11 +29,12 @@ function getColorClass(card: CardType): string {
 interface CardProps {
   card: CardType;
   playable?: boolean;
+  clickable?: boolean;
   onClick?: () => void;
   style?: React.CSSProperties;
 }
 
-export default function Card({ card, playable = false, onClick, style }: CardProps) {
+export default function Card({ card, playable = false, clickable = playable, onClick, style }: CardProps) {
   const colorBlindMode = useSettingsStore((s) => s.colorBlindMode);
   const colorClass = getColorClass(card);
   const typeClass = `card--${card.type}`;
@@ -42,7 +43,7 @@ export default function Card({ card, playable = false, onClick, style }: CardPro
   return (
     <div
       className={`card ${colorClass} ${typeClass} ${playableClass}`}
-      onClick={playable ? onClick : undefined}
+      onClick={clickable ? onClick : undefined}
       style={style}
     >
       {card.color && (

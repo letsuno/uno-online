@@ -44,6 +44,31 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
 // ──────────────────────────────────────────────────────────────────────────────
 
 describe('stackDrawTwo', () => {
+  it('starts a draw stack when the first +2 is played', () => {
+    const d2Play = makeCard('draw_two', 'red', { id: 'd2play' });
+    const extra = makeCard('number', 'red', { value: 1, id: 'extra' });
+    const state = makeState({
+      drawStack: 0,
+      players: [
+        { id: 'p1', name: 'Alice', hand: [d2Play, extra], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('draw_two', 'blue', { id: 'p2d2' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, stackDrawTwo: true },
+      },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'd2play' });
+
+    expect(next.drawStack).toBe(2);
+    expect(next.players[1]!.hand).toHaveLength(1);
+    expect(next.currentPlayerIndex).toBe(1);
+    expect(next.discardPile[next.discardPile.length - 1]!.id).toBe('d2play');
+  });
+
   it('+2 stacks on +2: drawStack increases by 2 and turn advances', () => {
     const d2Top = makeCard('draw_two', 'red', { id: 'd2top' });
     const d2Play = makeCard('draw_two', 'red', { id: 'd2play' });
@@ -132,6 +157,36 @@ describe('stackDrawTwo', () => {
     // Turn advances to p2
     expect(next.currentPlayerIndex).toBe(1);
   });
+
+  it('ends the round after a last-card stack is paid', () => {
+    const d2Top = makeCard('draw_two', 'red', { id: 'd2top' });
+    const deck = Array.from({ length: 10 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `d${i}` }));
+    const state = makeState({
+      discardPile: [makeCard('number', 'red', { value: 1, id: 'base' }), d2Top],
+      currentColor: 'red',
+      currentPlayerIndex: 0,
+      drawStack: 2,
+      deck,
+      lastAction: { type: 'PLAY_CARD', playerId: 'p2', cardId: 'd2top' },
+      players: [
+        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'blue', { value: 1, id: 'p1c' })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, stackDrawTwo: true },
+      },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+
+    expect(next.phase).toBe('round_end');
+    expect(next.winnerId).toBe('p2');
+    expect(next.drawStack).toBe(0);
+    expect(next.players[0]!.hand).toHaveLength(3);
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -139,6 +194,40 @@ describe('stackDrawTwo', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 
 describe('stackDrawFour', () => {
+  it('starts a draw stack when the first +4 is played', () => {
+    const wd4Play = makeCard('wild_draw_four', null, { id: 'wd4play' });
+    const extra = makeCard('number', 'blue', { value: 1, id: 'extra' });
+    const state = makeState({
+      drawStack: 0,
+      players: [
+        { id: 'p1', name: 'Alice', hand: [wd4Play, extra], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('wild_draw_four', null, { id: 'p2wd4' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, stackDrawFour: true },
+      },
+    });
+
+    const next = applyActionWithHouseRules(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: 'wd4play',
+      chosenColor: 'blue',
+    });
+
+    expect(next.drawStack).toBe(4);
+    expect(next.currentColor).toBe('blue');
+    expect(next.players[1]!.hand).toHaveLength(1);
+    expect(next.currentPlayerIndex).toBe(1);
+    expect(next.discardPile[next.discardPile.length - 1]).toMatchObject({
+      id: 'wd4play',
+      chosenColor: 'blue',
+    });
+  });
+
   it('+4 stacks on +4: drawStack increases by 4', () => {
     const wd4Top = makeCard('wild_draw_four', null, { id: 'wd4top' });
     const wd4Play = makeCard('wild_draw_four', null, { id: 'wd4play' });
@@ -507,6 +596,31 @@ describe('misplayPenalty', () => {
     // Card was played — p1 has 1 card (the extra), not penalized
     expect(next.players[0]!.hand).toHaveLength(1);
     expect(next.discardPile[next.discardPile.length - 1]!.id).toBe('valid');
+  });
+
+  it('does NOT penalize an out-of-turn invalid play attempt', () => {
+    const invalidCard = makeCard('number', 'blue', { value: 7, id: 'invalid' });
+    const deck = [makeCard('number', 'green', { value: 1, id: 'd1' })];
+    const state = makeState({
+      currentPlayerIndex: 0,
+      currentColor: 'red',
+      discardPile: [makeCard('number', 'red', { value: 5, id: 'top' })],
+      deck,
+      players: [
+        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'red', { value: 1, id: 'p1c' })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [invalidCard], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, misplayPenalty: true },
+      },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p2', cardId: 'invalid' });
+
+    expect(next).toStrictEqual(state);
   });
 });
 

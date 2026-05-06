@@ -9,7 +9,9 @@ const AVATAR_COLORS = ['#ff3366', '#33cc66', '#4488ff', '#f97316', '#a855f7', '#
 const AVATAR_EMOJIS = ['😎', '🤠', '😺', '🐸', '🦊', '🐱', '🐶', '🦁', '🐼'];
 
 export default function OpponentRow() {
-  const userId = useAuthStore((s) => s.user?.id);
+  const authUserId = useAuthStore((s) => s.user?.id);
+  const viewerId = useGameStore((s) => s.viewerId);
+  const userId = viewerId ?? authUserId;
   const players = useGameStore((s) => s.players);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
   const [shakenId, setShakenId] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export default function OpponentRow() {
   }, [players]);
 
   const me = players.find((p) => p.id === userId);
-  const opponents = players.filter((p) => p.id !== userId);
+  const opponents = userId ? players.filter((p) => p.id !== userId) : [];
 
   return (
     <div className="opponent-row">

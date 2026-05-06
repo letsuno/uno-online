@@ -14,7 +14,9 @@ export default function DrawPile({ onDraw }: DrawPileProps) {
   const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
   const players = useGameStore((s) => s.players);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
-  const userId = useAuthStore((s) => s.user?.id);
+  const authUserId = useAuthStore((s) => s.user?.id);
+  const viewerId = useGameStore((s) => s.viewerId);
+  const userId = viewerId ?? authUserId;
   const [flipping, setFlipping] = useState(false);
   const [flipCard, setFlipCard] = useState(lastDrawnCard);
 

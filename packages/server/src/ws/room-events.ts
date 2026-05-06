@@ -3,7 +3,7 @@ import type Redis from 'ioredis';
 import type { RoomSettings } from '@uno-online/shared';
 import { MIN_PLAYERS, DEFAULT_HOUSE_RULES } from '@uno-online/shared';
 import { RoomManager } from '../room/room-manager.js';
-import { getRoom, getRoomPlayers, setRoomStatus } from '../room/room-store.js';
+import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus } from '../room/room-store.js';
 import { GameSession } from '../game/game-session.js';
 import { saveGameState } from '../game/game-store.js';
 import type { TurnTimer } from '../game/turn-timer.js';
@@ -76,6 +76,36 @@ export function registerRoomEvents(
     callback?.({ success: true });
   });
 
+  socket.on('room:update_settings', async (settings: Partial<RoomSettings>, callback) => {
+    const roomCode = data.roomCode;
+    if (!roomCode) return callback?.({ success: false, error: 'Not in a room' });
+
+    const room = await getRoom(redis, roomCode);
+    if (!room) return callback?.({ success: false, error: 'Room not found' });
+    if (room.ownerId !== data.user.userId) {
+      return callback?.({ success: false, error: 'Only room owner can update settings' });
+    }
+    if (room.status !== 'waiting') {
+      return callback?.({ success: false, error: 'Game already in progress' });
+    }
+
+    const nextSettings: RoomSettings = {
+      turnTimeLimit: settings.turnTimeLimit ?? room.settings.turnTimeLimit ?? 30,
+      targetScore: settings.targetScore ?? room.settings.targetScore ?? 500,
+      houseRules: {
+        ...DEFAULT_HOUSE_RULES,
+        ...(room.settings.houseRules ?? {}),
+        ...(settings.houseRules ?? {}),
+      },
+    };
+
+    await setRoomSettings(redis, roomCode, nextSettings);
+    const players = await getRoomPlayers(redis, roomCode);
+    const updatedRoom = await getRoom(redis, roomCode);
+    io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
+    callback?.({ success: true, room: updatedRoom });
+  });
+
   socket.on('game:start', async (callback) => {
     const roomCode = data.roomCode;
     if (!roomCode) return callback?.({ success: false, error: 'Not in a room' });
@@ -119,17 +149,20 @@ export function registerRoomEvents(
         const minCards = Math.min(...state.players.map(p => p.hand.length));
         const winner = state.players.find(p => p.hand.length === minCards);
         if (winner) {
+          s.forceGameOver(winner.id);
+          await saveGameState(redis, roomCode, s.getFullState());
+          await emitGameUpdate(io, roomCode, s);
           io.to(roomCode).emit('game:over', {
             winnerId: winner.id,
             reason: 'blitz_timeout',
-            scores: Object.fromEntries(state.players.map(p => [p.id, p.score])),
+            scores: Object.fromEntries(s.getFullState().players.map(p => [p.id, p.score])),
           });
           turnTimer.stop(roomCode);
         }
       }, blitzLimit * 1000);
     }
 
-    callback?.({ success: true });
+    callback?.({ success: true, gameState: session.getPlayerView(data.user.userId) });
   });
 }
 

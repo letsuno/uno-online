@@ -14,7 +14,9 @@ interface GameActionsProps {
 }
 
 export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAccept, onPass, onSwapTarget }: GameActionsProps) {
-  const userId = useAuthStore((s) => s.user?.id);
+  const authUserId = useAuthStore((s) => s.user?.id);
+  const viewerId = useGameStore((s) => s.viewerId);
+  const userId = viewerId ?? authUserId;
   const players = useGameStore((s) => s.players);
   const phase = useGameStore((s) => s.phase);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);

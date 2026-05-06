@@ -28,7 +28,7 @@ function drawCards(state: GameState, playerId: string, count: number): GameState
       discardPile = reshuffled.discardPile;
     }
     if (deck.length === 0) break; // nothing left even after reshuffle
-    const card = deck.pop()!;
+    const card = deck.shift()!;
     players[playerIdx]!.hand.push(card);
   }
 
@@ -38,7 +38,7 @@ function drawCards(state: GameState, playerId: string, count: number): GameState
 /**
  * Check if a player has emptied their hand. If so, end the round.
  */
-function checkRoundEnd(state: GameState, playerId: string): GameState {
+export function checkRoundEnd(state: GameState, playerId: string): GameState {
   const player = state.players.find(p => p.id === playerId);
   if (!player || player.hand.length > 0) return state;
 
@@ -73,6 +73,30 @@ function playerIndex(state: GameState, playerId: string): number {
  */
 function currentPlayerId(state: GameState): string {
   return state.players[state.currentPlayerIndex]!.id;
+}
+
+function withChosenColorOnTopDiscard(state: GameState, color: Color): GameState {
+  const discardPile = [...state.discardPile];
+  const topCard = discardPile[discardPile.length - 1];
+
+  if (topCard?.type === 'wild' || topCard?.type === 'wild_draw_four') {
+    discardPile[discardPile.length - 1] = { ...topCard, chosenColor: color };
+  }
+
+  return { ...state, discardPile };
+}
+
+function getWildDrawFourChallengeColor(state: GameState): Color {
+  const discardLen = state.discardPile.length;
+  if (discardLen >= 2) {
+    const prevCard = state.discardPile[discardLen - 2]!;
+    if (prevCard.type === 'wild' || prevCard.type === 'wild_draw_four') {
+      return prevCard.chosenColor ?? state.currentColor ?? 'red';
+    }
+    return prevCard.color;
+  }
+
+  return state.currentColor ?? 'red';
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -262,23 +286,36 @@ function handleChooseColor(
   if (state.phase !== 'choosing_color') return state;
   if (action.playerId !== currentPlayerId(state)) return state;
 
-  if (state.pendingDrawPlayerId !== null) {
+  const colorState = withChosenColorOnTopDiscard(state, action.color);
+
+  if (colorState.pendingDrawPlayerId !== null) {
     // wild_draw_four: move to challenging phase
     return {
-      ...state,
+      ...colorState,
       currentColor: action.color,
       phase: 'challenging',
       lastAction: action,
     };
   } else {
+    const actingPlayerId = currentPlayerId(colorState);
+    if (colorState.lastAction?.type === 'PLAY_CARD') {
+      const endedState = checkRoundEnd(
+        { ...colorState, currentColor: action.color, lastAction: action },
+        actingPlayerId,
+      );
+      if (endedState.phase === 'round_end' || endedState.phase === 'game_over') {
+        return endedState;
+      }
+    }
+
     // plain wild: advance to next player and return to playing
     const newIndex = getNextPlayerIndex(
-      state.currentPlayerIndex,
-      state.players.length,
-      state.direction,
+      colorState.currentPlayerIndex,
+      colorState.players.length,
+      colorState.direction,
     );
     return {
-      ...state,
+      ...colorState,
       currentColor: action.color,
       phase: 'playing',
       currentPlayerIndex: newIndex,
@@ -299,20 +336,7 @@ function handleChallenge(
   const wd4Player = state.players[wd4PlayerIdx]!;
   const challengerIdx = playerIndex(state, action.playerId);
 
-  // The previous top card (before the WD4) tells us what color was active
-  // The WD4 is now on top of the discard pile
-  // The card before WD4 determines the color that was in play
-  const discardLen = state.discardPile.length;
-  // At this point discardPile has [..., prev_top, wd4_card]
-  // We need the color that was active BEFORE the WD4 was played
-  // That is the color of the card just below the WD4
-  let prevColor: Color = state.currentColor ?? 'red';
-  if (discardLen >= 2) {
-    const prevCard = state.discardPile[discardLen - 2]!;
-    if (prevCard.type !== 'wild' && prevCard.type !== 'wild_draw_four') {
-      prevColor = prevCard.color;
-    }
-  }
+  const prevColor = getWildDrawFourChallengeColor(state);
 
   // Check legality: was WD4 valid given the player's hand (minus the WD4 itself)?
   // The player's current hand represents what they had after playing WD4 (minus WD4)
@@ -323,13 +347,16 @@ function handleChallenge(
     let newState = drawCards(state, action.playerId, 6);
     // Advance past the challenger
     const nextIdx = getNextPlayerIndex(challengerIdx, state.players.length, state.direction);
-    return {
+    newState = {
       ...newState,
       phase: 'playing',
       currentPlayerIndex: nextIdx,
       pendingDrawPlayerId: null,
       lastAction: action,
     };
+    return state.lastAction?.type === 'CHOOSE_COLOR'
+      ? checkRoundEnd(newState, wd4Player.id)
+      : newState;
   } else {
     // Challenge succeeds: WD4 player draws 4
     let newState = drawCards(state, wd4Player.id, 4);
@@ -352,18 +379,22 @@ function handleAccept(
   if (state.phase !== 'challenging') return state;
   if (action.playerId !== state.pendingDrawPlayerId) return state;
 
+  const wd4PlayerId = currentPlayerId(state);
   const accepterIdx = playerIndex(state, action.playerId);
   // Accepter draws 4
   let newState = drawCards(state, action.playerId, 4);
   // Advance past the accepter
   const nextIdx = getNextPlayerIndex(accepterIdx, state.players.length, state.direction);
-  return {
+  newState = {
     ...newState,
     phase: 'playing',
     currentPlayerIndex: nextIdx,
     pendingDrawPlayerId: null,
     lastAction: action,
   };
+  return state.lastAction?.type === 'CHOOSE_COLOR'
+    ? checkRoundEnd(newState, wd4PlayerId)
+    : newState;
 }
 
 function handleCallUno(
@@ -374,8 +405,8 @@ function handleCallUno(
   if (idx === -1) return state;
 
   const player = state.players[idx]!;
-  // Only valid with <= 2 cards
-  if (player.hand.length > 2) return state;
+  // A player may call before or after playing down to one card, but not at zero.
+  if (player.hand.length < 1 || player.hand.length > 2) return state;
 
   const players = state.players.map((p, i) =>
     i === idx ? { ...p, calledUno: true } : p
