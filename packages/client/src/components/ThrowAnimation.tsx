@@ -64,8 +64,9 @@ export default function ThrowAnimation({ from, to, item, onComplete }: ThrowAnim
     await controls.start({
       x: xKeyframes,
       y: yKeyframes,
+      scale: 1.3,
       rotate: shouldRotate ? 360 : 0,
-      transition: { duration: 0.6, ease: 'easeInOut' },
+      transition: { duration: 0.6, ease: 'easeIn' },
     });
     setPhase('impact');
   }, [controls, xKeyframes, yKeyframes, shouldRotate]);
@@ -89,7 +90,7 @@ export default function ThrowAnimation({ from, to, item, onComplete }: ThrowAnim
       <AnimatePresence>
         {phase === 'flying' && (
           <motion.div
-            className="absolute text-effect-xl"
+            className="absolute text-throw"
             style={{ left: 0, top: 0 }}
             initial={{ x: from.x, y: from.y, scale: 1 }}
             animate={controls}
@@ -102,18 +103,16 @@ export default function ThrowAnimation({ from, to, item, onComplete }: ThrowAnim
       <AnimatePresence>
         {phase === 'impact' && (
           <>
-            {/* Scale pulse at destination */}
             <motion.div
-              className="absolute text-effect-xl"
+              className="absolute text-throw"
               style={{ left: to.x, top: to.y, transform: 'translate(-50%, -50%)' }}
               initial={{ scale: 1, opacity: 1 }}
-              animate={{ scale: [1, 1.3, 0], opacity: [1, 1, 0] }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
+              animate={{ scale: [1, 2, 0], opacity: [1, 1, 0] }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
             >
               {item}
             </motion.div>
 
-            {/* Particles */}
             {particles.map((p) => (
               <motion.div
                 key={p.id}
@@ -121,18 +120,18 @@ export default function ThrowAnimation({ from, to, item, onComplete }: ThrowAnim
                 style={{
                   left: to.x,
                   top: to.y,
-                  width: 6,
-                  height: 6,
+                  width: 10,
+                  height: 10,
                   backgroundColor: p.color,
                 }}
                 initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
                 animate={{
-                  x: p.dx,
-                  y: p.dy,
+                  x: p.dx * 1.5,
+                  y: p.dy * 1.5,
                   opacity: 0,
                   scale: 0,
                 }}
-                transition={{ duration: 0.5, ease: 'easeOut' }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
               />
             ))}
           </>
