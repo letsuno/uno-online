@@ -63,6 +63,20 @@
   color: rgba(255, 255, 255, 0.5);
   box-shadow: var(--card-shadow);
   flex-shrink: 0;
+  transition: opacity 0.2s, transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.card-back--draw-ready {
+  border-color: var(--text-accent);
+  box-shadow:
+    0 0 0 4px rgba(251, 191, 36, 0.28),
+    0 0 26px rgba(251, 191, 36, 0.72),
+    var(--card-shadow);
+  animation: drawReadyPulse 1s ease-in-out infinite alternate;
+}
+
+.card-back--draw-ready:hover {
+  transform: translateY(-8px) scale(1.04);
 }
 
 .card-back--small {
@@ -88,5 +102,20 @@
     width: 52px;
     height: 76px;
     font-size: 12px;
+  }
+}
+
+@keyframes drawReadyPulse {
+  from {
+    box-shadow:
+      0 0 0 3px rgba(251, 191, 36, 0.24),
+      0 0 18px rgba(251, 191, 36, 0.58),
+      var(--card-shadow);
+  }
+  to {
+    box-shadow:
+      0 0 0 6px rgba(251, 191, 36, 0.36),
+      0 0 32px rgba(251, 191, 36, 0.86),
+      var(--card-shadow);
   }
 }

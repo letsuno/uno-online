@@ -1,7 +1,7 @@
 import type { GameState, GameAction } from '../types/game.js';
 import type { Card } from '../types/card.js';
 import { isWildCard } from '../types/card.js';
-import { applyAction } from './game-engine.js';
+import { applyAction, checkRoundEnd } from './game-engine.js';
 import { canPlayCard } from './validation.js';
 import { reshuffleDiscardIntoDeck } from './deck.js';
 import { getNextPlayerIndex } from './turn.js';
@@ -51,6 +51,52 @@ function isWildType(card: Card): boolean {
  *  (draw_two and wild_draw_four). */
 function isFunctionCard(card: Card): boolean {
   return card.type === 'draw_two' || card.type === 'wild_draw_four';
+}
+
+function getCardDrawPenalty(card: Card): number {
+  if (card.type === 'draw_two') return 2;
+  if (card.type === 'wild_draw_four') return 4;
+  return 0;
+}
+
+function canStartDrawStack(state: GameState, card: Card): boolean {
+  const hr = state.settings.houseRules;
+  if (card.type === 'draw_two') {
+    return hr.stackDrawTwo || hr.crossStack;
+  }
+  if (card.type === 'wild_draw_four') {
+    return hr.stackDrawFour || hr.crossStack;
+  }
+  return false;
+}
+
+function putAttackCardOnStack(
+  state: GameState,
+  action: Extract<GameAction, { type: 'PLAY_CARD' }>,
+  card: Card,
+  stackAdd: number,
+): GameState {
+  const player = state.players[state.currentPlayerIndex]!;
+  const newHand = player.hand.filter(c => c.id !== action.cardId);
+  const playedCard =
+    card.type === 'wild_draw_four' && action.chosenColor
+      ? { ...card, chosenColor: action.chosenColor }
+      : card;
+  const players = state.players.map((p, i) =>
+    i === state.currentPlayerIndex ? { ...p, hand: newHand, calledUno: false } : p,
+  );
+  const nextIdx = getNextPlayerIndex(state.currentPlayerIndex, players.length, state.direction);
+  const newColor = card.type === 'draw_two' ? card.color : (action.chosenColor ?? state.currentColor);
+
+  return {
+    ...state,
+    players,
+    discardPile: [...state.discardPile, playedCard],
+    currentColor: newColor,
+    drawStack: state.drawStack + stackAdd,
+    currentPlayerIndex: nextIdx,
+    lastAction: action,
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -255,6 +301,10 @@ export function applyActionWithHouseRules(state: GameState, action: GameAction):
 
   // ── misplayPenalty or blindDraw: invalid PLAY_CARD draws 1 penalty card ───────────────
   if (action.type === 'PLAY_CARD' && (hr.misplayPenalty || hr.blindDraw)) {
+    const currentPlayer = state.players[state.currentPlayerIndex];
+    if (state.phase !== 'playing' || currentPlayer?.id !== action.playerId) {
+      return state;
+    }
     const standardResult = applyAction(state, action);
     if (standardResult === state) {
       return drawCardsFromDeck(state, action.playerId, 1);
@@ -323,32 +373,40 @@ export function applyActionWithHouseRules(state: GameState, action: GameAction):
       (hr.stackDrawFour && card.type === 'wild_draw_four' && topCard?.type === 'wild_draw_four') ||
       (hr.crossStack && ((card.type === 'draw_two' && topCard?.type === 'wild_draw_four') || (card.type === 'wild_draw_four' && topCard?.type === 'draw_two')));
     if (canStack) {
-      const newHand = player.hand.filter(c => c.id !== action.cardId);
-      const stackAdd = card.type === 'draw_two' ? 2 : 4;
-      const players = state.players.map((p, i) =>
-        i === state.currentPlayerIndex ? { ...p, hand: newHand } : p,
-      );
-      const nextIdx = getNextPlayerIndex(state.currentPlayerIndex, players.length, state.direction);
-      const newColor = card.type === 'draw_two' ? card.color : (action.chosenColor ?? state.currentColor);
-      return {
-        ...state,
-        players,
-        discardPile: [...state.discardPile, card],
-        currentColor: newColor,
-        drawStack: state.drawStack + stackAdd,
-        currentPlayerIndex: nextIdx,
-        lastAction: action,
-      };
+      return putAttackCardOnStack(state, action, card, getCardDrawPenalty(card));
     }
   }
 
   // ── Stacking: intercept DRAW_CARD when drawStack > 0 ─────────────────────
+  // Start a draw stack from the first +2/+4 when stacking is enabled.
+  if (action.type === 'PLAY_CARD' && state.drawStack === 0 && state.phase === 'playing') {
+    const player = state.players[state.currentPlayerIndex];
+    if (player?.id === action.playerId) {
+      const card = player.hand.find(c => c.id === action.cardId);
+      const topCard = state.discardPile[state.discardPile.length - 1];
+      if (
+        card &&
+        topCard &&
+        state.currentColor &&
+        canStartDrawStack(state, card) &&
+        canPlayCard(card, topCard, state.currentColor)
+      ) {
+        return putAttackCardOnStack(state, action, card, getCardDrawPenalty(card));
+      }
+    }
+  }
+
+  // Resolve an active draw stack when the target player draws.
   if (action.type === 'DRAW_CARD' && state.drawStack > 0 && (hr.stackDrawTwo || hr.stackDrawFour || hr.crossStack)) {
     const player = state.players[state.currentPlayerIndex];
     if (!player || player.id !== action.playerId) return state;
     let newState = drawCardsFromDeck(state, action.playerId, state.drawStack);
     const nextIdx = getNextPlayerIndex(newState.currentPlayerIndex, newState.players.length, newState.direction);
-    return { ...newState, drawStack: 0, currentPlayerIndex: nextIdx, lastAction: action };
+    newState = { ...newState, drawStack: 0, currentPlayerIndex: nextIdx, lastAction: action };
+    if (state.lastAction?.type === 'PLAY_CARD') {
+      return applyDoubleScore(state, checkRoundEnd(newState, state.lastAction.playerId));
+    }
+    return newState;
   }
 
   // ── drawUntilPlayable: override DRAW_CARD behaviour ──────────────────────

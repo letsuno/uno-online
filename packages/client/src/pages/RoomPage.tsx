@@ -50,6 +50,12 @@ export default function RoomPage() {
   const allReady = players.length >= 2 && players.every((p) => p.ready);
   const [houseRules, setHouseRules] = useState<HouseRules>(DEFAULT_HOUSE_RULES);
 
+  useEffect(() => {
+    if (room?.settings?.houseRules) {
+      setHouseRules({ ...DEFAULT_HOUSE_RULES, ...room.settings.houseRules });
+    }
+  }, [room?.settings?.houseRules]);
+
   const toggleReady = () => {
     getSocket().emit('room:ready', !myPlayer?.ready, () => {});
   };
@@ -57,6 +63,10 @@ export default function RoomPage() {
   const startGame = () => {
     getSocket().emit('game:start', (res: any) => {
       if (!res.success) alert(res.error);
+      if (res.success && res.gameState) {
+        setGameState(res.gameState);
+        navigate(`/game/${roomCode}`);
+      }
     });
   };
 

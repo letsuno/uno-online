@@ -53,6 +53,29 @@ export function setGameStartTime(roomCode: string): void {
   gameStartTimes.set(roomCode, Date.now());
 }
 
+async function emitTerminalStateIfNeeded(
+  io: SocketIOServer,
+  roomCode: string,
+  session: GameSession,
+  turnTimer: TurnTimer,
+): Promise<boolean> {
+  const state = session.getFullState();
+  if (state.phase !== 'round_end' && state.phase !== 'game_over') return false;
+
+  turnTimer.stop(roomCode);
+  io.to(roomCode).emit(state.phase === 'game_over' ? 'game:over' : 'game:round_end', {
+    winnerId: state.winnerId,
+    scores: Object.fromEntries(state.players.map((p) => [p.id, p.score])),
+  });
+
+  if (state.phase === 'game_over') {
+    await persistGameResult(roomCode, session, gameStartTimes.get(roomCode) ?? Date.now());
+    gameStartTimes.delete(roomCode);
+  }
+
+  return true;
+}
+
 export function registerGameEvents(
   socket: Socket,
   io: SocketIOServer,
@@ -78,18 +101,7 @@ export function registerGameEvents(
     }
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
-    const state = session.getFullState();
-    if (state.phase === 'round_end' || state.phase === 'game_over') {
-      turnTimer.stop(roomCode);
-      io.to(roomCode).emit(state.phase === 'game_over' ? 'game:over' : 'game:round_end', {
-        winnerId: state.winnerId,
-        scores: Object.fromEntries(state.players.map((p) => [p.id, p.score])),
-      });
-      if (state.phase === 'game_over') {
-        await persistGameResult(roomCode, session, gameStartTimes.get(roomCode) ?? Date.now());
-        gameStartTimes.delete(roomCode);
-      }
-    } else {
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer))) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
     callback?.({ success: true });
@@ -135,9 +147,13 @@ export function registerGameEvents(
     const ctx = getSession(socket, sessions);
     if (!ctx) return callback?.({ success: false });
     const { session, roomCode } = ctx;
-    session.applyAction({ type: 'CALL_UNO', playerId: data.user.userId });
+    const result = session.applyAction({ type: 'CALL_UNO', playerId: data.user.userId });
+    if (!result.success) return callback?.({ success: false, error: result.error });
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
+    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer)) {
+      return callback?.({ success: true });
+    }
     callback?.({ success: true });
   });
 
@@ -145,7 +161,8 @@ export function registerGameEvents(
     const ctx = getSession(socket, sessions);
     if (!ctx) return callback?.({ success: false });
     const { session, roomCode } = ctx;
-    session.applyAction({ type: 'CATCH_UNO', catcherId: data.user.userId, targetId: payload.targetPlayerId });
+    const result = session.applyAction({ type: 'CATCH_UNO', catcherId: data.user.userId, targetId: payload.targetPlayerId });
+    if (!result.success) return callback?.({ success: false, error: result.error });
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
     callback?.({ success: true });
@@ -159,7 +176,9 @@ export function registerGameEvents(
     if (!result.success) return callback?.({ success: false, error: result.error });
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
-    startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer))) {
+      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+    }
     callback?.({ success: true });
   });
 
@@ -171,7 +190,9 @@ export function registerGameEvents(
     if (!result.success) return callback?.({ success: false, error: result.error });
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
-    startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer))) {
+      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+    }
     callback?.({ success: true });
   });
 
@@ -188,7 +209,9 @@ export function registerGameEvents(
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
     const state = session.getFullState();
-    if (state.phase === 'challenging') {
+    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer)) {
+      // terminal state already emitted
+    } else if (state.phase === 'challenging') {
       turnTimer.stop(roomCode);
     } else {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);

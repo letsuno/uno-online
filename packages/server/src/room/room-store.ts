@@ -38,6 +38,10 @@ export async function setRoomStatus(redis: Redis, roomCode: string, status: Room
   await redis.hset(`room:${roomCode}`, 'status', status);
 }
 
+export async function setRoomSettings(redis: Redis, roomCode: string, settings: RoomSettings): Promise<void> {
+  await redis.hset(`room:${roomCode}`, 'settings', JSON.stringify(settings));
+}
+
 export async function setRoomOwner(redis: Redis, roomCode: string, ownerId: string): Promise<void> {
   await redis.hset(`room:${roomCode}`, 'ownerId', ownerId);
 }

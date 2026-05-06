@@ -19,7 +19,9 @@ export default function GameEffects() {
   const phase = useGameStore((s) => s.phase);
   const winnerId = useGameStore((s) => s.winnerId);
   const players = useGameStore((s) => s.players);
-  const userId = useAuthStore((s) => s.user?.id);
+  const authUserId = useAuthStore((s) => s.user?.id);
+  const viewerId = useGameStore((s) => s.viewerId);
+  const userId = viewerId ?? authUserId;
   const discardPile = useGameStore((s) => s.discardPile);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
   const prevTopCardRef = useRef<string | undefined>();
