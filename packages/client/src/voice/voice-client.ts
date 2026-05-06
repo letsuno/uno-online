@@ -4,7 +4,7 @@ import type {
   Producer,
   Consumer,
 } from 'mediasoup-client/types';
-import { getSocket } from '../socket.js';
+import { getSocket } from '../socket';
 
 export class VoiceClient {
   private device: Device | null = null;

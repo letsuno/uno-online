@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X } from 'lucide-react';
-import { getSocket } from '../socket.js';
+import { getSocket } from '../socket';
 
 interface ChatMessage { userId: string; username: string; text: string; timestamp: number; }
 

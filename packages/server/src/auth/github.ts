@@ -1,4 +1,4 @@
-import type { Config } from '../config.js';
+import type { Config } from '../config';
 
 export interface GitHubTokenResponse {
   access_token: string;

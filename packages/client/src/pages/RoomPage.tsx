@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Crown, Check } from 'lucide-react';
-import { useAuthStore } from '../stores/auth-store.js';
-import { useRoomStore } from '../stores/room-store.js';
-import { useGameStore } from '../stores/game-store.js';
-import { getSocket, connectSocket } from '../socket.js';
-import VoicePanel from '../voice/VoicePanel.js';
-import HouseRulesPanel from '../components/HouseRulesPanel.js';
+import { useAuthStore } from '../stores/auth-store';
+import { useRoomStore } from '../stores/room-store';
+import { useGameStore } from '../stores/game-store';
+import { getSocket, connectSocket } from '../socket';
+import VoicePanel from '../voice/VoicePanel';
+import HouseRulesPanel from '../components/HouseRulesPanel';
 import { DEFAULT_HOUSE_RULES } from '@uno-online/shared';
 import type { HouseRules } from '@uno-online/shared';
 

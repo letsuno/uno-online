@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, AlertCircle, CheckCircle, Info } from 'lucide-react';
-import { useToastStore } from '../stores/toast-store.js';
+import { useToastStore } from '../stores/toast-store';
 
 const ICON = { info: Info, error: AlertCircle, success: CheckCircle } as const;
 const BG = { info: 'rgba(59,130,246,0.9)', error: 'rgba(239,68,68,0.9)', success: 'rgba(34,197,94,0.9)' } as const;

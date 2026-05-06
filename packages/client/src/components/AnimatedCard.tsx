@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import type { Card as CardType } from '@uno-online/shared';
-import Card from './Card.js';
+import Card from './Card';
 
 interface AnimatedCardProps {
   card: CardType;

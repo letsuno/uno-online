@@ -8,7 +8,7 @@ import {
   getRoomPlayers,
   setPlayerReady,
   deleteRoom,
-} from '../../src/room/room-store.js';
+} from '../../src/room/room-store';
 
 const redis = new Redis(process.env['REDIS_URL'] ?? 'redis://localhost:6379');
 const TEST_CODE = 'TEST01';

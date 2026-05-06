@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useGameStore } from '../stores/game-store.js';
-import { useAuthStore } from '../stores/auth-store.js';
-import { playSound } from '../sound/sound-manager.js';
+import { useGameStore } from '../stores/game-store';
+import { useAuthStore } from '../stores/auth-store';
+import { playSound } from '../sound/sound-manager';
 import '../styles/game.css';
 
 interface GameActionsProps {

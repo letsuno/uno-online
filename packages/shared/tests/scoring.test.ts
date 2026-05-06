@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { calculateRoundScore, calculateRoundScores } from '../src/rules/scoring.js';
-import type { Card } from '../src/types/card.js';
-import type { Player } from '../src/types/game.js';
+import { calculateRoundScore, calculateRoundScores } from '../src/rules/scoring';
+import type { Card } from '../src/types/card';
+import type { Player } from '../src/types/game';
 
 function makePlayer(id: string, hand: Card[]): Player {
   return { id, name: id, hand, score: 0, connected: true, calledUno: false };

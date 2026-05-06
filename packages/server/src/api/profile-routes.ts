@@ -1,8 +1,8 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import type { Config } from '../config.js';
-import { createAuthHook } from '../auth/middleware.js';
-import type { TokenPayload } from '../auth/jwt.js';
-import { getUserProfile } from '../db/user-repo.js';
+import type { Config } from '../config';
+import { createAuthHook } from '../auth/middleware';
+import type { TokenPayload } from '../auth/jwt';
+import { getUserProfile } from '../db/user-repo';
 
 interface AuthenticatedRequest extends FastifyRequest {
   user: TokenPayload;

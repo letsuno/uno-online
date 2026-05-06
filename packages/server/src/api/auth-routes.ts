@@ -1,9 +1,9 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import type { Config } from '../config.js';
-import { exchangeCodeForToken, fetchGitHubUser } from '../auth/github.js';
-import { signToken, verifyToken } from '../auth/jwt.js';
-import type { TokenPayload } from '../auth/jwt.js';
-import { findOrCreateUser, getUserById } from '../db/user-repo.js';
+import type { Config } from '../config';
+import { exchangeCodeForToken, fetchGitHubUser } from '../auth/github';
+import { signToken, verifyToken } from '../auth/jwt';
+import type { TokenPayload } from '../auth/jwt';
+import { findOrCreateUser, getUserById } from '../db/user-repo';
 
 interface AuthenticatedRequest extends FastifyRequest {
   user: TokenPayload;

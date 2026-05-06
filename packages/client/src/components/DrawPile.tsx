@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import CardBack from './CardBack.js';
-import { useGameStore } from '../stores/game-store.js';
-import { useAuthStore } from '../stores/auth-store.js';
-import { getPlayableCardIds } from '../utils/playable-cards.js';
+import CardBack from './CardBack';
+import { useGameStore } from '../stores/game-store';
+import { useAuthStore } from '../stores/auth-store';
+import { getPlayableCardIds } from '../utils/playable-cards';
 
 interface DrawPileProps { onDraw: () => void; }
 

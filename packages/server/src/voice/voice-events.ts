@@ -1,7 +1,7 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { DtlsParameters, MediaKind, RtpCapabilities, RtpParameters } from 'mediasoup/types';
-import { RoomVoice } from './room-voice.js';
-import type { TokenPayload } from '../auth/jwt.js';
+import { RoomVoice } from './room-voice';
+import type { TokenPayload } from '../auth/jwt';
 
 interface SocketData {
   user: TokenPayload;

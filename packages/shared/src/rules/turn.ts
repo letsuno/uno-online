@@ -1,4 +1,4 @@
-import type { Direction } from '../types/game.js';
+import type { Direction } from '../types/game';
 
 export function getNextPlayerIndex(
   currentIndex: number,

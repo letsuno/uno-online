@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { initializeGame, applyAction, getPlayableCards } from '../src/rules/index.js';
-import type { GameState, GameAction } from '../src/types/game.js';
+import { initializeGame, applyAction, getPlayableCards } from '../src/rules/index';
+import type { GameState, GameAction } from '../src/types/game';
 
 function playOneRound(state: GameState, maxTurns = 500): GameState {
   let current = state;

@@ -2,13 +2,13 @@ import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type Redis from 'ioredis';
 import type { RoomSettings } from '@uno-online/shared';
 import { MIN_PLAYERS, DEFAULT_HOUSE_RULES } from '@uno-online/shared';
-import { RoomManager } from '../room/room-manager.js';
-import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus } from '../room/room-store.js';
-import { GameSession } from '../game/game-session.js';
-import { saveGameState } from '../game/game-store.js';
-import type { TurnTimer } from '../game/turn-timer.js';
-import type { TokenPayload } from '../auth/jwt.js';
-import { setGameStartTime } from './game-events.js';
+import { RoomManager } from '../room/room-manager';
+import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus } from '../room/room-store';
+import { GameSession } from '../game/game-session';
+import { saveGameState } from '../game/game-store';
+import type { TurnTimer } from '../game/turn-timer';
+import type { TokenPayload } from '../auth/jwt';
+import { setGameStartTime } from './game-events';
 
 interface SocketData {
   user: TokenPayload;

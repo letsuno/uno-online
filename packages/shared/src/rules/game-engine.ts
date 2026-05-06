@@ -1,10 +1,10 @@
-import type { GameState, GameAction } from '../types/game.js';
-import type { Color } from '../types/card.js';
-import { reshuffleDiscardIntoDeck } from './deck.js';
-import { canPlayCard, isValidWildDrawFour } from './validation.js';
-import { getNextPlayerIndex, reverseDirection } from './turn.js';
-import { calculateRoundScores } from './scoring.js';
-import { UNO_PENALTY_CARDS } from '../constants/scoring.js';
+import type { GameState, GameAction } from '../types/game';
+import type { Color } from '../types/card';
+import { reshuffleDiscardIntoDeck } from './deck';
+import { canPlayCard, isValidWildDrawFour } from './validation';
+import { getNextPlayerIndex, reverseDirection } from './turn';
+import { calculateRoundScores } from './scoring';
+import { UNO_PENALTY_CARDS } from '../constants/scoring';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers

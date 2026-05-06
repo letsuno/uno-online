@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getNextPlayerIndex, reverseDirection } from '../src/rules/turn.js';
+import { getNextPlayerIndex, reverseDirection } from '../src/rules/turn';
 
 describe('getNextPlayerIndex', () => {
   it('goes clockwise: 0 -> 1 -> 2 -> 0', () => {

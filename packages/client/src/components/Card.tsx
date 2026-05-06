@@ -1,7 +1,7 @@
 import type { Card as CardType } from '@uno-online/shared';
 import '../styles/cards.css';
-import { useSettingsStore } from '../stores/settings-store.js';
-import ColorBlindOverlay from './ColorBlindOverlay.js';
+import { useSettingsStore } from '../stores/settings-store';
+import ColorBlindOverlay from './ColorBlindOverlay';
 
 const COLOR_SYMBOLS: Record<string, string> = {
   red: '♦',

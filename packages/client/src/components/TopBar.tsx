@@ -1,6 +1,6 @@
 import { Eye, Volume2, VolumeX, Spade } from 'lucide-react';
-import TurnTimer from './TurnTimer.js';
-import { useSettingsStore } from '../stores/settings-store.js';
+import TurnTimer from './TurnTimer';
+import { useSettingsStore } from '../stores/settings-store';
 import '../styles/game.css';
 
 interface TopBarProps { roomCode: string; }

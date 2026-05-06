@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createDeck, shuffleDeck, reshuffleDiscardIntoDeck } from '../src/rules/deck.js';
-import type { Card } from '../src/types/card.js';
+import { createDeck, shuffleDeck, reshuffleDiscardIntoDeck } from '../src/rules/deck';
+import type { Card } from '../src/types/card';
 
 describe('createDeck', () => {
   it('creates a deck of 108 cards', () => {

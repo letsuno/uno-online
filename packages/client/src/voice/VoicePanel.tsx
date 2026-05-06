@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Mic, MicOff, Volume2, VolumeX, X } from 'lucide-react';
-import { VoiceClient } from './voice-client.js';
+import { VoiceClient } from './voice-client';
 
 function checkVoiceSupport(): string | null {
   if (!navigator.mediaDevices?.getUserMedia) return '浏览器不支持麦克风';

@@ -1,7 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Socket } from 'socket.io';
-import { verifyToken } from './jwt.js';
-import type { TokenPayload } from './jwt.js';
+import { verifyToken } from './jwt';
+import type { TokenPayload } from './jwt';
 
 export function createAuthHook(jwtSecret: string) {
   return async function authHook(request: FastifyRequest, reply: FastifyReply) {

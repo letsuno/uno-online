@@ -1,5 +1,5 @@
-import type { Card, Color } from '../types/card.js';
-import { isWildCard, isColoredCard } from '../types/card.js';
+import type { Card, Color } from '../types/card';
+import { isWildCard, isColoredCard } from '../types/card';
 
 function getCardSymbol(card: Card): string | null {
   if (card.type === 'number') return `number_${card.value}`;
