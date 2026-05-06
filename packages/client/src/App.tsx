@@ -1,12 +1,12 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import HomePage from './pages/HomePage.js';
-import AuthCallback from './pages/AuthCallback.js';
-import LobbyPage from './pages/LobbyPage.js';
-import RoomPage from './pages/RoomPage.js';
-import GamePage from './pages/GamePage.js';
-import ProfilePage from './pages/ProfilePage.js';
-import ProtectedRoute from './components/ProtectedRoute.js';
-import ToastContainer from './components/Toast.js';
+import HomePage from './pages/HomePage';
+import AuthCallback from './pages/AuthCallback';
+import LobbyPage from './pages/LobbyPage';
+import RoomPage from './pages/RoomPage';
+import GamePage from './pages/GamePage';
+import ProfilePage from './pages/ProfilePage';
+import ProtectedRoute from './components/ProtectedRoute';
+import ToastContainer from './components/Toast';
 
 export default function App() {
   return (

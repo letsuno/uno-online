@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { applyAction } from '../src/rules/game-engine.js';
-import type { GameState, Player } from '../src/types/game.js';
-import type { Card, Color } from '../src/types/card.js';
+import { applyAction } from '../src/rules/game-engine';
+import type { GameState, Player } from '../src/types/game';
+import type { Card, Color } from '../src/types/card';
 
 function makeCard(type: Card['type'], color: Color | null, extra?: { value?: number; id?: string }): Card {
   const id = extra?.id ?? `card_${Math.random().toString(36).slice(2, 8)}`;

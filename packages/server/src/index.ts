@@ -1,8 +1,8 @@
-import { loadConfig } from './config.js';
-import { createApp } from './app.js';
-import { disconnectPrisma } from './db/prisma.js';
-import { disconnectRedis } from './redis/client.js';
-import { closeWorkers } from './voice/media-worker.js';
+import { loadConfig } from './config';
+import { createApp } from './app';
+import { disconnectPrisma } from './db/prisma';
+import { disconnectRedis } from './redis/client';
+import { closeWorkers } from './voice/media-worker';
 
 async function main() {
   const config = loadConfig();

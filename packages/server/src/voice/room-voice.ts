@@ -8,7 +8,7 @@ import type {
   MediaKind,
   RtpParameters,
 } from 'mediasoup/types';
-import { getOrCreateWorker, getMediaCodecs, getOrCreateWebRtcServer } from './media-worker.js';
+import { getOrCreateWorker, getMediaCodecs, getOrCreateWebRtcServer } from './media-worker';
 
 interface PeerTransports {
   sendTransport: WebRtcTransport;

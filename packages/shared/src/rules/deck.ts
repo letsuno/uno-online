@@ -1,5 +1,5 @@
-import type { Card } from '../types/card.js';
-import { COLORS } from '../constants/deck.js';
+import type { Card } from '../types/card';
+import { COLORS } from '../constants/deck';
 
 let cardIdCounter = 0;
 

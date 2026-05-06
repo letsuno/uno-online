@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Spade } from 'lucide-react';
-import { useAuthStore } from '../stores/auth-store.js';
-import { useRoomStore } from '../stores/room-store.js';
-import { getSocket, connectSocket } from '../socket.js';
+import { useAuthStore } from '../stores/auth-store';
+import { useRoomStore } from '../stores/room-store';
+import { getSocket, connectSocket } from '../socket';
 
 export default function LobbyPage() {
   const user = useAuthStore((s) => s.user);

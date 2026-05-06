@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import AnimatedCard from './AnimatedCard.js';
-import { useGameStore } from '../stores/game-store.js';
-import { useAuthStore } from '../stores/auth-store.js';
-import { getPlayableCardIds } from '../utils/playable-cards.js';
+import AnimatedCard from './AnimatedCard';
+import { useGameStore } from '../stores/game-store';
+import { useAuthStore } from '../stores/auth-store';
+import { getPlayableCardIds } from '../utils/playable-cards';
 import '../styles/game.css';
 
 interface PlayerHandProps {

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useGameStore } from '../stores/game-store.js';
+import { useGameStore } from '../stores/game-store';
 import '../styles/game.css';
 
 export default function DirectionIndicator() {

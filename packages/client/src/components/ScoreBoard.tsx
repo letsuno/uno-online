@@ -1,5 +1,5 @@
 import { Trophy, BarChart3, Crown } from 'lucide-react';
-import { useGameStore } from '../stores/game-store.js';
+import { useGameStore } from '../stores/game-store';
 
 interface ScoreBoardProps { onPlayAgain: () => void; onRematch: () => void; onBackToLobby: () => void; }
 

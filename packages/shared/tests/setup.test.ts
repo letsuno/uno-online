@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { dealCards, handleFirstDiscard, initializeGame } from '../src/rules/setup.js';
-import { createDeck, shuffleDeck } from '../src/rules/deck.js';
-import type { Card } from '../src/types/card.js';
+import { dealCards, handleFirstDiscard, initializeGame } from '../src/rules/setup';
+import { createDeck, shuffleDeck } from '../src/rules/deck';
+import type { Card } from '../src/types/card';
 
 describe('dealCards', () => {
   it('deals 7 cards to each player from the deck', () => {

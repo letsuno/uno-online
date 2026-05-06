@@ -1,4 +1,4 @@
-import { useSettingsStore } from '../stores/settings-store.js';
+import { useSettingsStore } from '../stores/settings-store';
 
 type SoundName =
   | 'play_card'

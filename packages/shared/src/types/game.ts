@@ -1,5 +1,5 @@
-import type { Card, Color } from './card.js';
-import type { HouseRules } from './house-rules.js';
+import type { Card, Color } from './card';
+import type { HouseRules } from './house-rules';
 
 export type GamePhase =
   | 'waiting'

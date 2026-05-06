@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { apiPost, apiGet } from '../api.js';
+import { apiPost, apiGet } from '../api';
 
 interface User {
   id: string;

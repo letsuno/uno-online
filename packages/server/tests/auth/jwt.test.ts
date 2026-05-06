@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { signToken, verifyToken } from '../../src/auth/jwt.js';
+import { signToken, verifyToken } from '../../src/auth/jwt';
 
 const TEST_SECRET = 'test-secret-that-is-at-least-32-chars-long';
 

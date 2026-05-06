@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import Card from './Card.js';
-import { useGameStore } from '../stores/game-store.js';
+import Card from './Card';
+import { useGameStore } from '../stores/game-store';
 
 export default function DiscardPile() {
   const discardPile = useGameStore((s) => s.discardPile);

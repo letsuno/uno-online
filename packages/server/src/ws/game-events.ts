@@ -1,12 +1,12 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type Redis from 'ioredis';
 import type { Color } from '@uno-online/shared';
-import { GameSession } from '../game/game-session.js';
-import { saveGameState } from '../game/game-store.js';
-import { emitGameUpdate, startTurnTimer } from './room-events.js';
-import type { TurnTimer } from '../game/turn-timer.js';
-import type { TokenPayload } from '../auth/jwt.js';
-import { recordGameResult } from '../db/user-repo.js';
+import { GameSession } from '../game/game-session';
+import { saveGameState } from '../game/game-store';
+import { emitGameUpdate, startTurnTimer } from './room-events';
+import type { TurnTimer } from '../game/turn-timer';
+import type { TokenPayload } from '../auth/jwt';
+import { recordGameResult } from '../db/user-repo';
 
 interface SocketData {
   user: TokenPayload;

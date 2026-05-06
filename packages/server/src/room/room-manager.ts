@@ -4,7 +4,7 @@ import { MAX_PLAYERS, ROOM_CODE_LENGTH, ROOM_CODE_CHARS, DEFAULT_HOUSE_RULES } f
 import {
   createRoom, getRoom, addPlayerToRoom, removePlayerFromRoom,
   getRoomPlayers, setPlayerReady, setRoomOwner, deleteRoom,
-} from './room-store.js';
+} from './room-store';
 
 function generateRoomCode(): string {
   let code = '';
