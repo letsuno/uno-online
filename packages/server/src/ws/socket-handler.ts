@@ -10,6 +10,7 @@ import { registerVoiceEvents, removeVoicePeer } from '../voice/voice-events';
 import { getRoom, getRoomPlayers, setRoomOwner } from '../room/room-store';
 import { saveGameState, loadGameState } from '../game/game-store';
 import { checkRateLimit, clearRateLimit } from './rate-limiter';
+import { registerInteractionEvents, clearThrowTimestamp } from './interaction-events';
 
 const RECONNECT_TIMEOUT_MS = 60_000;
 
@@ -147,9 +148,11 @@ export function setupSocketHandlers(io: SocketIOServer, redis: Redis, jwtSecret:
     registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions);
     registerGameEvents(socket, io, redis, turnTimer, sessions);
     registerVoiceEvents(socket, io);
+    registerInteractionEvents(socket, io);
 
     socket.on('disconnect', async () => {
       clearRateLimit(socket.id);
+      clearThrowTimestamp(userId);
       const roomCode = socket.data.roomCode;
       if (roomCode) {
         await removeVoicePeer(roomCode, userId, io);
