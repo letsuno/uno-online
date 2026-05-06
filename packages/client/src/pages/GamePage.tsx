@@ -18,6 +18,9 @@ import VoicePanel from '../voice/VoicePanel';
 import GameEffects from '../components/GameEffects';
 import UnoCallEffect from '../components/UnoCallEffect';
 import Confetti from '../components/Confetti';
+import HouseRulesCard from '../components/HouseRulesCard';
+import GameLog from '../components/GameLog';
+import { useGameLogStore } from '../stores/game-log-store';
 
 export default function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -31,6 +34,11 @@ export default function GamePage() {
   const drawStack = useGameStore((s) => s.drawStack);
   const settings = useGameStore((s) => s.settings);
 
+  const lastAction = useGameStore((s) => s.lastAction);
+  const discardPile = useGameStore((s) => s.discardPile);
+  const addLogEntry = useGameLogStore((s) => s.addEntry);
+  const clearLog = useGameLogStore((s) => s.clear);
+
   const isMyTurn = players[currentPlayerIndex]?.id === userId;
   const needsColorPick = phase === 'choosing_color' && isMyTurn;
   const showScoreBoard = phase === 'round_end' || phase === 'game_over';
@@ -38,6 +46,7 @@ export default function GamePage() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
   const [showTurnBanner, setShowTurnBanner] = useState(false);
   const prevTurnRef = useRef(false);
+  const prevActionRef = useRef<typeof lastAction>(null);
 
   useEffect(() => {
     if (isMyTurn && phase === 'playing' && !prevTurnRef.current) {
@@ -48,6 +57,70 @@ export default function GamePage() {
     }
     prevTurnRef.current = isMyTurn && phase === 'playing';
   }, [isMyTurn, phase]);
+
+  useEffect(() => {
+    if (!lastAction || lastAction === prevActionRef.current) return;
+    prevActionRef.current = lastAction;
+
+    const findPlayer = (id: string) => players.find((p) => p.id === id);
+
+    if (lastAction.type === 'PLAY_CARD') {
+      const player = findPlayer(lastAction.playerId);
+      const topCard = discardPile[discardPile.length - 1];
+      if (!player || !topCard) return;
+
+      const typeMap: Record<string, 'play_number' | 'play_skip' | 'play_reverse' | 'play_draw_two' | 'play_wild' | 'play_wild_draw_four'> = {
+        number: 'play_number',
+        skip: 'play_skip',
+        reverse: 'play_reverse',
+        draw_two: 'play_draw_two',
+        wild: 'play_wild',
+        wild_draw_four: 'play_wild_draw_four',
+      };
+
+      addLogEntry({
+        type: typeMap[topCard.type] ?? 'play_number',
+        playerId: lastAction.playerId,
+        playerName: player.name,
+        card: topCard,
+      });
+    } else if (lastAction.type === 'DRAW_CARD') {
+      const player = findPlayer(lastAction.playerId);
+      if (!player) return;
+      addLogEntry({
+        type: 'draw',
+        playerId: lastAction.playerId,
+        playerName: player.name,
+      });
+    } else if (lastAction.type === 'CATCH_UNO') {
+      const catcher = findPlayer(lastAction.catcherId);
+      const target = findPlayer(lastAction.targetId);
+      if (!catcher || !target) return;
+      addLogEntry({
+        type: 'catch_uno',
+        playerId: lastAction.catcherId,
+        playerName: catcher.name,
+        targetId: lastAction.targetId,
+        targetName: target.name,
+        extra: '未喊 UNO!',
+      });
+    } else if (lastAction.type === 'CHALLENGE') {
+      const player = findPlayer(lastAction.playerId);
+      if (!player) return;
+      addLogEntry({
+        type: 'challenge',
+        playerId: lastAction.playerId,
+        playerName: player.name,
+        extra: '质疑 +4',
+      });
+    }
+  }, [lastAction, players, discardPile, addLogEntry]);
+
+  useEffect(() => {
+    if (phase === 'dealing') {
+      clearLog();
+    }
+  }, [phase, clearLog]);
 
   useEffect(() => {
     connectSocket();
@@ -187,6 +260,8 @@ export default function GamePage() {
       <PlayerHand onPlayCard={playCard} />
       <ChatBox />
       <VoicePanel />
+      <HouseRulesCard />
+      <GameLog />
       <GameEffects />
       <UnoCallEffect />
       {(phase === 'round_end' || phase === 'game_over') && <Confetti />}
