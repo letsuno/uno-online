@@ -7,6 +7,7 @@ import PlayerNode from './PlayerNode';
 import ThrowAnimation from './ThrowAnimation';
 import { useGameStore } from '../stores/game-store';
 import { useAuthStore } from '../stores/auth-store';
+import { useRoomStore } from '../stores/room-store';
 import { getSocket } from '../socket';
 import { useToastStore } from '../stores/toast-store';
 
@@ -43,6 +44,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
   const authUserId = useAuthStore((s) => s.user?.id);
   const viewerId = useGameStore((s) => s.viewerId);
   const userId = viewerId ?? authUserId;
+  const ownerId = useRoomStore((s) => s.room?.ownerId);
 
   // Chat messages per player
   const [chatMessages, setChatMessages] = useState<Map<string, string>>(new Map());
@@ -320,6 +322,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
             index={i}
             isActive={isActive}
             isMe={isMe}
+            isHost={player.id === ownerId}
             position={pos}
             turnEndTime={isActive ? turnEndTime : null}
             turnTimeLimit={settings?.turnTimeLimit}

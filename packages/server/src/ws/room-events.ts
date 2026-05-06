@@ -3,7 +3,7 @@ import type { KvStore } from '../kv/types.js';
 import type { RoomSettings } from '@uno-online/shared';
 import { MIN_PLAYERS, DEFAULT_HOUSE_RULES } from '@uno-online/shared';
 import { RoomManager } from '../room/room-manager';
-import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus } from '../room/room-store';
+import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, deleteRoom } from '../room/room-store';
 import { GameSession } from '../game/game-session';
 import { saveGameState } from '../game/game-store';
 import type { TurnTimer } from '../game/turn-timer';
@@ -104,6 +104,25 @@ export function registerRoomEvents(
     const updatedRoom = await getRoom(redis, roomCode);
     io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
     callback?.({ success: true, room: updatedRoom });
+  });
+
+  socket.on('room:dissolve', async (callback) => {
+    const roomCode = data.roomCode;
+    if (!roomCode) return callback?.({ success: false, error: 'Not in a room' });
+    const room = await getRoom(redis, roomCode);
+    if (!room || room.ownerId !== data.user.userId) {
+      return callback?.({ success: false, error: 'Only room owner can dissolve' });
+    }
+    turnTimer.stop(roomCode);
+    sessions.delete(roomCode);
+    io.to(roomCode).emit('room:dissolved');
+    const sockets = await io.in(roomCode).fetchSockets();
+    for (const s of sockets) {
+      (s.data as SocketData).roomCode = null;
+      s.leave(roomCode);
+    }
+    await deleteRoom(redis, roomCode);
+    callback?.({ success: true });
   });
 
   socket.on('game:start', async (callback) => {
