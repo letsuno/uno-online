@@ -27,50 +27,46 @@ export default function ChatBox() {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} style={{
-        position: 'fixed', bottom: 100, right: 12, width: 40, height: 40, borderRadius: '50%',
-        background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.2)',
-        color: 'var(--text-primary)', fontSize: 18, cursor: 'pointer', zIndex: 50,
-      }}>
+      <button
+        onClick={() => setOpen(true)}
+        className="fixed bottom-[100px] right-3 w-10 h-10 rounded-full bg-black/30 border border-white/20 text-foreground text-lg cursor-pointer z-50 flex items-center justify-center"
+      >
         <MessageCircle size={18} />
       </button>
     );
   }
 
   return (
-    <div style={{
-      position: 'fixed', bottom: 100, right: 12, width: 280, height: 320,
-      background: 'var(--bg-secondary)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.15)',
-      display: 'flex', flexDirection: 'column', zIndex: 50, overflow: 'hidden',
-    }}>
-      <div style={{ padding: '8px 12px', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 13, fontWeight: 'bold' }}>聊天</span>
-        <button onClick={() => setOpen(false)} style={{ background: 'none', color: 'var(--text-secondary)', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center' }}><X size={16} /></button>
+    <div className="fixed bottom-[100px] right-3 w-[280px] h-[320px] bg-card rounded-xl border border-white/15 flex flex-col z-50 overflow-hidden">
+      <div className="px-3 py-2 bg-muted flex justify-between items-center">
+        <span className="text-[13px] font-bold">聊天</span>
+        <button onClick={() => setOpen(false)} className="bg-transparent text-muted-foreground text-base cursor-pointer flex items-center border-none">
+          <X size={16} />
+        </button>
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: 8, fontSize: 12 }}>
+      <div className="flex-1 overflow-y-auto p-2 text-xs">
         {messages.map((m, i) => (
-          <div key={i} style={{ marginBottom: 4 }}>
-            <span style={{ color: 'var(--text-accent)', fontWeight: 'bold' }}>{m.username}: </span>
+          <div key={i} className="mb-1">
+            <span className="text-accent font-bold">{m.username}: </span>
             <span>{m.text}</span>
           </div>
         ))}
         <div ref={bottomRef} />
       </div>
-      <div style={{ display: 'flex', gap: 2, padding: '2px 6px', flexWrap: 'wrap' }}>
+      <div className="flex gap-0.5 px-1.5 py-0.5 flex-wrap">
         {['👍', '😂', '😭', '🎉', '💪', '😱', '🤔', '❤️'].map((emoji) => (
           <button key={emoji} onClick={() => { getSocket().emit('chat:message', { text: emoji }); }}
-            style={{ background: 'none', border: 'none', fontSize: 14, cursor: 'pointer', padding: '2px' }}>
+            className="bg-transparent border-none text-sm cursor-pointer p-0.5">
             {emoji}
           </button>
         ))}
       </div>
-      <div style={{ display: 'flex', padding: 6, gap: 4 }}>
+      <div className="flex p-1.5 gap-1">
         <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()}
-          placeholder="发送消息..." style={{
-            flex: 1, padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)',
-            background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 12,
-          }} />
-        <button onClick={send} className="btn-primary" style={{ padding: '6px 12px', fontSize: 12 }}>发送</button>
+          placeholder="发送消息..."
+          className="flex-1 px-2.5 py-1.5 rounded-lg border border-white/20 bg-muted text-foreground text-xs"
+        />
+        <button onClick={send} className="bg-primary text-primary-foreground px-3 py-1.5 rounded-3xl text-xs font-bold">发送</button>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { Ban, RotateCcw, Trophy } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
 import { useAuthStore } from '../stores/auth-store';
 import { playSound } from '../sound/sound-manager';
+import { cn } from '@/lib/utils';
 
 interface Effect {
   id: string;
@@ -68,7 +69,7 @@ export default function GameEffects() {
   }, [phase]);
 
   return (
-    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="fixed inset-0 pointer-events-none z-[90] flex items-center justify-center">
       <AnimatePresence>
         {effects.map((effect) => (
           <motion.div
@@ -77,21 +78,16 @@ export default function GameEffects() {
             animate={{ scale: 1.2, opacity: 1, y: 0 }}
             exit={{ scale: 2, opacity: 0, y: -30 }}
             transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-            style={{
-              position: 'absolute',
-              fontFamily: 'var(--font-game)',
-              fontSize: effect.type === 'victory' ? 48 : 36,
-              fontWeight: 900,
-              color: effect.type === 'victory' ? 'var(--text-accent)' :
-                     effect.type === 'draw' ? 'var(--color-red)' :
-                     effect.type === 'skip' ? '#ff6b6b' :
-                     effect.type === 'reverse' ? 'var(--color-blue)' : 'var(--text-accent)',
-              textShadow: '3px 4px 0px rgba(0,0,0,0.3)',
-              whiteSpace: 'nowrap',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-            }}
+            className={cn(
+              'absolute font-game font-black whitespace-nowrap flex flex-col items-center gap-1 [text-shadow:3px_4px_0px_rgba(0,0,0,0.3)]',
+              effect.type === 'victory' ? 'text-[48px] text-accent' :
+              effect.type === 'draw' ? 'text-[36px] text-destructive' :
+              effect.type === 'skip' ? 'text-[36px] text-[#ff6b6b]' :
+              effect.type === 'reverse' ? 'text-[36px] text-uno-blue' :
+              'text-[36px] text-accent'
+            )}
           >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="flex items-center gap-2">
               {effect.type === 'skip' && <Ban size={32} />}
               {effect.type === 'reverse' && <RotateCcw size={32} />}
               {effect.type === 'victory' && <Trophy size={36} />}
@@ -102,7 +98,7 @@ export default function GameEffects() {
                 initial={{ y: -20, opacity: 0 }}
                 animate={{ y: 40, opacity: [1, 1, 0] }}
                 transition={{ duration: 1, ease: 'easeOut' }}
-                style={{ fontSize: 18, color: '#ff6b6b', display: 'flex', alignItems: 'center', gap: 4 }}
+                className="text-lg text-[#ff6b6b] flex items-center gap-1"
               >
                 <Ban size={14} /> → {effect.targetName}
               </motion.span>
@@ -111,7 +107,7 @@ export default function GameEffects() {
               <motion.span
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                style={{ fontSize: 16, color: 'var(--color-red)' }}
+                className="text-base text-destructive"
               >
                 → {effect.targetName}
               </motion.span>

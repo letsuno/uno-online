@@ -16,8 +16,8 @@ export default function AuthCallback() {
   }, [params, login, navigate]);
 
   return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: 'var(--text-secondary)', fontSize: 18 }}>登录中...</p>
+    <div className="flex flex-1 items-center justify-center">
+      <p className="text-lg text-muted-foreground">登录中...</p>
     </div>
   );
 }

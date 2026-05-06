@@ -1,7 +1,11 @@
 import { Trophy, BarChart3, Crown } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
+import { cn } from '@/lib/utils';
 
 interface ScoreBoardProps { onPlayAgain: () => void; onRematch: () => void; onBackToLobby: () => void; }
+
+const btnPrimary = 'bg-primary text-primary-foreground px-6 py-2.5 rounded-3xl text-base font-bold shadow-[3px_4px_0px_rgba(0,0,0,0.2)] transition-transform duration-150 hover:scale-105 active:scale-[0.97]';
+const btnSecondary = 'bg-secondary text-foreground px-5 py-2 rounded-[20px] text-sm border border-white/20';
 
 export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby }: ScoreBoardProps) {
   const players = useGameStore((s) => s.players);
@@ -11,31 +15,31 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby }: Sc
   const isGameOver = phase === 'game_over';
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-      <div style={{ background: 'var(--bg-secondary)', borderRadius: 20, padding: '32px 40px', minWidth: 300, textAlign: 'center' }}>
-        <h2 style={{ fontFamily: 'var(--font-game)', color: 'var(--text-accent)', marginBottom: 16 }}>
-          {isGameOver ? <><Trophy size={20} style={{ verticalAlign: 'middle' }} /> 游戏结束!</> : <><BarChart3 size={20} style={{ verticalAlign: 'middle' }} /> 本轮结束</>}
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100]">
+      <div className="bg-card rounded-[20px] px-10 py-8 min-w-[300px] text-center">
+        <h2 className="font-game text-accent mb-4">
+          {isGameOver ? <><Trophy size={20} className="inline align-middle" /> 游戏结束!</> : <><BarChart3 size={20} className="inline align-middle" /> 本轮结束</>}
         </h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
+        <table className="w-full border-collapse mb-5">
           <thead>
-            <tr style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
-              <th style={{ textAlign: 'left', padding: '4px 8px' }}>玩家</th>
-              <th style={{ textAlign: 'right', padding: '4px 8px' }}>分数</th>
+            <tr className="text-muted-foreground text-xs">
+              <th className="text-left px-2 py-1">玩家</th>
+              <th className="text-right px-2 py-1">分数</th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((p) => (
-              <tr key={p.id} style={{ color: p.id === winnerId ? 'var(--text-accent)' : 'var(--text-primary)' }}>
-                <td style={{ padding: '6px 8px', textAlign: 'left' }}>{p.id === winnerId && <Crown size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />}{p.name}</td>
-                <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>{p.score}</td>
+              <tr key={p.id} className={cn(p.id === winnerId ? 'text-accent' : 'text-foreground')}>
+                <td className="px-2 py-1.5 text-left">{p.id === winnerId && <Crown size={14} className="inline align-middle mr-1" />}{p.name}</td>
+                <td className="px-2 py-1.5 text-right font-bold">{p.score}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-          {!isGameOver && <button className="btn-primary" onClick={onPlayAgain}>继续下一轮</button>}
-          {isGameOver && <button className="btn-primary" onClick={onRematch}>再来一局</button>}
-          <button className="btn-secondary" onClick={onBackToLobby}>返回大厅</button>
+        <div className="flex gap-3 justify-center">
+          {!isGameOver && <button className={btnPrimary} onClick={onPlayAgain}>继续下一轮</button>}
+          {isGameOver && <button className={btnPrimary} onClick={onRematch}>再来一局</button>}
+          <button className={btnSecondary} onClick={onBackToLobby}>返回大厅</button>
         </div>
       </div>
     </div>

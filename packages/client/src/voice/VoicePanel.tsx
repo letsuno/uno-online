@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Mic, MicOff, Volume2, VolumeX, X } from 'lucide-react';
 import { VoiceClient } from './voice-client';
+import { cn } from '@/lib/utils';
 
 function checkVoiceSupport(): string | null {
   if (!navigator.mediaDevices?.getUserMedia) return '浏览器不支持麦克风';
@@ -72,55 +73,54 @@ export default function VoicePanel() {
     if (s !== undefined) setSpeakerMuted(s);
   }, []);
 
-  const btnStyle = (active: boolean): React.CSSProperties => ({
-    width: 36, height: 36, borderRadius: '50%', border: 'none',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 14, cursor: 'pointer',
-    background: active ? 'rgba(34,197,94,0.3)' : 'rgba(148,163,184,0.2)',
-    borderWidth: 2, borderStyle: 'solid',
-    borderColor: active ? '#22c55e' : 'rgba(148,163,184,0.3)',
-    color: 'var(--text-primary)',
-  });
+  const voiceBtn = (active: boolean) => cn(
+    'w-9 h-9 rounded-full border-2 flex items-center justify-center text-sm cursor-pointer text-foreground',
+    active
+      ? 'bg-[rgba(34,197,94,0.3)] border-[#22c55e]'
+      : 'bg-[rgba(148,163,184,0.2)] border-[rgba(148,163,184,0.3)]'
+  );
 
   return (
-    <div style={{
-      position: 'fixed', right: 12, top: '50%', transform: 'translateY(-50%)',
-      display: 'flex', flexDirection: 'column', gap: 8, zIndex: 50,
-    }}>
+    <div className="fixed right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-50">
       {!connected ? (
-        <button onClick={joinVoice} disabled={unsupported} style={{
-          ...btnStyle(false),
-          ...(unsupported ? { opacity: 0.4, cursor: 'not-allowed' } : {}),
-        }} title={unsupported ? (error ?? '不支持语音') : '加入语音'}>
+        <button
+          onClick={joinVoice}
+          disabled={unsupported}
+          className={cn(
+            voiceBtn(false),
+            unsupported && 'opacity-40 !cursor-not-allowed'
+          )}
+          title={unsupported ? (error ?? '不支持语音') : '加入语音'}
+        >
           <Mic size={16} />
         </button>
       ) : (
         <>
-          <button onClick={toggleMute} style={btnStyle(!muted)} title={muted ? '取消静音' : '静音'}>
+          <button onClick={toggleMute} className={voiceBtn(!muted)} title={muted ? '取消静音' : '静音'}>
             {muted ? <MicOff size={16} /> : <Mic size={16} />}
           </button>
-          <button onClick={toggleSpeaker} style={btnStyle(!speakerMuted)} title={speakerMuted ? '打开扬声器' : '关闭扬声器'}>
+          <button onClick={toggleSpeaker} className={voiceBtn(!speakerMuted)} title={speakerMuted ? '打开扬声器' : '关闭扬声器'}>
             {speakerMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
-          <button onClick={leaveVoice} style={{
-            ...btnStyle(false),
-            background: 'rgba(239,68,68,0.3)',
-            borderColor: '#ef4444',
-          }} title="退出语音">
+          <button
+            onClick={leaveVoice}
+            className={cn(voiceBtn(false), 'bg-[rgba(239,68,68,0.3)] border-[#ef4444]')}
+            title="退出语音"
+          >
             <X size={16} />
           </button>
           {peerCount > 0 && (
-            <span style={{
-              fontSize: 10, color: speakingCount > 0 ? '#22c55e' : 'var(--text-secondary)', textAlign: 'center',
-              background: 'rgba(0,0,0,0.4)', borderRadius: 8, padding: '2px 6px',
-            }}>
-              {speakingCount > 0 && <Volume2 size={10} style={{ verticalAlign: 'middle', marginRight: 2 }} />}{peerCount + 1}人
+            <span className={cn(
+              'text-[10px] text-center bg-black/40 rounded-lg px-1.5 py-0.5',
+              speakingCount > 0 ? 'text-[#22c55e]' : 'text-muted-foreground'
+            )}>
+              {speakingCount > 0 && <Volume2 size={10} className="inline align-middle mr-0.5" />}{peerCount + 1}人
             </span>
           )}
         </>
       )}
       {error && (
-        <span style={{ fontSize: 9, color: '#ef4444', maxWidth: 60, textAlign: 'center' }}>
+        <span className="text-[9px] text-[#ef4444] max-w-[60px] text-center">
           {error}
         </span>
       )}

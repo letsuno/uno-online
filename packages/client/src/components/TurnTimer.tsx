@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Timer } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
 import { playSound } from '../sound/sound-manager';
+import { cn } from '@/lib/utils';
 
 export default function TurnTimer() {
   const turnEndTime = useGameStore((s) => s.turnEndTime);
@@ -28,24 +29,16 @@ export default function TurnTimer() {
   const isCritical = secondsLeft <= 5;
   return (
     <>
-      <span style={{
-        color: isWarning ? 'var(--color-red)' : 'var(--text-secondary)',
-        fontWeight: isWarning ? 'bold' : 'normal',
-        animation: isWarning ? 'timerFlash 0.5s ease-in-out infinite alternate' : 'none',
-      }}>
-        <Timer size={14} style={{ verticalAlign: 'middle' }} /> {secondsLeft}s
+      <span className={cn(
+        isWarning
+          ? 'text-destructive font-bold animate-[timerFlash_0.5s_ease-in-out_infinite_alternate]'
+          : 'text-muted-foreground font-normal'
+      )}>
+        <Timer size={14} className="inline align-middle" /> {secondsLeft}s
       </span>
       {isCritical && secondsLeft > 0 && (
-        <div style={{
-          position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          pointerEvents: 'none', zIndex: 95,
-        }}>
-          <span style={{
-            fontSize: 72, fontWeight: 900, fontFamily: 'var(--font-game)',
-            color: 'var(--color-red)', textShadow: '3px 4px 0 rgba(0,0,0,0.3)',
-            animation: 'timerFlash 0.5s ease-in-out infinite alternate',
-            opacity: 0.8,
-          }}>
+        <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-[95]">
+          <span className="text-[72px] font-black font-game text-destructive animate-[timerFlash_0.5s_ease-in-out_infinite_alternate] opacity-80 [text-shadow:3px_4px_0_rgba(0,0,0,0.3)]">
             {secondsLeft}
           </span>
         </div>

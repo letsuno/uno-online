@@ -1,0 +1,127 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-uno-red: #ff3366;
+  --color-uno-blue: #4488ff;
+  --color-uno-green: #33cc66;
+  --color-uno-yellow: #fbbf24;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-game: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif;
+  --font-ui: system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  --background: #1a1a2e;
+  --foreground: #e2e8f0;
+  --card: #16213e;
+  --card-foreground: #e2e8f0;
+  --popover: #16213e;
+  --popover-foreground: #e2e8f0;
+  --primary: #fbbf24;
+  --primary-foreground: #1a1a2e;
+  --secondary: rgba(255, 255, 255, 0.08);
+  --secondary-foreground: #e2e8f0;
+  --muted: #0f3460;
+  --muted-foreground: #94a3b8;
+  --accent: #fbbf24;
+  --accent-foreground: #1a1a2e;
+  --destructive: #ff3366;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.15);
+  --input: rgba(255, 255, 255, 0.15);
+  --ring: rgba(251, 191, 36, 0.5);
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    @apply bg-background text-foreground font-[family-name:var(--font-ui)];
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  #root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  button {
+    cursor: pointer;
+    font-family: var(--font-game);
+    border: none;
+    outline: none;
+  }
+  input {
+    font-family: var(--font-ui);
+    outline: none;
+  }
+}
+
+@keyframes shake {
+  0% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  100% { transform: translateX(-4px); }
+}
+
+@keyframes timerFlash {
+  0% { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes drawReadyPulse {
+  from {
+    box-shadow:
+      0 0 0 3px rgba(251, 191, 36, 0.24),
+      0 0 18px rgba(251, 191, 36, 0.58),
+      3px 4px 0px rgba(0, 0, 0, 0.2);
+  }
+  to {
+    box-shadow:
+      0 0 0 6px rgba(251, 191, 36, 0.36),
+      0 0 32px rgba(251, 191, 36, 0.86),
+      3px 4px 0px rgba(0, 0, 0, 0.2);
+  }
+}
+
+@utility font-game {
+  font-family: var(--font-game);
+}
