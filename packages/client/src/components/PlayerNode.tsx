@@ -49,6 +49,7 @@ interface PlayerNodeProps {
   isActive: boolean;
   isMe: boolean;
   isHost: boolean;
+  isSkipped: boolean;
   position: { x: number; y: number };
   turnEndTime?: number | null;
   turnTimeLimit?: number;
@@ -64,6 +65,7 @@ export default function PlayerNode({
   isActive,
   isMe,
   isHost,
+  isSkipped,
   position,
   turnEndTime,
   turnTimeLimit,
@@ -216,6 +218,21 @@ export default function PlayerNode({
         {isHost && (
           <div className="absolute -top-1.5 -left-1.5 text-sm leading-none drop-shadow">👑</div>
         )}
+
+        {/* Skip ban overlay */}
+        <AnimatePresence>
+          {isSkipped && (
+            <motion.div
+              className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+            >
+              <span className="text-2xl text-effect-skip drop-shadow">⊘</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Disconnected indicator */}
         {!player.connected && (

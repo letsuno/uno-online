@@ -104,6 +104,26 @@ export default function GameTable({ onDraw }: GameTableProps) {
     }
   }, [lastAction]);
 
+  // Track skipped player (show ban overlay for 1.5s)
+  const [skippedPlayerId, setSkippedPlayerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (lastAction?.type === 'PLAY_CARD' && lastAction.playerId) {
+      const { discardPile: dp, direction: dir, players: ps } = useGameStore.getState();
+      const topCard = dp[dp.length - 1];
+      if (topCard?.type === 'skip') {
+        const actorIdx = ps.findIndex((p) => p.id === lastAction.playerId);
+        if (actorIdx >= 0) {
+          const step = dir === 'clockwise' ? 1 : -1;
+          const skippedIdx = ((actorIdx + step) % ps.length + ps.length) % ps.length;
+          setSkippedPlayerId(ps[skippedIdx]?.id ?? null);
+          const timer = window.setTimeout(() => setSkippedPlayerId(null), 1500);
+          return () => window.clearTimeout(timer);
+        }
+      }
+    }
+  }, [lastAction]);
+
   // Listen for chat messages from socket
   useEffect(() => {
     const socket = getSocket();
@@ -323,6 +343,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
             isActive={isActive}
             isMe={isMe}
             isHost={player.id === ownerId}
+            isSkipped={player.id === skippedPlayerId}
             position={pos}
             turnEndTime={isActive ? turnEndTime : null}
             turnTimeLimit={settings?.turnTimeLimit}
