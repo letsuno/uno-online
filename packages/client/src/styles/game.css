@@ -96,6 +96,38 @@
   position: relative;
 }
 
+.draw-pile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 1;
+  position: relative;
+  min-width: 92px;
+}
+
+.draw-pile__hint {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--font-game);
+  font-size: 13px;
+  color: var(--text-accent);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.draw-pile__count {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.draw-pile__count--low {
+  color: var(--color-red);
+  font-weight: bold;
+}
+
 .direction-ring {
   position: absolute;
   width: 160px;

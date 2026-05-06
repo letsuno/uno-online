@@ -32,6 +32,8 @@ export default function GamePage() {
   const userId = viewerId ?? authUserId;
   const players = useGameStore((s) => s.players);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
+  const drawStack = useGameStore((s) => s.drawStack);
+  const settings = useGameStore((s) => s.settings);
 
   const isMyTurn = players[currentPlayerIndex]?.id === userId;
   const needsColorPick = phase === 'choosing_color' && isMyTurn;
@@ -91,9 +93,20 @@ export default function GamePage() {
   }, []);
 
   const drawCard = useCallback(() => {
+    const houseRules = settings?.houseRules;
+    const shouldAutoPass =
+      drawStack === 0 &&
+      !houseRules?.drawUntilPlayable &&
+      !houseRules?.deathDraw &&
+      !houseRules?.forcedPlayAfterDraw;
+
     playSound('draw_card');
-    getSocket().emit('game:draw_card', () => {});
-  }, []);
+    getSocket().emit('game:draw_card', (res: { success: boolean }) => {
+      if (res?.success && shouldAutoPass) {
+        getSocket().emit('game:pass', () => {});
+      }
+    });
+  }, [drawStack, settings?.houseRules]);
 
   const chooseColor = useCallback((color: Color) => {
     getSocket().emit('game:choose_color', { color }, () => {});

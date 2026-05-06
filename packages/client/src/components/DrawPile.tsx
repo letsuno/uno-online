@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CardBack from './CardBack.js';
 import Card from './Card.js';
 import { useGameStore } from '../stores/game-store.js';
 import { useAuthStore } from '../stores/auth-store.js';
+import { getPlayableCardIds } from '../utils/playable-cards.js';
 
 interface DrawPileProps { onDraw: () => void; }
 
@@ -14,6 +15,10 @@ export default function DrawPile({ onDraw }: DrawPileProps) {
   const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
   const players = useGameStore((s) => s.players);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
+  const discardPile = useGameStore((s) => s.discardPile);
+  const currentColor = useGameStore((s) => s.currentColor);
+  const drawStack = useGameStore((s) => s.drawStack);
+  const settings = useGameStore((s) => s.settings);
   const authUserId = useAuthStore((s) => s.user?.id);
   const viewerId = useGameStore((s) => s.viewerId);
   const userId = viewerId ?? authUserId;
@@ -22,6 +27,22 @@ export default function DrawPile({ onDraw }: DrawPileProps) {
 
   const isMyTurn = players[currentPlayerIndex]?.id === userId;
   const canDraw = isMyTurn && !hasDrawnThisTurn && phase === 'playing';
+  const me = players.find((p) => p.id === userId);
+  const topCard = discardPile[discardPile.length - 1];
+
+  const playableIds = useMemo(() => {
+    if (!isMyTurn || phase !== 'playing') return new Set<string>();
+    return getPlayableCardIds({
+      hand: me?.hand ?? [],
+      topCard,
+      currentColor,
+      drawStack,
+      houseRules: settings?.houseRules,
+    });
+  }, [currentColor, drawStack, isMyTurn, me?.hand, phase, settings?.houseRules, topCard]);
+
+  const showNoPlayableHint = canDraw && playableIds.size === 0 && !settings?.houseRules?.noHints;
+  const emphasizeDraw = canDraw && !settings?.houseRules?.noHints;
 
   useEffect(() => {
     if (lastDrawnCard) {
@@ -33,16 +54,28 @@ export default function DrawPile({ onDraw }: DrawPileProps) {
   }, [lastDrawnCard?.id]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, zIndex: 1, position: 'relative' }}>
+    <div className="draw-pile">
+      <AnimatePresence>
+        {showNoPlayableHint && (
+          <motion.div
+            className="draw-pile__hint"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+          >
+            无牌可出，摸牌
+          </motion.div>
+        )}
+      </AnimatePresence>
       <CardBack
         onClick={canDraw ? onDraw : undefined}
+        className={emphasizeDraw ? 'card-back--draw-ready' : undefined}
         style={{
           cursor: canDraw ? 'pointer' : 'default',
           opacity: canDraw ? 1 : 0.5,
-          transition: 'opacity 0.2s, transform 0.2s',
         }}
       />
-      <span style={{ fontSize: 10, color: deckCount <= 10 ? 'var(--color-red)' : 'var(--text-secondary)', fontWeight: deckCount <= 10 ? 'bold' : 'normal' }}>
+      <span className={deckCount <= 10 ? 'draw-pile__count draw-pile__count--low' : 'draw-pile__count'}>
         牌堆 ({deckCount})
       </span>
       <AnimatePresence>
