@@ -5,6 +5,7 @@ import { useRoomStore } from '@/shared/stores/room-store';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { getSocket } from '@/shared/socket';
 import { cn } from '@/shared/lib/utils';
+import { BUILD_VERSION } from '@/shared/build-info';
 
 interface TopBarProps { roomCode: string; }
 
@@ -24,7 +25,7 @@ export default function TopBar({ roomCode }: TopBarProps) {
       <div className="flex items-center gap-3">
         <span className="font-bold text-primary font-game"><Spade size={18} className="inline align-middle" /> UNO Online</span>
         <span className="text-muted-foreground">房间: {roomCode}</span>
-        <span className="text-muted-foreground/50 text-xs hidden md:inline">v{__BUILD_VERSION__}</span>
+        <span className="text-muted-foreground/50 text-xs hidden md:inline">v{BUILD_VERSION}</span>
       </div>
       <div className="flex items-center gap-3">
         <button
