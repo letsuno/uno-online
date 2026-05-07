@@ -191,16 +191,10 @@ export default function GameEffects() {
                   transition={{ delay: 0.1, duration: 0.3 }}
                   className="flex flex-col items-center gap-2"
                 >
-                  {effect.targetName && (
-                    <div className="flex items-center gap-2">
-                      {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} />}
-                      <span className="text-2xl font-bold text-slate-200">{effect.targetName}</span>
-                    </div>
-                  )}
                   {effect.penaltyName && effect.penaltyCount && (
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2">
                       {effect.penaltyIndex !== undefined && <EffectAvatar index={effect.penaltyIndex} />}
-                      <span className="text-xl font-bold text-destructive">{effect.penaltyName} 摸 {effect.penaltyCount} 张</span>
+                      <span className="text-2xl font-bold text-destructive">{effect.penaltyName} 摸 {effect.penaltyCount} 张</span>
                     </div>
                   )}
                 </motion.div>
