@@ -2,7 +2,8 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Config } from '../config.js';
 import { createAuthHook } from '../auth/middleware.js';
 import type { TokenPayload } from '../auth/jwt.js';
-import { getUserProfile } from '../db/user-repo.js';
+import { getUserProfile, getUserById, updateNickname, updateAvatar, updateUsername, resolveAvatar } from '../db/user-repo.js';
+import { validateNickname, validateUsername } from '../auth/validation.js';
 
 interface AuthenticatedRequest extends FastifyRequest {
   user: TokenPayload;
@@ -11,10 +12,74 @@ interface AuthenticatedRequest extends FastifyRequest {
 export async function registerProfileRoutes(fastify: FastifyInstance, config: Config) {
   const authHook = createAuthHook(config.jwtSecret);
 
+  fastify.get<{ Params: { userId: string } }>('/avatar/:userId', async (request, reply) => {
+    const user = await getUserById(request.params.userId);
+    if (!user?.avatarData) {
+      return reply.code(404).send({ error: 'No avatar' });
+    }
+
+    const match = user.avatarData.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) {
+      return reply.code(404).send({ error: 'Invalid avatar data' });
+    }
+
+    const mimeType = match[1]!;
+    const buffer = Buffer.from(match[2]!, 'base64');
+
+    reply
+      .header('Content-Type', mimeType)
+      .header('Cache-Control', 'public, max-age=3600')
+      .header('ETag', `"${user.updatedAt}"`)
+      .send(buffer);
+  });
+
   fastify.get('/profile', { preHandler: authHook }, async (request) => {
     const { userId } = (request as AuthenticatedRequest).user;
     const profile = await getUserProfile(userId);
     if (!profile) return { error: 'User not found' };
-    return profile;
+    return {
+      user: { ...profile.user, avatarUrl: resolveAvatar(profile.user) },
+      recentGames: profile.recentGames,
+    };
+  });
+
+  fastify.patch<{ Body: { nickname?: string; username?: string } }>('/profile', { preHandler: authHook }, async (request, reply) => {
+    const { userId } = (request as AuthenticatedRequest).user;
+    const { nickname, username } = request.body;
+
+    if (nickname !== undefined) {
+      const nv = validateNickname(nickname);
+      if (!nv.valid) return reply.code(400).send({ error: nv.error });
+      await updateNickname(userId, nickname.trim());
+    }
+
+    if (username !== undefined) {
+      const uv = validateUsername(username);
+      if (!uv.valid) return reply.code(400).send({ error: uv.error });
+      try {
+        await updateUsername(userId, username);
+      } catch {
+        return reply.code(409).send({ error: '用户名已被使用' });
+      }
+    }
+
+    return { success: true };
+  });
+
+  fastify.post<{ Body: { avatar: string } }>('/profile/avatar', { preHandler: authHook }, async (request, reply) => {
+    const { userId } = (request as AuthenticatedRequest).user;
+    const { avatar } = request.body;
+
+    if (!avatar) {
+      await updateAvatar(userId, null);
+      return { success: true, avatarUrl: null };
+    }
+
+    if (avatar.length > 100_000) {
+      return reply.code(400).send({ error: '头像数据过大' });
+    }
+
+    await updateAvatar(userId, avatar);
+    return { success: true, avatarUrl: `/avatar/${userId}` };
   });
 }

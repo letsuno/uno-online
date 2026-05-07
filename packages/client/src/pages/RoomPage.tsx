@@ -95,7 +95,7 @@ export default function RoomPage() {
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)',
           }}>
-            <span>{p.username}{room?.ownerId === p.userId && <> <Crown size={14} style={{ verticalAlign: 'middle' }} /></>}</span>
+            <span>{p.nickname}{room?.ownerId === p.userId && <> <Crown size={14} style={{ verticalAlign: 'middle' }} /></>}</span>
             <span style={{ color: p.ready ? 'var(--color-green)' : 'var(--text-secondary)', fontSize: 12 }}>
               {p.ready ? <><Check size={12} style={{ verticalAlign: 'middle' }} /> 已准备</> : '未准备'}
             </span>
