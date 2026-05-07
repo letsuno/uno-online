@@ -59,9 +59,7 @@ services:
     restart: unless-stopped
 
   mumble-gateway:
-    build:
-      context: .
-      dockerfile: mumble.Dockerfile
+    image: djkcyl/uno-online-mumble-gateway:latest
     volumes:
       - ./data/mumble/config:/app/config
     depends_on:
