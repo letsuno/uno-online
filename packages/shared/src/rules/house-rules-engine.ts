@@ -363,17 +363,22 @@ export function applyActionWithHouseRules(state: GameState, action: GameAction):
 
   // ── Stacking (+2/+4/cross-stack): intercept PLAY_CARD when drawStack > 0 ──
   if (action.type === 'PLAY_CARD' && state.drawStack > 0) {
-    const player = state.players[state.currentPlayerIndex];
-    if (!player || player.id !== action.playerId) return state;
-    const card = player.hand.find(c => c.id === action.cardId);
-    if (!card) return state;
-    const topCard = state.discardPile[state.discardPile.length - 1];
-    const canStack =
-      (hr.stackDrawTwo && card.type === 'draw_two' && topCard?.type === 'draw_two') ||
-      (hr.stackDrawFour && card.type === 'wild_draw_four' && topCard?.type === 'wild_draw_four') ||
-      (hr.crossStack && ((card.type === 'draw_two' && topCard?.type === 'wild_draw_four') || (card.type === 'wild_draw_four' && topCard?.type === 'draw_two')));
-    if (canStack) {
-      return putAttackCardOnStack(state, action, card, getCardDrawPenalty(card));
+    const stackingEnabled = hr.stackDrawTwo || hr.stackDrawFour || hr.crossStack;
+    if (stackingEnabled) {
+      const player = state.players[state.currentPlayerIndex];
+      if (!player || player.id !== action.playerId) return state;
+      const card = player.hand.find(c => c.id === action.cardId);
+      if (!card) return state;
+      const topCard = state.discardPile[state.discardPile.length - 1];
+      const canStack =
+        (hr.stackDrawTwo && card.type === 'draw_two' && topCard?.type === 'draw_two') ||
+        (hr.stackDrawFour && card.type === 'wild_draw_four' && topCard?.type === 'wild_draw_four') ||
+        (hr.crossStack && ((card.type === 'draw_two' && topCard?.type === 'wild_draw_four') || (card.type === 'wild_draw_four' && topCard?.type === 'draw_two')));
+      if (canStack) {
+        return putAttackCardOnStack(state, action, card, getCardDrawPenalty(card));
+      }
+      // Stacking enabled but card can't stack — must draw, reject play
+      return state;
     }
   }
 
