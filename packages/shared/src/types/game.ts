@@ -60,7 +60,7 @@ export type GameAction =
   | { type: 'PASS'; playerId: string }
   | { type: 'CALL_UNO'; playerId: string }
   | { type: 'CATCH_UNO'; catcherId: string; targetId: string }
-  | { type: 'CHALLENGE'; playerId: string; succeeded?: boolean }
+  | { type: 'CHALLENGE'; playerId: string; succeeded?: boolean; penaltyPlayerId?: string; penaltyCount?: number }
   | { type: 'ACCEPT'; playerId: string }
   | { type: 'CHOOSE_COLOR'; playerId: string; color: Color }
   | { type: 'CHOOSE_SWAP_TARGET'; playerId: string; targetId: string };
