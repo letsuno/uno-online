@@ -26,6 +26,8 @@ interface GameRecordTable {
   winnerId: string;
   rounds: number;
   duration: number;
+  deckHash: string | null;
+  initialDeck: string | null;
   createdAt: Generated<string>;
 }
 
@@ -38,10 +40,21 @@ interface GamePlayerTable {
   createdAt: Generated<string>;
 }
 
+export interface GameEventTable {
+  id: Generated<number>;
+  gameId: string;
+  seq: number;
+  eventType: string;
+  payload: string;
+  playerId: string | null;
+  createdAt: string;
+}
+
 export interface Database {
   users: UserTable;
   gameRecords: GameRecordTable;
   gamePlayers: GamePlayerTable;
+  gameEvents: GameEventTable;
 }
 
 // ── Init ──
