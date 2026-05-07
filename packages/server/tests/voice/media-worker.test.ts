@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from 'vitest';
-import { getOrCreateWorker, closeWorkers, getMediaCodecs } from '../../src/voice/media-worker';
+import { getOrCreateWorker, closeWorkers, getMediaCodecs } from '../../src/plugins/core/voice/media-worker';
 
 afterAll(async () => {
   await closeWorkers();

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import Redis from 'ioredis';
-import { saveGameState, loadGameState, deleteGameState } from '../../src/game/game-store';
-import { GameSession } from '../../src/game/game-session';
+import { saveGameState, loadGameState, deleteGameState } from '../../src/plugins/core/game/state-store';
+import { GameSession } from '../../src/plugins/core/game/session';
 
 const redis = new Redis(process.env['REDIS_URL'] ?? 'redis://localhost:6379');
 const TEST_CODE = 'GTEST1';
