@@ -12,7 +12,7 @@ export default function CardBack({ small = false, onClick, className = '', style
     <div
       className={cn(
         small
-          ? 'w-3 h-card-mini-h rounded-sm border border-white/30 bg-uno-blue text-zero'
+          ? 'w-card-mini-w h-card-mini-h rounded-sm border border-white/30 bg-uno-blue text-zero'
           : [
               'w-card-w h-card-h md:w-card-w-md md:h-card-h-md',
               'rounded-card-md border-3 border-white/20',
