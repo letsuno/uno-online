@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto';
 import { initializeGame, applyActionWithHouseRules } from '@uno-online/shared';
-import { initializeNextRound } from '@uno-online/shared';
+import { initializeNextRound, serializeDeck } from '@uno-online/shared';
 import type { GameState, GameAction, RoomSettings, UserRole } from '@uno-online/shared';
 import type { Card } from '@uno-online/shared';
+import type { GameEvent, GameEventPayload, GameEventType as GameEventTypeValue } from '@uno-online/shared';
 
 export interface PlayerView {
   viewerId: string;
@@ -41,17 +43,29 @@ interface ActionResult {
 
 export class GameSession {
   private state: GameState;
+  private events: GameEvent[] = [];
+  private initialDeckSerialized: string = '';
 
   private constructor(state: GameState) {
     this.state = state;
   }
 
+  private static computeDeckHash(deck: Card[]): string {
+    const serialized = serializeDeck(deck);
+    return createHash('sha256').update(serialized).digest('hex');
+  }
+
   static create(players: { id: string; name: string; avatarUrl?: string | null; role?: UserRole }[], settings?: RoomSettings): GameSession {
     const state = initializeGame(players, settings?.houseRules);
-    const stateWithSettings = settings
-      ? { ...state, settings }
-      : state;
-    return new GameSession(stateWithSettings);
+    const deckHash = GameSession.computeDeckHash(state.deck);
+    const stateWithExtras = {
+      ...state,
+      deckHash,
+      ...(settings ? { settings } : {}),
+    };
+    const session = new GameSession(stateWithExtras);
+    session.initialDeckSerialized = serializeDeck(state.deck);
+    return session;
   }
 
   static fromState(state: GameState): GameSession {
@@ -161,12 +175,71 @@ export class GameSession {
 
   startNextRound(): void {
     this.state = initializeNextRound(this.state);
+    this.state = { ...this.state, deckHash: GameSession.computeDeckHash(this.state.deck) };
+    this.initialDeckSerialized = serializeDeck(this.state.deck);
   }
 
   resetForRematch(): void {
     const players = this.state.players.map(p => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl, role: p.role }));
     const settings = this.state.settings;
     const fresh = initializeGame(players, settings.houseRules);
-    this.state = { ...fresh, settings };
+    const deckHash = GameSession.computeDeckHash(fresh.deck);
+    this.state = { ...fresh, settings, deckHash };
+    this.initialDeckSerialized = serializeDeck(fresh.deck);
+    this.events = [];
+  }
+
+  recordEvent(eventType: GameEventTypeValue, payload: GameEventPayload, playerId: string | null): void {
+    this.events.push({
+      seq: this.events.length,
+      eventType,
+      payload,
+      playerId,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  getEvents(): GameEvent[] {
+    return this.events;
+  }
+
+  clearEvents(): void {
+    this.events = [];
+  }
+
+  getInitialDeckSerialized(): string {
+    return this.initialDeckSerialized;
+  }
+
+  getSpectatorView(mode: 'full' | 'hidden'): PlayerView {
+    return {
+      viewerId: '__spectator__',
+      phase: this.state.phase,
+      players: this.state.players.map((p) => ({
+        id: p.id,
+        name: p.name,
+        hand: mode === 'full' ? p.hand : [],
+        handCount: p.hand.length,
+        score: p.score,
+        connected: p.connected,
+        autopilot: p.autopilot,
+        calledUno: p.calledUno,
+        eliminated: p.eliminated,
+        teamId: p.teamId,
+        avatarUrl: p.avatarUrl,
+        role: p.role,
+      })),
+      currentPlayerIndex: this.state.currentPlayerIndex,
+      direction: this.state.direction,
+      discardPile: this.state.discardPile.slice(-1),
+      currentColor: this.state.currentColor,
+      drawStack: this.state.drawStack,
+      deckCount: this.state.deck.length,
+      roundNumber: this.state.roundNumber,
+      winnerId: this.state.winnerId,
+      settings: this.state.settings,
+      pendingDrawPlayerId: this.state.pendingDrawPlayerId,
+      lastAction: this.state.lastAction,
+    };
   }
 }
