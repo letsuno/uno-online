@@ -32,10 +32,16 @@ export const useRoomStore = create<RoomState>((set) => ({
     sessionStorage.setItem('roomCode', roomCode);
     set({ roomCode, players, room });
   },
-  updateRoom: (data) => set((state) => ({
-    players: data.players ?? state.players,
-    room: data.room ?? state.room,
-  })),
+  updateRoom: (data) => set((state) => {
+    let players = data.players ?? state.players;
+    const seen = new Set<string>();
+    players = players.filter((p) => {
+      if (seen.has(p.userId)) return false;
+      seen.add(p.userId);
+      return true;
+    });
+    return { players, room: data.room ?? state.room };
+  }),
   clearRoom: () => {
     sessionStorage.removeItem('roomCode');
     set({ roomCode: null, players: [], room: null });
