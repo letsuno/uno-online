@@ -101,6 +101,9 @@ importers:
       fastify:
         specifier: ^5.3.0
         version: 5.8.5
+      fastify-plugin:
+        specifier: ^5.1.0
+        version: 5.1.0
       ioredis:
         specifier: ^5.6.0
         version: 5.10.1
