@@ -25,7 +25,6 @@
     "ioredis": "^5.6.0",
     "jsonwebtoken": "^9.0.2",
     "kysely": "^0.28.0",
-    "mediasoup": "^3.19.22",
     "nanoid": "^5.1.0",
     "socket.io": "^4.8.0"
   },

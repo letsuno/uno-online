@@ -11,6 +11,7 @@ import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { getSocket } from '@/shared/socket';
 import { useToastStore } from '@/shared/stores/toast-store';
+import { useGatewayStore } from '@/shared/voice/gateway-store';
 import { cn } from '@/shared/lib/utils';
 
 interface ThrowEvent {
@@ -47,6 +48,20 @@ export default function GameTable({ onDraw }: GameTableProps) {
   const lastAction = useGameStore((s) => s.lastAction);
   const userId = useEffectiveUserId();
   const ownerId = useRoomStore((s) => s.room?.ownerId);
+
+  // Mumble speaking state
+  const mumbleUsersById = useGatewayStore((s) => s.usersById);
+  const mumbleSpeakingByUserId = useGatewayStore((s) => s.speakingByUserId);
+  const mumbleSpeakingNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const [uid, speaking] of Object.entries(mumbleSpeakingByUserId)) {
+      if (speaking) {
+        const user = mumbleUsersById[Number(uid)];
+        if (user) names.add(user.name);
+      }
+    }
+    return names;
+  }, [mumbleUsersById, mumbleSpeakingByUserId]);
 
   // Chat messages per player
   const [chatMessages, setChatMessages] = useState<Map<string, string>>(new Map());
@@ -477,6 +492,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
             isMe={isMe}
             isHost={player.id === ownerId}
             isSkipped={player.id === skippedPlayerId}
+            isSpeaking={mumbleSpeakingNames.has(player.name)}
             position={pos}
             turnEndTime={isActive ? turnEndTime : null}
             turnTimeLimit={settings?.turnTimeLimit}
