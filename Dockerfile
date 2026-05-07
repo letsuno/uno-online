@@ -1,7 +1,8 @@
 # ---- Stage 1: Base ----
 FROM node:22-slim AS base
 RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
-RUN apt-get update \
+RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources \
+  && apt-get update \
   && apt-get install -y --no-install-recommends python3 python3-pip make g++ ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -12,7 +13,7 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
 COPY packages/server/package.json packages/server/
 COPY packages/client/package.json packages/client/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --registry https://registry.npmmirror.com
 
 # ---- Stage 3: Build client ----
 FROM deps AS build-client
