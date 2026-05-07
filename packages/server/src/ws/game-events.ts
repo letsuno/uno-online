@@ -1,17 +1,12 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
 import type { Color } from '@uno-online/shared';
-import { GameSession } from '../game/game-session';
-import { saveGameState } from '../game/game-store';
+import { GameSession } from '../plugins/core/game/session';
+import { saveGameState } from '../plugins/core/game/state-store';
 import { emitGameUpdate, startTurnTimer } from './room-events';
-import type { TurnTimer } from '../game/turn-timer';
-import type { TokenPayload } from '../auth/jwt';
+import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { recordGameResult } from '../db/user-repo';
-
-interface SocketData {
-  user: TokenPayload;
-  roomCode: string | null;
-}
+import type { SocketData } from './types';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
   const roomCode = (socket.data as SocketData).roomCode;
@@ -55,7 +50,7 @@ async function persistGameResult(roomCode: string, session: GameSession, startTi
 }
 
 const chatTimestamps = new Map<string, number[]>();
-const CHAT_LIMIT = 2;
+const CHAT_LIMIT = 10;
 const CHAT_WINDOW_MS = 5000;
 
 function checkChatRateLimit(userId: string): boolean {
@@ -229,11 +224,8 @@ export function registerGameEvents(
     if (!result.success) return callback?.({ success: false, error: result.error });
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
-    const state = session.getFullState();
     if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer)) {
       // terminal state already emitted
-    } else if (state.phase === 'challenging') {
-      turnTimer.stop(roomCode);
     } else {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
@@ -268,7 +260,7 @@ export function registerGameEvents(
     const text = payload.text.slice(0, 500);
     io.to(roomCode).emit('chat:message', {
       userId: data.user.userId,
-      username: data.user.nickname,
+      nickname: data.user.nickname,
       text,
       timestamp: Date.now(),
       role: data.user.role ?? 'normal',

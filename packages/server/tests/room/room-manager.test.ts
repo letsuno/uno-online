@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import Redis from 'ioredis';
-import { RoomManager } from '../../src/room/room-manager';
-import { getRoom, getRoomPlayers } from '../../src/room/room-store';
+import { RoomManager } from '../../src/plugins/core/room/manager';
+import { getRoom, getRoomPlayers } from '../../src/plugins/core/room/store';
 
 const redis = new Redis(process.env['REDIS_URL'] ?? 'redis://localhost:6379');
 

@@ -1,12 +1,12 @@
 import type { Config } from '../config';
 
-export interface GitHubTokenResponse {
+interface GitHubTokenResponse {
   access_token: string;
   token_type: string;
   scope: string;
 }
 
-export interface GitHubUser {
+interface GitHubUser {
   id: number;
   login: string;
   avatar_url: string;
