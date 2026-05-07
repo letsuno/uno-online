@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Card as CardType } from '@uno-online/shared';
 import Card from './Card';
+import CardBack from './CardBack';
 import CountdownRing from './CountdownRing';
 import GoogleRing from '@/shared/components/ui/GoogleRing';
 import ChatBubble from './ChatBubble';
@@ -265,9 +266,17 @@ export default function PlayerNode({
       </span>
 
       {/* Hand count */}
-      <span className="text-xs text-muted-foreground">
-        {player.handCount}张
-      </span>
+      {player.handCount > 0 && player.handCount < 8 ? (
+        <div className="flex -space-x-1.5">
+          {Array.from({ length: player.handCount }).map((_, i) => (
+            <CardBack key={i} small />
+          ))}
+        </div>
+      ) : player.handCount > 0 ? (
+        <span className="text-xs text-muted-foreground">
+          {player.handCount}张
+        </span>
+      ) : null}
     </div>
   );
 }
