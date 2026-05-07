@@ -36,7 +36,13 @@ export function getSocket(): Socket {
       }
     };
 
-    socket.on('game:state', handleGameView);
+    socket.on('game:state', (view: Record<string, unknown>) => {
+      handleGameView(view as { settings?: { turnTimeLimit: number } });
+      const deckHash = (view as { deckHash?: string }).deckHash;
+      if (deckHash) {
+        useToastStore.getState().addToast(`牌序 Hash: ${deckHash.slice(0, 16)}...`, 'info');
+      }
+    });
     socket.on('game:update', handleGameView);
 
     socket.on('game:card_drawn', (data: { card: unknown }) => {
