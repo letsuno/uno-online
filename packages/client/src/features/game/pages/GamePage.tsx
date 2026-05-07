@@ -277,6 +277,38 @@ export default function GamePage() {
     }
   }, [autoPlay, isMyTurn, phase, me?.hand, topCard, currentColor, drawStack, settings?.houseRules]);
 
+  // Auto-play: handle non-playing phases (challenge/accept, color pick, swap target)
+  useEffect(() => {
+    if (!autoPlay || !isMyTurn) return;
+
+    if (phase === 'challenging') {
+      const timer = setTimeout(() => challenge(), 600);
+      return () => clearTimeout(timer);
+    }
+
+    if (phase === 'choosing_color') {
+      const hand = me?.hand ?? [];
+      const colorCount: Record<string, number> = { red: 0, blue: 0, green: 0, yellow: 0 };
+      for (const c of hand) {
+        if (c.color) colorCount[c.color]++;
+      }
+      const bestColor = (Object.entries(colorCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'red') as Color;
+      const timer = setTimeout(() => chooseColor(bestColor), 600);
+      return () => clearTimeout(timer);
+    }
+
+    if (phase === 'choosing_swap_target') {
+      const targets = players.filter((p) => p.id !== userId && !p.eliminated);
+      if (targets.length > 0) {
+        const target = targets.reduce((best, p) => p.handCount > best.handCount ? p : best, targets[0]!);
+        const timer = setTimeout(() => {
+          getSocket().emit('game:choose_swap_target', { targetId: target.id }, () => {});
+        }, 600);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [autoPlay, isMyTurn, phase, me?.hand, players, userId]);
+
   if (!phase) {
     return <div className="flex flex-1 items-center justify-center">
       <p className="text-muted-foreground">加载游戏中...</p>
