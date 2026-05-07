@@ -198,7 +198,7 @@ export function registerRoomEvents(
         if (winner) {
           s.forceGameOver(winner.id);
           await saveGameState(redis, roomCode, s.getFullState());
-          await emitGameUpdate(io, roomCode, s);
+          await emitGameUpdate(io, roomCode, s, redis);
           io.to(roomCode).emit('game:over', {
             winnerId: winner.id,
             reason: 'blitz_timeout',
@@ -268,7 +268,7 @@ export function startTurnTimer(
         s.applyAction(action);
       }
       await saveGameState(redis, code, s.getFullState());
-      emitGameUpdate(io, code, s);
+      emitGameUpdate(io, code, s, redis);
       startTurnTimer(io, redis, code, s, turnTimer, sessions);
     });
     return;
@@ -282,7 +282,7 @@ export function startTurnTimer(
       const pid = s.getCurrentPlayerId();
       executeAutopilot(s, pid);
       await saveGameState(redis, code, s.getFullState());
-      emitGameUpdate(io, code, s);
+      emitGameUpdate(io, code, s, redis);
       io.to(code).emit('player:timeout', { playerId: pid });
       startTurnTimer(io, redis, code, s, turnTimer, sessions);
     });
@@ -302,7 +302,7 @@ export function startTurnTimer(
     const pid = s.getCurrentPlayerId();
     executeAutopilot(s, pid);
     await saveGameState(redis, code, s.getFullState());
-    emitGameUpdate(io, code, s);
+    emitGameUpdate(io, code, s, redis);
     io.to(code).emit('player:timeout', { playerId: pid });
     startTurnTimer(io, redis, code, s, turnTimer, sessions);
   });
@@ -312,10 +312,20 @@ export async function emitGameUpdate(
   io: SocketIOServer,
   roomCode: string,
   session: GameSession,
+  kv?: KvStore,
 ) {
   const sockets = await io.in(roomCode).fetchSockets();
+  let spectatorMode: 'full' | 'hidden' = 'hidden';
+  if (kv) {
+    const room = await getRoom(kv, roomCode);
+    if (room) spectatorMode = room.settings.spectatorMode ?? 'hidden';
+  }
   for (const s of sockets) {
-    const userId = (s.data as SocketData).user.userId;
-    s.emit('game:update', session.getPlayerView(userId));
+    const sData = s.data as SocketData;
+    if (sData.isSpectator) {
+      s.emit('game:update', session.getSpectatorView(spectatorMode));
+    } else {
+      s.emit('game:update', session.getPlayerView(sData.user.userId));
+    }
   }
 }
