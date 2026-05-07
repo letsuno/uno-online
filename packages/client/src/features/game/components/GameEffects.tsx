@@ -5,17 +5,32 @@ import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { playSound } from '@/shared/sound/sound-manager';
 import { cn } from '@/shared/lib/utils';
+import { AVATAR_COLORS, AVATAR_EMOJIS } from './PlayerNode';
 
 interface Effect {
   id: string;
   type: 'uno_call' | 'skip' | 'reverse' | 'draw' | 'victory' | 'catch' | 'challenge';
   text: string;
   targetName?: string;
+  targetIndex?: number;
 }
 
 const EFFECT_DURATION = 1000;
 
 let effectId = 0;
+
+function EffectAvatar({ index }: { index: number }) {
+  const bg = AVATAR_COLORS[index % AVATAR_COLORS.length];
+  const emoji = AVATAR_EMOJIS[index % AVATAR_EMOJIS.length];
+  return (
+    <div
+      className="w-14 h-14 rounded-full flex items-center justify-center text-2xl shrink-0 shadow-lg ring-2 ring-white/30"
+      style={{ background: bg }}
+    >
+      {emoji}
+    </div>
+  );
+}
 
 export default function GameEffects() {
   const [effects, setEffects] = useState<Effect[]>([]);
@@ -29,13 +44,15 @@ export default function GameEffects() {
   const prevTopCardRef = useRef<string | undefined>();
   const prevActionRef = useRef<typeof lastAction>(null);
 
-  const addEffect = (type: Effect['type'], text: string, targetName?: string) => {
+  const addEffect = (type: Effect['type'], text: string, targetName?: string, targetIndex?: number) => {
     const id = `effect_${++effectId}`;
-    setEffects((prev) => [...prev, { id, type, text, targetName }]);
+    setEffects((prev) => [...prev, { id, type, text, targetName, targetIndex }]);
     setTimeout(() => {
       setEffects((prev) => prev.filter((e) => e.id !== id));
     }, EFFECT_DURATION);
   };
+
+  const findPlayerIndex = (id: string) => players.findIndex((p) => p.id === id);
 
   const topCard = discardPile[discardPile.length - 1];
 
@@ -44,13 +61,13 @@ export default function GameEffects() {
     prevTopCardRef.current = topCard.id;
     const skippedPlayer = players[currentPlayerIndex];
     if (topCard.type === 'skip') {
-      addEffect('skip', '跳过!', skippedPlayer?.name);
+      addEffect('skip', '跳过!', skippedPlayer?.name, currentPlayerIndex);
       playSound('skip');
     } else if (topCard.type === 'reverse') {
       addEffect('reverse', '反转!');
       playSound('reverse');
     } else if (topCard.type === 'draw_two') {
-      addEffect('draw', '+2!', skippedPlayer?.name);
+      addEffect('draw', '+2!', skippedPlayer?.name, currentPlayerIndex);
       playSound('draw_two');
     } else if (topCard.type === 'wild_draw_four') {
       addEffect('draw', '+4!');
@@ -64,7 +81,8 @@ export default function GameEffects() {
     if (phase === 'round_end' || phase === 'game_over') {
       const winner = players.find((p) => p.id === winnerId);
       if (winner) {
-        addEffect('victory', winner.id === userId ? '你赢了!' : `${winner.name} 获胜!`);
+        const winnerIdx = findPlayerIndex(winner.id);
+        addEffect('victory', winner.id === userId ? '你赢了!' : `${winner.name} 获胜!`, winner.name, winnerIdx >= 0 ? winnerIdx : undefined);
         playSound(winner.id === userId ? 'win' : 'lose');
       }
     }
@@ -76,10 +94,11 @@ export default function GameEffects() {
 
     if (lastAction.type === 'CHALLENGE' && lastAction.succeeded !== undefined) {
       const challenger = players.find((p) => p.id === lastAction.playerId);
+      const challengerIdx = findPlayerIndex(lastAction.playerId);
       if (lastAction.succeeded) {
-        addEffect('challenge', '质疑成功!', challenger?.name);
+        addEffect('challenge', '质疑成功!', challenger?.name, challengerIdx >= 0 ? challengerIdx : undefined);
       } else {
-        addEffect('challenge', '质疑失败!', challenger?.name);
+        addEffect('challenge', '质疑失败!', challenger?.name, challengerIdx >= 0 ? challengerIdx : undefined);
       }
     }
   }, [lastAction, players]);
@@ -109,7 +128,7 @@ export default function GameEffects() {
               exit={{ scale: 2, opacity: 0, y: -30 }}
               transition={{ type: 'spring', stiffness: 300, damping: 15 }}
               className={cn(
-                'absolute font-game font-black whitespace-nowrap flex flex-col items-center gap-1 text-shadow-bold text-white',
+                'absolute font-game font-black whitespace-nowrap flex flex-col items-center gap-2 text-shadow-bold text-white',
                 effect.type === 'victory' ? 'text-effect-xl' :
                 'text-effect'
               )}
@@ -123,32 +142,49 @@ export default function GameEffects() {
                 {effect.text}
               </span>
               {effect.targetName && effect.type === 'skip' && (
-                <motion.span
-                  initial={{ y: -20, opacity: 0 }}
-                  animate={{ y: 40, opacity: [1, 1, 0] }}
-                  transition={{ duration: 1, ease: 'easeOut' }}
-                  className="text-lg text-effect-skip flex items-center gap-1"
+                <motion.div
+                  initial={{ y: -10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="flex items-center gap-2"
                 >
-                  <Ban size={14} /> → {effect.targetName}
-                </motion.span>
+                  {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} />}
+                  <span className="text-2xl font-bold text-shadow-bold">
+                    <Ban size={14} className="inline mr-1" />{effect.targetName}
+                  </span>
+                </motion.div>
               )}
               {effect.targetName && effect.type === 'draw' && (
-                <motion.span
+                <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-base text-destructive"
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="flex items-center gap-2"
                 >
-                  → {effect.targetName}
-                </motion.span>
+                  {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} />}
+                  <span className="text-2xl font-bold text-destructive">→ {effect.targetName}</span>
+                </motion.div>
               )}
               {effect.targetName && effect.type === 'challenge' && (
-                <motion.span
+                <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-base text-slate-300"
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="flex items-center gap-2"
                 >
-                  {effect.targetName}
-                </motion.span>
+                  {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} />}
+                  <span className="text-2xl font-bold text-slate-200">{effect.targetName}</span>
+                </motion.div>
+              )}
+              {effect.targetName && effect.type === 'victory' && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="flex items-center gap-2"
+                >
+                  {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} />}
+                </motion.div>
               )}
             </motion.div>
           ))}
