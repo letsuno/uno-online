@@ -349,9 +349,9 @@ export default function GameTable({ onDraw }: GameTableProps) {
             key={currentPlayerIndex}
             d={directionArc.highlightPath}
             fill="none"
-            stroke="rgba(251, 191, 36, 0.6)"
-            strokeWidth={3}
-            strokeLinecap="round"
+            stroke="rgba(251, 191, 36, 0.5)"
+            strokeWidth={2}
+            strokeDasharray="8 6"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
