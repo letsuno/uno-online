@@ -1,16 +1,16 @@
-import type { FastifyInstance, FastifyRequest } from 'fastify';
-import type { Config } from '../config';
-import { createAuthHook } from '../auth/middleware';
-import type { TokenPayload } from '../auth/jwt';
-import { getUserProfile, getUserById, updateNickname, updateAvatar, updateUsername, resolveAvatar } from '../db/user-repo';
-import { validateNickname, validateUsername } from '../auth/validation';
+import type { FastifyInstance } from 'fastify';
+import type { PluginContext } from '../../../plugin-context';
+import { authPreHandler } from '../auth/service';
+import type { AuthenticatedRequest } from '../auth/service';
+import { getUserProfile, getUserById, updateNickname, updateAvatar, updateUsername, resolveAvatar } from '../../../db/user-repo';
+import { validateNickname, validateUsername } from '../../../auth/validation';
 
-interface AuthenticatedRequest extends FastifyRequest {
-  user: TokenPayload;
-}
+export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginContext) {
+  const { config } = ctx;
 
-export async function registerProfileRoutes(fastify: FastifyInstance, config: Config) {
-  const authHook = createAuthHook(config.jwtSecret);
+  if (config.devMode) return;
+
+  const preHandler = authPreHandler(config.jwtSecret);
 
   fastify.get<{ Params: { userId: string } }>('/avatar/:userId', async (request, reply) => {
     const user = await getUserById(request.params.userId);
@@ -38,7 +38,7 @@ export async function registerProfileRoutes(fastify: FastifyInstance, config: Co
       .send(buffer);
   });
 
-  fastify.get('/profile', { preHandler: authHook }, async (request) => {
+  fastify.get('/profile', { preHandler }, async (request) => {
     const { userId } = (request as AuthenticatedRequest).user;
     const profile = await getUserProfile(userId);
     if (!profile) return { error: 'User not found' };
@@ -48,7 +48,7 @@ export async function registerProfileRoutes(fastify: FastifyInstance, config: Co
     };
   });
 
-  fastify.patch<{ Body: { nickname?: string; username?: string } }>('/profile', { preHandler: authHook }, async (request, reply) => {
+  fastify.patch<{ Body: { nickname?: string; username?: string } }>('/profile', { preHandler }, async (request, reply) => {
     const { userId } = (request as AuthenticatedRequest).user;
     const { nickname, username } = request.body;
 
@@ -71,7 +71,7 @@ export async function registerProfileRoutes(fastify: FastifyInstance, config: Co
     return { success: true };
   });
 
-  fastify.post<{ Body: { avatar: string } }>('/profile/avatar', { preHandler: authHook }, async (request, reply) => {
+  fastify.post<{ Body: { avatar: string } }>('/profile/avatar', { preHandler }, async (request, reply) => {
     const { userId } = (request as AuthenticatedRequest).user;
     const { avatar } = request.body;
 
