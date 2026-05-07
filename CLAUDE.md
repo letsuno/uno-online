@@ -27,6 +27,7 @@ pnpm --filter admin dev                                         # 管理后台 :
 - **[前端开发规范](docs/frontend-development-guide.md)** — 目录结构、命名、组件、样式、状态管理、路由规范
 - **[后端开发规范](docs/backend-development-guide.md)** — 插件架构、路由、数据库、WebSocket、安全规范
 - **[插件扩展规范](docs/plugin-extension-guide.md)** — 新功能开发流程、服务端插件模板、客户端 Feature 模板、Git 提交规范
+- **[村规扩展指南](docs/house-rules-extension-guide.md)** — Rule 注册表模式、RuleDefinition 接口、添加新村规的完整步骤、优先级指南
 
 ## 架构概览
 
