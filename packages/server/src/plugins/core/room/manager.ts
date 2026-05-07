@@ -17,7 +17,7 @@ function generateRoomCode(): string {
 export class RoomManager {
   constructor(private redis: KvStore) {}
 
-  async createRoom(ownerId: string, ownerNickname: string, settings: RoomSettings = { turnTimeLimit: 30, targetScore: 500, houseRules: DEFAULT_HOUSE_RULES }, avatarUrl?: string | null, role?: string): Promise<string> {
+  async createRoom(ownerId: string, ownerNickname: string, settings: RoomSettings = { turnTimeLimit: 30, targetScore: 500, houseRules: DEFAULT_HOUSE_RULES, allowSpectators: true, spectatorMode: 'hidden' }, avatarUrl?: string | null, role?: string): Promise<string> {
     let code = generateRoomCode();
     let existing = await getRoom(this.redis, code);
     while (existing) {

@@ -25,6 +25,8 @@ export function registerRoomEvents(
       turnTimeLimit: settings?.turnTimeLimit ?? 30,
       targetScore: settings?.targetScore ?? 500,
       houseRules: settings?.houseRules ?? DEFAULT_HOUSE_RULES,
+      allowSpectators: settings?.allowSpectators ?? true,
+      spectatorMode: settings?.spectatorMode ?? 'hidden',
     };
     const code = await roomManager.createRoom(data.user.userId, data.user.nickname, roomSettings, data.user.avatarUrl, data.user.role);
     data.roomCode = code;
@@ -106,6 +108,8 @@ export function registerRoomEvents(
         ...(room.settings.houseRules ?? {}),
         ...(settings.houseRules ?? {}),
       },
+      allowSpectators: settings.allowSpectators ?? room.settings.allowSpectators ?? true,
+      spectatorMode: settings.spectatorMode ?? room.settings.spectatorMode ?? 'hidden',
     };
 
     await setRoomSettings(redis, roomCode, nextSettings);
@@ -158,7 +162,7 @@ export function registerRoomEvents(
     await setRoomStatus(redis, roomCode, 'playing');
     const session = GameSession.create(
       players.map((p) => ({ id: p.userId, name: p.nickname, avatarUrl: p.avatarUrl ?? null, role: p.role as import('@uno-online/shared').UserRole | undefined })),
-      { turnTimeLimit: room.settings?.turnTimeLimit ?? 30, targetScore: room.settings?.targetScore ?? 500, houseRules: room.settings?.houseRules ?? DEFAULT_HOUSE_RULES } as RoomSettings,
+      { turnTimeLimit: room.settings?.turnTimeLimit ?? 30, targetScore: room.settings?.targetScore ?? 500, houseRules: room.settings?.houseRules ?? DEFAULT_HOUSE_RULES, allowSpectators: room.settings?.allowSpectators ?? true, spectatorMode: room.settings?.spectatorMode ?? 'hidden' } as RoomSettings,
     );
     sessions.set(roomCode, session);
     setGameStartTime(roomCode);

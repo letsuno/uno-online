@@ -32,6 +32,8 @@ export interface RoomSettings {
   turnTimeLimit: 15 | 30 | 60;
   targetScore: 200 | 300 | 500;
   houseRules: HouseRules;
+  allowSpectators: boolean;
+  spectatorMode: 'full' | 'hidden';
 }
 
 export interface GameState {
@@ -47,6 +49,7 @@ export interface GameState {
   lastAction: GameAction | null;
   roundNumber: number;
   winnerId: string | null;
+  deckHash: string;
   settings: RoomSettings;
 }
 
