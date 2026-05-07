@@ -10,6 +10,7 @@ import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { getSocket } from '@/shared/socket';
 import { useToastStore } from '@/shared/stores/toast-store';
+import { cn } from '@/shared/lib/utils';
 
 interface ThrowEvent {
   id: string;
@@ -278,17 +279,43 @@ export default function GameTable({ onDraw }: GameTableProps) {
     const cy = height / 2;
     const rx = width * 0.38;
     const ry = height * 0.38;
+    const n = players.length;
 
     const isClockwise = direction === 'clockwise';
     const leftX = cx - rx;
     const rightX = cx + rx;
 
-    return {
-      path: `M ${rightX} ${cy} A ${rx} ${ry} 0 1 1 ${leftX} ${cy} A ${rx} ${ry} 0 1 1 ${rightX} ${cy}`,
-      isClockwise,
-      circumference: 2 * Math.PI * Math.sqrt((rx * rx + ry * ry) / 2),
-    };
-  }, [playerPositions, dimensions, direction]);
+    const fullPath = `M ${rightX} ${cy} A ${rx} ${ry} 0 1 1 ${leftX} ${cy} A ${rx} ${ry} 0 1 1 ${rightX} ${cy}`;
+
+    const myIndex = players.findIndex((p) => p.id === userId);
+    const safeMyIndex = myIndex >= 0 ? myIndex : 0;
+
+    const currentOffset = currentPlayerIndex - safeMyIndex;
+    const step = isClockwise ? 1 : -1;
+    const nextIdx = ((currentPlayerIndex + step) % n + n) % n;
+    const nextOffset = nextIdx - safeMyIndex;
+
+    const startAngle = Math.PI / 2 + (currentOffset * 2 * Math.PI) / n;
+    const endAngle = Math.PI / 2 + (nextOffset * 2 * Math.PI) / n;
+
+    const sx = cx + rx * Math.cos(startAngle);
+    const sy = cy + ry * Math.sin(startAngle);
+    const ex = cx + rx * Math.cos(endAngle);
+    const ey = cy + ry * Math.sin(endAngle);
+
+    let angleDiff = endAngle - startAngle;
+    if (isClockwise) {
+      if (angleDiff <= 0) angleDiff += 2 * Math.PI;
+    } else {
+      if (angleDiff >= 0) angleDiff -= 2 * Math.PI;
+    }
+    const largeArc = Math.abs(angleDiff) > Math.PI ? 1 : 0;
+    const sweep = isClockwise ? 1 : 0;
+
+    const highlightPath = `M ${sx} ${sy} A ${rx} ${ry} 0 ${largeArc} ${sweep} ${ex} ${ey}`;
+
+    return { fullPath, highlightPath, isClockwise };
+  }, [playerPositions, dimensions, direction, players, userId, currentPlayerIndex]);
 
   const isClockwise = direction === 'clockwise';
 
@@ -302,7 +329,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
           height={dimensions.height}
         >
           <motion.path
-            d={directionArc.path}
+            d={directionArc.fullPath}
             fill="none"
             stroke="rgba(251, 191, 36, 0.15)"
             strokeWidth={2}
@@ -317,6 +344,17 @@ export default function GameTable({ onDraw }: GameTableProps) {
               repeat: Infinity,
               ease: 'linear',
             }}
+          />
+          <motion.path
+            key={currentPlayerIndex}
+            d={directionArc.highlightPath}
+            fill="none"
+            stroke="rgba(251, 191, 36, 0.6)"
+            strokeWidth={3}
+            strokeLinecap="round"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
           />
         </svg>
       )}
@@ -351,6 +389,17 @@ export default function GameTable({ onDraw }: GameTableProps) {
           <DrawPile onDraw={onDraw} drawAnimTrigger={drawAnim.trigger} drawTargetX={drawAnim.targetX} drawTargetY={drawAnim.targetY} />
           <DiscardPile />
         </div>
+      )}
+
+      {/* Current turn indicator below center */}
+      {dimensions.width > 0 && players[currentPlayerIndex] && (
+        <TurnIndicator
+          playerName={players[currentPlayerIndex]!.name}
+          isMe={players[currentPlayerIndex]!.id === userId}
+          turnEndTime={turnEndTime}
+          cx={dimensions.width / 2}
+          cy={dimensions.height / 2}
+        />
       )}
 
       {/* Player nodes */}
@@ -394,5 +443,53 @@ export default function GameTable({ onDraw }: GameTableProps) {
         ))}
       </AnimatePresence>
     </div>
+  );
+}
+
+function TurnIndicator({ playerName, isMe, turnEndTime, cx, cy }: {
+  playerName: string;
+  isMe: boolean;
+  turnEndTime: number | null;
+  cx: number;
+  cy: number;
+}) {
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!turnEndTime) { setSecondsLeft(null); return; }
+    const tick = () => {
+      setSecondsLeft(Math.max(0, Math.ceil((turnEndTime - Date.now()) / 1000)));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [turnEndTime]);
+
+  const urgent = secondsLeft !== null && secondsLeft <= 5;
+
+  return (
+    <motion.div
+      key={playerName}
+      className="absolute pointer-events-none flex items-center gap-2 whitespace-nowrap"
+      style={{ left: cx, top: cy + 80, transform: 'translateX(-50%)' }}
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <span className={cn(
+        'font-game text-sm',
+        isMe ? 'text-primary font-bold' : 'text-foreground',
+      )}>
+        {isMe ? '你的回合' : playerName}
+      </span>
+      {secondsLeft !== null && (
+        <span className={cn(
+          'font-game text-sm tabular-nums',
+          urgent ? 'text-destructive font-bold animate-timer-flash' : 'text-muted-foreground',
+        )}>
+          {secondsLeft}s
+        </span>
+      )}
+    </motion.div>
   );
 }
