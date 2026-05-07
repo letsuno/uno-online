@@ -221,6 +221,34 @@ export default function GameTable({ onDraw }: GameTableProps) {
     return playerPositions[idx];
   }, [players, playerPositions]);
 
+  // Draw animation: track who drew and compute target direction
+  const [drawAnim, setDrawAnim] = useState<{ trigger: number; targetX: number; targetY: number }>({ trigger: 0, targetX: 0, targetY: 220 });
+
+  const computeDrawTarget = useCallback((playerId: string) => {
+    const pos = getPlayerPosition(playerId);
+    if (!pos || dimensions.width === 0) return { x: 0, y: 220 };
+    const cx = dimensions.width / 2;
+    const cy = dimensions.height / 2;
+    return { x: pos.x - cx, y: pos.y - cy };
+  }, [getPlayerPosition, dimensions]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    const handler = (data: { playerId: string }) => {
+      const target = computeDrawTarget(data.playerId);
+      setDrawAnim((prev) => ({ trigger: prev.trigger + 1, targetX: target.x, targetY: target.y }));
+    };
+    socket.on('game:opponent_drew', handler);
+    return () => { socket.off('game:opponent_drew', handler); };
+  }, [computeDrawTarget]);
+
+  useEffect(() => {
+    if (lastAction?.type === 'DRAW_CARD' && lastAction.playerId === userId) {
+      const target = computeDrawTarget(lastAction.playerId);
+      setDrawAnim((prev) => ({ trigger: prev.trigger + 1, targetX: target.x, targetY: target.y }));
+    }
+  }, [lastAction, userId, computeDrawTarget]);
+
   // Handle reaction from quick reaction menu
   const handleReaction = useCallback((emoji: string) => {
     getSocket().emit('chat:message', { text: emoji });
@@ -320,7 +348,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
             </motion.span>
           </motion.div>
 
-          <DrawPile onDraw={onDraw} />
+          <DrawPile onDraw={onDraw} drawAnimTrigger={drawAnim.trigger} drawTargetX={drawAnim.targetX} drawTargetY={drawAnim.targetY} />
           <DiscardPile />
         </div>
       )}
