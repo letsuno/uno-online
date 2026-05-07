@@ -11,11 +11,17 @@ import { BUILD_VERSION } from '@/shared/build-info';
 interface TopBarProps { roomCode: string; }
 
 export default function TopBar({ roomCode }: TopBarProps) {
-  const { colorBlindMode, toggleColorBlind, soundEnabled, toggleSound, autoPlay, toggleAutoPlay } = useSettingsStore();
+  const { colorBlindMode, toggleColorBlind, soundEnabled, toggleSound } = useSettingsStore();
   const ownerId = useRoomStore((s) => s.room?.ownerId);
   const userId = useEffectiveUserId();
   const isHost = ownerId === userId;
   const toggleInfoDrawer = useGameStore((s) => s.toggleInfoDrawer);
+  const players = useGameStore((s) => s.players);
+  const myAutopilot = players.find(p => p.id === userId)?.autopilot ?? false;
+
+  const handleToggleAutopilot = () => {
+    getSocket().emit('player:toggle-autopilot', () => {});
+  };
 
   const handleDissolve = () => {
     if (!window.confirm('确定要解散房间吗？所有玩家将被踢出。')) return;
@@ -38,12 +44,12 @@ export default function TopBar({ roomCode }: TopBarProps) {
           <HelpCircle size={16} />
         </button>
         <button
-          onClick={toggleAutoPlay}
+          onClick={handleToggleAutopilot}
           className={cn(
             'bg-transparent border-none text-sm cursor-pointer',
-            autoPlay ? 'text-accent' : 'text-muted-foreground'
+            myAutopilot ? 'text-accent' : 'text-muted-foreground'
           )}
-          title={autoPlay ? '关闭自动托管' : '开启自动托管'}
+          title={myAutopilot ? '关闭自动托管' : '开启自动托管'}
         >
           <Bot size={16} />
         </button>

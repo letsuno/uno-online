@@ -64,6 +64,16 @@ export function getSocket(): Socket {
       playSound('player_join');
     });
 
+    socket.on('player:autopilot', (data: { playerId: string; enabled: boolean }) => {
+      const player = useGameStore.getState().players.find(p => p.id === data.playerId);
+      if (player) {
+        useToastStore.getState().addToast(
+          data.enabled ? `${player.name} 进入托管模式` : `${player.name} 退出托管模式`,
+          'info',
+        );
+      }
+    });
+
     socket.on('connect', () => {
       connectionStatusCallback?.('connected');
     });

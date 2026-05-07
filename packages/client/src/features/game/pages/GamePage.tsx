@@ -51,7 +51,7 @@ export default function GamePage() {
     rematch,
   } = useGameActions();
 
-  useAutoPlay(playCard, drawCard, chooseColor, challenge);
+  useAutoPlay();
 
   // Turn banner state
   const [showTurnBanner, setShowTurnBanner] = useState(false);
