@@ -8,7 +8,7 @@
 - **数据库**: SQLite (node:sqlite) + Kysely 查询构建器
 - **KV 存储**: 内存 / Redis (ioredis)，用于房间和游戏临时状态
 - **认证**: JWT (jsonwebtoken) + bcryptjs
-- **语音**: mediasoup WebRTC
+- **语音**: mumble-web gateway（客户端直连外部语音服务）
 - **测试**: Vitest 3.2
 
 ## 目录结构
@@ -34,10 +34,9 @@ packages/server/src/
       session.ts          # GameSession 类
       state-store.ts      # 游戏状态 KV 持久化
       turn-timer.ts       # 回合计时器
-    voice/
-      media-worker.ts     # mediasoup Worker
-      room-voice.ts       # RoomVoice 类
-      events.ts           # 语音 WS 事件
+    server-info/
+      index.ts            # 插件入口
+      routes.ts           # 服务器状态查询路由
     interaction/
       ws.ts               # 扔道具 WS 事件
   ws/                     # WebSocket 核心
