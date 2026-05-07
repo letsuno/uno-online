@@ -8,6 +8,7 @@ export interface PlayerInfo {
   handCount: number;
   score: number;
   connected: boolean;
+  autopilot: boolean;
   calledUno: boolean;
   eliminated?: boolean;
   teamId?: number;

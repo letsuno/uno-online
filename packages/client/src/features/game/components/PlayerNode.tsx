@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Bot } from 'lucide-react';
 import type { Card as CardType } from '@uno-online/shared';
 import Card from './Card';
 import CardBack from './CardBack';
@@ -182,10 +183,14 @@ export default function PlayerNode({
           )}
         </AnimatePresence>
 
-        {/* Disconnected indicator */}
-        {!player.connected && (
+        {/* Autopilot / Disconnected indicator */}
+        {player.autopilot ? (
+          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center border-2 border-background">
+            <Bot size={12} className="text-primary-foreground" />
+          </div>
+        ) : !player.connected ? (
           <div className="absolute top-0 right-0 w-3 h-3 rounded-full bg-destructive border-2 border-background" />
-        )}
+        ) : null}
 
         {/* Last played card mini */}
         <AnimatePresence>
