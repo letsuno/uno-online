@@ -11,6 +11,7 @@ import { getRoom, getRoomPlayers, setRoomOwner } from '../plugins/core/room/stor
 import { saveGameState, loadGameState } from '../plugins/core/game/state-store';
 import { checkRateLimit, clearRateLimit } from './rate-limiter';
 import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws';
+import { getDb } from '../db/database';
 
 const RECONNECT_TIMEOUT_MS = 60_000;
 const AUTOPILOT_THINK_MS = 2_000;
@@ -180,7 +181,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
     });
 
     registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions);
-    registerGameEvents(socket, io, redis, turnTimer, sessions);
+    registerGameEvents(socket, io, redis, turnTimer, sessions, getDb());
     registerInteractionEvents(socket, io);
 
     socket.on('player:toggle-autopilot', async (callback) => {
