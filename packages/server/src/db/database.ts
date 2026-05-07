@@ -6,9 +6,12 @@ import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 
 interface UserTable {
   id: Generated<string>;
-  githubId: string;
+  githubId: string | null;
   username: string;
+  nickname: string;
+  passwordHash: string | null;
   avatarUrl: string | null;
+  avatarData: string | null;
   totalGames: Generated<number>;
   totalWins: Generated<number>;
   createdAt: Generated<string>;
@@ -107,9 +110,12 @@ export async function migrateDb(): Promise<void> {
     .createTable('users')
     .ifNotExists()
     .addColumn('id', 'text', (c) => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
-    .addColumn('github_id', 'text', (c) => c.unique().notNull())
-    .addColumn('username', 'text', (c) => c.notNull())
+    .addColumn('github_id', 'text', (c) => c.unique())
+    .addColumn('username', 'text', (c) => c.unique().notNull())
+    .addColumn('nickname', 'text', (c) => c.notNull())
+    .addColumn('password_hash', 'text')
     .addColumn('avatar_url', 'text')
+    .addColumn('avatar_data', 'text')
     .addColumn('total_games', 'integer', (c) => c.defaultTo(0).notNull())
     .addColumn('total_wins', 'integer', (c) => c.defaultTo(0).notNull())
     .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
