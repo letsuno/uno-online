@@ -1,10 +1,10 @@
-import type { KvStore } from '../kv/types.js';
+import type { KvStore } from '../../../kv/types.js';
 import type { RoomSettings } from '@uno-online/shared';
 import { MAX_PLAYERS, ROOM_CODE_LENGTH, ROOM_CODE_CHARS, DEFAULT_HOUSE_RULES } from '@uno-online/shared';
 import {
   createRoom, getRoom, addPlayerToRoom, removePlayerFromRoom,
   getRoomPlayers, setPlayerReady, setRoomOwner, deleteRoom,
-} from './room-store';
+} from './store';
 
 function generateRoomCode(): string {
   let code = '';

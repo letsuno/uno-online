@@ -1,10 +1,10 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
 import type { Color } from '@uno-online/shared';
-import { GameSession } from '../game/game-session';
-import { saveGameState } from '../game/game-store';
+import { GameSession } from '../plugins/core/game/session';
+import { saveGameState } from '../plugins/core/game/state-store';
 import { emitGameUpdate, startTurnTimer } from './room-events';
-import type { TurnTimer } from '../game/turn-timer';
+import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import type { TokenPayload } from '../auth/jwt';
 import { recordGameResult } from '../db/user-repo';
 

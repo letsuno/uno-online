@@ -2,11 +2,11 @@ import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
 import type { RoomSettings } from '@uno-online/shared';
 import { MIN_PLAYERS, DEFAULT_HOUSE_RULES } from '@uno-online/shared';
-import { RoomManager } from '../room/room-manager';
-import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, deleteRoom } from '../room/room-store';
-import { GameSession } from '../game/game-session';
-import { saveGameState } from '../game/game-store';
-import type { TurnTimer } from '../game/turn-timer';
+import { RoomManager } from '../plugins/core/room/manager';
+import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, deleteRoom } from '../plugins/core/room/store';
+import { GameSession } from '../plugins/core/game/session';
+import { saveGameState } from '../plugins/core/game/state-store';
+import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import type { TokenPayload } from '../auth/jwt';
 import { setGameStartTime } from './game-events';
 
