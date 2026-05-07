@@ -8,11 +8,11 @@ dist/
 coverage/
 .superpowers/
 .claude/
-docs/
 .playwright-mcp/
 .yarn/
 .omc/
 uno.db*
+data/
 yarn.lock
 *.tsbuildinfo
 vite.config.js

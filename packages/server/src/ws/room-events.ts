@@ -1,19 +1,14 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
 import type { RoomSettings } from '@uno-online/shared';
-import { MIN_PLAYERS, DEFAULT_HOUSE_RULES } from '@uno-online/shared';
-import { RoomManager } from '../room/room-manager';
-import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, deleteRoom } from '../room/room-store';
-import { GameSession } from '../game/game-session';
-import { saveGameState } from '../game/game-store';
-import type { TurnTimer } from '../game/turn-timer';
-import type { TokenPayload } from '../auth/jwt';
+import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction } from '@uno-online/shared';
+import { RoomManager } from '../plugins/core/room/manager';
+import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, deleteRoom } from '../plugins/core/room/store';
+import { GameSession } from '../plugins/core/game/session';
+import { saveGameState } from '../plugins/core/game/state-store';
+import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { setGameStartTime } from './game-events';
-
-interface SocketData {
-  user: TokenPayload;
-  roomCode: string | null;
-}
+import type { SocketData } from './types';
 
 export function registerRoomEvents(
   socket: Socket,
@@ -47,12 +42,13 @@ export function registerRoomEvents(
       const players = await getRoomPlayers(redis, roomCode);
       const alreadyInRoom = players.some(p => p.userId === data.user.userId);
 
-      if (alreadyInRoom && room.status !== 'waiting') {
-        // Player reconnecting to an in-progress game — delegate to rejoin flow
+      if (alreadyInRoom) {
         data.roomCode = roomCode;
         await socket.join(roomCode);
-        socket.emit('room:rejoin_redirect', { roomCode });
-        return callback({ success: true, players, room, rejoin: true });
+        if (room.status !== 'waiting') {
+          socket.emit('room:rejoin_redirect', { roomCode });
+        }
+        return callback({ success: true, players, room, rejoin: room.status !== 'waiting' });
       }
 
       await roomManager.joinRoom(roomCode, data.user.userId, data.user.nickname, data.user.avatarUrl, data.user.role);
@@ -145,7 +141,13 @@ export function registerRoomEvents(
     if (!room || room.ownerId !== data.user.userId) {
       return callback?.({ success: false, error: 'Only room owner can start' });
     }
-    const players = await getRoomPlayers(redis, roomCode);
+    const rawPlayers = await getRoomPlayers(redis, roomCode);
+    const seen = new Set<string>();
+    const players = rawPlayers.filter(p => {
+      if (seen.has(p.userId)) return false;
+      seen.add(p.userId);
+      return true;
+    });
     if (players.length < MIN_PLAYERS) {
       return callback?.({ success: false, error: 'Not enough players' });
     }
@@ -207,7 +209,46 @@ export function startTurnTimer(
   sessions: Map<string, GameSession>,
 ) {
   const state = session.getFullState();
-  if (state.phase !== 'playing') {
+  const phase = state.phase;
+  const currentPlayer = state.players[state.currentPlayerIndex];
+
+  if (currentPlayer?.autopilot) {
+    turnTimer.start(roomCode, 2, async (code) => {
+      const s = sessions.get(code);
+      if (!s) return;
+      const st = s.getFullState();
+      const pid = s.getCurrentPlayerId();
+      const actions = chooseAutopilotAction(st, pid);
+      for (const action of actions) {
+        s.applyAction(action);
+      }
+      await saveGameState(redis, code, s.getFullState());
+      emitGameUpdate(io, code, s);
+      startTurnTimer(io, redis, code, s, turnTimer, sessions);
+    });
+    return;
+  }
+
+  if (phase === 'challenging' || phase === 'choosing_color' || phase === 'choosing_swap_target') {
+    const timeLimit = state.settings.turnTimeLimit;
+    turnTimer.start(roomCode, timeLimit, async (code) => {
+      const s = sessions.get(code);
+      if (!s) return;
+      const currentPlayerId = s.getCurrentPlayerId();
+      const st = s.getFullState();
+      const actions = chooseAutopilotAction(st, currentPlayerId);
+      for (const action of actions) {
+        s.applyAction(action);
+      }
+      await saveGameState(redis, code, s.getFullState());
+      emitGameUpdate(io, code, s);
+      io.to(code).emit('player:timeout', { playerId: currentPlayerId });
+      startTurnTimer(io, redis, code, s, turnTimer, sessions);
+    });
+    return;
+  }
+
+  if (phase !== 'playing') {
     turnTimer.stop(roomCode);
     return;
   }
@@ -218,8 +259,11 @@ export function startTurnTimer(
     const s = sessions.get(code);
     if (!s) return;
     const currentPlayerId = s.getCurrentPlayerId();
-    s.applyAction({ type: 'DRAW_CARD', playerId: currentPlayerId });
-    s.applyAction({ type: 'PASS', playerId: currentPlayerId });
+    const st = s.getFullState();
+    const actions = chooseAutopilotAction(st, currentPlayerId);
+    for (const action of actions) {
+      s.applyAction(action);
+    }
     await saveGameState(redis, code, s.getFullState());
     emitGameUpdate(io, code, s);
     io.to(code).emit('player:timeout', { playerId: currentPlayerId });

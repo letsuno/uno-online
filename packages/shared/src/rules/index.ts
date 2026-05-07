@@ -6,3 +6,8 @@ export type { DealResult, FirstCardEffect, FirstDiscardResult } from './setup';
 export { calculateRoundScore, calculateRoundScores } from './scoring';
 export { applyAction } from './game-engine';
 export { applyActionWithHouseRules } from './house-rules-engine';
+export type { HouseRulePlugin, RuleMetadata, RuleContext, PreCheckResult } from './house-rule-types';
+export { buildRuleContext } from './house-rule-helpers';
+export { getAllRuleMetadata } from './house-rule-registry';
+export { PRE_CHECK_PLUGINS, POST_PROCESS_PLUGINS } from './rules/index';
+export { chooseAutopilotAction } from './autopilot-strategy';

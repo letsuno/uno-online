@@ -1,18 +1,19 @@
 import type { Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types';
+import { chooseAutopilotAction } from '@uno-online/shared';
 import { authenticateSocket } from '../auth/middleware';
-import { RoomManager } from '../room/room-manager';
-import { TurnTimer } from '../game/turn-timer';
-import { GameSession } from '../game/game-session';
+import { RoomManager } from '../plugins/core/room/manager';
+import { TurnTimer } from '../plugins/core/game/turn-timer';
+import { GameSession } from '../plugins/core/game/session';
 import { registerRoomEvents, emitGameUpdate, startTurnTimer } from './room-events';
 import { registerGameEvents } from './game-events';
-import { registerVoiceEvents, removeVoicePeer } from '../voice/voice-events';
-import { getRoom, getRoomPlayers, setRoomOwner } from '../room/room-store';
-import { saveGameState, loadGameState } from '../game/game-store';
+import { getRoom, getRoomPlayers, setRoomOwner } from '../plugins/core/room/store';
+import { saveGameState, loadGameState } from '../plugins/core/game/state-store';
 import { checkRateLimit, clearRateLimit } from './rate-limiter';
-import { registerInteractionEvents, clearThrowTimestamp } from './interaction-events';
+import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws';
 
 const RECONNECT_TIMEOUT_MS = 60_000;
+const AUTOPILOT_THINK_MS = 2_000;
 
 export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecret: string) {
   const roomManager = new RoomManager(redis);
@@ -56,16 +57,21 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       if (!session) { stopAutoPlay(userId); return; }
       const state = session.getFullState();
       if (state.phase === 'round_end' || state.phase === 'game_over') { stopAutoPlay(userId); return; }
-      if (state.phase !== 'playing') return;
+
       const currentPlayer = state.players[state.currentPlayerIndex];
       if (!currentPlayer || currentPlayer.id !== userId) return;
-      session.applyAction({ type: 'DRAW_CARD', playerId: userId });
-      session.applyAction({ type: 'PASS', playerId: userId });
-      await saveGameState(redis, roomCode, session.getFullState());
-      await emitGameUpdate(io, roomCode, session);
-      io.to(roomCode).emit('player:timeout', { playerId: userId });
-      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
-    }, 5000);
+
+      const actions = chooseAutopilotAction(state, userId);
+      for (const action of actions) {
+        session.applyAction(action);
+      }
+      if (actions.length > 0) {
+        await saveGameState(redis, roomCode, session.getFullState());
+        await emitGameUpdate(io, roomCode, session);
+        io.to(roomCode).emit('player:timeout', { playerId: userId });
+        startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+      }
+    }, AUTOPILOT_THINK_MS);
     autoPlayIntervals.set(userId, interval);
   }
 
@@ -120,9 +126,11 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
 
       if (session) {
         session.setPlayerConnected(userId, true);
+        session.setPlayerAutopilot(userId, false);
         await saveGameState(redis, roomCode, session.getFullState());
         await emitGameUpdate(io, roomCode, session);
         io.to(roomCode).emit('player:reconnected', { playerId: userId });
+        io.to(roomCode).emit('player:autopilot', { playerId: userId, enabled: false });
         callback?.({ success: true, gameState: session.getPlayerView(userId) });
         const state = session.getFullState();
         const connectedCount = state.players.filter(p => p.connected).length;
@@ -147,16 +155,34 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
 
     registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions);
     registerGameEvents(socket, io, redis, turnTimer, sessions);
-    registerVoiceEvents(socket, io);
     registerInteractionEvents(socket, io);
+
+    socket.on('player:toggle-autopilot', async (callback) => {
+      const roomCode = socket.data.roomCode;
+      if (!roomCode) return callback?.({ success: false, error: '不在房间中' });
+      const session = sessions.get(roomCode);
+      if (!session) return callback?.({ success: false, error: '游戏未开始' });
+      const state = session.getFullState();
+      const player = state.players.find(p => p.id === userId);
+      if (!player) return callback?.({ success: false, error: '玩家不在游戏中' });
+
+      const nextAutopilot = !player.autopilot;
+      session.setPlayerAutopilot(userId, nextAutopilot);
+      if (nextAutopilot) {
+        startAutoPlay(userId, roomCode);
+      } else {
+        stopAutoPlay(userId);
+      }
+      await saveGameState(redis, roomCode, session.getFullState());
+      await emitGameUpdate(io, roomCode, session);
+      io.to(roomCode).emit('player:autopilot', { playerId: userId, enabled: nextAutopilot });
+      callback?.({ success: true, autopilot: nextAutopilot });
+    });
 
     socket.on('disconnect', async () => {
       clearRateLimit(socket.id);
       clearThrowTimestamp(userId);
       const roomCode = socket.data.roomCode;
-      if (roomCode) {
-        await removeVoicePeer(roomCode, userId, io);
-      }
       if (!roomCode) return;
 
       const session = sessions.get(roomCode);
@@ -185,13 +211,17 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
         }
 
         // Start 60s reconnect window, then auto-play
-        const timer = setTimeout(() => {
+        const timer = setTimeout(async () => {
           disconnectTimers.delete(userId);
           const s = sessions.get(roomCode);
           if (!s) return;
           const st = s.getFullState();
           const stillDisconnected = st.players.find(p => p.id === userId && !p.connected);
           if (stillDisconnected) {
+            s.setPlayerAutopilot(userId, true);
+            await saveGameState(redis, roomCode, s.getFullState());
+            await emitGameUpdate(io, roomCode, s);
+            io.to(roomCode).emit('player:autopilot', { playerId: userId, enabled: true });
             startAutoPlay(userId, roomCode);
           }
         }, RECONNECT_TIMEOUT_MS);

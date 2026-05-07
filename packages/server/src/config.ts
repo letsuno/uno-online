@@ -17,6 +17,8 @@ export interface Config {
   jwtSecret: string;
   clientUrl: string;
   devMode: boolean;
+  serverName: string;
+  serverMotd: string;
 }
 
 function resolveClientUrl(): string {
@@ -36,5 +38,7 @@ export function loadConfig(): Config {
     jwtSecret: required('JWT_SECRET'),
     clientUrl: resolveClientUrl(),
     devMode,
+    serverName: process.env['SERVER_NAME'] ?? 'UNO Online',
+    serverMotd: process.env['SERVER_MOTD'] ?? '欢迎来到 UNO Online！',
   };
 }

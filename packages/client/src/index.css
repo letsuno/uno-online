@@ -63,7 +63,7 @@
   --radius-card-md: 18px;
   --radius-panel: 20px;
 
-  --font-game: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif;
+  --font-game: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Microsoft YaHei', 'PingFang SC', cursive, sans-serif;
   --font-ui: system-ui, -apple-system, sans-serif;
 
   --spacing-card-w: 52px;
@@ -172,6 +172,19 @@
   --input: rgba(255, 255, 255, 0.15);
   --ring: rgba(251, 191, 36, 0.5);
   --radius: 0.75rem;
+  --radius-btn: 24px;
+  --radius-input: 12px;
+  --radius-card-ui: 16px;
+  --radius-panel-ui: 20px;
+  --border-glow: none;
+}
+
+.theme-tech {
+  --radius-btn: 4px;
+  --radius-input: 4px;
+  --radius-card-ui: 6px;
+  --radius-panel-ui: 8px;
+  --border-glow: 0 0 8px rgba(68, 136, 255, 0.3);
 }
 
 @layer base {
@@ -257,6 +270,24 @@
     display: none;
   }
 }
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.5);
+  }
+}
 @utility bg-wild-gradient {
   background: conic-gradient(#ff3366 0deg 90deg, #4488ff 90deg 180deg, #33cc66 180deg 270deg, #fbbf24 270deg 360deg);
 }
@@ -310,4 +341,19 @@
 }
 @utility text-heading-lg {
   font-size: var(--font-size-heading-lg);
+}
+@utility rounded-btn {
+  border-radius: var(--radius-btn);
+}
+@utility rounded-input {
+  border-radius: var(--radius-input);
+}
+@utility rounded-card-ui {
+  border-radius: var(--radius-card-ui);
+}
+@utility rounded-panel-ui {
+  border-radius: var(--radius-panel-ui);
+}
+@utility shadow-tech {
+  box-shadow: var(--border-glow);
 }
