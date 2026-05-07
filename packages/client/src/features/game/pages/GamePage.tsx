@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Loader2, Eye } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useGameStore } from '../stores/game-store';
 import { useIsMyTurn } from '../hooks/useIsMyTurn';
@@ -53,6 +53,16 @@ export default function GamePage() {
 
   useAutoPlay();
 
+  const [searchParams] = useSearchParams();
+  const isSpectator = useGameStore((s) => s.isSpectator);
+  const setSpectator = useGameStore((s) => s.setSpectator);
+
+  useEffect(() => {
+    if (searchParams.get('spectate') === 'true') {
+      setSpectator(true);
+    }
+  }, [searchParams, setSpectator]);
+
   // Turn banner state
   const [showTurnBanner, setShowTurnBanner] = useState(false);
   const prevTurnRef = useRef(false);
@@ -100,16 +110,23 @@ export default function GamePage() {
           </motion.div>
         )}
       </AnimatePresence>
-      <GameActions
-        onCallUno={callUno}
-        onCatchUno={catchUno}
-        onChallenge={challenge}
-        onAccept={accept}
-        onPass={pass}
-        onSwapTarget={swapTarget}
-      />
-      <PlayerHand onPlayCard={playCard} />
+      {!isSpectator && (
+        <GameActions
+          onCallUno={callUno}
+          onCatchUno={catchUno}
+          onChallenge={challenge}
+          onAccept={accept}
+          onPass={pass}
+          onSwapTarget={swapTarget}
+        />
+      )}
+      {!isSpectator && <PlayerHand onPlayCard={playCard} />}
       </LayoutGroup>
+      {isSpectator && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-actions bg-card/90 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-muted-foreground flex items-center gap-2">
+          <Eye size={16} /> 观战中
+        </div>
+      )}
       <VoicePanel />
       <InfoDrawer />
       <MobileFAB />
