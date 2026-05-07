@@ -96,10 +96,11 @@ export default function DiscardPile() {
       </div>
       {drawStack > 0 && (
         <motion.div
-          key={`stack-${drawStack}`}
+          key={`stack-${drawStack}-${chosenColor ?? ''}`}
           initial={{ scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="absolute -top-3 -right-3 bg-destructive text-white rounded-full w-8 h-8 flex items-center justify-center font-black text-sm font-game border-2 border-white shadow-card-sm"
+          className="absolute -top-3 -right-3 text-white rounded-full w-8 h-8 flex items-center justify-center font-black text-sm font-game border-2 border-white shadow-card-sm"
+          style={{ backgroundColor: chosenColor ? colorBorderMap[chosenColor] : 'var(--color-destructive, #ef4444)' }}
         >
           +{drawStack}
         </motion.div>
