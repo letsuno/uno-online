@@ -24,6 +24,7 @@ export default function TopBar({ roomCode }: TopBarProps) {
       <div className="flex items-center gap-3">
         <span className="font-bold text-primary font-game"><Spade size={18} className="inline align-middle" /> UNO Online</span>
         <span className="text-muted-foreground">房间: {roomCode}</span>
+        <span className="text-muted-foreground/50 text-xs hidden md:inline">v{__BUILD_VERSION__}</span>
       </div>
       <div className="flex items-center gap-3">
         <button
