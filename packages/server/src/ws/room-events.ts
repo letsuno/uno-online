@@ -210,9 +210,12 @@ function executeAutopilot(session: GameSession, playerId: string): boolean {
 
     const actions = chooseAutopilotAction(st, playerId);
     if (actions.length === 0) break;
+    let anySuccess = false;
     for (const action of actions) {
-      session.applyAction(action);
+      const result = session.applyAction(action);
+      if (result.success) anySuccess = true;
     }
+    if (!anySuccess) break;
     acted = true;
 
     const after = session.getFullState();

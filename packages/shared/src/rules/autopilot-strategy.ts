@@ -37,6 +37,27 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   const topCard = state.discardPile[state.discardPile.length - 1];
   if (!topCard || !state.currentColor) return [{ type: 'DRAW_CARD', playerId }];
 
+  const hr = state.settings.houseRules;
+  const stackingEnabled = hr.stackDrawTwo || hr.stackDrawFour || hr.crossStack;
+
+  if (state.drawStack > 0 && stackingEnabled) {
+    const stackable = player.hand.filter(c => {
+      if (hr.stackDrawTwo && c.type === 'draw_two' && topCard.type === 'draw_two') return true;
+      if (hr.stackDrawFour && c.type === 'wild_draw_four' && topCard.type === 'wild_draw_four') return true;
+      if (hr.crossStack && ((c.type === 'draw_two' && topCard.type === 'wild_draw_four') || (c.type === 'wild_draw_four' && topCard.type === 'draw_two'))) return true;
+      return false;
+    });
+    if (stackable.length > 0) {
+      const pick = stackable[0]!;
+      const actions: GameAction[] = [{ type: 'PLAY_CARD', playerId, cardId: pick.id }];
+      if (pick.type === 'wild_draw_four') {
+        actions.push({ type: 'CHOOSE_COLOR', playerId, color: bestColor(player.hand, pick.id) });
+      }
+      return actions;
+    }
+    return [{ type: 'DRAW_CARD', playerId }];
+  }
+
   const playable = getPlayableCards(player.hand, topCard, state.currentColor);
   if (playable.length === 0) {
     return [{ type: 'DRAW_CARD', playerId }];
