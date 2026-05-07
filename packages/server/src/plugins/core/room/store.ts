@@ -49,6 +49,8 @@ export async function setRoomOwner(kv: KvStore, roomCode: string, ownerId: strin
 }
 
 export async function addPlayerToRoom(kv: KvStore, roomCode: string, player: { userId: string; nickname: string; avatarUrl?: string | null; role?: string }): Promise<void> {
+  const existing = await getRoomPlayers(kv, roomCode);
+  if (existing.some(p => p.userId === player.userId)) return;
   await kv.rpush(`room:${roomCode}:players`, JSON.stringify({ userId: player.userId, nickname: player.nickname, avatarUrl: player.avatarUrl ?? null, ready: false, role: player.role ?? 'normal' }));
 }
 
