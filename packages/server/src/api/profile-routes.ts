@@ -23,13 +23,18 @@ export async function registerProfileRoutes(fastify: FastifyInstance, config: Co
       return reply.code(404).send({ error: 'Invalid avatar data' });
     }
 
+    const etag = `"${user.updatedAt}"`;
+    if (request.headers['if-none-match'] === etag) {
+      return reply.code(304).send();
+    }
+
     const mimeType = match[1]!;
     const buffer = Buffer.from(match[2]!, 'base64');
 
     reply
       .header('Content-Type', mimeType)
-      .header('Cache-Control', 'public, max-age=3600')
-      .header('ETag', `"${user.updatedAt}"`)
+      .header('Cache-Control', 'public, max-age=86400')
+      .header('ETag', etag)
       .send(buffer);
   });
 
