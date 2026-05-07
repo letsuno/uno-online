@@ -1,7 +1,7 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
 import type { RoomSettings } from '@uno-online/shared';
-import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction } from '@uno-online/shared';
+import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, GameEventType } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager';
 import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, deleteRoom } from '../plugins/core/room/store';
 import { GameSession } from '../plugins/core/game/session';
@@ -166,6 +166,15 @@ export function registerRoomEvents(
     );
     sessions.set(roomCode, session);
     setGameStartTime(roomCode);
+    const fullState = session.getFullState();
+    session.recordEvent(GameEventType.GAME_START, {
+      initialDeck: fullState.deck,
+      deckHash: fullState.deckHash,
+      playerHands: Object.fromEntries(fullState.players.map(p => [p.id, p.hand])),
+      firstDiscard: fullState.discardPile[0]!,
+      direction: fullState.direction,
+      settings: fullState.settings,
+    }, null);
     await saveGameState(redis, roomCode, session.getFullState());
 
     const sockets = await io.in(roomCode).fetchSockets();

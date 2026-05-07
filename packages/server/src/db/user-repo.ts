@@ -194,10 +194,10 @@ export async function recordGameResult(
   rounds: number,
   duration: number,
   playerResults: { userId: string; finalScore: number; placement: number }[],
-) {
+): Promise<string> {
   const db = getDb();
 
-  await db.transaction().execute(async (tx) => {
+  const record = await db.transaction().execute(async (tx) => {
     const record = await tx
       .insertInto('gameRecords')
       .values({
@@ -243,4 +243,5 @@ export async function recordGameResult(
 
     return record;
   });
+  return record.id;
 }

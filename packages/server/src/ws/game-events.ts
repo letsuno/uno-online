@@ -1,15 +1,21 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
 import type { Color } from '@uno-online/shared';
+import { GameEventType } from '@uno-online/shared';
+import type { Kysely } from 'kysely';
+import type { Database } from '../db/database';
 import { GameSession } from '../plugins/core/game/session';
 import { saveGameState } from '../plugins/core/game/state-store';
 import { emitGameUpdate, startTurnTimer } from './room-events';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { recordGameResult } from '../db/user-repo';
+import { saveGameEvents, saveDeckInfo } from '../plugins/core/game-history/service';
 import type { SocketData } from './types';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
-  const roomCode = (socket.data as SocketData).roomCode;
+  const data = socket.data as SocketData;
+  if ((data as any).isSpectator) return null;
+  const roomCode = data.roomCode;
   if (!roomCode) return null;
   const session = sessions.get(roomCode);
   if (!session) return null;
@@ -23,7 +29,7 @@ export function setGamePersistence(enabled: boolean): void {
   persistEnabled = enabled;
 }
 
-async function persistGameResult(roomCode: string, session: GameSession, startTime: number): Promise<void> {
+async function persistGameResult(roomCode: string, session: GameSession, startTime: number, db: Kysely<Database>): Promise<void> {
   if (!persistEnabled) return;
 
   const key = `${roomCode}:${session.getFullState().roundNumber}`;
@@ -42,7 +48,11 @@ async function persistGameResult(roomCode: string, session: GameSession, startTi
   }));
 
   try {
-    await recordGameResult(roomCode, state.winnerId, state.roundNumber, duration, playerResults);
+    const gameId = await recordGameResult(roomCode, state.winnerId, state.roundNumber, duration, playerResults);
+    const events = session.getEvents();
+    await saveGameEvents(db, gameId, events);
+    await saveDeckInfo(db, gameId, state.deckHash, session.getInitialDeckSerialized());
+    session.clearEvents();
     setTimeout(() => persistedGames.delete(key), 60_000);
   } catch {
     persistedGames.delete(key);
@@ -74,6 +84,7 @@ async function emitTerminalStateIfNeeded(
   roomCode: string,
   session: GameSession,
   turnTimer: TurnTimer,
+  db: Kysely<Database>,
 ): Promise<boolean> {
   const state = session.getFullState();
   if (state.phase !== 'round_end' && state.phase !== 'game_over') return false;
@@ -84,8 +95,15 @@ async function emitTerminalStateIfNeeded(
     scores: Object.fromEntries(state.players.map((p) => [p.id, p.score])),
   });
 
+  if (state.phase === 'round_end') {
+    const scores = Object.fromEntries(state.players.map((p) => [p.id, p.score]));
+    session.recordEvent(GameEventType.ROUND_END, { winnerId: state.winnerId!, scores }, null);
+  }
+
   if (state.phase === 'game_over') {
-    await persistGameResult(roomCode, session, gameStartTimes.get(roomCode) ?? Date.now());
+    const finalScores = Object.fromEntries(state.players.map((p) => [p.id, p.score]));
+    session.recordEvent(GameEventType.GAME_OVER, { winnerId: state.winnerId!, finalScores }, null);
+    await persistGameResult(roomCode, session, gameStartTimes.get(roomCode) ?? Date.now(), db);
     gameStartTimes.delete(roomCode);
   }
 
@@ -98,6 +116,7 @@ export function registerGameEvents(
   redis: KvStore,
   turnTimer: TurnTimer,
   sessions: Map<string, GameSession>,
+  db: Kysely<Database>,
 ) {
   const data = socket.data as SocketData;
 
@@ -115,9 +134,15 @@ export function registerGameEvents(
       socket.emit('game:action_rejected', { action: 'play_card', reason: result.error });
       return callback?.({ success: false, error: result.error });
     }
+    const playedCard = session.getFullState().discardPile.at(-1);
+    session.recordEvent(GameEventType.PLAY_CARD, {
+      cardId: payload.cardId,
+      card: playedCard!,
+      chosenColor: payload.chosenColor,
+    }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer))) {
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, db))) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
     callback?.({ success: true });
@@ -131,6 +156,9 @@ export function registerGameEvents(
     if (!result.success) {
       socket.emit('game:action_rejected', { action: 'draw_card', reason: result.error });
       return callback?.({ success: false, error: result.error });
+    }
+    if (result.drawnCard) {
+      session.recordEvent(GameEventType.DRAW_CARD, { card: result.drawnCard }, data.user.userId);
     }
     const gameState = session.getFullState();
     if (result.drawnCard && !gameState.settings.houseRules.blindDraw) {
@@ -153,6 +181,7 @@ export function registerGameEvents(
     const { session, roomCode } = ctx;
     const result = session.applyAction({ type: 'PASS', playerId: data.user.userId });
     if (!result.success) return callback?.({ success: false, error: result.error });
+    session.recordEvent(GameEventType.PASS, {}, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
     startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
@@ -165,9 +194,10 @@ export function registerGameEvents(
     const { session, roomCode } = ctx;
     const result = session.applyAction({ type: 'CALL_UNO', playerId: data.user.userId });
     if (!result.success) return callback?.({ success: false, error: result.error });
+    session.recordEvent(GameEventType.CALL_UNO, {}, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
-    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer)) {
+    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, db)) {
       return callback?.({ success: true });
     }
     callback?.({ success: true });
@@ -179,6 +209,7 @@ export function registerGameEvents(
     const { session, roomCode } = ctx;
     const result = session.applyAction({ type: 'CATCH_UNO', catcherId: data.user.userId, targetId: payload.targetPlayerId });
     if (!result.success) return callback?.({ success: false, error: result.error });
+    session.recordEvent(GameEventType.CATCH_UNO, { targetPlayerId: payload.targetPlayerId }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
     callback?.({ success: true });
@@ -190,9 +221,14 @@ export function registerGameEvents(
     const { session, roomCode } = ctx;
     const result = session.applyAction({ type: 'CHALLENGE', playerId: data.user.userId });
     if (!result.success) return callback?.({ success: false, error: result.error });
+    const challengeState = session.getFullState();
+    session.recordEvent(GameEventType.CHALLENGE, {
+      success: challengeState.lastAction?.type === 'CHALLENGE' ? challengeState.lastAction.succeeded ?? false : false,
+      penaltyCards: [],
+    }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer))) {
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, db))) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
     callback?.({ success: true });
@@ -204,9 +240,10 @@ export function registerGameEvents(
     const { session, roomCode } = ctx;
     const result = session.applyAction({ type: 'ACCEPT', playerId: data.user.userId });
     if (!result.success) return callback?.({ success: false, error: result.error });
+    session.recordEvent(GameEventType.ACCEPT, { drawnCards: [] }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer))) {
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, db))) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
     callback?.({ success: true });
@@ -222,9 +259,10 @@ export function registerGameEvents(
       color: payload.color,
     });
     if (!result.success) return callback?.({ success: false, error: result.error });
+    session.recordEvent(GameEventType.CHOOSE_COLOR, { color: payload.color }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
-    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer)) {
+    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, db)) {
       // terminal state already emitted
     } else {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
@@ -242,6 +280,7 @@ export function registerGameEvents(
       targetId: payload.targetId,
     });
     if (!result.success) return callback?.({ success: false, error: result.error });
+    session.recordEvent(GameEventType.CHOOSE_SWAP_TARGET, { targetId: payload.targetId }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
     startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
