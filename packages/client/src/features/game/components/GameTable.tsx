@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Card as CardType } from '@uno-online/shared';
 import DrawPile from './DrawPile';
 import DiscardPile from './DiscardPile';
-import PlayerNode from './PlayerNode';
+import PlayerNode, { AVATAR_COLORS, AVATAR_EMOJIS } from './PlayerNode';
 import ThrowAnimation from './ThrowAnimation';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
@@ -395,6 +395,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
       {dimensions.width > 0 && players[currentPlayerIndex] && (
         <TurnIndicator
           playerName={players[currentPlayerIndex]!.name}
+          playerIndex={currentPlayerIndex}
           isMe={players[currentPlayerIndex]!.id === userId}
           turnEndTime={turnEndTime}
           cy={dimensions.height / 2}
@@ -445,8 +446,9 @@ export default function GameTable({ onDraw }: GameTableProps) {
   );
 }
 
-function TurnIndicator({ playerName, isMe, turnEndTime, cy }: {
+function TurnIndicator({ playerName, playerIndex, isMe, turnEndTime, cy }: {
   playerName: string;
+  playerIndex: number;
   isMe: boolean;
   turnEndTime: number | null;
   cy: number;
@@ -474,12 +476,20 @@ function TurnIndicator({ playerName, isMe, turnEndTime, cy }: {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      <span className={cn(
-        'font-game text-lg',
-        isMe ? 'text-primary font-bold' : 'text-foreground',
-      )}>
-        {isMe ? '你的回合' : playerName}
-      </span>
+      <div className="flex items-center gap-2">
+        <div
+          className="w-6 h-6 rounded-full flex items-center justify-center text-xs"
+          style={{ background: AVATAR_COLORS[playerIndex % AVATAR_COLORS.length] }}
+        >
+          {AVATAR_EMOJIS[playerIndex % AVATAR_EMOJIS.length]}
+        </div>
+        <span className={cn(
+          'font-game text-lg',
+          isMe ? 'text-primary font-bold' : 'text-foreground',
+        )}>
+          {isMe ? '你的回合' : playerName}
+        </span>
+      </div>
       {secondsLeft !== null && (
         <span className={cn(
           'font-game text-base tabular-nums',

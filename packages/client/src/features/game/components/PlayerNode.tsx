@@ -10,7 +10,7 @@ import ThrowItemPicker from './ThrowItemPicker';
 import { cn, getRoleColor } from '@/shared/lib/utils';
 import type { PlayerInfo } from '../stores/game-store';
 
-const AVATAR_COLORS = [
+export const AVATAR_COLORS = [
   '#ff3366',
   '#33cc66',
   '#4488ff',
@@ -21,7 +21,7 @@ const AVATAR_COLORS = [
   '#eab308',
   '#6366f1',
 ];
-const AVATAR_EMOJIS = [
+export const AVATAR_EMOJIS = [
   '😎',
   '🤠',
   '😺',
