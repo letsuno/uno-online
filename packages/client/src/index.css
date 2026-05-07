@@ -270,6 +270,24 @@
     display: none;
   }
 }
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.5);
+  }
+}
 @utility bg-wild-gradient {
   background: conic-gradient(#ff3366 0deg 90deg, #4488ff 90deg 180deg, #33cc66 180deg 270deg, #fbbf24 270deg 360deg);
 }

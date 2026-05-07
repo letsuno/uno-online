@@ -138,7 +138,7 @@ export default function HouseRulesCard({ embedded = false }: HouseRulesCardProps
   }
 
   return (
-    <div className="hidden md:block fixed left-4 bottom-24 w-chat-w max-h-[60vh] overflow-y-auto scrollbar-hidden z-fab bg-card/80 backdrop-blur-sm rounded-xl border border-white/10 p-3">
+    <div className="hidden md:block fixed left-4 bottom-24 w-chat-w max-h-[60vh] overflow-y-auto scrollbar-thin z-fab bg-card/80 backdrop-blur-sm rounded-xl border border-white/10 p-3">
       {content}
     </div>
   );

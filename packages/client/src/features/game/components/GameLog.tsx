@@ -69,7 +69,7 @@ export default function GameLog({ embedded = false }: GameLogProps) {
         {collapsed ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
       </button>
       {!collapsed && (
-        <div className="px-3 pb-3 max-h-[50vh] overflow-y-auto scrollbar-hidden">
+        <div className="px-3 pb-3 max-h-[50vh] overflow-y-auto scrollbar-thin">
           {entries.length === 0 ? (
             <p className="text-2xs text-muted-foreground">暂无记录</p>
           ) : (
