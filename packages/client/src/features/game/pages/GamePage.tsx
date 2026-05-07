@@ -23,6 +23,7 @@ import Confetti from '../components/Confetti';
 import HouseRulesCard from '../components/HouseRulesCard';
 import GameLog from '../components/GameLog';
 import MobileFAB from '../components/MobileFAB';
+import PlayerListPanel from '../components/PlayerListPanel';
 import { useGameLogStore } from '../stores/game-log-store';
 
 export default function GamePage() {
@@ -326,6 +327,7 @@ export default function GamePage() {
         </div>
       )}
       <TopBar roomCode={roomCode ?? ''} />
+      <PlayerListPanel />
       <LayoutGroup>
       <GameTable onDraw={drawCard} />
       <AnimatePresence>
