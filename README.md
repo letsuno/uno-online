@@ -1,6 +1,8 @@
 # UNO Online
 
-Web-based multiplayer UNO card game with voice chat, 32 configurable house rules, and a cartoon visual style.
+[中文文档](README.zh-CN.md)
+
+Web-based multiplayer UNO card game with voice chat, 32 configurable house rules, server selector, and a cartoon visual style.
 
 ## Features
 
@@ -8,27 +10,30 @@ Web-based multiplayer UNO card game with voice chat, 32 configurable house rules
 - **Complete UNO rules** — all card types, challenge mechanics, scoring, multi-round play
 - **32 house rules** — stacking, deflection, jump-in, 0-rotate, 7-swap, elimination, blitz, team mode, and more
 - **3 presets** — Classic (standard), Party (common house rules), Crazy (everything on)
+- **Server selector** — browse and switch between servers, view real-time status (players, rooms, latency), add custom servers
 - **Voice chat** — mediasoup SFU, per-player mute, speaking indicators
 - **Real-time** — Socket.IO with authoritative server, client-side prediction
 - **Animations** — Framer Motion card animations, game effects, confetti
 - **Sound effects** — Web Audio API synthesizer (no audio files)
 - **Color-blind mode** — pattern overlays + symbol markers on cards
 - **Mobile responsive** — touch-optimized hand scrolling, adaptive layout
-- **GitHub OAuth** login
+- **Admin panel** — user management, room monitoring, dashboard stats
+- **GitHub OAuth** + password login
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18, TypeScript, Vite |
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS v4 |
 | State | Zustand |
 | Animation | Framer Motion + CSS |
 | Backend | Fastify, TypeScript |
 | Realtime | Socket.IO |
 | Voice | mediasoup (SFU) |
-| Database | PostgreSQL (Prisma ORM) |
-| Cache | Redis |
-| Auth | GitHub OAuth + JWT |
+| Database | SQLite (Kysely) |
+| Cache | Redis (optional, in-memory fallback) |
+| Auth | GitHub OAuth + password + JWT |
+| Deployment | Docker + Caddy (auto-SSL) |
 | Monorepo | pnpm workspaces |
 
 ## Project Structure
@@ -37,19 +42,20 @@ Web-based multiplayer UNO card game with voice chat, 32 configurable house rules
 uno-online/
 ├── packages/
 │   ├── shared/          # Rules engine, types, constants (pure logic, no I/O)
-│   ├── server/          # Fastify + Socket.IO + mediasoup + Prisma
-│   └── client/          # React SPA (Vite)
-├── pnpm-workspace.yaml
+│   ├── server/          # Fastify + Socket.IO + mediasoup + SQLite
+│   ├── client/          # React SPA (Vite + Tailwind CSS v4)
+│   └── admin/           # Admin panel (React + Vite)
+├── Dockerfile
+├── docker-compose.yml
+├── Caddyfile
 └── tsconfig.base.json
 ```
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - pnpm 10+
-- PostgreSQL
-- Redis
-- GitHub OAuth App (for login)
+- GitHub OAuth App (for production login, optional in dev mode)
 
 ## Setup
 
@@ -60,38 +66,70 @@ corepack enable && corepack prepare pnpm@10.11.0 --activate
 pnpm install
 
 # Configure environment
-cp packages/server/.env.example packages/server/.env
-# Edit .env with your database URL, Redis URL, GitHub OAuth credentials, and JWT secret
-
-# Setup database
-cd packages/server
-npx prisma generate
-npx prisma db push
+cp .env.example .env
+# Edit .env as needed (DEV_MODE=true works without GitHub OAuth)
 ```
 
 ## Development
 
 ```bash
-# Start server (watches for changes)
-cd packages/server && pnpm dev
+# Start server (hot-reload)
+DEV_MODE=true JWT_SECRET=dev-secret pnpm --filter server dev
 
-# Start client (in another terminal)
-cd packages/client && pnpm dev
+# Start client (another terminal)
+pnpm --filter client dev
+
+# Start admin panel (another terminal)
+pnpm --filter admin dev
 ```
 
-The client runs on `http://localhost:5173` and proxies API requests to `http://localhost:3001`.
+- Client: `http://localhost:5173`
+- Admin: `http://localhost:5174`
+- Server: `http://localhost:3001`
+
+In dev mode, login with any username — no GitHub OAuth required.
+
+## Docker Deployment
+
+```bash
+# 1. Copy and edit config
+cp .env.example .env
+# Edit .env — set DOMAIN, GitHub OAuth credentials, JWT_SECRET
+
+# 2. Build and start
+docker compose up -d --build
+
+# 3. Verify
+curl http://localhost/health
+curl http://localhost/server/info
+```
 
 ## Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | (required) |
-| `REDIS_URL` | Redis connection string | `redis://localhost:6379` |
-| `GITHUB_CLIENT_ID` | GitHub OAuth app client ID | (required) |
-| `GITHUB_CLIENT_SECRET` | GitHub OAuth app secret | (required) |
+| `DEV_MODE` | Skip GitHub OAuth, enable dev login | `true` |
 | `JWT_SECRET` | JWT signing secret (32+ chars) | (required) |
+| `DATABASE_PATH` | SQLite database file path | `uno.db` |
+| `REDIS_URL` | Redis connection string (optional) | in-memory fallback |
+| `GITHUB_CLIENT_ID` | GitHub OAuth app client ID | (required in prod) |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth app secret | (required in prod) |
 | `CLIENT_URL` | Frontend URL for CORS | `http://localhost:5173` |
+| `DOMAIN` | Production domain for Caddy auto-SSL | `localhost` |
 | `PORT` | Server port | `3001` |
+| `SERVER_NAME` | Server display name (shown in server selector) | `UNO Online` |
+| `SERVER_MOTD` | Server welcome message | `欢迎来到 UNO Online！` |
+
+## API Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/server/info` | No | Server status (name, version, MOTD, online players, rooms, uptime) |
+| `GET` | `/health` | No | Health check |
+| `GET` | `/auth/config` | No | Auth configuration (dev mode, GitHub client ID) |
+| `POST` | `/auth/login` | No | Password login |
+| `POST` | `/auth/register` | No | Register new account |
+| `GET` | `/auth/me` | Yes | Current user info |
 
 ## Testing
 
@@ -99,21 +137,12 @@ The client runs on `http://localhost:5173` and proxies API requests to `http://l
 # Run all tests
 pnpm test
 
-# Run shared package tests only (170 tests — rules engine)
-cd packages/shared && pnpm test
+# Shared package tests (rules engine)
+pnpm --filter shared test
 
-# Run server tests only (48 tests — auth, rooms, game session, timers, voice)
-cd packages/server && pnpm test
-```
-
-## Build
-
-```bash
-# Build all packages
-pnpm build
-
-# Build client only
-cd packages/client && pnpm build
+# Type-check
+pnpm --filter server exec tsc --noEmit
+pnpm --filter client exec tsc --noEmit
 ```
 
 ## Architecture
@@ -126,16 +155,19 @@ House rules wrap the core engine: `applyActionWithHouseRules(state, action) => n
 
 ### Server (`packages/server`)
 
+- **Plugin architecture** — all features organized as Fastify plugins with shared `PluginContext`
 - **Authoritative game state** — clients predict for responsiveness, server validates all actions
-- **Game state in Redis** — ephemeral, 1-hour TTL, results persisted to PostgreSQL on game end
+- **Game state in KV store** — Redis or in-memory fallback, results persisted to SQLite on game end
+- **Server info endpoint** — `GET /server/info` returns real-time status with CORS support for cross-server querying
 - **Turn timer** — configurable (15/30/60s), auto draw+pass on timeout
 - **Disconnect handling** — 60s reconnect window, then auto-play every 5s
 - **Rate limiting** — 20 messages/second per socket
-- **Multi-tab protection** — new connection kicks old one
 
 ### Client (`packages/client`)
 
-- **Zustand stores** — auth, room, game, settings
+- **Feature module architecture** — auth, game, lobby, profile as independent feature modules
+- **Zustand stores** — auth, room, game, settings, server (with localStorage persistence)
+- **Server selector** — switch between servers with real-time status display, latency measurement (3x HTTP RTT average)
 - **Socket.IO** — auto-reconnect (5 attempts, exponential backoff), auto-rejoin room on reconnect
 - **Voice** — mediasoup-client with transport reconnect, browser capability detection
 - **Sound** — Web Audio API oscillator-based synthesizer, 13 sound effects

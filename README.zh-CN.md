@@ -1,6 +1,6 @@
 # UNO Online
 
-基于 Web 技术栈的在线多人 UNO 卡牌对战游戏，支持语音通话、32 条可配置村规、卡通趣味视觉风格。
+基于 Web 技术栈的在线多人 UNO 卡牌对战游戏，支持语音通话、32 条可配置村规、多服务器切换、卡通趣味视觉风格。
 
 ## 功能特性
 
@@ -8,27 +8,30 @@
 - **完整 UNO 规则** — 全部牌型、质疑机制、计分系统、多轮制
 - **32 条可配置村规** — 叠加、反弹、抢出、0 牌轮转、7 牌交换、淘汰制、闪电战、团队模式等
 - **3 套预设** — 经典（标准规则）、派对（常见村规）、疯狂（全部开启）
+- **服务器选择** — 浏览和切换服务器，实时查看状态（在线人数、房间数、延迟），支持自定义服务器
 - **语音通话** — mediasoup SFU 架构，逐人静音，说话状态指示
 - **实时对战** — Socket.IO 通信，权威服务器 + 客户端预测
 - **动画效果** — Framer Motion 卡牌动画、功能牌特效、胜利彩纸
 - **音效系统** — Web Audio API 合成器（无需音频文件）
 - **色盲友好** — 纹理图案叠加 + 颜色符号标识（♦♠♣♥）
 - **移动端适配** — 触摸滑动优化、响应式布局
-- **GitHub OAuth** 一键登录
+- **管理后台** — 用户管理、房间监控、数据看板
+- **GitHub OAuth** + 密码登录
 
 ## 技术栈
 
 | 层 | 技术选型 |
 |---|---------|
-| 前端 | React 18 + TypeScript + Vite |
+| 前端 | React 18 + TypeScript + Vite + Tailwind CSS v4 |
 | 状态管理 | Zustand |
-| 动画 | Framer Motion + CSS Animations |
+| 动画 | Framer Motion + CSS |
 | 后端 | Fastify + TypeScript |
 | 实时通信 | Socket.IO (WebSocket) |
 | 语音 | mediasoup (SFU) |
-| 数据库 | PostgreSQL (Prisma ORM) |
-| 缓存 | Redis |
-| 认证 | GitHub OAuth + JWT |
+| 数据库 | SQLite (Kysely) |
+| 缓存 | Redis（可选，内存回退） |
+| 认证 | GitHub OAuth + 密码 + JWT |
+| 部署 | Docker + Caddy（自动 SSL） |
 | Monorepo | pnpm workspaces |
 
 ## 项目结构
@@ -37,21 +40,20 @@
 uno-online/
 ├── packages/
 │   ├── shared/          # 规则引擎、类型定义、常量（纯逻辑，无 I/O）
-│   ├── server/          # Fastify + Socket.IO + mediasoup + Prisma
-│   └── client/          # React SPA (Vite)
-├── Dockerfile           # 多阶段构建
-├── docker-compose.yml   # 一键部署
-├── nginx.conf           # 反向代理配置
+│   ├── server/          # Fastify + Socket.IO + mediasoup + SQLite
+│   ├── client/          # React SPA (Vite + Tailwind CSS v4)
+│   └── admin/           # 管理后台 (React + Vite)
+├── Dockerfile
+├── docker-compose.yml
+├── Caddyfile
 └── tsconfig.base.json
 ```
 
 ## 前置要求
 
-- Node.js 20+
+- Node.js 22+
 - pnpm 10+
-- PostgreSQL
-- Redis
-- GitHub OAuth App（用于登录）
+- GitHub OAuth App（生产环境登录用，开发模式可不填）
 
 ## 本地开发
 
@@ -62,115 +64,66 @@ corepack enable && corepack prepare pnpm@10.11.0 --activate
 pnpm install
 
 # 配置环境变量
-cp packages/server/.env.example packages/server/.env
-# 编辑 .env，填入数据库地址、Redis 地址、GitHub OAuth 凭证、JWT 密钥
-
-# 初始化数据库
-cd packages/server
-npx prisma generate
-npx prisma db push
+cp .env.example .env
+# 按需编辑（DEV_MODE=true 无需 GitHub OAuth）
 
 # 启动服务端（热重载）
-pnpm dev
+DEV_MODE=true JWT_SECRET=dev-secret pnpm --filter server dev
 
 # 启动客户端（另一个终端）
-cd ../client && pnpm dev
+pnpm --filter client dev
+
+# 启动管理后台（另一个终端）
+pnpm --filter admin dev
 ```
 
-客户端运行在 `http://localhost:5173`，API 请求自动代理到 `http://localhost:3001`。
+- 客户端：`http://localhost:5173`
+- 管理后台：`http://localhost:5174`
+- 服务端：`http://localhost:3001`
+
+开发模式下输入任意用户名即可登录，无需 GitHub OAuth。
 
 ## Docker 部署
 
-### 快速启动
-
 ```bash
-# 1. 复制配置文件并编辑
+# 1. 复制并编辑配置
 cp .env.example .env
-# 编辑 .env，至少填入 GitHub OAuth 凭证
+# 编辑 .env — 设置 DOMAIN、GitHub OAuth 凭证、JWT_SECRET
 
-# 2. 构建并启动（首次约 3-5 分钟）
+# 2. 构建并启动
 docker compose up -d --build
 
-# 3. 初始化数据库（仅首次）
-docker compose exec -w /app/packages/server server npx prisma db push
-
-# 4. 验证
-curl http://localhost:6679/health
+# 3. 验证
+curl http://localhost/health
+curl http://localhost/server/info
 ```
 
-浏览器打开 `http://localhost:6679` 即可。
+## 环境变量
 
-### 配置文件 (`.env`)
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `DEV_MODE` | 跳过 GitHub OAuth，启用开发登录 | `true` |
+| `JWT_SECRET` | JWT 签名密钥（至少 32 字符） | （必填） |
+| `DATABASE_PATH` | SQLite 数据库文件路径 | `uno.db` |
+| `REDIS_URL` | Redis 连接字符串（可选） | 使用内存存储 |
+| `GITHUB_CLIENT_ID` | GitHub OAuth 客户端 ID | （生产必填） |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth 客户端密钥 | （生产必填） |
+| `CLIENT_URL` | 前端地址（CORS 用） | `http://localhost:5173` |
+| `DOMAIN` | 生产域名（Caddy 自动 SSL） | `localhost` |
+| `PORT` | 服务端端口 | `3001` |
+| `SERVER_NAME` | 服务器显示名称（服务器选择器中展示） | `UNO Online` |
+| `SERVER_MOTD` | 服务器欢迎信息 | `欢迎来到 UNO Online！` |
 
-所有配置集中在根目录 `.env` 一个文件：
+## API 接口
 
-```ini
-# --- GitHub OAuth（必填，否则无法登录）---
-GITHUB_CLIENT_ID=your_github_client_id
-GITHUB_CLIENT_SECRET=your_github_client_secret
-
-# --- 安全 ---
-JWT_SECRET=please-change-this-to-a-random-string-at-least-32-chars
-
-# --- 端口 ---
-HTTP_PORT=6679          # 网页访问端口
-RTC_PORT=40000          # 语音通话端口
-
-# --- 数据库（默认连接 Docker 内置 PostgreSQL，外部数据库请改这里）---
-DATABASE_URL=postgresql://postgres:postgres@postgres:5432/uno_online
-POSTGRES_PASSWORD=postgres
-
-# --- Redis（默认连接 Docker 内置 Redis，外部 Redis 请改这里）---
-REDIS_URL=redis://redis:6379
-REDIS_PASSWORD=
-
-# --- 前端地址（用于 CORS，部署到域名时修改）---
-CLIENT_URL=http://localhost:6679
-```
-
-### 服务架构
-
-```
-              ┌─────────┐
-   :6679      │  Nginx  │  静态文件 + 反向代理
-    ──────────┤         │
-              └────┬────┘
-                   │
-        ┌──────────┴──────────┐
-        │                     │
-  ┌─────┴─────┐        ┌─────┴─────┐
-  │  Server   │        │  静态资源   │
-  │  :3001    │        │  /dist     │
-  └─────┬─────┘        └───────────┘
-        │
-  ┌─────┼─────────┐
-  │     │         │
-┌─┴──┐ ┌┴───┐ ┌──┴──────────┐
-│ PG │ │Redis│ │mediasoup    │
-│5432│ │6379 │ │UDP/TCP 40000│
-└────┘ └─────┘ └─────────────┘
-
-对外端口：HTTP_PORT (网页) + RTC_PORT (语音)
-```
-
-### 常用命令
-
-```bash
-# 查看日志
-docker compose logs -f server
-
-# 重启服务
-docker compose restart server
-
-# 数据库迁移
-docker compose exec -w /app/packages/server server npx prisma db push
-
-# 停止所有服务
-docker compose down
-
-# 停止并清除数据
-docker compose down -v
-```
+| 方法 | 路径 | 认证 | 说明 |
+|------|------|------|------|
+| `GET` | `/server/info` | 否 | 服务器状态（名称、版本、欢迎信息、在线人数、房间数、运行时长） |
+| `GET` | `/health` | 否 | 健康检查 |
+| `GET` | `/auth/config` | 否 | 认证配置（开发模式、GitHub 客户端 ID） |
+| `POST` | `/auth/login` | 否 | 密码登录 |
+| `POST` | `/auth/register` | 否 | 注册新账号 |
+| `GET` | `/auth/me` | 是 | 当前用户信息 |
 
 ## 测试
 
@@ -178,21 +131,12 @@ docker compose down -v
 # 运行全部测试
 pnpm test
 
-# 规则引擎测试（170 个用例）
-cd packages/shared && pnpm test
+# 规则引擎测试
+pnpm --filter shared test
 
-# 服务端测试（48 个用例）
-cd packages/server && pnpm test
-```
-
-## 构建
-
-```bash
-# 构建所有包
-pnpm build
-
-# 仅构建客户端
-cd packages/client && pnpm build
+# 类型检查
+pnpm --filter server exec tsc --noEmit
+pnpm --filter client exec tsc --noEmit
 ```
 
 ## 架构设计
@@ -205,16 +149,19 @@ cd packages/client && pnpm build
 
 ### 服务端 (`packages/server`)
 
+- **插件架构** — 所有功能以 Fastify 插件组织，通过 `PluginContext` 共享依赖
 - **权威状态** — 客户端做乐观更新，服务端是唯一规则权威
-- **游戏状态存 Redis** — 临时数据，1 小时 TTL，游戏结束后写入 PostgreSQL
+- **游戏状态存 KV** — Redis 或内存回退，游戏结束后持久化到 SQLite
+- **服务器信息接口** — `GET /server/info` 返回实时状态，支持 CORS 跨服务器查询
 - **回合计时** — 可配置（15/30/60 秒），超时自动摸牌跳过
 - **掉线处理** — 60 秒重连窗口，超时后每 5 秒自动托管
 - **频率限制** — 每个连接 20 条/秒
-- **多标签页保护** — 新连接踢掉旧连接
 
 ### 客户端 (`packages/client`)
 
-- **Zustand 状态管理** — auth、room、game、settings 四个 store
+- **Feature 模块架构** — auth、game、lobby、profile 独立模块
+- **Zustand 状态管理** — auth、room、game、settings、server（localStorage 持久化）
+- **服务器选择器** — 切换服务器并实时展示状态，延迟测量（3 次 HTTP RTT 取平均）
 - **Socket.IO** — 自动重连（5 次，指数退避），重连后自动恢复房间
 - **语音** — mediasoup-client，transport 断线自动重连，浏览器兼容性检测
 - **音效** — Web Audio API 振荡器合成，13 种音效
