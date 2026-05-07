@@ -42,12 +42,13 @@ export function registerRoomEvents(
       const players = await getRoomPlayers(redis, roomCode);
       const alreadyInRoom = players.some(p => p.userId === data.user.userId);
 
-      if (alreadyInRoom && room.status !== 'waiting') {
-        // Player reconnecting to an in-progress game — delegate to rejoin flow
+      if (alreadyInRoom) {
         data.roomCode = roomCode;
         await socket.join(roomCode);
-        socket.emit('room:rejoin_redirect', { roomCode });
-        return callback({ success: true, players, room, rejoin: true });
+        if (room.status !== 'waiting') {
+          socket.emit('room:rejoin_redirect', { roomCode });
+        }
+        return callback({ success: true, players, room, rejoin: room.status !== 'waiting' });
       }
 
       await roomManager.joinRoom(roomCode, data.user.userId, data.user.nickname, data.user.avatarUrl, data.user.role);
