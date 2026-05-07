@@ -8,6 +8,8 @@ import { apiGet } from '@/shared/api';
 import { Button } from '@/shared/components/ui/Button';
 import { Input } from '@/shared/components/ui/Input';
 import { BUILD_VERSION, BUILD_TIME } from '@/shared/build-info';
+import { ServerButton } from '@/shared/components/ServerButton';
+import { ServerSelectModal } from '@/shared/components/ServerSelectModal';
 
 interface AuthConfig {
   devMode: boolean;
@@ -194,9 +196,14 @@ export default function HomePage() {
         </div>
       </div>
 
-      <p className="absolute bottom-6 left-6 text-xs text-muted-foreground/50">
-        v{BUILD_VERSION} · {new Date(BUILD_TIME).toLocaleDateString('zh-CN')}
-      </p>
+      <div className="absolute bottom-6 left-6 flex items-center gap-3">
+        <span className="text-xs text-muted-foreground/50">
+          v{BUILD_VERSION} · {new Date(BUILD_TIME).toLocaleDateString('zh-CN')}
+        </span>
+        <ServerButton />
+      </div>
+
+      <ServerSelectModal />
     </div>
   );
 }

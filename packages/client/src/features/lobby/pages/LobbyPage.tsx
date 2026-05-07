@@ -9,6 +9,8 @@ import { getSocket, connectSocket } from '@/shared/socket';
 import { Button } from '@/shared/components/ui/Button';
 import { Input } from '@/shared/components/ui/Input';
 import { BUILD_VERSION } from '@/shared/build-info';
+import { ServerButton } from '@/shared/components/ServerButton';
+import { ServerSelectModal } from '@/shared/components/ServerSelectModal';
 
 export default function LobbyPage() {
   const user = useAuthStore((s) => s.user);
@@ -122,8 +124,11 @@ export default function LobbyPage() {
             <Hexagon size={14} />
           </button>
         </div>
+        <ServerButton />
         <span className="text-xs text-muted-foreground/50">v{BUILD_VERSION}</span>
       </div>
+
+      <ServerSelectModal />
     </div>
   );
 }
