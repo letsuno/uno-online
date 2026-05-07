@@ -4,7 +4,12 @@ import { LogIn, Spade, Type, Upload, X } from 'lucide-react';
 import { useAuthStore } from '../stores/auth-store.js';
 import { useSettingsStore, FONT_OPTIONS, type FontOption } from '../stores/settings-store.js';
 import { loadCardPack, clearCardPack, isPackLoaded } from '../utils/card-images.js';
-import { GITHUB_CLIENT_ID, DEV_MODE } from '../env.js';
+import { apiGet } from '../api.js';
+
+interface AuthConfig {
+  devMode: boolean;
+  githubClientId: string;
+}
 
 export default function HomePage() {
   const { user, token, loading, loadUser, devLogin } = useAuthStore();
@@ -13,6 +18,7 @@ export default function HomePage() {
   const [searchParams] = useSearchParams();
   const [devUsername, setDevUsername] = useState('');
   const [error, setError] = useState('');
+  const [authConfig, setAuthConfig] = useState<AuthConfig | null>(null);
   const redirect = searchParams.get('redirect');
 
   const getRedirectTarget = () => redirect || sessionStorage.getItem('loginRedirect') || '/lobby';
@@ -22,6 +28,7 @@ export default function HomePage() {
   }, [redirect]);
 
   useEffect(() => {
+    apiGet<AuthConfig>('/auth/config').then(setAuthConfig).catch(() => {});
     loadUser().then(() => {
       const u = useAuthStore.getState().user;
       if (u) {
@@ -32,7 +39,9 @@ export default function HomePage() {
     });
   }, []);
 
-  const loginUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&scope=read:user`;
+  const loginUrl = authConfig
+    ? `https://github.com/login/oauth/authorize?client_id=${authConfig.githubClientId}&scope=read:user`
+    : '#';
 
   const handleDevLogin = async () => {
     if (!devUsername.trim()) { setError('请输入用户名'); return; }
@@ -61,8 +70,8 @@ export default function HomePage() {
       <p style={{ color: 'var(--text-secondary)', fontSize: 18, maxWidth: 400 }}>
         和朋友一起玩 UNO！支持 2-10 人在线对战、语音通话、自定义村规。
       </p>
-      {!loading && !token && (
-        DEV_MODE ? (
+      {!loading && !token && authConfig && (
+        authConfig.devMode ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <input
@@ -92,7 +101,7 @@ export default function HomePage() {
           </a>
         )
       )}
-      {loading && <p style={{ color: 'var(--text-secondary)' }}>加载中...</p>}
+      {(loading || (!token && !authConfig)) && <p style={{ color: 'var(--text-secondary)' }}>加载中...</p>}
 
       <div style={{
         position: 'absolute', bottom: 24, right: 24,
