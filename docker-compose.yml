@@ -28,7 +28,7 @@ services:
       DEV_MODE: ${DEV_MODE:-true}
       PORT: "3001"
     volumes:
-      - sqlite_data:/data
+      - ./data/sqlite:/data
     restart: unless-stopped
 
   caddy:
@@ -42,8 +42,8 @@ services:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
     volumes:
-      - caddy_data:/data
-      - caddy_config:/config
+      - ./data/caddy/data:/data
+      - ./data/caddy/config:/config
     restart: unless-stopped
 
   mumble:
@@ -52,7 +52,7 @@ services:
       - "${MUMBLE_PORT:-64738}:64738/tcp"
       - "${MUMBLE_PORT:-64738}:64738/udp"
     volumes:
-      - mumble_data:/data
+      - ./data/mumble:/data
     environment:
       MUMBLE_SUPERUSER_PASSWORD: ${MUMBLE_SUPERUSER_PASSWORD:-admin}
       MUMBLE_CONFIG_allowTemporaryChannels: "true"
@@ -65,9 +65,3 @@ services:
     ports:
       - "${MUMBLE_GATEWAY_PORT:-64737}:64737"
     restart: unless-stopped
-
-volumes:
-  sqlite_data:
-  caddy_data:
-  caddy_config:
-  mumble_data:
