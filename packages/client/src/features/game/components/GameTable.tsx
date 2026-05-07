@@ -397,7 +397,6 @@ export default function GameTable({ onDraw }: GameTableProps) {
           playerName={players[currentPlayerIndex]!.name}
           isMe={players[currentPlayerIndex]!.id === userId}
           turnEndTime={turnEndTime}
-          cx={dimensions.width / 2}
           cy={dimensions.height / 2}
         />
       )}
@@ -446,11 +445,10 @@ export default function GameTable({ onDraw }: GameTableProps) {
   );
 }
 
-function TurnIndicator({ playerName, isMe, turnEndTime, cx, cy }: {
+function TurnIndicator({ playerName, isMe, turnEndTime, cy }: {
   playerName: string;
   isMe: boolean;
   turnEndTime: number | null;
-  cx: number;
   cy: number;
 }) {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
@@ -470,21 +468,21 @@ function TurnIndicator({ playerName, isMe, turnEndTime, cx, cy }: {
   return (
     <motion.div
       key={playerName}
-      className="absolute pointer-events-none flex items-center gap-2 whitespace-nowrap"
-      style={{ left: cx, top: cy + 80, transform: 'translateX(-50%)' }}
+      className="absolute left-1/2 -translate-x-1/2 pointer-events-none flex flex-col items-center gap-1 whitespace-nowrap"
+      style={{ top: cy + 110 }}
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
       <span className={cn(
-        'font-game text-sm',
+        'font-game text-lg',
         isMe ? 'text-primary font-bold' : 'text-foreground',
       )}>
         {isMe ? '你的回合' : playerName}
       </span>
       {secondsLeft !== null && (
         <span className={cn(
-          'font-game text-sm tabular-nums',
+          'font-game text-base tabular-nums',
           urgent ? 'text-destructive font-bold animate-timer-flash' : 'text-muted-foreground',
         )}>
           {secondsLeft}s
