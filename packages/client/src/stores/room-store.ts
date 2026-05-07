@@ -6,6 +6,7 @@ interface RoomPlayer {
   nickname: string;
   avatarUrl?: string | null;
   ready: boolean;
+  role?: string;
 }
 
 interface RoomData {

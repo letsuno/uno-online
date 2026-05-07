@@ -12,6 +12,7 @@ interface PlayerInfo {
   eliminated?: boolean;
   teamId?: number;
   avatarUrl?: string | null;
+  role?: string;
 }
 
 interface GameState {
