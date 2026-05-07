@@ -1,7 +1,7 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
 import type { RoomSettings } from '@uno-online/shared';
-import { MIN_PLAYERS, DEFAULT_HOUSE_RULES } from '@uno-online/shared';
+import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager';
 import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, deleteRoom } from '../plugins/core/room/store';
 import { GameSession } from '../plugins/core/game/session';
@@ -210,6 +210,24 @@ export function startTurnTimer(
 ) {
   const state = session.getFullState();
   const phase = state.phase;
+  const currentPlayer = state.players[state.currentPlayerIndex];
+
+  if (currentPlayer?.autopilot) {
+    turnTimer.start(roomCode, 2, async (code) => {
+      const s = sessions.get(code);
+      if (!s) return;
+      const st = s.getFullState();
+      const pid = s.getCurrentPlayerId();
+      const actions = chooseAutopilotAction(st, pid);
+      for (const action of actions) {
+        s.applyAction(action);
+      }
+      await saveGameState(redis, code, s.getFullState());
+      emitGameUpdate(io, code, s);
+      startTurnTimer(io, redis, code, s, turnTimer, sessions);
+    });
+    return;
+  }
 
   if (phase === 'challenging' || phase === 'choosing_color' || phase === 'choosing_swap_target') {
     const timeLimit = state.settings.turnTimeLimit;
@@ -217,15 +235,10 @@ export function startTurnTimer(
       const s = sessions.get(code);
       if (!s) return;
       const currentPlayerId = s.getCurrentPlayerId();
-      if (s.getFullState().phase === 'challenging') {
-        s.applyAction({ type: 'ACCEPT', playerId: currentPlayerId });
-      } else if (s.getFullState().phase === 'choosing_color') {
-        s.applyAction({ type: 'CHOOSE_COLOR', playerId: currentPlayerId, color: 'red' });
-      } else if (s.getFullState().phase === 'choosing_swap_target') {
-        const targets = s.getFullState().players.filter(p => p.id !== currentPlayerId && !p.eliminated);
-        if (targets.length > 0) {
-          s.applyAction({ type: 'CHOOSE_SWAP_TARGET', playerId: currentPlayerId, targetId: targets[0]!.id });
-        }
+      const st = s.getFullState();
+      const actions = chooseAutopilotAction(st, currentPlayerId);
+      for (const action of actions) {
+        s.applyAction(action);
       }
       await saveGameState(redis, code, s.getFullState());
       emitGameUpdate(io, code, s);
@@ -246,8 +259,11 @@ export function startTurnTimer(
     const s = sessions.get(code);
     if (!s) return;
     const currentPlayerId = s.getCurrentPlayerId();
-    s.applyAction({ type: 'DRAW_CARD', playerId: currentPlayerId });
-    s.applyAction({ type: 'PASS', playerId: currentPlayerId });
+    const st = s.getFullState();
+    const actions = chooseAutopilotAction(st, currentPlayerId);
+    for (const action of actions) {
+      s.applyAction(action);
+    }
     await saveGameState(redis, code, s.getFullState());
     emitGameUpdate(io, code, s);
     io.to(code).emit('player:timeout', { playerId: currentPlayerId });
