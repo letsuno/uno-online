@@ -48,7 +48,7 @@ export default function LobbyPage() {
       <h1 className="font-game text-heading-lg text-primary">
         <Spade size={24} className="inline-block align-middle" /> 游戏大厅
       </h1>
-      <p className="text-muted-foreground">欢迎, {user?.username}!</p>
+      <p className="text-muted-foreground">欢迎, {user?.nickname ?? user?.username}!</p>
       <Button variant="primary" size="lg" onClick={handleCreate} disabled={loading}>
         {loading ? '创建中...' : '创建房间'}
       </Button>
@@ -64,7 +64,9 @@ export default function LobbyPage() {
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="mt-5 flex gap-3">
-        <Button variant="secondary" onClick={() => navigate('/profile')}>个人信息</Button>
+        {!user?.id.startsWith('ephemeral_') && (
+          <Button variant="secondary" onClick={() => navigate('/profile')}>个人信息</Button>
+        )}
         <Button variant="secondary" onClick={() => { logout(); navigate('/'); }}>退出登录</Button>
       </div>
     </div>

@@ -91,7 +91,7 @@ export default function RoomPage() {
         </h3>
         {players.map((p) => (
           <div key={p.userId} className="flex items-center justify-between border-b border-white/5 py-2">
-            <span>{p.username}{room?.ownerId === p.userId && <> <Crown size={14} className="inline-block align-middle" /></>}</span>
+            <span>{p.nickname}{room?.ownerId === p.userId && <> <Crown size={14} className="inline-block align-middle" /></>}</span>
             <span className={cn('text-xs', p.ready ? 'text-uno-green' : 'text-muted-foreground')}>
               {p.ready ? <><Check size={12} className="inline-block align-middle" /> 已准备</> : '未准备'}
             </span>
