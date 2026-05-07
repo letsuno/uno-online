@@ -135,10 +135,11 @@ function handlePlayCard(
   // Update discard pile
   const newDiscardPile = [...state.discardPile, card];
 
-  // Reset calledUno for the player who played
+  // Reset calledUno unless the player is going down to 1 card (pre-play UNO call)
+  const keepUno = newHand.length === 1 && actingPlayer.calledUno;
   const players = state.players.map((p, idx) =>
     idx === actingPlayerIdx
-      ? { ...p, hand: newHand, calledUno: false }
+      ? { ...p, hand: newHand, calledUno: keepUno }
       : { ...p }
   );
 

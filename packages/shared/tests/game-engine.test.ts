@@ -724,7 +724,7 @@ describe('DRAW_CARD - reshuffles when deck is empty', () => {
 });
 
 describe('PLAY_CARD - resets calledUno when playing', () => {
-  it('playing a card resets calledUno for that player', () => {
+  it('preserves calledUno when playing down to 1 card (pre-play UNO call)', () => {
     const card = makeCard('number', 'red', { value: 7, id: 'c1' });
     const extraCard = makeCard('number', 'red', { value: 3, id: 'c2' });
     const state = makeState({
@@ -733,6 +733,25 @@ describe('PLAY_CARD - resets calledUno when playing', () => {
           id: 'p1', name: 'Alice',
           hand: [card, extraCard],
           score: 0, connected: true, calledUno: true // had called UNO
+        },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+    });
+    const next = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'c1' });
+    expect(next.players[0]!.calledUno).toBe(true);
+  });
+
+  it('resets calledUno when playing down to more than 1 card', () => {
+    const card = makeCard('number', 'red', { value: 7, id: 'c1' });
+    const extra1 = makeCard('number', 'red', { value: 3, id: 'c2' });
+    const extra2 = makeCard('number', 'blue', { value: 5, id: 'c3' });
+    const state = makeState({
+      players: [
+        {
+          id: 'p1', name: 'Alice',
+          hand: [card, extra1, extra2],
+          score: 0, connected: true, calledUno: true
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
