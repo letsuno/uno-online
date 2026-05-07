@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Spade, LogOut, User, Hexagon, Circle } from 'lucide-react';
+import { Spade, LogOut, User, Hexagon, Circle, Upload, X, Type } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { getRoleColor } from '@/shared/lib/utils';
 import { useRoomStore } from '@/shared/stores/room-store';
-import { useSettingsStore } from '@/shared/stores/settings-store';
+import { useSettingsStore, FONT_OPTIONS, type FontOption } from '@/shared/stores/settings-store';
+import { loadCardPack, clearCardPack, isPackLoaded } from '@/shared/utils/card-images';
 import { getSocket, connectSocket } from '@/shared/socket';
 import { Button } from '@/shared/components/ui/Button';
 import { Input } from '@/shared/components/ui/Input';
@@ -16,7 +17,7 @@ export default function LobbyPage() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const setRoom = useRoomStore((s) => s.setRoom);
-  const { uiTheme, setUiTheme } = useSettingsStore();
+  const { uiTheme, setUiTheme, fontFamily, setFontFamily, cardImagePack, setCardImagePack } = useSettingsStore();
   const navigate = useNavigate();
   const [joinCode, setJoinCode] = useState('');
   const [error, setError] = useState('');
@@ -106,8 +107,49 @@ export default function LobbyPage() {
         </Button>
       </div>
 
-      {/* Theme switcher + version */}
+      {/* Settings + version */}
       <div className="absolute bottom-6 right-6 flex items-center gap-3">
+        {cardImagePack && isPackLoaded() ? (
+          <button
+            onClick={() => { clearCardPack(); setCardImagePack(false); }}
+            className="bg-card text-foreground border border-white/20 rounded-lg px-2.5 py-1.5 text-sm cursor-pointer flex items-center gap-1"
+          >
+            <X size={14} /> 卸载资源包
+          </button>
+        ) : (
+          <label className="bg-card text-foreground border border-white/20 rounded-lg px-2.5 py-1.5 text-sm cursor-pointer flex items-center gap-1">
+            <Upload size={14} /> 加载卡面资源包
+            <input
+              type="file"
+              accept=".zip"
+              hidden
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                  await loadCardPack(file);
+                  setCardImagePack(true);
+                } catch {
+                  setCardImagePack(false);
+                }
+                e.target.value = '';
+              }}
+            />
+          </label>
+        )}
+        <div className="flex items-center gap-2">
+          <Type size={16} className="text-muted-foreground" />
+          <select
+            value={fontFamily}
+            onChange={(e) => setFontFamily(e.target.value as FontOption)}
+            className="bg-card text-foreground border border-white/20 rounded-lg px-2.5 py-1.5 text-sm cursor-pointer"
+            style={{ fontFamily: FONT_OPTIONS[fontFamily].value }}
+          >
+            {(Object.keys(FONT_OPTIONS) as FontOption[]).map((k) => (
+              <option key={k} value={k}>{FONT_OPTIONS[k].label}</option>
+            ))}
+          </select>
+        </div>
         <div className="flex items-center gap-1 rounded-btn bg-card/60 p-1">
           <button
             onClick={() => setUiTheme('rounded')}
