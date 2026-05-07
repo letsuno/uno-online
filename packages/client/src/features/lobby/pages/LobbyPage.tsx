@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Spade, LogOut, User, Hexagon, Circle, Upload, X, Type } from 'lucide-react';
+import { Spade, LogOut, User, Hexagon, Circle, Upload, X, Type, Eye, History, Users, Clock } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { getRoleColor } from '@/shared/lib/utils';
 import { useRoomStore } from '@/shared/stores/room-store';
@@ -12,6 +12,7 @@ import { Input } from '@/shared/components/ui/Input';
 import { BUILD_VERSION } from '@/shared/build-info';
 import { ServerButton } from '@/shared/components/ServerButton';
 import { ServerSelectModal } from '@/shared/components/ServerSelectModal';
+import { useLobbyStore } from '../stores/lobby-store';
 
 export default function LobbyPage() {
   const user = useAuthStore((s) => s.user);
@@ -22,6 +23,14 @@ export default function LobbyPage() {
   const [joinCode, setJoinCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { activeRooms, recentGames, fetchActiveRooms, fetchRecentGames } = useLobbyStore();
+
+  useEffect(() => {
+    fetchActiveRooms();
+    fetchRecentGames();
+    const interval = setInterval(fetchActiveRooms, 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleCreate = () => {
     setLoading(true);
@@ -94,6 +103,69 @@ export default function LobbyPage() {
 
         {error && <p className="text-sm text-destructive text-center">{error}</p>}
       </div>
+
+        {/* Active games */}
+        {activeRooms.length > 0 && (
+          <div className="w-full max-w-sm">
+            <h3 className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+              <Users size={14} /> 正在进行的对战
+            </h3>
+            <div className="flex flex-col gap-2">
+              {activeRooms.map((room) => (
+                <div key={room.roomCode} className="rounded-panel-ui bg-card/60 p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold">{room.players.map(p => p.nickname).join(' vs ')}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {room.playerCount} 人 · {room.spectatorCount} 人观战
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      connectSocket();
+                      getSocket().emit('room:spectate', room.roomCode, (res: any) => {
+                        if (res.success) navigate(`/game/${room.roomCode}?spectate=true`);
+                        else setError(res.error || '无法观战');
+                      });
+                    }}
+                  >
+                    <Eye size={14} className="mr-1" /> 观战
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent games */}
+        {recentGames.length > 0 && (
+          <div className="w-full max-w-sm">
+            <h3 className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+              <History size={14} /> 近期对局
+            </h3>
+            <div className="flex flex-col gap-2">
+              {recentGames.map((game) => (
+                <div
+                  key={game.id}
+                  className="rounded-panel-ui bg-card/60 p-3 cursor-pointer hover:bg-card/80 transition-colors"
+                  onClick={() => navigate(`/replay/${game.id}`)}
+                >
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm font-bold">房间 {game.roomCode}</p>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock size={12} />
+                      {Math.floor(game.duration / 60)}分{game.duration % 60}秒
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {game.playerCount} 人 · 冠军: {game.winnerName} · {game.rounds} 轮
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       {/* Bottom actions */}
       <div className="flex items-center gap-3">
