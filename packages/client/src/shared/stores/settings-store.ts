@@ -4,7 +4,7 @@ export type FontOption = 'default' | 'rounded' | 'serif' | 'mono';
 export type UiTheme = 'rounded' | 'tech';
 
 export const FONT_OPTIONS: Record<FontOption, { label: string; value: string }> = {
-  default: { label: '默认', value: "'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif" },
+  default: { label: '默认', value: "'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Microsoft YaHei', 'PingFang SC', cursive, sans-serif" },
   rounded: { label: '圆体', value: "system-ui, -apple-system, 'Noto Sans SC', sans-serif" },
   serif: { label: '衬线', value: "'Georgia', 'Noto Serif SC', 'Times New Roman', serif" },
   mono: { label: '等宽', value: "'Fira Code', 'Cascadia Code', 'Consolas', monospace" },

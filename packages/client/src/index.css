@@ -63,7 +63,7 @@
   --radius-card-md: 18px;
   --radius-panel: 20px;
 
-  --font-game: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif;
+  --font-game: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Microsoft YaHei', 'PingFang SC', cursive, sans-serif;
   --font-ui: system-ui, -apple-system, sans-serif;
 
   --spacing-card-w: 52px;
