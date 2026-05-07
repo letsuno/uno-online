@@ -22,6 +22,7 @@ export interface Player {
   calledUno: boolean;
   eliminated?: boolean;
   teamId?: number;
+  avatarUrl?: string | null;
 }
 
 export interface RoomSettings {

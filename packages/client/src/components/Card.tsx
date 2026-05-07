@@ -1,5 +1,6 @@
 import type { Card as CardType } from '@uno-online/shared';
 import { useSettingsStore } from '../stores/settings-store';
+import { getCardImageUrl, isPackLoaded } from '../utils/card-images';
 import ColorBlindOverlay from './ColorBlindOverlay';
 import { cn } from '@/lib/utils';
 
@@ -43,6 +44,7 @@ interface CardProps {
 
 export default function Card({ card, playable = false, clickable = playable, dimmed = false, mini = false, onClick, style, className }: CardProps) {
   const colorBlindMode = useSettingsStore((s) => s.colorBlindMode);
+  const cardImagePack = useSettingsStore((s) => s.cardImagePack);
 
   const isWild = card.type === 'wild' || card.type === 'wild_draw_four';
   const bgClass = isWild
@@ -51,6 +53,33 @@ export default function Card({ card, playable = false, clickable = playable, dim
 
   const label = getCardLabel(card);
   const showCorners = !isWild && !mini;
+
+  if (cardImagePack && isPackLoaded()) {
+    const imgUrl = getCardImageUrl(card);
+    if (imgUrl) {
+      return (
+        <div
+          className={cn(
+            'w-card-w h-card-h md:w-card-w-md md:h-card-h-md rounded-card md:rounded-card-md',
+            'bg-transparent border-none shadow-none overflow-hidden p-0',
+            'flex items-center justify-center',
+            'select-none shrink-0 relative',
+            'transition-[transform,box-shadow,opacity] duration-200',
+            playable && [
+              'cursor-pointer hover:-translate-y-3 hover:scale-105',
+            ],
+            dimmed && 'opacity-40',
+            className,
+          )}
+          onClick={clickable ? onClick : undefined}
+          style={style}
+        >
+          <img src={imgUrl} alt={label} className="w-full h-full object-contain pointer-events-none" draggable={false} />
+          {colorBlindMode && card.color && <ColorBlindOverlay color={card.color} />}
+        </div>
+      );
+    }
+  }
 
   return (
     <div

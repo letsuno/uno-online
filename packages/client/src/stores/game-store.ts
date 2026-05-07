@@ -11,6 +11,7 @@ interface PlayerInfo {
   calledUno: boolean;
   eliminated?: boolean;
   teamId?: number;
+  avatarUrl?: string | null;
 }
 
 interface GameState {
