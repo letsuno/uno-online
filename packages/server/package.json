@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js",
+    "start": "tsx dist/index.js",
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
