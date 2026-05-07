@@ -169,13 +169,4 @@ export async function migrateDb(): Promise<void> {
   } catch {
     // Column already exists
   }
-
-  // Set first user as admin
-  try {
-    await k.updateTable('users')
-      .set({ role: 'admin' })
-      .where('id', '=', k.selectFrom('users').select('id').orderBy('created_at', 'asc').limit(1))
-      .where('role', '=', 'normal')
-      .execute();
-  } catch { }
 }
