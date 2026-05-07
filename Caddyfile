@@ -37,6 +37,10 @@ handle /socket.io/* {
 	reverse_proxy server:3001
 }
 
+handle /server/* {
+	reverse_proxy server:3001
+}
+
 handle {
 	root * /srv
 	try_files {path} /index.html
