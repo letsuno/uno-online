@@ -15,14 +15,12 @@ import GameActions from '../components/GameActions';
 import PlayerHand from '../components/PlayerHand';
 import ColorPicker from '../components/ColorPicker';
 import ScoreBoard from '../components/ScoreBoard';
-import ChatBox from '../components/ChatBox';
 import VoicePanel from '@/shared/voice/VoicePanel';
 import GameEffects from '../components/GameEffects';
 import UnoCallEffect from '../components/UnoCallEffect';
 import Confetti from '../components/Confetti';
-import HouseRulesCard from '../components/HouseRulesCard';
-import GameLog from '../components/GameLog';
 import MobileFAB from '../components/MobileFAB';
+import InfoDrawer from '../components/InfoDrawer';
 import PlayerListPanel from '../components/PlayerListPanel';
 import { useGameLogStore } from '../stores/game-log-store';
 
@@ -360,10 +358,8 @@ export default function GamePage() {
       />
       <PlayerHand onPlayCard={playCard} />
       </LayoutGroup>
-      <ChatBox />
       <VoicePanel />
-      <HouseRulesCard />
-      <GameLog />
+      <InfoDrawer />
       <MobileFAB />
       <GameEffects />
       <UnoCallEffect />
