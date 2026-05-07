@@ -141,7 +141,13 @@ export function registerRoomEvents(
     if (!room || room.ownerId !== data.user.userId) {
       return callback?.({ success: false, error: 'Only room owner can start' });
     }
-    const players = await getRoomPlayers(redis, roomCode);
+    const rawPlayers = await getRoomPlayers(redis, roomCode);
+    const seen = new Set<string>();
+    const players = rawPlayers.filter(p => {
+      if (seen.has(p.userId)) return false;
+      seen.add(p.userId);
+      return true;
+    });
     if (players.length < MIN_PLAYERS) {
       return callback?.({ success: false, error: 'Not enough players' });
     }

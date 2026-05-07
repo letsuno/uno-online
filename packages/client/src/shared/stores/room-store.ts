@@ -24,24 +24,27 @@ interface RoomState {
   clearRoom: () => void;
 }
 
+function dedup(players: RoomPlayer[]): RoomPlayer[] {
+  const seen = new Set<string>();
+  return players.filter((p) => {
+    if (seen.has(p.userId)) return false;
+    seen.add(p.userId);
+    return true;
+  });
+}
+
 export const useRoomStore = create<RoomState>((set) => ({
   roomCode: sessionStorage.getItem('roomCode'),
   players: [],
   room: null,
   setRoom: (roomCode, players, room) => {
     sessionStorage.setItem('roomCode', roomCode);
-    set({ roomCode, players, room });
+    set({ roomCode, players: dedup(players), room });
   },
-  updateRoom: (data) => set((state) => {
-    let players = data.players ?? state.players;
-    const seen = new Set<string>();
-    players = players.filter((p) => {
-      if (seen.has(p.userId)) return false;
-      seen.add(p.userId);
-      return true;
-    });
-    return { players, room: data.room ?? state.room };
-  }),
+  updateRoom: (data) => set((state) => ({
+    players: dedup(data.players ?? state.players),
+    room: data.room ?? state.room,
+  })),
   clearRoom: () => {
     sessionStorage.removeItem('roomCode');
     set({ roomCode: null, players: [], room: null });
