@@ -1,8 +1,9 @@
-import { Eye, Volume2, VolumeX, Spade, DoorOpen, Bot } from 'lucide-react';
+import { Eye, Volume2, VolumeX, Spade, DoorOpen, Bot, HelpCircle } from 'lucide-react';
 import TurnTimer from './TurnTimer';
 import { useSettingsStore } from '@/shared/stores/settings-store';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
+import { useGameStore } from '../stores/game-store';
 import { getSocket } from '@/shared/socket';
 import { cn } from '@/shared/lib/utils';
 import { BUILD_VERSION } from '@/shared/build-info';
@@ -14,6 +15,7 @@ export default function TopBar({ roomCode }: TopBarProps) {
   const ownerId = useRoomStore((s) => s.room?.ownerId);
   const userId = useAuthStore((s) => s.user?.id);
   const isHost = ownerId === userId;
+  const toggleInfoDrawer = useGameStore((s) => s.toggleInfoDrawer);
 
   const handleDissolve = () => {
     if (!window.confirm('确定要解散房间吗？所有玩家将被踢出。')) return;
@@ -28,6 +30,13 @@ export default function TopBar({ roomCode }: TopBarProps) {
         <span className="text-muted-foreground/50 text-xs hidden md:inline">v{BUILD_VERSION}</span>
       </div>
       <div className="flex items-center gap-3">
+        <button
+          onClick={toggleInfoDrawer}
+          className="hidden md:inline bg-transparent border-none text-sm cursor-pointer text-muted-foreground hover:text-accent transition-colors"
+          title="游戏信息 (H)"
+        >
+          <HelpCircle size={16} />
+        </button>
         <button
           onClick={toggleAutoPlay}
           className={cn(
