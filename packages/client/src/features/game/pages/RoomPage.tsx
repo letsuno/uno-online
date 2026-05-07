@@ -109,6 +109,34 @@ export default function RoomPage() {
           </div>
         ))}
       </div>
+      {/* Spectator settings */}
+      <div className="min-w-room-min rounded-2xl bg-card p-5 space-y-3">
+        <h3 className="mb-3 text-sm text-muted-foreground">观战设置</h3>
+        <div className="flex items-center justify-between">
+          <label className="text-sm">允许观战</label>
+          <input
+            type="checkbox"
+            checked={room?.settings?.allowSpectators ?? true}
+            onChange={(e) => getSocket().emit('room:update_settings', { allowSpectators: e.target.checked })}
+            className="accent-primary"
+            disabled={!isOwner}
+          />
+        </div>
+        {(room?.settings?.allowSpectators ?? true) && (
+          <div className="flex items-center justify-between">
+            <label className="text-sm">观战模式</label>
+            <select
+              value={room?.settings?.spectatorMode ?? 'hidden'}
+              onChange={(e) => getSocket().emit('room:update_settings', { spectatorMode: e.target.value })}
+              className="bg-card text-foreground border border-white/15 rounded px-2 py-1 text-sm"
+              disabled={!isOwner}
+            >
+              <option value="hidden">只看出牌</option>
+              <option value="full">全透视</option>
+            </select>
+          </div>
+        )}
+      </div>
       <HouseRulesPanel
         houseRules={houseRules}
         onChange={(rules) => {
