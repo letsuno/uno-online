@@ -16,7 +16,7 @@
 ```
 packages/client/src/
   app/                    # 应用入口
-    App.tsx               # 根组件（字体设置 + Toast）
+    App.tsx               # 根组件（字体设置 + 主题 + Toast + ChangelogModal）
     main.tsx              # ReactDOM 渲染入口
     router.tsx            # 路由组装（lazy 加载各 feature）
   features/               # 功能模块（每个功能域独立）
@@ -27,25 +27,26 @@ packages/client/src/
       routes.tsx          # 路由定义（导出 RouteObject[]）
     game/
       pages/
-      stores/
+      stores/             # game-store, game-log-store
       components/
       hooks/              # 功能专属 hook
       routes.tsx
     lobby/
     profile/
   shared/                 # 跨功能共享模块
-    components/ui/        # 通用 UI 组件（Button, GoogleRing）
-    components/           # 共享布局组件（Toast, ProtectedRoute）
+    components/ui/        # 通用 UI 组件（Button, Input, GoogleRing）
+    components/           # 共享布局组件（Toast, ProtectedRoute, ServerButton, ServerSelectModal, ChangelogModal）
     lib/                  # 工具函数（cn, getRoleColor）
-    stores/               # 全局 store（toast, settings, room）
-    hooks/                # 共享 hook
-    utils/                # 工具函数
+    stores/               # 全局 store（toast, settings, room, server）
+    utils/                # 工具函数（card-images, playable-cards, image-compress）
+    data/                 # 静态数据（changelog）
     sound/                # 音效管理
-    voice/                # 语音通话
+    voice/                # 语音通话（mumble-web gateway 架构）
     api.ts                # HTTP 请求封装
     socket.ts             # Socket.IO 单例
     env.ts                # 环境变量
-  index.css               # Tailwind 主题 + 自定义样式
+    build-info.ts         # 构建版本与时间
+  index.css               # Tailwind 主题 + 自定义样式 + 自定义 utility
 ```
 
 ## 命名规范

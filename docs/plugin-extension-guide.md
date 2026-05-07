@@ -12,7 +12,7 @@ UNO Online 使用 Fastify 原生插件系统（服务端）和 Feature 模块系
 
 ```
 packages/server/src/plugins/
-  core/           # 核心功能（auth, profile, room, game, voice, interaction, admin）
+  core/           # 核心功能（auth, profile, room, game, server-info, interaction, admin）
   features/       # 扩展功能（checkin, points, shop, ...）
 ```
 
