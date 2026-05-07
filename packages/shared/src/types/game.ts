@@ -20,6 +20,7 @@ export interface Player {
   hand: Card[];
   score: number;
   connected: boolean;
+  autopilot: boolean;
   calledUno: boolean;
   eliminated?: boolean;
   teamId?: number;

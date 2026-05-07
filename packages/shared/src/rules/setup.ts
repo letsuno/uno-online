@@ -96,6 +96,7 @@ export function initializeGame(
     hand: hands[p.id]!,
     score: 0,
     connected: true,
+    autopilot: false,
     calledUno: false,
     eliminated: false,
     teamId: (houseRules?.teamMode && playerData.length % 2 === 0) ? (i % 2) : undefined,
@@ -163,6 +164,7 @@ export function initializeNextRound(prevState: GameState): GameState {
     hand: hands[p.id] ?? [],
     calledUno: false,
     connected: p.connected,
+    autopilot: p.autopilot,
   }));
 
   let direction: GameState['direction'] = 'clockwise';
