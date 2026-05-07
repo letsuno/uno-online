@@ -4,8 +4,13 @@ import { LogIn, Spade, Type, Upload, X } from 'lucide-react';
 import { useAuthStore } from '../stores/auth-store';
 import { useSettingsStore, FONT_OPTIONS, type FontOption } from '../stores/settings-store';
 import { loadCardPack, clearCardPack, isPackLoaded } from '../utils/card-images';
-import { GITHUB_CLIENT_ID, DEV_MODE } from '../env';
+import { apiGet } from '../api';
 import { Button } from '../components/ui/Button';
+
+interface AuthConfig {
+  devMode: boolean;
+  githubClientId: string;
+}
 
 export default function HomePage() {
   const { user, token, loading, loadUser, devLogin } = useAuthStore();
@@ -14,6 +19,7 @@ export default function HomePage() {
   const [searchParams] = useSearchParams();
   const [devUsername, setDevUsername] = useState('');
   const [error, setError] = useState('');
+  const [authConfig, setAuthConfig] = useState<AuthConfig | null>(null);
   const redirect = searchParams.get('redirect');
 
   const getRedirectTarget = () => redirect || sessionStorage.getItem('loginRedirect') || '/lobby';
@@ -23,6 +29,7 @@ export default function HomePage() {
   }, [redirect]);
 
   useEffect(() => {
+    apiGet<AuthConfig>('/auth/config').then(setAuthConfig).catch(() => {});
     loadUser().then(() => {
       const u = useAuthStore.getState().user;
       if (u) {
@@ -33,7 +40,9 @@ export default function HomePage() {
     });
   }, []);
 
-  const loginUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&scope=read:user`;
+  const loginUrl = authConfig
+    ? `https://github.com/login/oauth/authorize?client_id=${authConfig.githubClientId}&scope=read:user`
+    : '#';
 
   const handleDevLogin = async () => {
     if (!devUsername.trim()) { setError('请输入用户名'); return; }
@@ -56,8 +65,8 @@ export default function HomePage() {
       <p className="max-w-houserules-max text-lg text-muted-foreground">
         和朋友一起玩 UNO！支持 2-10 人在线对战、语音通话、自定义村规。
       </p>
-      {!loading && !token && (
-        DEV_MODE ? (
+      {!loading && !token && authConfig && (
+        authConfig.devMode ? (
           <div className="flex flex-col items-center gap-3">
             <div className="flex items-center gap-2">
               <input
@@ -80,7 +89,7 @@ export default function HomePage() {
           </a>
         )
       )}
-      {loading && <p className="text-muted-foreground">加载中...</p>}
+      {(loading || (!token && !authConfig)) && <p className="text-muted-foreground">加载中...</p>}
 
       <div className="absolute bottom-6 right-6 flex items-center gap-4">
         <div className="flex items-center gap-2">

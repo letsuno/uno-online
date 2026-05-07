@@ -14,3 +14,6 @@ docs/
 .omc/
 uno.db*
 yarn.lock
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
