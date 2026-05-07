@@ -13,7 +13,7 @@ export default function PlayerListPanel() {
 
   return (
     <div className="absolute top-12 right-3 z-topbar hidden md:block">
-      <div className="rounded-card-ui bg-card/80 backdrop-blur-sm shadow-card shadow-tech border border-white/10 w-48 max-h-64 overflow-y-auto scrollbar-hidden">
+      <div className="rounded-card-ui bg-card/80 backdrop-blur-sm shadow-card shadow-tech border border-white/10 w-48 max-h-64 overflow-y-auto scrollbar-thin">
         <div className="px-3 py-2 border-b border-white/10 text-xs text-muted-foreground font-bold">
           玩家 ({players.length})
         </div>
