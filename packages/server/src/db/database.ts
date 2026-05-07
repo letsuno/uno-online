@@ -174,7 +174,7 @@ export async function migrateDb(): Promise<void> {
   try {
     await k.updateTable('users')
       .set({ role: 'admin' })
-      .where('id', '=', k.selectFrom('users').select('id').orderBy('createdAt', 'asc').limit(1))
+      .where('id', '=', k.selectFrom('users').select('id').orderBy('created_at', 'asc').limit(1))
       .where('role', '=', 'normal')
       .execute();
   } catch { }
