@@ -202,7 +202,33 @@ export function startTurnTimer(
   sessions: Map<string, GameSession>,
 ) {
   const state = session.getFullState();
-  if (state.phase !== 'playing') {
+  const phase = state.phase;
+
+  if (phase === 'challenging' || phase === 'choosing_color' || phase === 'choosing_swap_target') {
+    const timeLimit = state.settings.turnTimeLimit;
+    turnTimer.start(roomCode, timeLimit, async (code) => {
+      const s = sessions.get(code);
+      if (!s) return;
+      const currentPlayerId = s.getCurrentPlayerId();
+      if (s.getFullState().phase === 'challenging') {
+        s.applyAction({ type: 'ACCEPT', playerId: currentPlayerId });
+      } else if (s.getFullState().phase === 'choosing_color') {
+        s.applyAction({ type: 'CHOOSE_COLOR', playerId: currentPlayerId, color: 'red' });
+      } else if (s.getFullState().phase === 'choosing_swap_target') {
+        const targets = s.getFullState().players.filter(p => p.id !== currentPlayerId && !p.eliminated);
+        if (targets.length > 0) {
+          s.applyAction({ type: 'CHOOSE_SWAP_TARGET', playerId: currentPlayerId, targetId: targets[0]!.id });
+        }
+      }
+      await saveGameState(redis, code, s.getFullState());
+      emitGameUpdate(io, code, s);
+      io.to(code).emit('player:timeout', { playerId: currentPlayerId });
+      startTurnTimer(io, redis, code, s, turnTimer, sessions);
+    });
+    return;
+  }
+
+  if (phase !== 'playing') {
     turnTimer.stop(roomCode);
     return;
   }

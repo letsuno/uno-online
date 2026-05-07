@@ -224,11 +224,8 @@ export function registerGameEvents(
     if (!result.success) return callback?.({ success: false, error: result.error });
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session);
-    const state = session.getFullState();
     if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer)) {
       // terminal state already emitted
-    } else if (state.phase === 'challenging') {
-      turnTimer.stop(roomCode);
     } else {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }

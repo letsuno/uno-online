@@ -40,6 +40,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
   const players = useGameStore((s) => s.players);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
   const direction = useGameStore((s) => s.direction);
+  const phase = useGameStore((s) => s.phase);
   const turnEndTime = useGameStore((s) => s.turnEndTime);
   const settings = useGameStore((s) => s.settings);
   const lastAction = useGameStore((s) => s.lastAction);
@@ -315,7 +316,16 @@ export default function GameTable({ onDraw }: GameTableProps) {
 
     const highlightPath = `M ${sx} ${sy} A ${rx} ${ry} 0 ${largeArc} ${sweep} ${ex} ${ey}`;
 
-    return { fullPath, highlightPath, isClockwise };
+    // Tangent direction at the end point for arrowhead
+    // Derivative of ellipse: dx/dθ = -rx·sin(θ), dy/dθ = ry·cos(θ)
+    const tangentX = -rx * Math.sin(endAngle);
+    const tangentY = ry * Math.cos(endAngle);
+    const tangentLen = Math.sqrt(tangentX * tangentX + tangentY * tangentY);
+    const dir = isClockwise ? 1 : -1;
+    const tx = (tangentX / tangentLen) * dir;
+    const ty = (tangentY / tangentLen) * dir;
+
+    return { fullPath, highlightPath, isClockwise, arrowTip: { x: ex, y: ey, tx, ty } };
   }, [playerPositions, dimensions, direction, players, userId, currentPlayerIndex]);
 
   const isClockwise = direction === 'clockwise';
@@ -363,6 +373,26 @@ export default function GameTable({ onDraw }: GameTableProps) {
               strokeDashoffset: { duration: 1.5, repeat: Infinity, ease: 'linear' },
             }}
           />
+          {/* Arrowhead at end of highlight arc */}
+          {(() => {
+            const { x, y, tx, ty } = directionArc.arrowTip;
+            const size = 8;
+            const nx = -ty, ny = tx;
+            const p1x = x - tx * size + nx * size * 0.5;
+            const p1y = y - ty * size + ny * size * 0.5;
+            const p2x = x - tx * size - nx * size * 0.5;
+            const p2y = y - ty * size - ny * size * 0.5;
+            return (
+              <motion.polygon
+                key={`arrow-${currentPlayerIndex}`}
+                points={`${x},${y} ${p1x},${p1y} ${p2x},${p2y}`}
+                fill="rgba(251, 191, 36, 0.6)"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              />
+            );
+          })()}
         </svg>
       )}
 
@@ -405,6 +435,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
           playerIndex={currentPlayerIndex}
           isMe={players[currentPlayerIndex]!.id === userId}
           turnEndTime={turnEndTime}
+          phase={phase}
           cy={dimensions.height / 2}
         />
       )}
@@ -453,11 +484,12 @@ export default function GameTable({ onDraw }: GameTableProps) {
   );
 }
 
-function TurnIndicator({ playerName, playerIndex, isMe, turnEndTime, cy }: {
+function TurnIndicator({ playerName, playerIndex, isMe, turnEndTime, phase, cy }: {
   playerName: string;
   playerIndex: number;
   isMe: boolean;
   turnEndTime: number | null;
+  phase: string | null;
   cy: number;
 }) {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
@@ -471,6 +503,17 @@ function TurnIndicator({ playerName, playerIndex, isMe, turnEndTime, cy }: {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [turnEndTime]);
+
+  let label: string;
+  if (phase === 'challenging') {
+    label = isMe ? '选择质疑或接受' : `${playerName} 正在考虑质疑`;
+  } else if (phase === 'choosing_color') {
+    label = isMe ? '选择颜色' : `${playerName} 正在选色`;
+  } else if (phase === 'choosing_swap_target') {
+    label = isMe ? '选择交换对象' : `${playerName} 正在选择交换`;
+  } else {
+    label = isMe ? '你的回合' : playerName;
+  }
 
   const urgent = secondsLeft !== null && secondsLeft <= 5;
 
@@ -495,7 +538,7 @@ function TurnIndicator({ playerName, playerIndex, isMe, turnEndTime, cy }: {
           'font-game text-lg',
           isMe ? 'text-primary font-bold' : 'text-foreground',
         )}>
-          {isMe ? '你的回合' : playerName}
+          {label}
         </span>
       </div>
       {secondsLeft !== null && (
