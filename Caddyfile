@@ -3,7 +3,7 @@
 encode gzip
 
 @auth_api {
-	path /auth/github /auth/me /auth/dev-login /auth/config
+	path /auth/github /auth/me /auth/dev-login /auth/config /auth/register /auth/login /auth/set-password /auth/bind-github
 }
 handle @auth_api {
 	reverse_proxy server:3001
@@ -18,6 +18,14 @@ handle @auth_callback_post {
 }
 
 handle /profile {
+	reverse_proxy server:3001
+}
+
+handle /profile/* {
+	reverse_proxy server:3001
+}
+
+handle /avatar/* {
 	reverse_proxy server:3001
 }
 

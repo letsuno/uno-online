@@ -25,7 +25,9 @@ export async function createApp(config: Config) {
   const kv = createKvStore(config.redisUrl);
 
   await registerAuthRoutes(fastify, config);
-  await registerProfileRoutes(fastify, config);
+  if (!config.devMode) {
+    await registerProfileRoutes(fastify, config);
+  }
 
   const wsContext = setupSocketHandlers(io, kv, config.jwtSecret);
 

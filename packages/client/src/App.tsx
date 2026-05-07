@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage.js';
 import AuthCallback from './pages/AuthCallback.js';
+import RegisterPage from './pages/RegisterPage.js';
+import ProfileSetupPage from './pages/ProfileSetupPage.js';
 import LobbyPage from './pages/LobbyPage.js';
 import RoomPage from './pages/RoomPage.js';
 import GamePage from './pages/GamePage.js';
@@ -23,6 +25,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/profile/setup" element={<ProtectedRoute><ProfileSetupPage /></ProtectedRoute>} />
         <Route path="/lobby" element={<ProtectedRoute><LobbyPage /></ProtectedRoute>} />
         <Route path="/room/:roomCode" element={<ProtectedRoute><RoomPage /></ProtectedRoute>} />
         <Route path="/game/:roomCode" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />

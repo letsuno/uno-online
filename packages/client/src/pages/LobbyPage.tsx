@@ -50,7 +50,7 @@ export default function LobbyPage() {
       <h1 style={{ fontFamily: 'var(--font-game)', color: 'var(--text-accent)', fontSize: 32 }}>
         <Spade size={24} style={{ verticalAlign: 'middle' }} /> 游戏大厅
       </h1>
-      <p style={{ color: 'var(--text-secondary)' }}>欢迎, {user?.username}!</p>
+      <p style={{ color: 'var(--text-secondary)' }}>欢迎, {user?.nickname ?? user?.username}!</p>
       <button className="btn-primary" onClick={handleCreate} disabled={loading} style={{ fontSize: 20, padding: '16px 40px' }}>
         {loading ? '创建中...' : '创建房间'}
       </button>
@@ -70,7 +70,9 @@ export default function LobbyPage() {
       </div>
       {error && <p style={{ color: 'var(--color-red)', fontSize: 14 }}>{error}</p>}
       <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-        <button className="btn-secondary" onClick={() => navigate('/profile')}>个人信息</button>
+        {!user?.id.startsWith('ephemeral_') && (
+          <button className="btn-secondary" onClick={() => navigate('/profile')}>个人信息</button>
+        )}
         <button className="btn-secondary" onClick={() => { logout(); navigate('/'); }}>退出登录</button>
       </div>
     </div>

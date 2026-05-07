@@ -23,7 +23,14 @@ function getSession(socket: Socket, sessions: Map<string, GameSession>): { sessi
 
 const persistedGames = new Map<string, number>();
 
+let persistEnabled = true;
+export function setGamePersistence(enabled: boolean): void {
+  persistEnabled = enabled;
+}
+
 async function persistGameResult(roomCode: string, session: GameSession, startTime: number): Promise<void> {
+  if (!persistEnabled) return;
+
   const key = `${roomCode}:${session.getFullState().roundNumber}`;
   if (persistedGames.has(key)) return;
   persistedGames.set(key, Date.now());
@@ -241,7 +248,7 @@ export function registerGameEvents(
     const text = payload.text.slice(0, 500);
     io.to(roomCode).emit('chat:message', {
       userId: data.user.userId,
-      username: data.user.username,
+      username: data.user.nickname,
       text,
       timestamp: Date.now(),
     });
