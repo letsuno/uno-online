@@ -6,8 +6,11 @@ import adminPlugin from './plugins/core/admin/index';
 import serverInfoPlugin from './plugins/core/server-info/index';
 
 export async function loadPlugins(fastify: FastifyInstance, ctx: PluginContext): Promise<void> {
-  await fastify.register(authPlugin, { ctx });
-  await fastify.register(profilePlugin, { ctx });
-  await fastify.register(adminPlugin, { ctx });
-  await fastify.register(serverInfoPlugin, { ctx });
+  await fastify.register(async (api) => {
+    await api.register(authPlugin, { ctx });
+    await api.register(profilePlugin, { ctx });
+    await api.register(adminPlugin, { ctx });
+    await api.register(serverInfoPlugin, { ctx });
+    api.get('/health', async () => ({ status: 'ok' }));
+  }, { prefix: '/api' });
 }

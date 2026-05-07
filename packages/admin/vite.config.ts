@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
 export default defineConfig({
+  base: '/admin/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -13,15 +14,7 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
-      '/admin': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
-      '/auth': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
-      '/avatar': {
+      '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,
       },

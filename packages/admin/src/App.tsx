@@ -72,7 +72,7 @@ export default function App() {
   }, [init]);
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/admin">
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
         <Route element={user ? <Layout /> : <Navigate to="/login" replace />}>

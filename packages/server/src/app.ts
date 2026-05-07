@@ -30,7 +30,5 @@ export async function createApp(config: Config) {
 
   const wsContext = setupSocketHandlers(io, kv, config.jwtSecret);
 
-  fastify.get('/health', async () => ({ status: 'ok' }));
-
   return { fastify, io, kv, ...wsContext };
 }
