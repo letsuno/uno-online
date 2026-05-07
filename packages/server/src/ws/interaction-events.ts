@@ -1,7 +1,7 @@
 import type { Server as SocketIOServer, Socket } from 'socket.io';
+import { ROLE_CONFIG, type UserRole } from '@uno-online/shared';
 
 const VALID_ITEMS = ['🥚', '🍅', '🌹', '💩', '👍', '💖'];
-const THROW_COOLDOWN_MS = 10_000;
 
 const throwTimestamps = new Map<string, number>();
 
@@ -15,9 +15,14 @@ export function registerInteractionEvents(socket: Socket, io: SocketIOServer) {
       return callback?.({ success: false, error: 'Invalid item' });
     }
 
-    const lastThrow = throwTimestamps.get(userId);
-    if (lastThrow && Date.now() - lastThrow < THROW_COOLDOWN_MS) {
-      return callback?.({ success: false, error: '扔太快了' });
+    const role = (socket.data.user?.role ?? 'normal') as UserRole;
+    const cooldownMs = ROLE_CONFIG[role].cooldownMs;
+
+    if (cooldownMs > 0) {
+      const lastThrow = throwTimestamps.get(userId);
+      if (lastThrow && Date.now() - lastThrow < cooldownMs) {
+        return callback?.({ success: false, error: '扔太快了' });
+      }
     }
 
     throwTimestamps.set(userId, Date.now());

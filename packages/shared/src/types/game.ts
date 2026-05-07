@@ -1,5 +1,6 @@
 import type { Card, Color } from './card';
 import type { HouseRules } from './house-rules';
+import type { UserRole } from './role';
 
 export type GamePhase =
   | 'waiting'
@@ -23,6 +24,7 @@ export interface Player {
   eliminated?: boolean;
   teamId?: number;
   avatarUrl?: string | null;
+  role?: UserRole;
 }
 
 export interface RoomSettings {

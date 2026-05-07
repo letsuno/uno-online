@@ -13,6 +13,7 @@ export interface RoomPlayer {
   nickname: string;
   avatarUrl?: string | null;
   ready: boolean;
+  role?: string;
 }
 
 export async function createRoom(kv: KvStore, roomCode: string, ownerId: string, settings: RoomSettings): Promise<void> {
@@ -47,8 +48,8 @@ export async function setRoomOwner(kv: KvStore, roomCode: string, ownerId: strin
   await kv.hset(`room:${roomCode}`, { ownerId });
 }
 
-export async function addPlayerToRoom(kv: KvStore, roomCode: string, player: { userId: string; nickname: string; avatarUrl?: string | null }): Promise<void> {
-  await kv.rpush(`room:${roomCode}:players`, JSON.stringify({ userId: player.userId, nickname: player.nickname, avatarUrl: player.avatarUrl ?? null, ready: false }));
+export async function addPlayerToRoom(kv: KvStore, roomCode: string, player: { userId: string; nickname: string; avatarUrl?: string | null; role?: string }): Promise<void> {
+  await kv.rpush(`room:${roomCode}:players`, JSON.stringify({ userId: player.userId, nickname: player.nickname, avatarUrl: player.avatarUrl ?? null, ready: false, role: player.role ?? 'normal' }));
 }
 
 export async function removePlayerFromRoom(kv: KvStore, roomCode: string, userId: string): Promise<void> {
