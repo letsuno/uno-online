@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import AppRouter from './router';
 import ToastContainer from '@/shared/components/Toast';
+import ChangelogModal from '@/shared/components/ChangelogModal';
 import { useSettingsStore, FONT_OPTIONS } from '@/shared/stores/settings-store';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
     <div className="flex min-h-svh flex-col font-game bg-background text-foreground">
       <AppRouter />
       <ToastContainer />
+      <ChangelogModal />
     </div>
   );
 }
