@@ -39,7 +39,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
 
   const playable = getPlayableCards(player.hand, topCard, state.currentColor);
   if (playable.length === 0) {
-    return [{ type: 'DRAW_CARD', playerId }, { type: 'PASS', playerId }];
+    return [{ type: 'DRAW_CARD', playerId }];
   }
 
   // Priority: same-color non-wild > any non-wild > wild as last resort

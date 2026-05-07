@@ -61,11 +61,34 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       const currentPlayer = state.players[state.currentPlayerIndex];
       if (!currentPlayer || currentPlayer.id !== userId) return;
 
-      const actions = chooseAutopilotAction(state, userId);
-      for (const action of actions) {
-        session.applyAction(action);
+      let acted = false;
+      for (let round = 0; round < 5; round++) {
+        const st = session.getFullState();
+        const cp = st.players[st.currentPlayerIndex];
+        if (!cp || cp.id !== userId) break;
+        if (st.phase === 'round_end' || st.phase === 'game_over') break;
+
+        const actions = chooseAutopilotAction(st, userId);
+        if (actions.length === 0) break;
+        for (const action of actions) {
+          session.applyAction(action);
+        }
+        acted = true;
+
+        const after = session.getFullState();
+        if (after.players[after.currentPlayerIndex]?.id !== userId) break;
+        if (after.lastAction?.type === 'DRAW_CARD') {
+          continue;
+        }
+        break;
       }
-      if (actions.length > 0) {
+
+      const final = session.getFullState();
+      if (acted && final.players[final.currentPlayerIndex]?.id === userId && final.phase === 'playing') {
+        session.applyAction({ type: 'PASS', playerId: userId });
+      }
+
+      if (acted) {
         await saveGameState(redis, roomCode, session.getFullState());
         await emitGameUpdate(io, roomCode, session);
         io.to(roomCode).emit('player:timeout', { playerId: userId });

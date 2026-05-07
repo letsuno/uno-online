@@ -200,6 +200,35 @@ export function registerRoomEvents(
   });
 }
 
+function executeAutopilot(session: GameSession, playerId: string): boolean {
+  let acted = false;
+  for (let round = 0; round < 5; round++) {
+    const st = session.getFullState();
+    const cp = st.players[st.currentPlayerIndex];
+    if (!cp || cp.id !== playerId) break;
+    if (st.phase === 'round_end' || st.phase === 'game_over') break;
+
+    const actions = chooseAutopilotAction(st, playerId);
+    if (actions.length === 0) break;
+    for (const action of actions) {
+      session.applyAction(action);
+    }
+    acted = true;
+
+    const after = session.getFullState();
+    if (after.players[after.currentPlayerIndex]?.id !== playerId) break;
+    if (after.lastAction?.type === 'DRAW_CARD') {
+      continue;
+    }
+    break;
+  }
+  const final = session.getFullState();
+  if (acted && final.players[final.currentPlayerIndex]?.id === playerId && final.phase === 'playing') {
+    session.applyAction({ type: 'PASS', playerId });
+  }
+  return acted;
+}
+
 export function startTurnTimer(
   io: SocketIOServer,
   redis: KvStore,
@@ -234,15 +263,11 @@ export function startTurnTimer(
     turnTimer.start(roomCode, timeLimit, async (code) => {
       const s = sessions.get(code);
       if (!s) return;
-      const currentPlayerId = s.getCurrentPlayerId();
-      const st = s.getFullState();
-      const actions = chooseAutopilotAction(st, currentPlayerId);
-      for (const action of actions) {
-        s.applyAction(action);
-      }
+      const pid = s.getCurrentPlayerId();
+      executeAutopilot(s, pid);
       await saveGameState(redis, code, s.getFullState());
       emitGameUpdate(io, code, s);
-      io.to(code).emit('player:timeout', { playerId: currentPlayerId });
+      io.to(code).emit('player:timeout', { playerId: pid });
       startTurnTimer(io, redis, code, s, turnTimer, sessions);
     });
     return;
@@ -258,15 +283,11 @@ export function startTurnTimer(
   turnTimer.start(roomCode, timeLimit, async (code) => {
     const s = sessions.get(code);
     if (!s) return;
-    const currentPlayerId = s.getCurrentPlayerId();
-    const st = s.getFullState();
-    const actions = chooseAutopilotAction(st, currentPlayerId);
-    for (const action of actions) {
-      s.applyAction(action);
-    }
+    const pid = s.getCurrentPlayerId();
+    executeAutopilot(s, pid);
     await saveGameState(redis, code, s.getFullState());
     emitGameUpdate(io, code, s);
-    io.to(code).emit('player:timeout', { playerId: currentPlayerId });
+    io.to(code).emit('player:timeout', { playerId: pid });
     startTurnTimer(io, redis, code, s, turnTimer, sessions);
   });
 }
