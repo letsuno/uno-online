@@ -6,7 +6,6 @@ import { TurnTimer } from '../plugins/core/game/turn-timer';
 import { GameSession } from '../plugins/core/game/session';
 import { registerRoomEvents, emitGameUpdate, startTurnTimer } from './room-events';
 import { registerGameEvents } from './game-events';
-import { registerVoiceEvents, removeVoicePeer } from '../plugins/core/voice/events';
 import { getRoom, getRoomPlayers, setRoomOwner } from '../plugins/core/room/store';
 import { saveGameState, loadGameState } from '../plugins/core/game/state-store';
 import { checkRateLimit, clearRateLimit } from './rate-limiter';
@@ -147,16 +146,12 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
 
     registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions);
     registerGameEvents(socket, io, redis, turnTimer, sessions);
-    registerVoiceEvents(socket, io);
     registerInteractionEvents(socket, io);
 
     socket.on('disconnect', async () => {
       clearRateLimit(socket.id);
       clearThrowTimestamp(userId);
       const roomCode = socket.data.roomCode;
-      if (roomCode) {
-        await removeVoicePeer(roomCode, userId, io);
-      }
       if (!roomCode) return;
 
       const session = sessions.get(roomCode);

@@ -1,0 +1,15 @@
+{
+  "servers": [
+    {
+      "id": "uno",
+      "name": "UNO Voice Server",
+      "host": "localhost",
+      "port": 64738,
+      "tls": {
+        "rejectUnauthorized": false,
+        "useCertificate": true
+      },
+      "forceTcp": false
+    }
+  ]
+}

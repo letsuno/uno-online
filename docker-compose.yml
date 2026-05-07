@@ -27,10 +27,6 @@ services:
       DOMAIN: ${DOMAIN:-localhost}
       DEV_MODE: ${DEV_MODE:-true}
       PORT: "3001"
-      RTC_PORT: ${RTC_PORT:-40000}
-    ports:
-      - "${RTC_PORT:-40000}:${RTC_PORT:-40000}/udp"
-      - "${RTC_PORT:-40000}:${RTC_PORT:-40000}/tcp"
     volumes:
       - sqlite_data:/data
     restart: unless-stopped
@@ -50,7 +46,29 @@ services:
       - caddy_config:/config
     restart: unless-stopped
 
+  mumble:
+    image: mumblevoip/mumble-server:latest
+    ports:
+      - "${MUMBLE_PORT:-64738}:64738/tcp"
+      - "${MUMBLE_PORT:-64738}:64738/udp"
+    volumes:
+      - mumble_data:/data
+    environment:
+      MUMBLE_SUPERUSER_PASSWORD: ${MUMBLE_SUPERUSER_PASSWORD:-admin}
+      MUMBLE_CONFIG_allowTemporaryChannels: "true"
+    restart: unless-stopped
+
+  mumble-gateway:
+    build:
+      context: ./packages/mumble-gateway
+    depends_on:
+      - mumble
+    ports:
+      - "${MUMBLE_GATEWAY_PORT:-64737}:64737"
+    restart: unless-stopped
+
 volumes:
   sqlite_data:
   caddy_data:
   caddy_config:
+  mumble_data:

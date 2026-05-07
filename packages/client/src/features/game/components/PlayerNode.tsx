@@ -41,6 +41,7 @@ interface PlayerNodeProps {
   isMe: boolean;
   isHost: boolean;
   isSkipped: boolean;
+  isSpeaking?: boolean;
   position: { x: number; y: number };
   turnEndTime?: number | null;
   turnTimeLimit?: number;
@@ -57,6 +58,7 @@ export default function PlayerNode({
   isMe,
   isHost,
   isSkipped,
+  isSpeaking = false,
   position,
   turnEndTime,
   turnTimeLimit,
@@ -192,6 +194,7 @@ export default function PlayerNode({
             'text-sm md:text-lg',
             'transition-[box-shadow] duration-300 ease-in-out',
             isActive && 'animate-draw-pulse shadow-glow-active',
+            isSpeaking && 'ring-2 ring-green-400 shadow-[0_0_10px_rgba(74,222,128,0.6)]',
           )}
           style={{
             background: AVATAR_COLORS[index % AVATAR_COLORS.length],
