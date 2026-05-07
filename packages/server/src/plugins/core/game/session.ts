@@ -13,6 +13,7 @@ export interface PlayerView {
     handCount: number;
     score: number;
     connected: boolean;
+    autopilot: boolean;
     calledUno: boolean;
     eliminated?: boolean;
     teamId?: number;
@@ -77,6 +78,7 @@ export class GameSession {
           handCount: p.hand.length,
           score: p.score,
           connected: p.connected,
+          autopilot: p.autopilot,
           calledUno: p.calledUno,
           eliminated: p.eliminated,
           teamId: p.teamId,
@@ -124,6 +126,15 @@ export class GameSession {
       ...this.state,
       players: this.state.players.map((p) =>
         p.id === playerId ? { ...p, connected } : p,
+      ),
+    };
+  }
+
+  setPlayerAutopilot(playerId: string, autopilot: boolean): void {
+    this.state = {
+      ...this.state,
+      players: this.state.players.map((p) =>
+        p.id === playerId ? { ...p, autopilot } : p,
       ),
     };
   }
