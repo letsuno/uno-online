@@ -54,6 +54,12 @@ export default function DiscardPile() {
     green: '#33cc66',
     yellow: '#fbbf24',
   };
+  const colorLabelMap: Record<string, string> = {
+    red: '红',
+    blue: '蓝',
+    green: '绿',
+    yellow: '黄',
+  };
 
   return (
     <div className="flex flex-col items-center gap-1.5 z-card relative">
@@ -77,6 +83,14 @@ export default function DiscardPile() {
           }}
         >
           <Card card={topCard} />
+          {chosenColor && (
+            <span
+              className="absolute -bottom-1 -right-1 text-xs font-game font-black px-1 py-0.5 rounded bg-black/60 leading-none whitespace-nowrap"
+              style={{ color: colorBorderMap[chosenColor] }}
+            >
+              打{colorLabelMap[chosenColor]}！
+            </span>
+          )}
         </motion.div>
       </AnimatePresence>
       </div>
