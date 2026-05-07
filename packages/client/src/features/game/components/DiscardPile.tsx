@@ -57,13 +57,7 @@ export default function DiscardPile() {
 
   return (
     <div className="flex flex-col items-center gap-1.5 z-card relative">
-      <div
-        className="relative w-[70px] h-[100px] rounded-2xl transition-shadow duration-300"
-        style={chosenColor ? {
-          boxShadow: `0 0 18px 4px ${colorGlowMap[chosenColor] ?? 'transparent'}`,
-          border: `2.5px solid ${colorBorderMap[chosenColor] ?? 'transparent'}`,
-        } : undefined}
-      >
+      <div className="relative w-[70px] h-[100px]">
       <AnimatePresence>
         <motion.div
           key={topCard.id}
@@ -72,7 +66,15 @@ export default function DiscardPile() {
           animate={{ scale: 1, rotate: 3, opacity: 1, x: 0, y: 0 }}
           exit={{ opacity: 0, transition: { duration: 0.3, delay: 0.15 } }}
           transition={{ duration: 0.35, ease: 'easeOut' }}
-          style={{ position: 'absolute', top: 0, left: 0 }}
+          style={{
+            position: 'absolute', top: 0, left: 0,
+            borderRadius: '18px',
+            ...(chosenColor ? {
+              boxShadow: `0 0 18px 4px ${colorGlowMap[chosenColor] ?? 'transparent'}`,
+              outline: `2.5px solid ${colorBorderMap[chosenColor] ?? 'transparent'}`,
+              outlineOffset: '1px',
+            } : {}),
+          }}
         >
           <Card card={topCard} />
         </motion.div>
