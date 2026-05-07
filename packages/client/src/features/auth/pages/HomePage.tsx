@@ -190,6 +190,10 @@ export default function HomePage() {
           </select>
         </div>
       </div>
+
+      <p className="absolute bottom-6 left-6 text-xs text-muted-foreground/50">
+        v{__BUILD_VERSION__} · {new Date(__BUILD_TIME__).toLocaleDateString('zh-CN')}
+      </p>
     </div>
   );
 }
