@@ -1,4 +1,10 @@
 /// <reference types="vite/client" />
 
-declare const __BUILD_VERSION__: string;
-declare const __BUILD_TIME__: string;
+interface ImportMetaEnv {
+  readonly BUILD_VERSION: string;
+  readonly BUILD_TIME: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
