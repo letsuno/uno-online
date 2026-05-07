@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { API_URL } from './env';
+import { getApiUrl } from './env';
 import { useGameStore } from '@/features/game/stores/game-store';
 import { useRoomStore } from './stores/room-store';
 import { useToastStore } from './stores/toast-store';
@@ -15,7 +15,7 @@ export function onConnectionStatus(cb: (status: 'connected' | 'disconnected' | '
 export function getSocket(): Socket {
   if (!socket) {
     const token = localStorage.getItem('token');
-    socket = io(API_URL, {
+    socket = io(getApiUrl(), {
       auth: { token },
       autoConnect: false,
       reconnection: true,
