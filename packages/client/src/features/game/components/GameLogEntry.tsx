@@ -38,6 +38,7 @@ function getActionDescription(entry: LogEntry): string {
     case 'draw': return '摸牌';
     case 'catch_uno': return '抓到';
     case 'challenge': return '质疑';
+    default: return '';
   }
 }
 

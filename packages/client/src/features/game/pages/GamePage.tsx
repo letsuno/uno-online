@@ -36,9 +36,12 @@ export default function GamePage() {
   const drawStack = useGameStore((s) => s.drawStack);
   const settings = useGameStore((s) => s.settings);
 
+  const roundNumber = useGameStore((s) => s.roundNumber);
+
   const lastAction = useGameStore((s) => s.lastAction);
   const discardPile = useGameStore((s) => s.discardPile);
   const addLogEntry = useGameLogStore((s) => s.addEntry);
+  const addRoundSeparator = useGameLogStore((s) => s.addRoundSeparator);
   const clearLog = useGameLogStore((s) => s.clear);
 
   const isMyTurn = players[currentPlayerIndex]?.id === userId;
@@ -120,9 +123,13 @@ export default function GamePage() {
 
   useEffect(() => {
     if (phase === 'dealing') {
-      clearLog();
+      if (roundNumber <= 1) {
+        clearLog();
+      } else {
+        addRoundSeparator(roundNumber);
+      }
     }
-  }, [phase, clearLog]);
+  }, [phase, roundNumber, clearLog, addRoundSeparator]);
 
   useEffect(() => {
     connectSocket();
