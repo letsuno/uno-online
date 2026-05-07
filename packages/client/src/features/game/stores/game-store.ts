@@ -15,6 +15,8 @@ export interface PlayerInfo {
   role?: string;
 }
 
+export type InfoDrawerTab = 'rules' | 'house-rules' | 'log' | 'chat';
+
 interface GameState {
   viewerId: string | null;
   phase: string | null;
@@ -33,6 +35,10 @@ interface GameState {
   turnEndTime: number | null;
   lastDrawnCard: Card | null;
   hasDrawnThisTurn: boolean;
+  infoDrawerOpen: boolean;
+  infoDrawerTab: InfoDrawerTab;
+  toggleInfoDrawer: () => void;
+  setInfoDrawerTab: (tab: InfoDrawerTab) => void;
   setGameState: (view: Record<string, unknown>) => void;
   setDrawnCard: (card: Card | null) => void;
   setTurnEndTime: (t: number | null) => void;
@@ -57,6 +63,10 @@ export const useGameStore = create<GameState>((set) => ({
   turnEndTime: null,
   lastDrawnCard: null,
   hasDrawnThisTurn: false,
+  infoDrawerOpen: false,
+  infoDrawerTab: 'rules' as InfoDrawerTab,
+  toggleInfoDrawer: () => set((state) => ({ infoDrawerOpen: !state.infoDrawerOpen })),
+  setInfoDrawerTab: (tab: InfoDrawerTab) => set({ infoDrawerTab: tab }),
   setGameState: (view) =>
     set((state) => {
       const players = view.players as PlayerInfo[];
@@ -110,5 +120,7 @@ export const useGameStore = create<GameState>((set) => ({
       turnEndTime: null,
       lastDrawnCard: null,
       hasDrawnThisTurn: false,
+      infoDrawerOpen: false,
+      infoDrawerTab: 'rules' as InfoDrawerTab,
     }),
 }));
