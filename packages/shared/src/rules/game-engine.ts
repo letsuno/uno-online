@@ -353,7 +353,7 @@ function handleChallenge(
       phase: 'playing',
       currentPlayerIndex: nextIdx,
       pendingDrawPlayerId: null,
-      lastAction: { ...action, succeeded: false },
+      lastAction: { ...action, succeeded: false, penaltyPlayerId: action.playerId, penaltyCount: 6 },
     };
     return state.lastAction?.type === 'CHOOSE_COLOR'
       ? checkRoundEnd(newState, wd4Player.id)
@@ -368,7 +368,7 @@ function handleChallenge(
       phase: 'playing',
       currentPlayerIndex: nextIdx,
       pendingDrawPlayerId: null,
-      lastAction: { ...action, succeeded: true },
+      lastAction: { ...action, succeeded: true, penaltyPlayerId: wd4Player.id, penaltyCount: 4 },
     };
   }
 }

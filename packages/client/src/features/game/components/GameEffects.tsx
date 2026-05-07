@@ -13,6 +13,9 @@ interface Effect {
   text: string;
   targetName?: string;
   targetIndex?: number;
+  penaltyName?: string;
+  penaltyIndex?: number;
+  penaltyCount?: number;
 }
 
 const EFFECT_DURATION = 1000;
@@ -95,11 +98,23 @@ export default function GameEffects() {
     if (lastAction.type === 'CHALLENGE' && lastAction.succeeded !== undefined) {
       const challenger = players.find((p) => p.id === lastAction.playerId);
       const challengerIdx = findPlayerIndex(lastAction.playerId);
-      if (lastAction.succeeded) {
-        addEffect('challenge', '质疑成功!', challenger?.name, challengerIdx >= 0 ? challengerIdx : undefined);
-      } else {
-        addEffect('challenge', '质疑失败!', challenger?.name, challengerIdx >= 0 ? challengerIdx : undefined);
-      }
+      const penaltyPlayer = lastAction.penaltyPlayerId ? players.find((p) => p.id === lastAction.penaltyPlayerId) : undefined;
+      const penaltyIdx = lastAction.penaltyPlayerId ? findPlayerIndex(lastAction.penaltyPlayerId) : -1;
+      const id = `effect_${++effectId}`;
+      const effect: Effect = {
+        id,
+        type: 'challenge',
+        text: lastAction.succeeded ? '质疑成功!' : '质疑失败!',
+        targetName: challenger?.name,
+        targetIndex: challengerIdx >= 0 ? challengerIdx : undefined,
+        penaltyName: penaltyPlayer?.name,
+        penaltyIndex: penaltyIdx >= 0 ? penaltyIdx : undefined,
+        penaltyCount: lastAction.penaltyCount,
+      };
+      setEffects((prev) => [...prev, effect]);
+      setTimeout(() => {
+        setEffects((prev) => prev.filter((e) => e.id !== id));
+      }, EFFECT_DURATION);
     }
   }, [lastAction, players]);
 
@@ -165,15 +180,25 @@ export default function GameEffects() {
                   <span className="text-2xl font-bold text-destructive">→ {effect.targetName}</span>
                 </motion.div>
               )}
-              {effect.targetName && effect.type === 'challenge' && (
+              {effect.type === 'challenge' && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.1, duration: 0.3 }}
-                  className="flex items-center gap-2"
+                  className="flex flex-col items-center gap-2"
                 >
-                  {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} />}
-                  <span className="text-2xl font-bold text-slate-200">{effect.targetName}</span>
+                  {effect.targetName && (
+                    <div className="flex items-center gap-2">
+                      {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} />}
+                      <span className="text-2xl font-bold text-slate-200">{effect.targetName}</span>
+                    </div>
+                  )}
+                  {effect.penaltyName && effect.penaltyCount && (
+                    <div className="flex items-center gap-2 mt-1">
+                      {effect.penaltyIndex !== undefined && <EffectAvatar index={effect.penaltyIndex} />}
+                      <span className="text-xl font-bold text-destructive">{effect.penaltyName} 摸 {effect.penaltyCount} 张</span>
+                    </div>
+                  )}
                 </motion.div>
               )}
               {effect.targetName && effect.type === 'victory' && (
