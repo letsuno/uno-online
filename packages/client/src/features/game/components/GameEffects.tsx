@@ -98,8 +98,12 @@ export default function GameEffects() {
     if (lastAction.type === 'CHALLENGE' && lastAction.succeeded !== undefined) {
       const challenger = players.find((p) => p.id === lastAction.playerId);
       const challengerIdx = findPlayerIndex(lastAction.playerId);
-      const penaltyPlayer = lastAction.penaltyPlayerId ? players.find((p) => p.id === lastAction.penaltyPlayerId) : undefined;
-      const penaltyIdx = lastAction.penaltyPlayerId ? findPlayerIndex(lastAction.penaltyPlayerId) : -1;
+
+      const penaltyId = lastAction.penaltyPlayerId ?? (lastAction.succeeded ? undefined : lastAction.playerId);
+      const penaltyCount = lastAction.penaltyCount ?? (lastAction.succeeded ? 4 : 6);
+      const penaltyPlayer = penaltyId ? players.find((p) => p.id === penaltyId) : undefined;
+      const penaltyIdx = penaltyId ? findPlayerIndex(penaltyId) : -1;
+
       const id = `effect_${++effectId}`;
       const effect: Effect = {
         id,
@@ -109,7 +113,7 @@ export default function GameEffects() {
         targetIndex: challengerIdx >= 0 ? challengerIdx : undefined,
         penaltyName: penaltyPlayer?.name,
         penaltyIndex: penaltyIdx >= 0 ? penaltyIdx : undefined,
-        penaltyCount: lastAction.penaltyCount,
+        penaltyCount,
       };
       setEffects((prev) => [...prev, effect]);
       setTimeout(() => {
