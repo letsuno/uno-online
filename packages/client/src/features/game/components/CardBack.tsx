@@ -21,7 +21,7 @@ export default function CardBack({ small = false, onClick, className = '', style
               'font-game text-card-back md:text-base font-black text-white/50',
               'shadow-card',
               'shrink-0',
-              'transition-[opacity,transform,border-color,box-shadow] duration-200',
+              'transition-[opacity,transform,border-color] duration-200',
             ],
         onClick ? 'cursor-pointer' : 'cursor-default',
         className,
