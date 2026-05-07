@@ -59,8 +59,7 @@ services:
     restart: unless-stopped
 
   mumble-gateway:
-    build:
-      context: ./packages/mumble-gateway
+    image: djkcyl/uno-online-mumble-gateway:latest
     depends_on:
       - mumble
     ports:
