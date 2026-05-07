@@ -31,7 +31,7 @@ export function registerRoomEvents(
       targetScore: settings?.targetScore ?? 500,
       houseRules: settings?.houseRules ?? DEFAULT_HOUSE_RULES,
     };
-    const code = await roomManager.createRoom(data.user.userId, data.user.nickname, roomSettings, data.user.avatarUrl);
+    const code = await roomManager.createRoom(data.user.userId, data.user.nickname, roomSettings, data.user.avatarUrl, data.user.role);
     data.roomCode = code;
     await socket.join(code);
     const room = await getRoom(redis, code);
@@ -55,7 +55,7 @@ export function registerRoomEvents(
         return callback({ success: true, players, room, rejoin: true });
       }
 
-      await roomManager.joinRoom(roomCode, data.user.userId, data.user.nickname, data.user.avatarUrl);
+      await roomManager.joinRoom(roomCode, data.user.userId, data.user.nickname, data.user.avatarUrl, data.user.role);
       data.roomCode = roomCode;
       await socket.join(roomCode);
       const updatedPlayers = await getRoomPlayers(redis, roomCode);
@@ -155,7 +155,7 @@ export function registerRoomEvents(
     }
     await setRoomStatus(redis, roomCode, 'playing');
     const session = GameSession.create(
-      players.map((p) => ({ id: p.userId, name: p.nickname, avatarUrl: p.avatarUrl ?? null })),
+      players.map((p) => ({ id: p.userId, name: p.nickname, avatarUrl: p.avatarUrl ?? null, role: p.role as import('@uno-online/shared').UserRole | undefined })),
       { turnTimeLimit: room.settings?.turnTimeLimit ?? 30, targetScore: room.settings?.targetScore ?? 500, houseRules: room.settings?.houseRules ?? DEFAULT_HOUSE_RULES } as RoomSettings,
     );
     sessions.set(roomCode, session);

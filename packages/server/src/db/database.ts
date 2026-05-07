@@ -12,6 +12,7 @@ interface UserTable {
   passwordHash: string | null;
   avatarUrl: string | null;
   avatarData: string | null;
+  role: Generated<string>;
   totalGames: Generated<number>;
   totalWins: Generated<number>;
   createdAt: Generated<string>;
@@ -116,6 +117,7 @@ export async function migrateDb(): Promise<void> {
     .addColumn('password_hash', 'text')
     .addColumn('avatar_url', 'text')
     .addColumn('avatar_data', 'text')
+    .addColumn('role', 'text', (c) => c.defaultTo('normal').notNull())
     .addColumn('total_games', 'integer', (c) => c.defaultTo(0).notNull())
     .addColumn('total_wins', 'integer', (c) => c.defaultTo(0).notNull())
     .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
@@ -158,4 +160,13 @@ export async function migrateDb(): Promise<void> {
     .on('game_players')
     .column('user_id')
     .execute();
+
+  try {
+    await k.schema
+      .alterTable('users')
+      .addColumn('role', 'text', (c) => c.defaultTo('normal').notNull())
+      .execute();
+  } catch {
+    // Column already exists
+  }
 }

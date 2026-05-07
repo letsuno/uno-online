@@ -1,10 +1,12 @@
 import jwt from 'jsonwebtoken';
+import type { UserRole } from '@uno-online/shared';
 
 export interface TokenPayload {
   userId: string;
   username: string;
   nickname: string;
   avatarUrl?: string | null;
+  role: UserRole;
 }
 
 export function signToken(payload: TokenPayload, secret: string, expiresIn = '7d'): string {
@@ -19,6 +21,7 @@ export function verifyToken(token: string, secret: string): TokenPayload | null 
       username: decoded.username,
       nickname: decoded.nickname ?? decoded.username,
       avatarUrl: decoded.avatarUrl ?? null,
+      role: decoded.role ?? 'normal',
     };
   } catch {
     return null;

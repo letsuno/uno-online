@@ -1,6 +1,7 @@
 import type { Card, Color } from '../types/card';
 import type { GameState, Player } from '../types/game';
 import type { HouseRules } from '../types/house-rules';
+import type { UserRole } from '../types/role';
 import { isColoredCard } from '../types/card';
 import { createDeck, shuffleDeck } from './deck';
 import { getNextPlayerIndex, reverseDirection } from './turn';
@@ -79,7 +80,7 @@ export function handleFirstDiscard(deck: readonly Card[], skipWild?: boolean): F
 }
 
 export function initializeGame(
-  playerData: readonly { id: string; name: string; avatarUrl?: string | null }[],
+  playerData: readonly { id: string; name: string; avatarUrl?: string | null; role?: UserRole }[],
   houseRules?: HouseRules,
 ): GameState {
   const deck = shuffleDeck(createDeck());
@@ -99,6 +100,7 @@ export function initializeGame(
     eliminated: false,
     teamId: (houseRules?.teamMode && playerData.length % 2 === 0) ? (i % 2) : undefined,
     avatarUrl: p.avatarUrl ?? null,
+    role: p.role,
   }));
 
   let direction: GameState['direction'] = 'clockwise';
