@@ -1,5 +1,23 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface RoomPlayer {
   userId: string;
@@ -20,6 +38,7 @@ export default function RoomsPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dissolvingCode, setDissolvingCode] = useState<string | null>(null);
+  const [confirmCode, setConfirmCode] = useState<string | null>(null);
 
   const fetchRooms = useCallback(async () => {
     try {
@@ -38,7 +57,7 @@ export default function RoomsPage() {
   }, [fetchRooms]);
 
   const handleDissolve = async (code: string) => {
-    if (!confirm(`Are you sure you want to dissolve room ${code}?`)) return;
+    setConfirmCode(null);
     setDissolvingCode(code);
     try {
       await apiFetch(`/admin/rooms/${code}`, { method: 'DELETE' });
@@ -47,6 +66,17 @@ export default function RoomsPage() {
       setError(err instanceof Error ? err.message : 'Failed to dissolve room');
     } finally {
       setDissolvingCode(null);
+    }
+  };
+
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'waiting':
+        return 'warning' as const;
+      case 'playing':
+        return 'success' as const;
+      default:
+        return 'secondary' as const;
     }
   };
 
@@ -63,60 +93,73 @@ export default function RoomsPage() {
       {loading ? (
         <div className="text-slate-400">Loading...</div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-slate-700">
-                <th className="px-4 py-3 text-sm font-medium text-slate-300">Room Code</th>
-                <th className="px-4 py-3 text-sm font-medium text-slate-300">Players</th>
-                <th className="px-4 py-3 text-sm font-medium text-slate-300">Status</th>
-                <th className="px-4 py-3 text-sm font-medium text-slate-300">Created</th>
-                <th className="px-4 py-3 text-sm font-medium text-slate-300">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rooms.map((room) => (
-                <tr key={room.code} className="border-b border-slate-700/50 hover:bg-slate-800/50">
-                  <td className="px-4 py-3 text-sm font-mono text-white">{room.code}</td>
-                  <td className="px-4 py-3 text-sm text-slate-300">
-                    {room.playerCount} - {room.players.map(p => p.nickname).join(', ')}
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                      room.status === 'waiting'
-                        ? 'bg-yellow-700/40 text-yellow-300'
-                        : room.status === 'playing'
-                          ? 'bg-green-700/40 text-green-300'
-                          : 'bg-slate-700 text-slate-300'
-                    }`}>
-                      {room.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-400">
-                    {new Date(room.createdAt).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <button
-                      onClick={() => handleDissolve(room.code)}
-                      disabled={dissolvingCode === room.code}
-                      className="px-3 py-1 bg-red-700 hover:bg-red-600 disabled:bg-red-900 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
-                    >
-                      {dissolvingCode === room.code ? 'Dissolving...' : 'Dissolve'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {rooms.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
-                    No active rooms
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="border-b border-slate-700">
+              <TableHead>Room Code</TableHead>
+              <TableHead>Players</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rooms.map((room) => (
+              <TableRow key={room.code}>
+                <TableCell className="font-mono text-white">{room.code}</TableCell>
+                <TableCell className="text-slate-300">
+                  {room.playerCount} - {room.players.map((p) => p.nickname).join(', ')}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={getStatusBadgeVariant(room.status)}>{room.status}</Badge>
+                </TableCell>
+                <TableCell className="text-slate-400">
+                  {new Date(room.createdAt).toLocaleString()}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setConfirmCode(room.code)}
+                    disabled={dissolvingCode === room.code}
+                  >
+                    {dissolvingCode === room.code ? 'Dissolving...' : 'Dissolve'}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+            {rooms.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-slate-400 py-8">
+                  No active rooms
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       )}
+
+      <Dialog open={confirmCode !== null} onOpenChange={(open) => !open && setConfirmCode(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Dissolve Room</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to dissolve room {confirmCode}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmCode(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => confirmCode && handleDissolve(confirmCode)}
+            >
+              Dissolve
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

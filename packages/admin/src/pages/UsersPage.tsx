@@ -1,5 +1,22 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface UserRow {
   id: string;
@@ -66,7 +83,7 @@ export default function UsersPage() {
       <h2 className="text-xl font-bold text-white mb-4">Users</h2>
 
       <div className="mb-4">
-        <input
+        <Input
           type="text"
           value={search}
           onChange={(e) => {
@@ -74,7 +91,7 @@ export default function UsersPage() {
             setPage(1);
           }}
           placeholder="Search by username or nickname..."
-          className="w-full max-w-md px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="max-w-md"
         />
       </div>
 
@@ -88,50 +105,52 @@ export default function UsersPage() {
         <div className="text-slate-400">Loading...</div>
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-slate-700">
-                  <th className="px-4 py-3 text-sm font-medium text-slate-300">Username</th>
-                  <th className="px-4 py-3 text-sm font-medium text-slate-300">Nickname</th>
-                  <th className="px-4 py-3 text-sm font-medium text-slate-300">Role</th>
-                  <th className="px-4 py-3 text-sm font-medium text-slate-300">Games</th>
-                  <th className="px-4 py-3 text-sm font-medium text-slate-300">Wins</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.users.map((user) => (
-                  <tr key={user.id} className="border-b border-slate-700/50 hover:bg-slate-800/50">
-                    <td className="px-4 py-3 text-sm text-white">{user.username}</td>
-                    <td className="px-4 py-3 text-sm text-slate-300">{user.nickname}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <select
-                        value={user.role}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                        disabled={updatingId === user.id}
-                        className="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                      >
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-slate-700">
+                <TableHead>Username</TableHead>
+                <TableHead>Nickname</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Games</TableHead>
+                <TableHead>Wins</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.users.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="text-white">{user.username}</TableCell>
+                  <TableCell className="text-slate-300">{user.nickname}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={user.role}
+                      onValueChange={(value) => handleRoleChange(user.id, value)}
+                      disabled={updatingId === user.id}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
                         {ROLES.map((role) => (
-                          <option key={role} value={role}>
+                          <SelectItem key={role} value={role}>
                             {role}
-                          </option>
+                          </SelectItem>
                         ))}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-300">{user.totalGames}</td>
-                    <td className="px-4 py-3 text-sm text-slate-300">{user.totalWins}</td>
-                  </tr>
-                ))}
-                {data.users.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
-                      No users found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-slate-300">{user.totalGames}</TableCell>
+                  <TableCell className="text-slate-300">{user.totalWins}</TableCell>
+                </TableRow>
+              ))}
+              {data.users.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-slate-400 py-8">
+                    No users found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
@@ -139,20 +158,22 @@ export default function UsersPage() {
                 Page {page} of {totalPages} ({data.total} total)
               </span>
               <div className="flex gap-2">
-                <button
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1}
-                  className="px-3 py-1 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-500 text-white text-sm rounded transition-colors"
                 >
                   Prev
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages}
-                  className="px-3 py-1 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-500 text-white text-sm rounded transition-colors"
                 >
                   Next
-                </button>
+                </Button>
               </div>
             </div>
           )}

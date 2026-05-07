@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, NavLink, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth-store';
+import { Button } from '@/components/ui/button';
 import LoginPage from '@/pages/LoginPage';
 import DashboardPage from '@/pages/DashboardPage';
 import UsersPage from '@/pages/UsersPage';
@@ -50,12 +51,9 @@ function Layout() {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-slate-300">{user?.username}</span>
-            <button
-              onClick={logout}
-              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded transition-colors"
-            >
+            <Button variant="secondary" size="sm" onClick={logout}>
               Logout
-            </button>
+            </Button>
           </div>
         </div>
       </nav>
