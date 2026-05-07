@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth-store';
 import { apiGet, apiPatch, apiPost } from '../api';
+import { getRoleColor } from '@/lib/utils';
 import AvatarUpload from '../components/AvatarUpload';
 import { Edit3, Save, Lock } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 
 interface ProfileData {
-  user: { id: string; username: string; nickname: string; avatarUrl: string | null; totalGames: number; totalWins: number; githubId?: string | null };
+  user: { id: string; username: string; nickname: string; avatarUrl: string | null; totalGames: number; totalWins: number; githubId?: string | null; role?: string };
   recentGames: { id: string; game: { roomCode: string; createdAt: string }; finalScore: number; placement: number }[];
 }
 
@@ -85,7 +86,8 @@ export default function ProfilePage() {
                 </Button>
               </div>
             ) : (
-              <p className="text-xl font-bold cursor-pointer" onClick={() => setEditingNickname(true)}>
+              <p className="text-xl font-bold cursor-pointer" onClick={() => setEditingNickname(true)}
+                style={getRoleColor(profile.user.role) ? { color: getRoleColor(profile.user.role) } : undefined}>
                 {profile.user.nickname} <Edit3 size={14} className="inline-block align-middle text-muted-foreground" />
               </p>
             )}

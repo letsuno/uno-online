@@ -35,6 +35,7 @@ export default function ProfileSetupPage() {
         username: updates.username ?? user!.username,
         nickname: updates.nickname ?? user!.nickname,
         avatarUrl: finalAvatar ?? user!.avatarUrl,
+        role: user!.role,
       });
       navigate('/lobby');
     } catch (err) {

@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X } from 'lucide-react';
 import { getSocket } from '../socket';
 import { useToastStore } from '../stores/toast-store';
+import { getRoleColor } from '@/lib/utils';
 
 const QUICK_PHRASES = ['嘻嘻😜', '嘿嘿😏', '哈哈😂', '饶命🙏', '稳了💪', '完蛋😱', '好牌!👍', '等等✋'];
 
-interface ChatMessage { userId: string; username: string; text: string; timestamp: number; }
+interface ChatMessage { userId: string; username: string; text: string; timestamp: number; role?: string; }
 
 interface ChatBoxProps {
   embedded?: boolean;
@@ -51,7 +52,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
         <div className="max-h-48 overflow-y-auto text-xs">
           {messages.map((m, i) => (
             <div key={i} className="mb-1">
-              <span className="text-accent font-bold">{m.username}: </span>
+              <span className="font-bold" style={{ color: getRoleColor(m.role) || 'var(--accent)' }}>{m.username}: </span>
               <span>{m.text}</span>
             </div>
           ))}

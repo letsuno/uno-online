@@ -3,7 +3,8 @@ import CardBack from './CardBack';
 import Card from './Card';
 import { useGameStore } from '../stores/game-store';
 import { useAuthStore } from '../stores/auth-store';
-import { cn } from '@/lib/utils';
+import { cn, getRoleColor } from '@/lib/utils';
+import GoogleRing from './ui/GoogleRing';
 
 const AVATAR_COLORS = ['#ff3366', '#33cc66', '#4488ff', '#f97316', '#a855f7', '#ec4899', '#14b8a6', '#eab308', '#6366f1'];
 
@@ -52,22 +53,24 @@ export default function OpponentRow() {
           >
             <div
               className={cn(
-                'w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center',
+                'relative w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center',
                 'text-sm md:text-lg',
-                'border-2 border-white/30',
-                'transition-[border,box-shadow] duration-300 ease-in-out',
-                isActive && 'border-3 border-primary shadow-glow-active',
-                isTeammate && 'border-2 border-accent',
+                'transition-[box-shadow] duration-300 ease-in-out',
+                isActive && 'shadow-glow-active',
               )}
               style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
             >
-              <img src={getAvatarUrl(opp)} alt={opp.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+              <img src={getAvatarUrl(opp)} alt={opp.name} style={{ width: '85%', height: '85%', borderRadius: '50%', objectFit: 'cover' }} />
+              <GoogleRing size={0} className="w-full h-full" />
             </div>
             <span
               className={cn(
                 'text-sm text-foreground transition-colors duration-300 ease-in-out',
                 isActive && 'text-primary font-bold',
               )}
+              style={(!isActive && getRoleColor(opp.role))
+                ? { color: getRoleColor(opp.role) }
+                : undefined}
             >
               {isTeammate ? '🤝 ' : ''}{opp.name} {isActive ? '◀' : ''} {opp.eliminated ? '❌' : ''}
             </span>

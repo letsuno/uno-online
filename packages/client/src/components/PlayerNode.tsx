@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Card as CardType } from '@uno-online/shared';
 import Card from './Card';
 import CountdownRing from './CountdownRing';
+import GoogleRing from './ui/GoogleRing';
 import ChatBubble from './ChatBubble';
 import QuickReaction from './QuickReaction';
 import ThrowItemPicker from './ThrowItemPicker';
-import { cn } from '@/lib/utils';
+import { cn, getRoleColor } from '@/lib/utils';
 
 export const AVATAR_COLORS = [
   '#ff3366',
@@ -41,6 +42,7 @@ interface PlayerInfo {
   calledUno: boolean;
   eliminated?: boolean;
   teamId?: number;
+  role?: string;
 }
 
 interface PlayerNodeProps {
@@ -197,12 +199,10 @@ export default function PlayerNode({
         {/* Avatar circle */}
         <div
           className={cn(
-            'w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center',
+            'rounded-full flex items-center justify-center overflow-hidden',
             'text-sm md:text-lg',
-            'border-2 border-white/30',
-            'transition-[border,box-shadow] duration-300 ease-in-out',
+            'transition-[box-shadow] duration-300 ease-in-out',
             isActive && 'animate-draw-pulse shadow-glow-active',
-            isMe && 'border-primary border-3',
           )}
           style={{
             background: AVATAR_COLORS[index % AVATAR_COLORS.length],
@@ -213,6 +213,9 @@ export default function PlayerNode({
         >
           {AVATAR_EMOJIS[index % AVATAR_EMOJIS.length]}
         </div>
+
+        {/* Google-style colored ring */}
+        <GoogleRing size={avatarSize} />
 
         {/* Host crown */}
         {isHost && (
@@ -266,6 +269,9 @@ export default function PlayerNode({
           isActive && 'text-primary font-bold',
           isMe && 'text-primary',
         )}
+        style={(!isActive && !isMe && getRoleColor(player.role))
+          ? { color: getRoleColor(player.role) }
+          : undefined}
       >
         {displayName}
       </span>
