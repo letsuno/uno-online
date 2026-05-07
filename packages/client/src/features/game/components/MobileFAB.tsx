@@ -4,16 +4,19 @@ import BottomSheet from './BottomSheet';
 import HouseRulesCard from './HouseRulesCard';
 import GameLog from './GameLog';
 import ChatBox from './ChatBox';
+import GameRulesPanel from './GameRulesPanel';
 
-type Panel = 'rules' | 'log' | 'chat' | null;
+type Panel = 'gameplay' | 'rules' | 'log' | 'chat' | null;
 
 const FAB_BUTTONS: { panel: Exclude<Panel, null>; emoji: string; label: string }[] = [
+  { panel: 'gameplay', emoji: '\u{1F3AE}', label: 'Gameplay' },
   { panel: 'rules', emoji: '\u{1F4CB}', label: 'House Rules' },
   { panel: 'log', emoji: '\u{1F4D6}', label: 'Game Log' },
   { panel: 'chat', emoji: '\u{1F4AC}', label: 'Chat' },
 ];
 
 const PANEL_TITLES: Record<Exclude<Panel, null>, string> = {
+  gameplay: '\u{1F3AE} 玩法介绍',
   rules: '\u{1F4CB} 本局村规',
   log: '\u{1F4D6} 游戏日记',
   chat: '\u{1F4AC} 聊天',
@@ -49,6 +52,7 @@ export default function MobileFAB() {
           onClose={close}
           title={PANEL_TITLES[activePanel]}
         >
+          {activePanel === 'gameplay' && <GameRulesPanel />}
           {activePanel === 'rules' && <HouseRulesCard embedded />}
           {activePanel === 'log' && <GameLog embedded />}
           {activePanel === 'chat' && <ChatBox embedded />}
