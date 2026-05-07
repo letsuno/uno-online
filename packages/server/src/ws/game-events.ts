@@ -141,7 +141,7 @@ export function registerGameEvents(
       chosenColor: payload.chosenColor,
     }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session);
+    await emitGameUpdate(io, roomCode, session, redis);
     if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, db))) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
@@ -171,7 +171,7 @@ export function registerGameEvents(
       }
     }
     await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session);
+    await emitGameUpdate(io, roomCode, session, redis);
     callback?.({ success: true });
   });
 
@@ -183,7 +183,7 @@ export function registerGameEvents(
     if (!result.success) return callback?.({ success: false, error: result.error });
     session.recordEvent(GameEventType.PASS, {}, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session);
+    await emitGameUpdate(io, roomCode, session, redis);
     startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     callback?.({ success: true });
   });
@@ -196,7 +196,7 @@ export function registerGameEvents(
     if (!result.success) return callback?.({ success: false, error: result.error });
     session.recordEvent(GameEventType.CALL_UNO, {}, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session);
+    await emitGameUpdate(io, roomCode, session, redis);
     if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, db)) {
       return callback?.({ success: true });
     }
@@ -211,7 +211,7 @@ export function registerGameEvents(
     if (!result.success) return callback?.({ success: false, error: result.error });
     session.recordEvent(GameEventType.CATCH_UNO, { targetPlayerId: payload.targetPlayerId }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session);
+    await emitGameUpdate(io, roomCode, session, redis);
     callback?.({ success: true });
   });
 
@@ -227,7 +227,7 @@ export function registerGameEvents(
       penaltyCards: [],
     }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session);
+    await emitGameUpdate(io, roomCode, session, redis);
     if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, db))) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
@@ -242,7 +242,7 @@ export function registerGameEvents(
     if (!result.success) return callback?.({ success: false, error: result.error });
     session.recordEvent(GameEventType.ACCEPT, { drawnCards: [] }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session);
+    await emitGameUpdate(io, roomCode, session, redis);
     if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, db))) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
@@ -261,7 +261,7 @@ export function registerGameEvents(
     if (!result.success) return callback?.({ success: false, error: result.error });
     session.recordEvent(GameEventType.CHOOSE_COLOR, { color: payload.color }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session);
+    await emitGameUpdate(io, roomCode, session, redis);
     if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, db)) {
       // terminal state already emitted
     } else {
@@ -282,7 +282,7 @@ export function registerGameEvents(
     if (!result.success) return callback?.({ success: false, error: result.error });
     session.recordEvent(GameEventType.CHOOSE_SWAP_TARGET, { targetId: payload.targetId }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session);
+    await emitGameUpdate(io, roomCode, session, redis);
     startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     callback?.({ success: true });
   });

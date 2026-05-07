@@ -11,6 +11,7 @@ import { getRoom, getRoomPlayers, setRoomOwner } from '../plugins/core/room/stor
 import { saveGameState, loadGameState } from '../plugins/core/game/state-store';
 import { checkRateLimit, clearRateLimit } from './rate-limiter';
 import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws';
+import { setupSpectateHandlers } from '../plugins/core/spectate/ws';
 import { getDb } from '../db/database';
 
 const RECONNECT_TIMEOUT_MS = 60_000;
@@ -30,6 +31,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
     }
     socket.data.user = payload;
     socket.data.roomCode = null;
+    socket.data.isSpectator = false;
     next();
   });
 
@@ -94,7 +96,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
 
       if (acted) {
         await saveGameState(redis, roomCode, session.getFullState());
-        await emitGameUpdate(io, roomCode, session);
+        await emitGameUpdate(io, roomCode, session, redis);
         io.to(roomCode).emit('player:timeout', { playerId: userId });
         startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
       }
@@ -155,7 +157,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
         session.setPlayerConnected(userId, true);
         session.setPlayerAutopilot(userId, false);
         await saveGameState(redis, roomCode, session.getFullState());
-        await emitGameUpdate(io, roomCode, session);
+        await emitGameUpdate(io, roomCode, session, redis);
         io.to(roomCode).emit('player:reconnected', { playerId: userId });
         io.to(roomCode).emit('player:autopilot', { playerId: userId, enabled: false });
         callback?.({ success: true, gameState: session.getPlayerView(userId) });
@@ -201,7 +203,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
         stopAutoPlay(userId);
       }
       await saveGameState(redis, roomCode, session.getFullState());
-      await emitGameUpdate(io, roomCode, session);
+      await emitGameUpdate(io, roomCode, session, redis);
       io.to(roomCode).emit('player:autopilot', { playerId: userId, enabled: nextAutopilot });
       callback?.({ success: true, autopilot: nextAutopilot });
     });
@@ -216,7 +218,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       if (session) {
         session.setPlayerConnected(userId, false);
         await saveGameState(redis, roomCode, session.getFullState());
-        await emitGameUpdate(io, roomCode, session);
+        await emitGameUpdate(io, roomCode, session, redis);
         io.to(roomCode).emit('player:disconnected', { playerId: userId });
 
         const state = session.getFullState();
@@ -247,7 +249,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
           if (stillDisconnected) {
             s.setPlayerAutopilot(userId, true);
             await saveGameState(redis, roomCode, s.getFullState());
-            await emitGameUpdate(io, roomCode, s);
+            await emitGameUpdate(io, roomCode, s, redis);
             io.to(roomCode).emit('player:autopilot', { playerId: userId, enabled: true });
             startAutoPlay(userId, roomCode);
           }
@@ -268,6 +270,8 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       }
     });
   });
+
+  setupSpectateHandlers(io, redis, sessions);
 
   return { roomManager, turnTimer, sessions };
 }
