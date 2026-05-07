@@ -116,6 +116,7 @@ import type { PlayerInfo } from '../stores/game-store';
 - 全局事件（影响 store 的事件）在 `shared/socket.ts` 中统一监听
 - 组件级事件（仅影响单个组件状态）在组件内通过 `useEffect` 监听
 - 必须在 `useEffect` 的 cleanup 中 `socket.off()`
+- 玩家状态事件: `player:disconnected`, `player:reconnected`, `player:autopilot`（托管状态变更）
 
 ## 样式主题
 

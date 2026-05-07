@@ -159,6 +159,7 @@ export async function loadPlugins(fastify, ctx) {
 ### 事件命名
 - 格式: `domain:action`（如 `room:create`, `game:play_card`, `chat:message`）
 - 域: `room`, `game`, `voice`, `chat`, `throw`, `player`
+- `player` 域事件: `player:disconnected`, `player:reconnected`, `player:timeout`, `player:autopilot`, `player:toggle-autopilot`
 
 ### 事件处理模式
 ```typescript

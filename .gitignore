@@ -8,7 +8,6 @@ dist/
 coverage/
 .superpowers/
 .claude/
-docs/
 .playwright-mcp/
 .yarn/
 .omc/
