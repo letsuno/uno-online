@@ -13,6 +13,7 @@ docs/
 .yarn/
 .omc/
 uno.db*
+data/
 yarn.lock
 *.tsbuildinfo
 vite.config.js
