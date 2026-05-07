@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Crown, Check } from 'lucide-react';
+import { Crown, Check, Copy } from 'lucide-react';
 import { cn, getRoleColor } from '@/shared/lib/utils';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { useGameStore } from '../stores/game-store';
 import { getSocket, connectSocket } from '@/shared/socket';
 import VoicePanel from '@/shared/voice/VoicePanel';
+import { useToastStore } from '@/shared/stores/toast-store';
 import HouseRulesPanel from '../components/HouseRulesPanel';
 import { DEFAULT_HOUSE_RULES } from '@uno-online/shared';
 import type { HouseRules } from '@uno-online/shared';
@@ -82,8 +83,18 @@ export default function RoomPage() {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-5">
-      <h2 className="font-game text-primary">
+      <h2 className="font-game text-primary flex items-center gap-2">
         房间 {roomCode}
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(roomCode ?? '');
+            useToastStore.getState().addToast('房间号已复制', 'success');
+          }}
+          className="bg-white/10 hover:bg-white/20 rounded-lg p-1.5 cursor-pointer transition-colors"
+          title="复制房间号"
+        >
+          <Copy size={14} className="text-muted-foreground" />
+        </button>
       </h2>
       <div className="min-w-room-min rounded-2xl bg-card p-5">
         <h3 className="mb-3 text-sm text-muted-foreground">
