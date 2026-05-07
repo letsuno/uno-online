@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface DashboardStats {
   totalUsers: number;
@@ -32,9 +34,9 @@ export default function DashboardPage() {
   }
 
   const cards = [
-    { label: 'Total Users', value: stats.totalUsers, color: 'bg-blue-600' },
-    { label: 'Total Games', value: stats.totalGames, color: 'bg-green-600' },
-    { label: 'Active Rooms', value: stats.activeRooms, color: 'bg-purple-600' },
+    { label: 'Total Users', value: stats.totalUsers, variant: 'default' as const },
+    { label: 'Total Games', value: stats.totalGames, variant: 'success' as const },
+    { label: 'Active Rooms', value: stats.activeRooms, variant: 'secondary' as const },
   ];
 
   return (
@@ -42,12 +44,16 @@ export default function DashboardPage() {
       <h2 className="text-xl font-bold text-white mb-6">Dashboard</h2>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {cards.map((card) => (
-          <div key={card.label} className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <div className={`inline-block px-2 py-1 rounded text-xs font-medium text-white mb-3 ${card.color}`}>
-              {card.label}
-            </div>
-            <div className="text-3xl font-bold text-white">{card.value.toLocaleString()}</div>
-          </div>
+          <Card key={card.label}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                <Badge variant={card.variant}>{card.label}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-white">{card.value.toLocaleString()}</div>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>
