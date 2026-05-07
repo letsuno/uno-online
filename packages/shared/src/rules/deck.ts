@@ -71,3 +71,21 @@ export function reshuffleDiscardIntoDeck(
 
   return { deck: newDeck, discardPile: [topCard] };
 }
+
+export interface CardIdentity {
+  color: Card['color'];
+  type: Card['type'];
+  value?: number;
+}
+
+export function cardToIdentity(card: Card): CardIdentity {
+  const identity: CardIdentity = { color: card.color, type: card.type };
+  if (card.type === 'number') {
+    identity.value = card.value;
+  }
+  return identity;
+}
+
+export function serializeDeck(deck: readonly Card[]): string {
+  return JSON.stringify(deck.map(cardToIdentity));
+}
