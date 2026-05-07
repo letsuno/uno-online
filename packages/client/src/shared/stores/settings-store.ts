@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 export type FontOption = 'default' | 'rounded' | 'serif' | 'mono';
+export type UiTheme = 'rounded' | 'tech';
 
 export const FONT_OPTIONS: Record<FontOption, { label: string; value: string }> = {
   default: { label: '默认', value: "'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif" },
@@ -16,12 +17,14 @@ interface SettingsState {
   fontFamily: FontOption;
   cardImagePack: boolean; // whether a card image pack is loaded
   autoPlay: boolean;
+  uiTheme: UiTheme;
   setSoundVolume: (v: number) => void;
   toggleSound: () => void;
   toggleColorBlind: () => void;
   setFontFamily: (f: FontOption) => void;
   setCardImagePack: (loaded: boolean) => void;
   toggleAutoPlay: () => void;
+  setUiTheme: (t: UiTheme) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -31,6 +34,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   fontFamily: (localStorage.getItem('fontFamily') as FontOption) || 'default',
   cardImagePack: localStorage.getItem('cardImagePack') === 'true',
   autoPlay: localStorage.getItem('autoPlay') === 'true',
+  uiTheme: (localStorage.getItem('uiTheme') as UiTheme) || 'rounded',
   setSoundVolume: (v) => {
     localStorage.setItem('soundVolume', String(v));
     set({ soundVolume: v });
@@ -60,4 +64,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     localStorage.setItem('autoPlay', String(next));
     return { autoPlay: next };
   }),
+  setUiTheme: (t) => {
+    localStorage.setItem('uiTheme', t);
+    set({ uiTheme: t });
+  },
 }));

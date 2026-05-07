@@ -6,6 +6,7 @@ import { useSettingsStore, FONT_OPTIONS, type FontOption } from '@/shared/stores
 import { loadCardPack, clearCardPack, isPackLoaded } from '@/shared/utils/card-images';
 import { apiGet } from '@/shared/api';
 import { Button } from '@/shared/components/ui/Button';
+import { Input } from '@/shared/components/ui/Input';
 import { BUILD_VERSION, BUILD_TIME } from '@/shared/build-info';
 
 interface AuthConfig {
@@ -91,12 +92,13 @@ export default function HomePage() {
         authConfig.devMode ? (
           <div className="flex flex-col items-center gap-3">
             <div className="flex items-center gap-2">
-              <input
+              <Input
                 value={devUsername}
                 onChange={(e) => { setDevUsername(e.target.value); setError(''); }}
                 onKeyDown={(e) => e.key === 'Enter' && handleDevLogin()}
                 placeholder="输入用户名"
-                className="w-dev-input rounded-xl border-2 border-white/20 bg-card px-4 py-3 text-center text-lg text-foreground"
+                inputSize="lg"
+                className="w-dev-input text-center"
               />
               <Button variant="primary" className="px-6 py-3 text-lg" onClick={handleDevLogin}>
                 <LogIn size={20} className="mr-1.5 inline-block align-middle" />登录
@@ -108,16 +110,16 @@ export default function HomePage() {
         ) : (
           <div className="flex flex-col items-center gap-3 w-[280px]">
             <form onSubmit={handlePasswordLogin} className="flex flex-col gap-2.5 w-full">
-              <input
+              <Input
                 value={loginUsername} onChange={(e) => { setLoginUsername(e.target.value); setError(''); }}
                 placeholder="用户名"
-                className="w-full rounded-xl border-2 border-white/15 bg-card px-3.5 py-2.5 text-base text-foreground"
+                className="w-full"
                 autoComplete="username"
               />
-              <input
+              <Input
                 type="password" value={loginPassword} onChange={(e) => { setLoginPassword(e.target.value); setError(''); }}
                 placeholder="密码"
-                className="w-full rounded-xl border-2 border-white/15 bg-card px-3.5 py-2.5 text-base text-foreground"
+                className="w-full"
                 autoComplete="current-password"
               />
               {error && <p className="text-sm text-destructive m-0">{error}</p>}

@@ -3,16 +3,20 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/shared/lib/utils';
 
 const buttonVariants = cva(
-  'font-bold transition-transform duration-150 cursor-pointer',
+  'font-bold transition-all duration-150 cursor-pointer rounded-btn shadow-tech',
   {
     variants: {
       variant: {
         primary:
-          'bg-primary text-primary-foreground px-6 py-2.5 rounded-3xl text-base shadow-card hover:scale-105 active:scale-click',
+          'bg-primary text-primary-foreground px-6 py-2.5 text-base shadow-card hover:scale-105 active:scale-click',
         danger:
-          'bg-destructive text-white px-5 py-2 rounded-panel text-sm shadow-card',
+          'bg-destructive text-white px-5 py-2 text-sm shadow-card',
         secondary:
-          'bg-secondary text-foreground px-5 py-2 rounded-panel text-sm border border-white/20',
+          'bg-secondary text-foreground px-5 py-2 text-sm border border-white/20',
+        ghost:
+          'bg-transparent text-foreground px-4 py-2 text-sm hover:bg-white/10',
+        outline:
+          'bg-transparent text-primary border-2 border-primary/50 px-5 py-2 text-sm hover:bg-primary/10',
       },
       size: {
         default: '',
