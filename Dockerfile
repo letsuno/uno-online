@@ -19,11 +19,7 @@ FROM deps AS build-client
 COPY packages/shared/ packages/shared/
 COPY packages/client/ packages/client/
 ARG VITE_API_URL=""
-ARG VITE_GITHUB_CLIENT_ID=""
-ARG VITE_DEV_MODE=""
 ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_GITHUB_CLIENT_ID=$VITE_GITHUB_CLIENT_ID
-ENV VITE_DEV_MODE=$VITE_DEV_MODE
 RUN pnpm --filter @uno-online/shared build && pnpm --filter @uno-online/client build
 
 # ---- Stage 4: Build server ----
@@ -31,7 +27,6 @@ FROM deps AS build-server
 COPY packages/shared/ packages/shared/
 COPY packages/server/ packages/server/
 RUN pnpm --filter @uno-online/shared build \
-  && pnpm --filter @uno-online/server db:generate \
   && pnpm --filter @uno-online/server build \
   && node -e "const fs = require('fs'); const p = 'packages/shared/package.json'; const pkg = JSON.parse(fs.readFileSync(p, 'utf8')); pkg.main = './dist/index.js'; pkg.types = './dist/index.d.ts'; fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');"
 
@@ -44,7 +39,7 @@ RUN rm -rf packages/client/src
 
 EXPOSE 3001
 
-CMD ["sh", "-c", "pnpm --filter @uno-online/server db:push --skip-generate && pnpm --filter @uno-online/server start"]
+CMD ["pnpm", "--filter", "@uno-online/server", "start"]
 
 # ---- Stage 6: Caddy (client) ----
 FROM caddy:2-alpine AS caddy
