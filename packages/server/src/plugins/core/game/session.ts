@@ -32,7 +32,7 @@ export interface PlayerView {
   lastAction: GameState['lastAction'];
 }
 
-export interface ActionResult {
+interface ActionResult {
   success: boolean;
   error?: string;
   drawnCard?: Card;

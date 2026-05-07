@@ -18,6 +18,3 @@ export async function deleteGameState(redis: KvStore, roomCode: string): Promise
   await redis.del(GAME_STATE_KEY(roomCode));
 }
 
-export async function refreshGameStateTTL(redis: KvStore, roomCode: string): Promise<void> {
-  await redis.expire(GAME_STATE_KEY(roomCode), GAME_STATE_TTL);
-}

@@ -5,13 +5,8 @@ import { GameSession } from '../plugins/core/game/session';
 import { saveGameState } from '../plugins/core/game/state-store';
 import { emitGameUpdate, startTurnTimer } from './room-events';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
-import type { TokenPayload } from '../auth/jwt';
 import { recordGameResult } from '../db/user-repo';
-
-interface SocketData {
-  user: TokenPayload;
-  roomCode: string | null;
-}
+import type { SocketData } from './types';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
   const roomCode = (socket.data as SocketData).roomCode;
