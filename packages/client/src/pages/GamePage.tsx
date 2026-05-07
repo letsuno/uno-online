@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { Color } from '@uno-online/shared';
 import { Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useGameStore } from '../stores/game-store';
 import { useAuthStore } from '../stores/auth-store';
+import { useSettingsStore } from '../stores/settings-store';
 import { getSocket, connectSocket, onConnectionStatus } from '../socket';
 import { playSound } from '../sound/sound-manager';
+import { getPlayableCardIds } from '../utils/playable-cards';
 import TopBar from '../components/TopBar';
 import GameTable from '../components/GameTable';
 import GameActions from '../components/GameActions';
@@ -219,6 +221,64 @@ export default function GamePage() {
     getSocket().emit('game:rematch', () => {});
   }, []);
 
+  // --- Auto-play logic ---
+  const autoPlay = useSettingsStore((s) => s.autoPlay);
+  const me = players.find((p) => p.id === userId);
+  const currentColor = useGameStore((s) => s.currentColor);
+  const topCard = discardPile[discardPile.length - 1];
+
+  useEffect(() => {
+    if (!autoPlay || !isMyTurn || phase !== 'playing' || !me || !topCard || !currentColor) return;
+
+    const hand = me.hand;
+    const playableIds = getPlayableCardIds({
+      hand,
+      topCard,
+      currentColor,
+      drawStack,
+      houseRules: settings?.houseRules,
+    });
+
+    if (playableIds.size === 0) {
+      // No playable card — draw
+      const timer = setTimeout(() => drawCard(), 600);
+      return () => clearTimeout(timer);
+    }
+
+    // Strategy: prefer same-color cards, then first playable (sorted order), avoid wild if possible
+    const sorted = [...hand].sort((a, b) => {
+      const COLOR_ORDER: Record<string, number> = { red: 0, blue: 1, green: 2, yellow: 3 };
+      const colorA = COLOR_ORDER[a.color ?? ''] ?? 99;
+      const colorB = COLOR_ORDER[b.color ?? ''] ?? 99;
+      if (colorA !== colorB) return colorA - colorB;
+      return 0;
+    });
+
+    // 1) Same color non-wild cards
+    let pick = sorted.find((c) => playableIds.has(c.id) && c.color === currentColor);
+    // 2) Any non-wild playable
+    if (!pick) pick = sorted.find((c) => playableIds.has(c.id) && c.color !== null);
+    // 3) Wild card as last resort
+    if (!pick) pick = sorted.find((c) => playableIds.has(c.id));
+
+    if (pick) {
+      const isWild = pick.type === 'wild' || pick.type === 'wild_draw_four';
+      const timer = setTimeout(() => {
+        playCard(pick.id);
+        if (isWild) {
+          // Auto-choose color: most frequent color in remaining hand
+          const colorCount: Record<string, number> = { red: 0, blue: 0, green: 0, yellow: 0 };
+          for (const c of hand) {
+            if (c.color && c.id !== pick.id) colorCount[c.color]++;
+          }
+          const bestColor = (Object.entries(colorCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'red') as Color;
+          setTimeout(() => chooseColor(bestColor), 300);
+        }
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [autoPlay, isMyTurn, phase, me?.hand, topCard, currentColor, drawStack, settings?.houseRules]);
+
   if (!phase) {
     return <div className="flex flex-1 items-center justify-center">
       <p className="text-muted-foreground">加载游戏中...</p>
@@ -236,6 +296,7 @@ export default function GamePage() {
         </div>
       )}
       <TopBar roomCode={roomCode ?? ''} />
+      <LayoutGroup>
       <GameTable onDraw={drawCard} />
       <AnimatePresence>
         {showTurnBanner && isMyTurn && phase === 'playing' && (
@@ -259,6 +320,7 @@ export default function GamePage() {
         onSwapTarget={swapTarget}
       />
       <PlayerHand onPlayCard={playCard} />
+      </LayoutGroup>
       <ChatBox />
       <VoicePanel />
       <HouseRulesCard />

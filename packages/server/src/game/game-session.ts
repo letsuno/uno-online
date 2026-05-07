@@ -16,6 +16,7 @@ export interface PlayerView {
     calledUno: boolean;
     eliminated?: boolean;
     teamId?: number;
+    avatarUrl?: string | null;
   }[];
   currentPlayerIndex: number;
   direction: GameState['direction'];
@@ -43,7 +44,7 @@ export class GameSession {
     this.state = state;
   }
 
-  static create(players: { id: string; name: string }[], settings?: RoomSettings): GameSession {
+  static create(players: { id: string; name: string; avatarUrl?: string | null }[], settings?: RoomSettings): GameSession {
     const state = initializeGame(players, settings?.houseRules);
     const stateWithSettings = settings
       ? { ...state, settings }
@@ -78,6 +79,7 @@ export class GameSession {
           calledUno: p.calledUno,
           eliminated: p.eliminated,
           teamId: p.teamId,
+          avatarUrl: p.avatarUrl,
         };
       }),
       currentPlayerIndex: this.state.currentPlayerIndex,

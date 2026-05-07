@@ -1,4 +1,4 @@
-import { Eye, Volume2, VolumeX, Spade, DoorOpen } from 'lucide-react';
+import { Eye, Volume2, VolumeX, Spade, DoorOpen, Bot } from 'lucide-react';
 import TurnTimer from './TurnTimer';
 import { useSettingsStore } from '../stores/settings-store';
 import { useRoomStore } from '../stores/room-store';
@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 interface TopBarProps { roomCode: string; }
 
 export default function TopBar({ roomCode }: TopBarProps) {
-  const { colorBlindMode, toggleColorBlind, soundEnabled, toggleSound } = useSettingsStore();
+  const { colorBlindMode, toggleColorBlind, soundEnabled, toggleSound, autoPlay, toggleAutoPlay } = useSettingsStore();
   const ownerId = useRoomStore((s) => s.room?.ownerId);
   const userId = useAuthStore((s) => s.user?.id);
   const isHost = ownerId === userId;
@@ -26,6 +26,16 @@ export default function TopBar({ roomCode }: TopBarProps) {
         <span className="text-muted-foreground">房间: {roomCode}</span>
       </div>
       <div className="flex items-center gap-3">
+        <button
+          onClick={toggleAutoPlay}
+          className={cn(
+            'bg-transparent border-none text-sm cursor-pointer',
+            autoPlay ? 'text-accent' : 'text-muted-foreground'
+          )}
+          title={autoPlay ? '关闭自动托管' : '开启自动托管'}
+        >
+          <Bot size={16} />
+        </button>
         <button
           onClick={toggleColorBlind}
           className={cn(

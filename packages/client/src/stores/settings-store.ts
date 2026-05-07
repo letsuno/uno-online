@@ -14,10 +14,14 @@ interface SettingsState {
   soundEnabled: boolean;
   colorBlindMode: boolean;
   fontFamily: FontOption;
+  cardImagePack: boolean; // whether a card image pack is loaded
+  autoPlay: boolean;
   setSoundVolume: (v: number) => void;
   toggleSound: () => void;
   toggleColorBlind: () => void;
   setFontFamily: (f: FontOption) => void;
+  setCardImagePack: (loaded: boolean) => void;
+  toggleAutoPlay: () => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -25,6 +29,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
   colorBlindMode: localStorage.getItem('colorBlindMode') === 'true',
   fontFamily: (localStorage.getItem('fontFamily') as FontOption) || 'default',
+  cardImagePack: localStorage.getItem('cardImagePack') === 'true',
+  autoPlay: localStorage.getItem('autoPlay') === 'true',
   setSoundVolume: (v) => {
     localStorage.setItem('soundVolume', String(v));
     set({ soundVolume: v });
@@ -45,4 +51,13 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     document.documentElement.style.setProperty('--font-ui', FONT_OPTIONS[f].value);
     set({ fontFamily: f });
   },
+  setCardImagePack: (loaded) => {
+    localStorage.setItem('cardImagePack', String(loaded));
+    set({ cardImagePack: loaded });
+  },
+  toggleAutoPlay: () => set((s) => {
+    const next = !s.autoPlay;
+    localStorage.setItem('autoPlay', String(next));
+    return { autoPlay: next };
+  }),
 }));

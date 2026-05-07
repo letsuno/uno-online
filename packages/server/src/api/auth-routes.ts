@@ -21,7 +21,7 @@ export async function registerAuthRoutes(fastify: FastifyInstance, config: Confi
         username: username.trim(),
         avatarUrl: null,
       });
-      const token = signToken({ userId: user.id, username: user.username }, config.jwtSecret);
+      const token = signToken({ userId: user.id, username: user.username, avatarUrl: user.avatarUrl }, config.jwtSecret);
       return { token, user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl } };
     });
   }
@@ -48,7 +48,7 @@ export async function registerAuthRoutes(fastify: FastifyInstance, config: Confi
         username: githubUser.login,
         avatarUrl: githubUser.avatar_url,
       });
-      const token = signToken({ userId: user.id, username: user.username }, config.jwtSecret);
+      const token = signToken({ userId: user.id, username: user.username, avatarUrl: user.avatarUrl }, config.jwtSecret);
       return { token, user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl } };
     } catch (err) {
       return reply.code(500).send({ error: 'Authentication failed' });

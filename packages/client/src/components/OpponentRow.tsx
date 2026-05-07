@@ -6,7 +6,11 @@ import { useAuthStore } from '../stores/auth-store';
 import { cn } from '@/lib/utils';
 
 const AVATAR_COLORS = ['#ff3366', '#33cc66', '#4488ff', '#f97316', '#a855f7', '#ec4899', '#14b8a6', '#eab308', '#6366f1'];
-const AVATAR_EMOJIS = ['😎', '🤠', '😺', '🐸', '🦊', '🐱', '🐶', '🦁', '🐼'];
+
+function getAvatarUrl(player: { id: string; name: string; avatarUrl?: string | null }): string {
+  if (player.avatarUrl) return player.avatarUrl;
+  return `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(player.id)}`;
+}
 
 export default function OpponentRow() {
   const authUserId = useAuthStore((s) => s.user?.id);
@@ -57,7 +61,7 @@ export default function OpponentRow() {
               )}
               style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
             >
-              {AVATAR_EMOJIS[i % AVATAR_EMOJIS.length]}
+              <img src={getAvatarUrl(opp)} alt={opp.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
             </div>
             <span
               className={cn(
