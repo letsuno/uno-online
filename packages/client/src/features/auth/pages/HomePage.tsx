@@ -6,6 +6,7 @@ import { useSettingsStore, FONT_OPTIONS, type FontOption } from '@/shared/stores
 import { loadCardPack, clearCardPack, isPackLoaded } from '@/shared/utils/card-images';
 import { apiGet } from '@/shared/api';
 import { Button } from '@/shared/components/ui/Button';
+import { BUILD_VERSION, BUILD_TIME } from '@/shared/build-info';
 
 interface AuthConfig {
   devMode: boolean;
@@ -192,7 +193,7 @@ export default function HomePage() {
       </div>
 
       <p className="absolute bottom-6 left-6 text-xs text-muted-foreground/50">
-        v{__BUILD_VERSION__} · {new Date(__BUILD_TIME__).toLocaleDateString('zh-CN')}
+        v{BUILD_VERSION} · {new Date(BUILD_TIME).toLocaleDateString('zh-CN')}
       </p>
     </div>
   );
