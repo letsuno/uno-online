@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import Card from './Card';
 import { useGameStore } from '../stores/game-store';
-import { useAuthStore } from '@/features/auth/stores/auth-store';
+import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 
 /**
  * Compute the initial animation offset based on the seat position
@@ -31,9 +31,7 @@ export default function DiscardPile() {
   const drawStack = useGameStore((s) => s.drawStack);
   const lastAction = useGameStore((s) => s.lastAction);
   const players = useGameStore((s) => s.players);
-  const authUserId = useAuthStore((s) => s.user?.id);
-  const viewerId = useGameStore((s) => s.viewerId);
-  const selfId = viewerId ?? authUserId;
+  const selfId = useEffectiveUserId();
   const topCard = discardPile[discardPile.length - 1];
   if (!topCard) return null;
 

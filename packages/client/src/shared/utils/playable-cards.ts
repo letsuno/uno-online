@@ -1,7 +1,7 @@
 import type { Card, Color, HouseRules } from '@uno-online/shared';
 import { getPlayableCards } from '@uno-online/shared';
 
-export function canRespondToDrawStack(card: Card, topCard: Card, houseRules?: HouseRules): boolean {
+function canRespondToDrawStack(card: Card, topCard: Card, houseRules?: HouseRules): boolean {
   if (!houseRules) return false;
 
   const canStack =

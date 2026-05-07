@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Ban, RotateCcw, Trophy } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
-import { useAuthStore } from '@/features/auth/stores/auth-store';
+import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { playSound } from '@/shared/sound/sound-manager';
 import { cn } from '@/shared/lib/utils';
 
@@ -20,9 +20,7 @@ export default function GameEffects() {
   const phase = useGameStore((s) => s.phase);
   const winnerId = useGameStore((s) => s.winnerId);
   const players = useGameStore((s) => s.players);
-  const authUserId = useAuthStore((s) => s.user?.id);
-  const viewerId = useGameStore((s) => s.viewerId);
-  const userId = viewerId ?? authUserId;
+  const userId = useEffectiveUserId();
   const discardPile = useGameStore((s) => s.discardPile);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
   const prevTopCardRef = useRef<string | undefined>();

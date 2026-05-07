@@ -2,7 +2,7 @@ import type { GameLogEntry as LogEntry } from '../stores/game-log-store';
 import Card from './Card';
 import { cn } from '@/shared/lib/utils';
 
-const AVATAR_COLORS = [
+const PLAYER_NAME_COLORS = [
   'text-avatar-1',
   'text-avatar-2',
   'text-avatar-3',
@@ -19,7 +19,7 @@ function getPlayerColor(name: string): string {
   for (let i = 0; i < name.length; i++) {
     hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
   }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]!;
+  return PLAYER_NAME_COLORS[Math.abs(hash) % PLAYER_NAME_COLORS.length]!;
 }
 
 function formatTime(timestamp: number): string {
