@@ -355,7 +355,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
     const tx = (tangentX / tangentLen) * dir;
     const ty = (tangentY / tangentLen) * dir;
 
-    return { fullPath, highlightPath, isClockwise, arrowTip: { x: ex, y: ey, tx, ty } };
+    return { fullPath, highlightPath, isClockwise, arrowTip: { x: ex, y: ey, tx, ty }, cx, cy, rx, ry };
   }, [playerPositions, dimensions, direction, players, userId, currentPlayerIndex]);
 
   const isClockwise = direction === 'clockwise';
@@ -422,6 +422,33 @@ export default function GameTable({ onDraw }: GameTableProps) {
                 transition={{ duration: 0.3 }}
               />
             );
+          })()}
+          {/* Direction arrows on full ellipse */}
+          {(() => {
+            const { cx, cy, rx, ry } = directionArc;
+            const count = Math.min(players.length * 2, 8);
+            const dir = isClockwise ? 1 : -1;
+            const arrows = [];
+            for (let i = 0; i < count; i++) {
+              const angle = (i * 2 * Math.PI) / count;
+              const ax = cx + rx * Math.cos(angle);
+              const ay = cy + ry * Math.sin(angle);
+              const tangentX = -rx * Math.sin(angle);
+              const tangentY = ry * Math.cos(angle);
+              const len = Math.sqrt(tangentX * tangentX + tangentY * tangentY);
+              const atx = (tangentX / len) * dir;
+              const aty = (tangentY / len) * dir;
+              const anx = -aty, any_ = atx;
+              const s = 5;
+              arrows.push(
+                <polygon
+                  key={`dir-arrow-${i}`}
+                  points={`${ax + atx * s},${ay + aty * s} ${ax - atx * s + anx * s * 0.5},${ay - aty * s + any_ * s * 0.5} ${ax - atx * s - anx * s * 0.5},${ay - aty * s - any_ * s * 0.5}`}
+                  fill="rgba(251, 191, 36, 0.15)"
+                />
+              );
+            }
+            return arrows;
           })()}
         </svg>
       )}
