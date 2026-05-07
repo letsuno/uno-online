@@ -6,7 +6,7 @@ const COLOR_INDEX: Record<string, number> = { yellow: 0, red: 1, green: 2, blue:
 /**
  * Map a card to its image index (0-53) in the resource pack.
  */
-export function cardToImageIndex(card: Card): number {
+function cardToImageIndex(card: Card): number {
   switch (card.type) {
     case 'draw_two':
       return COLOR_INDEX[card.color] ?? 0;

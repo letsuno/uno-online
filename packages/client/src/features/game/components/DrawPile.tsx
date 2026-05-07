@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CardBack from './CardBack';
 import DrawCardAnimation from './DrawCardAnimation';
 import { useGameStore } from '../stores/game-store';
-import { useAuthStore } from '@/features/auth/stores/auth-store';
+import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { getPlayableCardIds } from '@/shared/utils/playable-cards';
 import { cn } from '@/shared/lib/utils';
 
@@ -19,9 +19,7 @@ export default function DrawPile({ onDraw }: DrawPileProps) {
   const currentColor = useGameStore((s) => s.currentColor);
   const drawStack = useGameStore((s) => s.drawStack);
   const settings = useGameStore((s) => s.settings);
-  const authUserId = useAuthStore((s) => s.user?.id);
-  const viewerId = useGameStore((s) => s.viewerId);
-  const userId = viewerId ?? authUserId;
+  const userId = useEffectiveUserId();
 
   const isMyTurn = players[currentPlayerIndex]?.id === userId;
   const canDraw = isMyTurn && !hasDrawnThisTurn && phase === 'playing';

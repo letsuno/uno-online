@@ -4,7 +4,7 @@ import type { Card as CardType } from '@uno-online/shared';
 import { sortHand } from '@uno-online/shared';
 import AnimatedCard from './AnimatedCard';
 import { useGameStore } from '../stores/game-store';
-import { useAuthStore } from '@/features/auth/stores/auth-store';
+import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { getPlayableCardIds } from '@/shared/utils/playable-cards';
 
 interface PlayerHandProps {
@@ -29,9 +29,7 @@ function isColorBoundary(sorted: CardType[], index: number): boolean {
 }
 
 export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
-  const authUserId = useAuthStore((s) => s.user?.id);
-  const viewerId = useGameStore((s) => s.viewerId);
-  const userId = viewerId ?? authUserId;
+  const userId = useEffectiveUserId();
   const players = useGameStore((s) => s.players);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
   const discardPile = useGameStore((s) => s.discardPile);

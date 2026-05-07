@@ -8,8 +8,9 @@ import ChatBubble from './ChatBubble';
 import QuickReaction from './QuickReaction';
 import ThrowItemPicker from './ThrowItemPicker';
 import { cn, getRoleColor } from '@/shared/lib/utils';
+import type { PlayerInfo } from '../stores/game-store';
 
-export const AVATAR_COLORS = [
+const AVATAR_COLORS = [
   '#ff3366',
   '#33cc66',
   '#4488ff',
@@ -20,7 +21,7 @@ export const AVATAR_COLORS = [
   '#eab308',
   '#6366f1',
 ];
-export const AVATAR_EMOJIS = [
+const AVATAR_EMOJIS = [
   '😎',
   '🤠',
   '😺',
@@ -31,19 +32,6 @@ export const AVATAR_EMOJIS = [
   '🦁',
   '🐼',
 ];
-
-interface PlayerInfo {
-  id: string;
-  name: string;
-  hand: CardType[];
-  handCount: number;
-  score: number;
-  connected: boolean;
-  calledUno: boolean;
-  eliminated?: boolean;
-  teamId?: number;
-  role?: string;
-}
 
 interface PlayerNodeProps {
   player: PlayerInfo;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGameStore } from '../stores/game-store';
-import { useAuthStore } from '@/features/auth/stores/auth-store';
+import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { playSound } from '@/shared/sound/sound-manager';
 import { Button } from '@/shared/components/ui/Button';
 
@@ -14,9 +14,7 @@ interface GameActionsProps {
 }
 
 export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAccept, onPass, onSwapTarget }: GameActionsProps) {
-  const authUserId = useAuthStore((s) => s.user?.id);
-  const viewerId = useGameStore((s) => s.viewerId);
-  const userId = viewerId ?? authUserId;
+  const userId = useEffectiveUserId();
   const players = useGameStore((s) => s.players);
   const phase = useGameStore((s) => s.phase);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);

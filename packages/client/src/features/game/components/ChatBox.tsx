@@ -6,7 +6,7 @@ import { getRoleColor } from '@/shared/lib/utils';
 
 const QUICK_PHRASES = ['嘻嘻😜', '嘿嘿😏', '哈哈😂', '饶命🙏', '稳了💪', '完蛋😱', '好牌!👍', '等等✋'];
 
-interface ChatMessage { userId: string; username: string; text: string; timestamp: number; role?: string; }
+interface ChatMessage { userId: string; nickname: string; text: string; timestamp: number; role?: string; }
 
 interface ChatBoxProps {
   embedded?: boolean;
@@ -52,7 +52,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
         <div className="max-h-48 overflow-y-auto text-xs">
           {messages.map((m, i) => (
             <div key={i} className="mb-1">
-              <span className="font-bold" style={{ color: getRoleColor(m.role) || 'var(--accent)' }}>{m.username}: </span>
+              <span className="font-bold" style={{ color: getRoleColor(m.role) || 'var(--accent)' }}>{m.nickname}: </span>
               <span>{m.text}</span>
             </div>
           ))}
@@ -107,7 +107,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
       <div className="flex-1 overflow-y-auto p-2 text-xs">
         {messages.map((m, i) => (
           <div key={i} className="mb-1">
-            <span className="text-accent font-bold">{m.username}: </span>
+            <span className="text-accent font-bold">{m.nickname}: </span>
             <span>{m.text}</span>
           </div>
         ))}

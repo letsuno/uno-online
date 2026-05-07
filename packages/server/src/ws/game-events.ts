@@ -263,7 +263,7 @@ export function registerGameEvents(
     const text = payload.text.slice(0, 500);
     io.to(roomCode).emit('chat:message', {
       userId: data.user.userId,
-      username: data.user.nickname,
+      nickname: data.user.nickname,
       text,
       timestamp: Date.now(),
       role: data.user.role ?? 'normal',

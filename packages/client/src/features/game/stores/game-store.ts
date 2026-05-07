@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Card, Color, GameAction, HouseRules } from '@uno-online/shared';
 
-interface PlayerInfo {
+export interface PlayerInfo {
   id: string;
   name: string;
   hand: Card[];
@@ -35,7 +35,6 @@ interface GameState {
   hasDrawnThisTurn: boolean;
   setGameState: (view: Record<string, unknown>) => void;
   setDrawnCard: (card: Card | null) => void;
-  setHasDrawn: (v: boolean) => void;
   setTurnEndTime: (t: number | null) => void;
   clearGame: () => void;
 }
@@ -91,7 +90,6 @@ export const useGameStore = create<GameState>((set) => ({
       };
     }),
   setDrawnCard: (card) => set({ lastDrawnCard: card, hasDrawnThisTurn: true }),
-  setHasDrawn: (v) => set({ hasDrawnThisTurn: v }),
   setTurnEndTime: (t) => set({ turnEndTime: t }),
   clearGame: () =>
     set({
