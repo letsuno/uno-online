@@ -269,16 +269,21 @@ export default function PlayerNode({
       </span>
 
       {/* Hand count */}
-      {player.handCount > 0 && player.handCount < 8 ? (
-        <div className="flex -space-x-1.5">
+      {player.handCount > 0 && player.handCount <= 5 ? (
+        <div className="flex -space-x-2">
           {Array.from({ length: player.handCount }).map((_, i) => (
             <CardBack key={i} small />
           ))}
         </div>
       ) : player.handCount > 0 ? (
-        <span className="text-xs text-muted-foreground">
-          {player.handCount}张
-        </span>
+        <div className="flex items-center gap-1">
+          <div className="flex -space-x-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <CardBack key={i} small />
+            ))}
+          </div>
+          <span className="text-2xs text-muted-foreground font-bold">×{player.handCount}</span>
+        </div>
       ) : null}
     </div>
   );
