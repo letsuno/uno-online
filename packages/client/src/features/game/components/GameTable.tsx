@@ -42,6 +42,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
   const direction = useGameStore((s) => s.direction);
   const phase = useGameStore((s) => s.phase);
   const turnEndTime = useGameStore((s) => s.turnEndTime);
+  const pendingDrawPlayerId = useGameStore((s) => s.pendingDrawPlayerId);
   const settings = useGameStore((s) => s.settings);
   const lastAction = useGameStore((s) => s.lastAction);
   const userId = useEffectiveUserId();
@@ -429,16 +430,23 @@ export default function GameTable({ onDraw }: GameTableProps) {
       )}
 
       {/* Current turn indicator below center */}
-      {dimensions.width > 0 && players[currentPlayerIndex] && (
-        <TurnIndicator
-          playerName={players[currentPlayerIndex]!.name}
-          playerIndex={currentPlayerIndex}
-          isMe={players[currentPlayerIndex]!.id === userId}
-          turnEndTime={turnEndTime}
-          phase={phase}
-          cy={dimensions.height / 2}
-        />
-      )}
+      {dimensions.width > 0 && (() => {
+        const actingIndex = (phase === 'challenging' && pendingDrawPlayerId)
+          ? players.findIndex((p) => p.id === pendingDrawPlayerId)
+          : currentPlayerIndex;
+        const actingPlayer = players[actingIndex];
+        if (!actingPlayer) return null;
+        return (
+          <TurnIndicator
+            playerName={actingPlayer.name}
+            playerIndex={actingIndex}
+            isMe={actingPlayer.id === userId}
+            turnEndTime={turnEndTime}
+            phase={phase}
+            cy={dimensions.height / 2}
+          />
+        );
+      })()}
 
       {/* Player nodes */}
       {playerPositions.map((pos, i) => {
