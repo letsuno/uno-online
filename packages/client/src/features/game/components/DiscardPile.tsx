@@ -29,6 +29,7 @@ function getPlayOrigin(
 export default function DiscardPile() {
   const discardPile = useGameStore((s) => s.discardPile);
   const drawStack = useGameStore((s) => s.drawStack);
+  const currentColor = useGameStore((s) => s.currentColor);
   const lastAction = useGameStore((s) => s.lastAction);
   const players = useGameStore((s) => s.players);
   const selfId = useEffectiveUserId();
@@ -39,9 +40,30 @@ export default function DiscardPile() {
   const origin = getPlayOrigin(playedBy, players, selfId);
   const isSelf = playedBy === selfId;
 
+  const isWild = topCard.type === 'wild' || topCard.type === 'wild_draw_four';
+  const chosenColor = isWild ? (topCard.chosenColor ?? currentColor) : null;
+  const colorGlowMap: Record<string, string> = {
+    red: 'rgba(255, 51, 102, 0.6)',
+    blue: 'rgba(68, 136, 255, 0.6)',
+    green: 'rgba(51, 204, 102, 0.6)',
+    yellow: 'rgba(251, 191, 36, 0.6)',
+  };
+  const colorBorderMap: Record<string, string> = {
+    red: '#ff3366',
+    blue: '#4488ff',
+    green: '#33cc66',
+    yellow: '#fbbf24',
+  };
+
   return (
     <div className="flex flex-col items-center gap-1.5 z-card relative">
-      <div className="relative w-[70px] h-[100px]">
+      <div
+        className="relative w-[70px] h-[100px] rounded-2xl transition-shadow duration-300"
+        style={chosenColor ? {
+          boxShadow: `0 0 18px 4px ${colorGlowMap[chosenColor] ?? 'transparent'}`,
+          border: `2.5px solid ${colorBorderMap[chosenColor] ?? 'transparent'}`,
+        } : undefined}
+      >
       <AnimatePresence>
         <motion.div
           key={topCard.id}
