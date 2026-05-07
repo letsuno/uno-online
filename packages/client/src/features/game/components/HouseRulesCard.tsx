@@ -83,7 +83,12 @@ export default function HouseRulesCard({ embedded = false }: HouseRulesCardProps
     return current !== defaultVal;
   });
 
-  if (activeRules.length === 0) return null;
+  if (activeRules.length === 0) {
+    if (embedded) {
+      return <p className="text-sm text-muted-foreground text-center py-8">本局未启用任何村规</p>;
+    }
+    return null;
+  }
 
   const content = (
     <>
