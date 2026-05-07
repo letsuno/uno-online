@@ -1,4 +1,4 @@
-import type { KvStore } from '../kv/types.js';
+import type { KvStore } from '../../../kv/types.js';
 import type { RoomSettings } from '@uno-online/shared';
 
 export interface RoomData {

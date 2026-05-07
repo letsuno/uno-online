@@ -1,16 +1,16 @@
 import type { Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types';
 import { authenticateSocket } from '../auth/middleware';
-import { RoomManager } from '../room/room-manager';
-import { TurnTimer } from '../game/turn-timer';
-import { GameSession } from '../game/game-session';
+import { RoomManager } from '../plugins/core/room/manager';
+import { TurnTimer } from '../plugins/core/game/turn-timer';
+import { GameSession } from '../plugins/core/game/session';
 import { registerRoomEvents, emitGameUpdate, startTurnTimer } from './room-events';
 import { registerGameEvents } from './game-events';
-import { registerVoiceEvents, removeVoicePeer } from '../voice/voice-events';
-import { getRoom, getRoomPlayers, setRoomOwner } from '../room/room-store';
-import { saveGameState, loadGameState } from '../game/game-store';
+import { registerVoiceEvents, removeVoicePeer } from '../plugins/core/voice/events';
+import { getRoom, getRoomPlayers, setRoomOwner } from '../plugins/core/room/store';
+import { saveGameState, loadGameState } from '../plugins/core/game/state-store';
 import { checkRateLimit, clearRateLimit } from './rate-limiter';
-import { registerInteractionEvents, clearThrowTimestamp } from './interaction-events';
+import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws';
 
 const RECONNECT_TIMEOUT_MS = 60_000;
 

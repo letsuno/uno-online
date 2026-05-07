@@ -1,4 +1,4 @@
-import type { KvStore } from '../kv/types.js';
+import type { KvStore } from '../../../kv/types.js';
 import type { GameState } from '@uno-online/shared';
 
 const GAME_STATE_KEY = (roomCode: string) => `game:${roomCode}:state`;

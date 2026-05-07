@@ -1,7 +1,7 @@
 import { loadConfig } from './config.js';
 import { createApp } from './app.js';
 import { destroyDb, migrateDb } from './db/database.js';
-import { closeWorkers } from './voice/media-worker.js';
+import { closeWorkers } from './plugins/core/voice/media-worker.js';
 import { setGamePersistence } from './ws/game-events.js';
 
 async function main() {
