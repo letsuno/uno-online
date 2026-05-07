@@ -21,7 +21,7 @@ export default function ChatBubble({ message, visible }: ChatBubbleProps) {
           exit={{ opacity: 0, scale: 0.6, y: 4 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
         >
-          <div className="relative bg-white/15 backdrop-blur-sm rounded-xl px-3 py-1.5 max-w-56">
+          <div className="relative bg-white/15 backdrop-blur-sm rounded-xl px-3 py-1.5 w-max max-w-56">
             <span
               className={
                 isEmojiOnly
