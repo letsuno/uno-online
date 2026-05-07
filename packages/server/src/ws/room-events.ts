@@ -31,7 +31,7 @@ export function registerRoomEvents(
       targetScore: settings?.targetScore ?? 500,
       houseRules: settings?.houseRules ?? DEFAULT_HOUSE_RULES,
     };
-    const code = await roomManager.createRoom(data.user.userId, data.user.username, roomSettings);
+    const code = await roomManager.createRoom(data.user.userId, data.user.username, roomSettings, data.user.avatarUrl);
     data.roomCode = code;
     await socket.join(code);
     const room = await getRoom(redis, code);
@@ -41,13 +41,26 @@ export function registerRoomEvents(
 
   socket.on('room:join', async (roomCode: string, callback) => {
     try {
-      await roomManager.joinRoom(roomCode, data.user.userId, data.user.username);
+      const room = await getRoom(redis, roomCode);
+      if (!room) return callback({ success: false, error: 'Room not found' });
+
+      const players = await getRoomPlayers(redis, roomCode);
+      const alreadyInRoom = players.some(p => p.userId === data.user.userId);
+
+      if (alreadyInRoom && room.status !== 'waiting') {
+        // Player reconnecting to an in-progress game — delegate to rejoin flow
+        data.roomCode = roomCode;
+        await socket.join(roomCode);
+        socket.emit('room:rejoin_redirect', { roomCode });
+        return callback({ success: true, players, room, rejoin: true });
+      }
+
+      await roomManager.joinRoom(roomCode, data.user.userId, data.user.username, data.user.avatarUrl);
       data.roomCode = roomCode;
       await socket.join(roomCode);
-      const room = await getRoom(redis, roomCode);
-      const players = await getRoomPlayers(redis, roomCode);
-      io.to(roomCode).emit('room:updated', { players, room });
-      callback({ success: true, players, room });
+      const updatedPlayers = await getRoomPlayers(redis, roomCode);
+      io.to(roomCode).emit('room:updated', { players: updatedPlayers, room });
+      callback({ success: true, players: updatedPlayers, room });
     } catch (err) {
       callback({ success: false, error: (err as Error).message });
     }
@@ -142,7 +155,7 @@ export function registerRoomEvents(
     }
     await setRoomStatus(redis, roomCode, 'playing');
     const session = GameSession.create(
-      players.map((p) => ({ id: p.userId, name: p.username })),
+      players.map((p) => ({ id: p.userId, name: p.username, avatarUrl: p.avatarUrl ?? null })),
       { turnTimeLimit: room.settings?.turnTimeLimit ?? 30, targetScore: room.settings?.targetScore ?? 500, houseRules: room.settings?.houseRules ?? DEFAULT_HOUSE_RULES } as RoomSettings,
     );
     sessions.set(roomCode, session);
