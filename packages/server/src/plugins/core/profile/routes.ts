@@ -43,7 +43,16 @@ export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginConte
     const profile = await getUserProfile(userId);
     if (!profile) return { error: 'User not found' };
     return {
-      user: { ...profile.user, avatarUrl: resolveAvatar(profile.user) },
+      user: {
+        id: profile.user.id,
+        username: profile.user.username,
+        nickname: profile.user.nickname,
+        avatarUrl: resolveAvatar(profile.user),
+        totalGames: profile.user.totalGames,
+        totalWins: profile.user.totalWins,
+        githubId: profile.user.githubId ?? null,
+        role: profile.user.role ?? 'normal',
+      },
       recentGames: profile.recentGames,
     };
   });
