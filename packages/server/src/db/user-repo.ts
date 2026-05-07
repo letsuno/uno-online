@@ -7,9 +7,13 @@ export interface GitHubUserData {
   avatarUrl: string | null;
 }
 
+export function resolveAvatar(user: { id: string; avatarData?: string | null; avatarUrl?: string | null }): string | null {
+  if (user.avatarData) return `/avatar/${user.id}`;
+  return user.avatarUrl ?? null;
+}
+
 export async function findOrCreateUser(data: GitHubUserData) {
   const db = getDb();
-  // Try update first, then insert if no rows affected
   const existing = await db
     .selectFrom('users')
     .selectAll()
@@ -17,12 +21,13 @@ export async function findOrCreateUser(data: GitHubUserData) {
     .executeTakeFirst();
 
   if (existing) {
+    // Only update avatarUrl (from GitHub), not username/nickname (user-controlled)
     await db
       .updateTable('users')
-      .set({ username: data.username, avatarUrl: data.avatarUrl, updatedAt: sql`datetime('now')` })
+      .set({ avatarUrl: data.avatarUrl, updatedAt: sql`datetime('now')` })
       .where('githubId', '=', data.githubId)
       .execute();
-    return { ...existing, username: data.username, avatarUrl: data.avatarUrl };
+    return { ...existing, avatarUrl: data.avatarUrl, isNewUser: false };
   }
 
   const inserted = await db
@@ -30,12 +35,91 @@ export async function findOrCreateUser(data: GitHubUserData) {
     .values({
       githubId: data.githubId,
       username: data.username,
+      nickname: data.username,
       avatarUrl: data.avatarUrl,
     })
     .returningAll()
     .executeTakeFirstOrThrow();
 
-  return inserted;
+  return { ...inserted, isNewUser: true };
+}
+
+export async function findUserByUsername(username: string) {
+  const db = getDb();
+  return db
+    .selectFrom('users')
+    .selectAll()
+    .where('username', '=', username)
+    .executeTakeFirst() ?? null;
+}
+
+export async function isUsernameTaken(username: string): Promise<boolean> {
+  const db = getDb();
+  const row = await db
+    .selectFrom('users')
+    .select('id')
+    .where('username', '=', username)
+    .executeTakeFirst();
+  return !!row;
+}
+
+export async function createLocalUser(data: { username: string; nickname: string; passwordHash: string; avatarData?: string | null }) {
+  const db = getDb();
+  return db
+    .insertInto('users')
+    .values({
+      username: data.username,
+      nickname: data.nickname,
+      passwordHash: data.passwordHash,
+      avatarData: data.avatarData ?? null,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow();
+}
+
+export async function setPassword(userId: string, passwordHash: string) {
+  const db = getDb();
+  await db
+    .updateTable('users')
+    .set({ passwordHash, updatedAt: sql`datetime('now')` })
+    .where('id', '=', userId)
+    .execute();
+}
+
+export async function updateNickname(userId: string, nickname: string) {
+  const db = getDb();
+  await db
+    .updateTable('users')
+    .set({ nickname, updatedAt: sql`datetime('now')` })
+    .where('id', '=', userId)
+    .execute();
+}
+
+export async function updateAvatar(userId: string, avatarData: string | null) {
+  const db = getDb();
+  await db
+    .updateTable('users')
+    .set({ avatarData, updatedAt: sql`datetime('now')` })
+    .where('id', '=', userId)
+    .execute();
+}
+
+export async function bindGithub(userId: string, githubId: string, avatarUrl: string | null) {
+  const db = getDb();
+  await db
+    .updateTable('users')
+    .set({ githubId, avatarUrl, updatedAt: sql`datetime('now')` })
+    .where('id', '=', userId)
+    .execute();
+}
+
+export async function updateUsername(userId: string, username: string) {
+  const db = getDb();
+  await db
+    .updateTable('users')
+    .set({ username, updatedAt: sql`datetime('now')` })
+    .where('id', '=', userId)
+    .execute();
 }
 
 export async function getUserById(id: string) {
@@ -80,7 +164,6 @@ export async function getUserProfile(userId: string) {
     .limit(20)
     .execute();
 
-  // Shape to match previous Prisma format: { ...gamePlayer, game: { ...gameRecord } }
   const shaped = recentGames.map((r) => ({
     id: r.id,
     gameId: r.gameId,

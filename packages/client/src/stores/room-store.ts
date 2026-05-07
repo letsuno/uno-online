@@ -3,7 +3,8 @@ import type { RoomSettings } from '@uno-online/shared';
 
 interface RoomPlayer {
   userId: string;
-  username: string;
+  nickname: string;
+  avatarUrl?: string | null;
   ready: boolean;
 }
 
