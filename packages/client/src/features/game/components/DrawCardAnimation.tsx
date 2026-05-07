@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CardBack from './CardBack';
 
-/**
- * Overlay animation: a card-back flies from the draw pile area
- * down toward the player's hand whenever a draw event fires.
- */
-export default function DrawCardAnimation({ trigger }: { trigger: number }) {
+interface DrawCardAnimationProps {
+  trigger: number;
+  targetX?: number;
+  targetY?: number;
+}
+
+export default function DrawCardAnimation({ trigger, targetX = 0, targetY = 220 }: DrawCardAnimationProps) {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -22,7 +24,7 @@ export default function DrawCardAnimation({ trigger }: { trigger: number }) {
         <motion.div
           key={trigger}
           initial={{ opacity: 1, y: 0, x: 0, scale: 1 }}
-          animate={{ opacity: 0, y: 220, x: 0, scale: 0.7 }}
+          animate={{ opacity: 0, y: targetY, x: targetX, scale: 0.7 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4, ease: 'easeIn' }}
           style={{

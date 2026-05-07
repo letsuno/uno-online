@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CardBack from './CardBack';
 import DrawCardAnimation from './DrawCardAnimation';
@@ -7,9 +7,14 @@ import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { getPlayableCardIds } from '@/shared/utils/playable-cards';
 import { cn } from '@/shared/lib/utils';
 
-interface DrawPileProps { onDraw: () => void; }
+interface DrawPileProps {
+  onDraw: () => void;
+  drawTargetX?: number;
+  drawTargetY?: number;
+  drawAnimTrigger?: number;
+}
 
-export default function DrawPile({ onDraw }: DrawPileProps) {
+export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTrigger = 0 }: DrawPileProps) {
   const deckCount = useGameStore((s) => s.deckCount);
   const phase = useGameStore((s) => s.phase);
   const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
@@ -24,15 +29,6 @@ export default function DrawPile({ onDraw }: DrawPileProps) {
   const isMyTurn = players[currentPlayerIndex]?.id === userId;
   const canDraw = isMyTurn && !hasDrawnThisTurn && phase === 'playing';
 
-  // Trigger draw animation whenever deckCount decreases (= someone drew a card)
-  const [drawAnimTrigger, setDrawAnimTrigger] = useState(0);
-  const prevDeckCountRef = useRef(deckCount);
-  useEffect(() => {
-    if (prevDeckCountRef.current > 0 && deckCount < prevDeckCountRef.current) {
-      setDrawAnimTrigger((n) => n + 1);
-    }
-    prevDeckCountRef.current = deckCount;
-  }, [deckCount]);
   const me = players.find((p) => p.id === userId);
   const topCard = discardPile[discardPile.length - 1];
 
@@ -52,7 +48,7 @@ export default function DrawPile({ onDraw }: DrawPileProps) {
 
   return (
     <div className="flex flex-col items-center gap-1.5 z-card relative min-w-draw-pile-min">
-      <DrawCardAnimation trigger={drawAnimTrigger} />
+      <DrawCardAnimation trigger={drawAnimTrigger} targetX={drawTargetX} targetY={drawTargetY} />
       <AnimatePresence>
         {showNoPlayableHint && (
           <motion.div
