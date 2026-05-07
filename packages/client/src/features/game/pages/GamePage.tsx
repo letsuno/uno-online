@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { Color } from '@uno-online/shared';
 import { Loader2 } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useGameStore } from '../stores/game-store';
-import { useSettingsStore } from '@/shared/stores/settings-store';
-import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
-import { getSocket, connectSocket, onConnectionStatus } from '@/shared/socket';
+import { useIsMyTurn } from '../hooks/useIsMyTurn';
+import { usePlayableCardIds } from '../hooks/usePlayableCardIds';
+import { useGameSocket } from '../hooks/useGameSocket';
+import { useGameLogTracker } from '../hooks/useGameLogTracker';
+import { useAutoPlay } from '../hooks/useAutoPlay';
+import { useGameActions } from '../hooks/useGameActions';
 import { playSound } from '@/shared/sound/sound-manager';
-import { getPlayableCardIds } from '@/shared/utils/playable-cards';
 import TopBar from '../components/TopBar';
 import GameTable from '../components/GameTable';
 import GameActions from '../components/GameActions';
@@ -22,34 +23,39 @@ import Confetti from '../components/Confetti';
 import MobileFAB from '../components/MobileFAB';
 import InfoDrawer from '../components/InfoDrawer';
 import PlayerListPanel from '../components/PlayerListPanel';
-import { useGameLogStore } from '../stores/game-log-store';
 
 export default function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
   const phase = useGameStore((s) => s.phase);
-  const userId = useEffectiveUserId();
-  const players = useGameStore((s) => s.players);
-  const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
-  const drawStack = useGameStore((s) => s.drawStack);
-  const settings = useGameStore((s) => s.settings);
 
-  const roundNumber = useGameStore((s) => s.roundNumber);
-
-  const lastAction = useGameStore((s) => s.lastAction);
-  const discardPile = useGameStore((s) => s.discardPile);
-  const addLogEntry = useGameLogStore((s) => s.addEntry);
-  const addRoundSeparator = useGameLogStore((s) => s.addRoundSeparator);
-  const clearLog = useGameLogStore((s) => s.clear);
-
-  const isMyTurn = players[currentPlayerIndex]?.id === userId;
+  const isMyTurn = useIsMyTurn();
+  const playableIds = usePlayableCardIds();
   const needsColorPick = phase === 'choosing_color' && isMyTurn;
   const showScoreBoard = phase === 'round_end' || phase === 'game_over';
-  const setGameState = useGameStore((s) => s.setGameState);
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
+
+  const connectionStatus = useGameSocket(roomCode);
+  useGameLogTracker();
+
+  const {
+    playCard,
+    drawCard,
+    chooseColor,
+    callUno,
+    catchUno,
+    challenge,
+    accept,
+    pass,
+    swapTarget,
+    playAgain,
+    rematch,
+  } = useGameActions();
+
+  useAutoPlay(playCard, drawCard, chooseColor, challenge);
+
+  // Turn banner state
   const [showTurnBanner, setShowTurnBanner] = useState(false);
   const prevTurnRef = useRef(false);
-  const prevActionRef = useRef<typeof lastAction>(null);
 
   useEffect(() => {
     if (isMyTurn && phase === 'playing' && !prevTurnRef.current) {
@@ -60,260 +66,6 @@ export default function GamePage() {
     }
     prevTurnRef.current = isMyTurn && phase === 'playing';
   }, [isMyTurn, phase]);
-
-  useEffect(() => {
-    if (!lastAction || lastAction === prevActionRef.current) return;
-    prevActionRef.current = lastAction;
-
-    const findPlayer = (id: string) => players.find((p) => p.id === id);
-
-    if (lastAction.type === 'PLAY_CARD') {
-      const player = findPlayer(lastAction.playerId);
-      const topCard = discardPile[discardPile.length - 1];
-      if (!player || !topCard) return;
-
-      const typeMap: Record<string, 'play_number' | 'play_skip' | 'play_reverse' | 'play_draw_two' | 'play_wild' | 'play_wild_draw_four'> = {
-        number: 'play_number',
-        skip: 'play_skip',
-        reverse: 'play_reverse',
-        draw_two: 'play_draw_two',
-        wild: 'play_wild',
-        wild_draw_four: 'play_wild_draw_four',
-      };
-
-      addLogEntry({
-        type: typeMap[topCard.type] ?? 'play_number',
-        playerId: lastAction.playerId,
-        playerName: player.name,
-        card: topCard,
-      });
-    } else if (lastAction.type === 'DRAW_CARD') {
-      const player = findPlayer(lastAction.playerId);
-      if (!player) return;
-      addLogEntry({
-        type: 'draw',
-        playerId: lastAction.playerId,
-        playerName: player.name,
-      });
-    } else if (lastAction.type === 'CATCH_UNO') {
-      const catcher = findPlayer(lastAction.catcherId);
-      const target = findPlayer(lastAction.targetId);
-      if (!catcher || !target) return;
-      addLogEntry({
-        type: 'catch_uno',
-        playerId: lastAction.catcherId,
-        playerName: catcher.name,
-        targetId: lastAction.targetId,
-        targetName: target.name,
-        extra: '未喊 UNO!',
-      });
-    } else if (lastAction.type === 'CHALLENGE') {
-      const player = findPlayer(lastAction.playerId);
-      if (!player) return;
-      addLogEntry({
-        type: 'challenge',
-        playerId: lastAction.playerId,
-        playerName: player.name,
-        extra: '质疑 +4',
-      });
-    }
-  }, [lastAction, players, discardPile, addLogEntry]);
-
-  useEffect(() => {
-    if (phase === 'dealing') {
-      if (roundNumber <= 1) {
-        clearLog();
-      } else {
-        addRoundSeparator(roundNumber);
-      }
-    }
-  }, [phase, roundNumber, clearLog, addRoundSeparator]);
-
-  useEffect(() => {
-    connectSocket();
-    const socket = getSocket();
-    if (!phase && roomCode) {
-      socket.emit('room:rejoin', roomCode, (res: any) => {
-        if (res.success && res.gameState) {
-          setGameState(res.gameState);
-        } else {
-          navigate(`/room/${roomCode}`);
-        }
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    onConnectionStatus((status) => {
-      setConnectionStatus(status);
-      if (status === 'connected' && roomCode) {
-        const socket = getSocket();
-        socket.emit('room:rejoin', roomCode, (res: any) => {
-          if (res.success && res.gameState) {
-            setGameState(res.gameState);
-          }
-        });
-      }
-    });
-    return () => onConnectionStatus(() => {});
-  }, [roomCode]);
-
-  useEffect(() => {
-    if (!phase || phase === 'game_over') return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-    };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [phase]);
-
-  const playCard = useCallback((cardId: string) => {
-    playSound('play_card');
-    getSocket().emit('game:play_card', { cardId }, () => {});
-  }, []);
-
-  const drawCard = useCallback(() => {
-    const houseRules = settings?.houseRules;
-    const shouldAutoPass =
-      drawStack === 0 &&
-      !houseRules?.drawUntilPlayable &&
-      !houseRules?.deathDraw &&
-      !houseRules?.forcedPlayAfterDraw;
-
-    playSound('draw_card');
-    getSocket().emit('game:draw_card', (res: { success: boolean }) => {
-      if (res?.success && shouldAutoPass) {
-        getSocket().emit('game:pass', () => {});
-      }
-    });
-  }, [drawStack, settings?.houseRules]);
-
-  const chooseColor = useCallback((color: Color) => {
-    getSocket().emit('game:choose_color', { color }, () => {});
-  }, []);
-
-  const callUno = useCallback(() => {
-    playSound('uno_call');
-    getSocket().emit('game:call_uno', () => {});
-  }, []);
-
-  const catchUno = useCallback((targetId: string) => {
-    getSocket().emit('game:catch_uno', { targetPlayerId: targetId }, () => {});
-  }, []);
-
-  const challenge = useCallback(() => {
-    getSocket().emit('game:challenge', () => {});
-  }, []);
-
-  const accept = useCallback(() => {
-    getSocket().emit('game:accept', () => {});
-  }, []);
-
-  const pass = useCallback(() => {
-    getSocket().emit('game:pass', () => {});
-  }, []);
-
-  const swapTarget = useCallback((targetId: string) => {
-    getSocket().emit('game:choose_swap_target', { targetId }, () => {});
-  }, []);
-
-  const playAgain = useCallback(() => {
-    getSocket().emit('game:next_round', () => {});
-  }, []);
-
-  const rematch = useCallback(() => {
-    getSocket().emit('game:rematch', () => {});
-  }, []);
-
-  // --- Auto-play logic ---
-  const autoPlay = useSettingsStore((s) => s.autoPlay);
-  const me = players.find((p) => p.id === userId);
-  const currentColor = useGameStore((s) => s.currentColor);
-  const topCard = discardPile[discardPile.length - 1];
-
-  useEffect(() => {
-    if (!autoPlay || !isMyTurn || phase !== 'playing' || !me || !topCard || !currentColor) return;
-
-    const hand = me.hand;
-    const playableIds = getPlayableCardIds({
-      hand,
-      topCard,
-      currentColor,
-      drawStack,
-      houseRules: settings?.houseRules,
-    });
-
-    if (playableIds.size === 0) {
-      // No playable card — draw
-      const timer = setTimeout(() => drawCard(), 600);
-      return () => clearTimeout(timer);
-    }
-
-    // Strategy: prefer same-color cards, then first playable (sorted order), avoid wild if possible
-    const sorted = [...hand].sort((a, b) => {
-      const COLOR_ORDER: Record<string, number> = { red: 0, blue: 1, green: 2, yellow: 3 };
-      const colorA = COLOR_ORDER[a.color ?? ''] ?? 99;
-      const colorB = COLOR_ORDER[b.color ?? ''] ?? 99;
-      if (colorA !== colorB) return colorA - colorB;
-      return 0;
-    });
-
-    // 1) Same color non-wild cards
-    let pick = sorted.find((c) => playableIds.has(c.id) && c.color === currentColor);
-    // 2) Any non-wild playable
-    if (!pick) pick = sorted.find((c) => playableIds.has(c.id) && c.color !== null);
-    // 3) Wild card as last resort
-    if (!pick) pick = sorted.find((c) => playableIds.has(c.id));
-
-    if (pick) {
-      const isWild = pick.type === 'wild' || pick.type === 'wild_draw_four';
-      const timer = setTimeout(() => {
-        playCard(pick.id);
-        if (isWild) {
-          // Auto-choose color: most frequent color in remaining hand
-          const colorCount: Record<string, number> = { red: 0, blue: 0, green: 0, yellow: 0 };
-          for (const c of hand) {
-            if (c.color && c.id !== pick.id) colorCount[c.color]++;
-          }
-          const bestColor = (Object.entries(colorCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'red') as Color;
-          setTimeout(() => chooseColor(bestColor), 300);
-        }
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [autoPlay, isMyTurn, phase, me?.hand, topCard, currentColor, drawStack, settings?.houseRules]);
-
-  // Auto-play: handle non-playing phases (challenge/accept, color pick, swap target)
-  useEffect(() => {
-    if (!autoPlay || !isMyTurn) return;
-
-    if (phase === 'challenging') {
-      const timer = setTimeout(() => challenge(), 600);
-      return () => clearTimeout(timer);
-    }
-
-    if (phase === 'choosing_color') {
-      const hand = me?.hand ?? [];
-      const colorCount: Record<string, number> = { red: 0, blue: 0, green: 0, yellow: 0 };
-      for (const c of hand) {
-        if (c.color) colorCount[c.color]++;
-      }
-      const bestColor = (Object.entries(colorCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'red') as Color;
-      const timer = setTimeout(() => chooseColor(bestColor), 600);
-      return () => clearTimeout(timer);
-    }
-
-    if (phase === 'choosing_swap_target') {
-      const targets = players.filter((p) => p.id !== userId && !p.eliminated);
-      if (targets.length > 0) {
-        const target = targets.reduce((best, p) => p.handCount > best.handCount ? p : best, targets[0]!);
-        const timer = setTimeout(() => {
-          getSocket().emit('game:choose_swap_target', { targetId: target.id }, () => {});
-        }, 600);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [autoPlay, isMyTurn, phase, me?.hand, players, userId]);
 
   if (!phase) {
     return <div className="flex flex-1 items-center justify-center">

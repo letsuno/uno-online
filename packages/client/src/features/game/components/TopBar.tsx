@@ -2,8 +2,8 @@ import { Eye, Volume2, VolumeX, Spade, DoorOpen, Bot, HelpCircle } from 'lucide-
 import TurnTimer from './TurnTimer';
 import { useSettingsStore } from '@/shared/stores/settings-store';
 import { useRoomStore } from '@/shared/stores/room-store';
-import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useGameStore } from '../stores/game-store';
+import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { getSocket } from '@/shared/socket';
 import { cn } from '@/shared/lib/utils';
 import { BUILD_VERSION } from '@/shared/build-info';
@@ -13,7 +13,7 @@ interface TopBarProps { roomCode: string; }
 export default function TopBar({ roomCode }: TopBarProps) {
   const { colorBlindMode, toggleColorBlind, soundEnabled, toggleSound, autoPlay, toggleAutoPlay } = useSettingsStore();
   const ownerId = useRoomStore((s) => s.room?.ownerId);
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useEffectiveUserId();
   const isHost = ownerId === userId;
   const toggleInfoDrawer = useGameStore((s) => s.toggleInfoDrawer);
 

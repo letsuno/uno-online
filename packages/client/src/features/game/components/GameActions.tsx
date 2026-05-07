@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
+import { useIsMyTurn } from '../hooks/useIsMyTurn';
 import { playSound } from '@/shared/sound/sound-manager';
 import { Button } from '@/shared/components/ui/Button';
 
@@ -17,14 +18,13 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   const userId = useEffectiveUserId();
   const players = useGameStore((s) => s.players);
   const phase = useGameStore((s) => s.phase);
-  const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
   const pendingDrawPlayerId = useGameStore((s) => s.pendingDrawPlayerId);
   const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
   const settings = useGameStore((s) => s.settings);
   const [cooldown, setCooldown] = useState(false);
 
   const me = players.find((p) => p.id === userId);
-  const isMyTurn = players[currentPlayerIndex]?.id === userId;
+  const isMyTurn = useIsMyTurn();
   const catchTargets = players.filter((p) => p.id !== userId && p.handCount === 1 && !p.calledUno);
   const noChallengeWD4 = settings?.houseRules?.noChallengeWildFour ?? false;
 

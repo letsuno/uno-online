@@ -28,13 +28,8 @@ function formatTime(timestamp: number): string {
 }
 
 function getActionDescription(entry: LogEntry): string {
+  if (entry.type.startsWith('play_')) return '打出';
   switch (entry.type) {
-    case 'play_number': return '打出';
-    case 'play_skip': return '打出';
-    case 'play_reverse': return '打出';
-    case 'play_draw_two': return '打出';
-    case 'play_wild': return '打出';
-    case 'play_wild_draw_four': return '打出';
     case 'draw': return '摸牌';
     case 'catch_uno': return '抓到';
     case 'challenge': return '质疑';

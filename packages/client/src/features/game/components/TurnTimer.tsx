@@ -1,28 +1,21 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Timer } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
+import { useCountdown } from '../hooks/useCountdown';
 import { playSound } from '@/shared/sound/sound-manager';
 import { cn } from '@/shared/lib/utils';
 
 export default function TurnTimer() {
   const turnEndTime = useGameStore((s) => s.turnEndTime);
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const secondsLeft = useCountdown(turnEndTime);
   const lastTickRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!turnEndTime) { setSecondsLeft(null); return; }
-    const tick = () => {
-      const remaining = Math.max(0, Math.ceil((turnEndTime - Date.now()) / 1000));
-      if (remaining <= 5 && remaining > 0 && lastTickRef.current !== remaining) {
-        playSound('timer_tick');
-      }
-      lastTickRef.current = remaining;
-      setSecondsLeft(remaining);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [turnEndTime]);
+    if (secondsLeft !== null && secondsLeft <= 5 && secondsLeft > 0 && lastTickRef.current !== secondsLeft) {
+      playSound('timer_tick');
+    }
+    lastTickRef.current = secondsLeft;
+  }, [secondsLeft]);
 
   if (secondsLeft === null) return null;
   const isWarning = secondsLeft <= 10;

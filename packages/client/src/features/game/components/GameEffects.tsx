@@ -5,7 +5,7 @@ import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { playSound } from '@/shared/sound/sound-manager';
 import { cn } from '@/shared/lib/utils';
-import { AVATAR_COLORS, AVATAR_EMOJIS } from './PlayerNode';
+import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import CardBack from './CardBack';
 
 interface Effect {

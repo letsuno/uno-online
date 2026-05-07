@@ -28,21 +28,16 @@ export function getSocket(): Socket {
       useRoomStore.getState().updateRoom(data);
     });
 
-    socket.on('game:state', (view) => {
+    const handleGameView = (view: { settings?: { turnTimeLimit: number } }) => {
       useGameStore.getState().setGameState(view);
       const settings = view.settings;
       if (settings) {
         useGameStore.getState().setTurnEndTime(Date.now() + settings.turnTimeLimit * 1000);
       }
-    });
+    };
 
-    socket.on('game:update', (view) => {
-      useGameStore.getState().setGameState(view);
-      const settings = view.settings;
-      if (settings) {
-        useGameStore.getState().setTurnEndTime(Date.now() + settings.turnTimeLimit * 1000);
-      }
-    });
+    socket.on('game:state', handleGameView);
+    socket.on('game:update', handleGameView);
 
     socket.on('game:card_drawn', (data: { card: unknown }) => {
       useGameStore.getState().setDrawnCard(data.card as any);
