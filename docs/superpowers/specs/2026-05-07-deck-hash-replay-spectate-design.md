@@ -127,13 +127,13 @@ enum GameEventType {
 - 游戏结束时（`persistGameResult` 中），批量将 `events` 写入 `game_events` 表
 - 这样避免了游戏进行中频繁写库的性能问题
 
-### 回放 API
+### 回放 API（game-history 插件路由）
 
 | 路由 | 方法 | 说明 |
 |---|---|---|
-| `/api/games` | GET | 近期对局列表（分页），query: page, limit(默认20) |
-| `/api/games/:id` | GET | 对局详情 + 完整事件流 |
-| `/api/games/:id/verify` | GET | 返回 initialDeck 和 deckHash 供前端验证 |
+| `/games` | GET | 近期对局列表（分页），query: page, limit(默认20) |
+| `/games/:id` | GET | 对局详情 + 完整事件流 |
+| `/games/:id/verify` | GET | 返回 initialDeck 和 deckHash 供前端验证 |
 
 `GET /api/games` 返回格式：
 
@@ -179,7 +179,7 @@ interface GameDetail extends GameListItem {
 
 **数据来源**：KV 存储中已有的房间数据（`room:{code}` hash）。
 
-**API**：`GET /api/rooms/active`
+**API（spectate 插件路由）**：`GET /rooms/active`
 
 返回所有 `status='playing'` 且 `allowSpectators=true` 的房间：
 
@@ -258,27 +258,73 @@ interface RoomSettings {
 
 ### packages/shared
 
-- `types/game.ts` — GameState 新增 deckHash
-- `types/` 新增 `event.ts` — GameEventType, GameEvent 类型
-- `types/` 或 `types/game.ts` — RoomSettings 新增 allowSpectators, spectatorMode
-- `rules/deck.ts` — 新增 hashDeck(), cardToIdentity()
+- `types/game.ts` — GameState 新增 deckHash；RoomSettings 新增 allowSpectators, spectatorMode
+- `types/` 新增 `event.ts` — GameEventType, GameEvent 及各 payload 类型定义
+- `rules/deck.ts` — 新增 serializeDeck(), cardToIdentity()
 
 ### packages/server
 
-- `db/database.ts` — 新增 game_events 表迁移，game_records 表新增字段
-- `db/` 新增 `game-event-repo.ts` — 事件读写
-- `db/` 新增 `game-repo.ts` — 对局列表查询（可能已有部分逻辑在 user-repo 中）
-- `plugins/core/game/session.ts` — 事件记录缓冲区
-- `ws/game-events.ts` — 操作时记录事件
-- `ws/room-events.ts` — 观战加入/离开处理
-- `ws/socket-handler.ts` — 观战者连接管理
-- 新增 REST 路由：`/api/games`, `/api/games/:id`, `/api/games/:id/verify`, `/api/rooms/active`
+#### 新增插件：`plugins/core/game-history/`
+
+按插件扩展规范组织，负责对局回放和 hash 验证：
+
+```
+plugins/core/game-history/
+  index.ts        # 插件入口（fp 包装，运行迁移 + 注册路由）
+  routes.ts       # HTTP 路由：GET /games, GET /games/:id, GET /games/:id/verify
+  migration.ts    # 新增 game_events 表，ALTER game_records 添加 deck_hash/initial_deck 字段
+  service.ts      # 事件读写、对局列表查询逻辑
+```
+
+在 `plugin-loader.ts` 中注册此插件。
+
+#### 新增插件：`plugins/core/spectate/`
+
+按插件扩展规范组织，负责观战和对战列表：
+
+```
+plugins/core/spectate/
+  index.ts        # 插件入口（fp 包装，注册路由 + WS 事件）
+  routes.ts       # HTTP 路由：GET /rooms/active
+  ws.ts           # WebSocket 事件：room:spectate, spectator_joined/left
+```
+
+在 `plugin-loader.ts` 中注册此插件。
+
+#### 现有文件修改
+
+- `plugins/core/game/session.ts` — 事件记录缓冲区（events 数组 + recordEvent 方法 + computeDeckHash）
+- `ws/game-events.ts` — 各操作处理后调用 session.recordEvent()；persistGameResult 中批量写入事件
+- `ws/room-events.ts` — game:start 时记录 game_start 事件（含初始牌序和 hash）
+- `ws/types.ts` — SocketData 新增 `isSpectator: boolean` 字段，标记观战者身份
 
 ### packages/client
 
-- `features/lobby/pages/LobbyPage.tsx` — 新增对战列表和近期对局区域
-- 新增 `features/replay/` — 回放页面和回放器组件
-- `features/game/pages/GamePage.tsx` — 观战模式支持
-- `features/game/store/` — 观战状态管理
-- `app/router.tsx` — 新增 `/replay/:gameId` 路由
-- `shared/socket.ts` — 新增观战相关事件监听
+#### 新增 Feature：`features/replay/`
+
+按 Feature 模块规范组织：
+
+```
+features/replay/
+  pages/
+    ReplayPage.tsx          # 回放页面（含回放器）
+  stores/
+    replay-store.ts         # Zustand store：事件流、播放状态、当前步骤
+  components/
+    ReplayControls.tsx      # 播放控制：播放/暂停/快进/逐步/跳转
+    ReplayBoard.tsx         # 回放牌桌（复用游戏组件，上帝视角）
+    ScoreTable.tsx          # 积分变化表格
+    HashVerifier.tsx        # hash 验证组件
+  routes.tsx                # 导出 replayProtectedRoutes: RouteObject[]
+```
+
+在 `app/router.tsx` 中导入并注册 replayProtectedRoutes。
+
+#### 现有文件修改
+
+- `features/lobby/pages/LobbyPage.tsx` — 新增"正在进行的对战"和"近期对局"卡片区域
+- `features/lobby/stores/` — 新增 lobby-store.ts（活跃房间列表、近期对局列表）
+- `features/game/pages/GamePage.tsx` — 观战模式支持（检测 spectate 参数）
+- `features/game/stores/game-store.ts` — 新增 isSpectator 状态
+- `shared/socket.ts` — 新增 room:spectator_joined/left 事件监听
+- `app/router.tsx` — 注册 `/replay/:gameId` 路由
