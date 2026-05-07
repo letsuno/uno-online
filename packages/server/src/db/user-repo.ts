@@ -65,6 +65,8 @@ export async function isUsernameTaken(username: string): Promise<boolean> {
 
 export async function createLocalUser(data: { username: string; nickname: string; passwordHash: string; avatarData?: string | null }) {
   const db = getDb();
+  const userCount = await db.selectFrom('users').select(sql<number>`count(*)`.as('count')).executeTakeFirstOrThrow();
+  const role = userCount.count === 0 ? 'admin' : 'normal';
   return db
     .insertInto('users')
     .values({
@@ -72,6 +74,7 @@ export async function createLocalUser(data: { username: string; nickname: string
       nickname: data.nickname,
       passwordHash: data.passwordHash,
       avatarData: data.avatarData ?? null,
+      role,
     })
     .returningAll()
     .executeTakeFirstOrThrow();
