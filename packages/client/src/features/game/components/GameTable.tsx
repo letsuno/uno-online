@@ -4,6 +4,7 @@ import type { Card as CardType } from '@uno-online/shared';
 import DrawPile from './DrawPile';
 import DiscardPile from './DiscardPile';
 import PlayerNode, { AVATAR_COLORS, AVATAR_EMOJIS } from './PlayerNode';
+import GoogleRing from '@/shared/components/ui/GoogleRing';
 import ThrowAnimation from './ThrowAnimation';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
@@ -353,8 +354,14 @@ export default function GameTable({ onDraw }: GameTableProps) {
             strokeWidth={2}
             strokeDasharray="8 6"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
+            animate={{
+              opacity: 1,
+              strokeDashoffset: isClockwise ? [0, -28] : [0, 28],
+            }}
+            transition={{
+              opacity: { duration: 0.3 },
+              strokeDashoffset: { duration: 1.5, repeat: Infinity, ease: 'linear' },
+            }}
           />
         </svg>
       )}
@@ -478,10 +485,11 @@ function TurnIndicator({ playerName, playerIndex, isMe, turnEndTime, cy }: {
     >
       <div className="flex items-center gap-2">
         <div
-          className="w-6 h-6 rounded-full flex items-center justify-center text-xs"
+          className="relative w-7 h-7 rounded-full flex items-center justify-center text-xs"
           style={{ background: AVATAR_COLORS[playerIndex % AVATAR_COLORS.length] }}
         >
           {AVATAR_EMOJIS[playerIndex % AVATAR_EMOJIS.length]}
+          <GoogleRing size={0} className="w-full h-full" />
         </div>
         <span className={cn(
           'font-game text-lg',
