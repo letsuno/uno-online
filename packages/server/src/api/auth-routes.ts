@@ -3,6 +3,7 @@ import type { Config } from '../config';
 import { exchangeCodeForToken, fetchGitHubUser } from '../auth/github';
 import { signToken, verifyToken } from '../auth/jwt';
 import type { TokenPayload } from '../auth/jwt';
+import type { UserRole } from '@uno-online/shared';
 import { findOrCreateUser, findUserByUsername, createLocalUser, isUsernameTaken, setPassword, bindGithub, resolveAvatar, getUserById } from '../db/user-repo';
 import { hashPassword, verifyPassword } from '../auth/password';
 import { validateUsername, validatePassword, validateNickname } from '../auth/validation';
@@ -11,12 +12,12 @@ interface AuthenticatedRequest extends FastifyRequest {
   user: TokenPayload;
 }
 
-function userResponse(user: { id: string; username: string; nickname: string; avatarUrl: string | null; avatarData?: string | null }) {
-  return { id: user.id, username: user.username, nickname: user.nickname, avatarUrl: resolveAvatar(user) };
+function userResponse(user: { id: string; username: string; nickname: string; avatarUrl: string | null; avatarData?: string | null; role?: string }) {
+  return { id: user.id, username: user.username, nickname: user.nickname, avatarUrl: resolveAvatar(user), role: user.role ?? 'normal' };
 }
 
-function makeToken(user: { id: string; username: string; nickname: string; avatarUrl: string | null; avatarData?: string | null }, secret: string) {
-  return signToken({ userId: user.id, username: user.username, nickname: user.nickname, avatarUrl: resolveAvatar(user) }, secret);
+function makeToken(user: { id: string; username: string; nickname: string; avatarUrl: string | null; avatarData?: string | null; role?: string }, secret: string) {
+  return signToken({ userId: user.id, username: user.username, nickname: user.nickname, avatarUrl: resolveAvatar(user), role: (user.role ?? 'normal') as UserRole }, secret);
 }
 
 const authPreHandler = (jwtSecret: string) => async (request: FastifyRequest, reply: FastifyReply) => {
@@ -56,13 +57,13 @@ function registerDevRoutes(fastify: FastifyInstance, config: Config) {
     }
     const name = username.trim();
     const id = `ephemeral_${++counter}_${Date.now()}`;
-    const token = signToken({ userId: id, username: name, nickname: name, avatarUrl: null }, config.jwtSecret);
-    return { token, user: { id, username: name, nickname: name, avatarUrl: null } };
+    const token = signToken({ userId: id, username: name, nickname: name, avatarUrl: null, role: 'normal' }, config.jwtSecret);
+    return { token, user: { id, username: name, nickname: name, avatarUrl: null, role: 'normal' } };
   });
 
   fastify.get('/auth/me', { preHandler: authPreHandler(config.jwtSecret) }, async (request) => {
     const p = (request as AuthenticatedRequest).user;
-    return { id: p.userId, username: p.username, nickname: p.nickname, avatarUrl: p.avatarUrl ?? null };
+    return { id: p.userId, username: p.username, nickname: p.nickname, avatarUrl: p.avatarUrl ?? null, role: p.role ?? 'normal' };
   });
 }
 

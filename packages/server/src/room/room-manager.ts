@@ -17,7 +17,7 @@ function generateRoomCode(): string {
 export class RoomManager {
   constructor(private redis: KvStore) {}
 
-  async createRoom(ownerId: string, ownerNickname: string, settings: RoomSettings = { turnTimeLimit: 30, targetScore: 500, houseRules: DEFAULT_HOUSE_RULES }, avatarUrl?: string | null): Promise<string> {
+  async createRoom(ownerId: string, ownerNickname: string, settings: RoomSettings = { turnTimeLimit: 30, targetScore: 500, houseRules: DEFAULT_HOUSE_RULES }, avatarUrl?: string | null, role?: string): Promise<string> {
     let code = generateRoomCode();
     let existing = await getRoom(this.redis, code);
     while (existing) {
@@ -25,18 +25,18 @@ export class RoomManager {
       existing = await getRoom(this.redis, code);
     }
     await createRoom(this.redis, code, ownerId, settings);
-    await addPlayerToRoom(this.redis, code, { userId: ownerId, nickname: ownerNickname, avatarUrl });
+    await addPlayerToRoom(this.redis, code, { userId: ownerId, nickname: ownerNickname, avatarUrl, role });
     return code;
   }
 
-  async joinRoom(roomCode: string, userId: string, nickname: string, avatarUrl?: string | null): Promise<void> {
+  async joinRoom(roomCode: string, userId: string, nickname: string, avatarUrl?: string | null, role?: string): Promise<void> {
     const room = await getRoom(this.redis, roomCode);
     if (!room) throw new Error('Room not found');
     if (room.status !== 'waiting') throw new Error('Game already in progress');
     const players = await getRoomPlayers(this.redis, roomCode);
     if (players.some((p) => p.userId === userId)) throw new Error('Already in room');
     if (players.length >= MAX_PLAYERS) throw new Error('Room is full');
-    await addPlayerToRoom(this.redis, roomCode, { userId, nickname, avatarUrl });
+    await addPlayerToRoom(this.redis, roomCode, { userId, nickname, avatarUrl, role });
   }
 
   async leaveRoom(roomCode: string, userId: string): Promise<{ deleted: boolean }> {

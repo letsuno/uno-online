@@ -271,6 +271,7 @@ export function registerGameEvents(
       username: data.user.nickname,
       text,
       timestamp: Date.now(),
+      role: data.user.role ?? 'normal',
     });
   });
 

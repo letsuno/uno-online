@@ -1,6 +1,6 @@
 import { initializeGame, applyActionWithHouseRules } from '@uno-online/shared';
 import { initializeNextRound } from '@uno-online/shared';
-import type { GameState, GameAction, RoomSettings } from '@uno-online/shared';
+import type { GameState, GameAction, RoomSettings, UserRole } from '@uno-online/shared';
 import type { Card } from '@uno-online/shared';
 
 export interface PlayerView {
@@ -17,6 +17,7 @@ export interface PlayerView {
     eliminated?: boolean;
     teamId?: number;
     avatarUrl?: string | null;
+    role?: string;
   }[];
   currentPlayerIndex: number;
   direction: GameState['direction'];
@@ -44,7 +45,7 @@ export class GameSession {
     this.state = state;
   }
 
-  static create(players: { id: string; name: string; avatarUrl?: string | null }[], settings?: RoomSettings): GameSession {
+  static create(players: { id: string; name: string; avatarUrl?: string | null; role?: UserRole }[], settings?: RoomSettings): GameSession {
     const state = initializeGame(players, settings?.houseRules);
     const stateWithSettings = settings
       ? { ...state, settings }
@@ -80,6 +81,7 @@ export class GameSession {
           eliminated: p.eliminated,
           teamId: p.teamId,
           avatarUrl: p.avatarUrl,
+          role: p.role,
         };
       }),
       currentPlayerIndex: this.state.currentPlayerIndex,
@@ -151,7 +153,7 @@ export class GameSession {
   }
 
   resetForRematch(): void {
-    const players = this.state.players.map(p => ({ id: p.id, name: p.name }));
+    const players = this.state.players.map(p => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl, role: p.role }));
     const settings = this.state.settings;
     const fresh = initializeGame(players, settings.houseRules);
     this.state = { ...fresh, settings };
