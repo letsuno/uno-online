@@ -50,7 +50,7 @@ async function persistGameResult(roomCode: string, session: GameSession, startTi
 }
 
 const chatTimestamps = new Map<string, number[]>();
-const CHAT_LIMIT = 2;
+const CHAT_LIMIT = 10;
 const CHAT_WINDOW_MS = 5000;
 
 function checkChatRateLimit(userId: string): boolean {
