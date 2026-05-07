@@ -1,10 +1,17 @@
+import { useEffect } from 'react';
 import { useServerStore } from '../stores/server-store';
 
 export function ServerButton() {
-  const { servers, currentServerId, latencyMap, openModal } = useServerStore();
+  const { servers, currentServerId, latencyMap, openModal, refreshServerInfo } = useServerStore();
   const current = servers.find(s => s.id === currentServerId);
   const latency = latencyMap[currentServerId];
   const isOnline = latency !== null && latency !== undefined;
+
+  useEffect(() => {
+    refreshServerInfo(currentServerId);
+    const id = setInterval(() => refreshServerInfo(currentServerId), 30_000);
+    return () => clearInterval(id);
+  }, [currentServerId, refreshServerInfo]);
 
   return (
     <button
