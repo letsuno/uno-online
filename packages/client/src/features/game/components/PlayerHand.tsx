@@ -5,7 +5,8 @@ import { sortHand } from '@uno-online/shared';
 import AnimatedCard from './AnimatedCard';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
-import { getPlayableCardIds } from '@/shared/utils/playable-cards';
+import { useIsMyTurn } from '../hooks/useIsMyTurn';
+import { usePlayableCardIds } from '../hooks/usePlayableCardIds';
 
 interface PlayerHandProps {
   onPlayCard: (cardId: string) => void;
@@ -31,27 +32,13 @@ function isColorBoundary(sorted: CardType[], index: number): boolean {
 export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   const userId = useEffectiveUserId();
   const players = useGameStore((s) => s.players);
-  const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
-  const discardPile = useGameStore((s) => s.discardPile);
-  const currentColor = useGameStore((s) => s.currentColor);
   const phase = useGameStore((s) => s.phase);
   const settings = useGameStore((s) => s.settings);
-  const drawStack = useGameStore((s) => s.drawStack);
 
   const me = players.find((p) => p.id === userId);
-  const isMyTurn = players[currentPlayerIndex]?.id === userId;
-  const topCard = discardPile[discardPile.length - 1];
+  const isMyTurn = useIsMyTurn();
 
-  const playableIds = useMemo(() => {
-    if (!isMyTurn || phase !== 'playing') return new Set<string>();
-    return getPlayableCardIds({
-      hand: me?.hand ?? [],
-      topCard,
-      currentColor,
-      drawStack,
-      houseRules: settings?.houseRules,
-    });
-  }, [currentColor, drawStack, isMyTurn, me?.hand, phase, settings?.houseRules, topCard]);
+  const playableIds = usePlayableCardIds();
   const hintedIds = settings?.houseRules?.noHints ? new Set<string>() : playableIds;
 
   const sorted = useMemo(() => sortHand(me?.hand ?? []), [me?.hand]);

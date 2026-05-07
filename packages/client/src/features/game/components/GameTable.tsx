@@ -1,9 +1,11 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import { useCountdown } from '../hooks/useCountdown';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Card as CardType } from '@uno-online/shared';
 import DrawPile from './DrawPile';
 import DiscardPile from './DiscardPile';
-import PlayerNode, { AVATAR_COLORS, AVATAR_EMOJIS } from './PlayerNode';
+import PlayerNode from './PlayerNode';
+import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import GoogleRing from '@/shared/components/ui/GoogleRing';
 import ThrowAnimation from './ThrowAnimation';
 import { useGameStore } from '../stores/game-store';
@@ -528,17 +530,7 @@ function TurnIndicator({ playerName, playerIndex, isMe, turnEndTime, phase, cy }
   phase: string | null;
   cy: number;
 }) {
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!turnEndTime) { setSecondsLeft(null); return; }
-    const tick = () => {
-      setSecondsLeft(Math.max(0, Math.ceil((turnEndTime - Date.now()) / 1000)));
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [turnEndTime]);
+  const secondsLeft = useCountdown(turnEndTime);
 
   let label: string;
   if (phase === 'challenging') {

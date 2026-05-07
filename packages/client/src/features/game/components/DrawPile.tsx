@@ -1,10 +1,9 @@
-import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CardBack from './CardBack';
 import DrawCardAnimation from './DrawCardAnimation';
 import { useGameStore } from '../stores/game-store';
-import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
-import { getPlayableCardIds } from '@/shared/utils/playable-cards';
+import { useIsMyTurn } from '../hooks/useIsMyTurn';
+import { usePlayableCardIds } from '../hooks/usePlayableCardIds';
 import { cn } from '@/shared/lib/utils';
 
 interface DrawPileProps {
@@ -18,30 +17,12 @@ export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTri
   const deckCount = useGameStore((s) => s.deckCount);
   const phase = useGameStore((s) => s.phase);
   const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
-  const players = useGameStore((s) => s.players);
-  const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
-  const discardPile = useGameStore((s) => s.discardPile);
-  const currentColor = useGameStore((s) => s.currentColor);
-  const drawStack = useGameStore((s) => s.drawStack);
   const settings = useGameStore((s) => s.settings);
-  const userId = useEffectiveUserId();
 
-  const isMyTurn = players[currentPlayerIndex]?.id === userId;
+  const isMyTurn = useIsMyTurn();
   const canDraw = isMyTurn && !hasDrawnThisTurn && phase === 'playing';
 
-  const me = players.find((p) => p.id === userId);
-  const topCard = discardPile[discardPile.length - 1];
-
-  const playableIds = useMemo(() => {
-    if (!isMyTurn || phase !== 'playing') return new Set<string>();
-    return getPlayableCardIds({
-      hand: me?.hand ?? [],
-      topCard,
-      currentColor,
-      drawStack,
-      houseRules: settings?.houseRules,
-    });
-  }, [currentColor, drawStack, isMyTurn, me?.hand, phase, settings?.houseRules, topCard]);
+  const playableIds = usePlayableCardIds();
 
   const showNoPlayableHint = canDraw && playableIds.size === 0 && !settings?.houseRules?.noHints;
   const emphasizeDraw = canDraw && !settings?.houseRules?.noHints;

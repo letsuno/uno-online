@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Card as CardType } from '@uno-online/shared';
 import Card from './Card';
@@ -9,30 +9,9 @@ import ChatBubble from './ChatBubble';
 import QuickReaction from './QuickReaction';
 import ThrowItemPicker from './ThrowItemPicker';
 import { cn, getRoleColor } from '@/shared/lib/utils';
+import { useCountdown } from '../hooks/useCountdown';
+import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import type { PlayerInfo } from '../stores/game-store';
-
-export const AVATAR_COLORS = [
-  '#ff3366',
-  '#33cc66',
-  '#4488ff',
-  '#f97316',
-  '#a855f7',
-  '#ec4899',
-  '#14b8a6',
-  '#eab308',
-  '#6366f1',
-];
-export const AVATAR_EMOJIS = [
-  '😎',
-  '🤠',
-  '😺',
-  '🐸',
-  '🦊',
-  '🐱',
-  '🐶',
-  '🦁',
-  '🐼',
-];
 
 interface PlayerNodeProps {
   player: PlayerInfo;
@@ -67,29 +46,12 @@ export default function PlayerNode({
   onReaction,
   onThrowItem,
 }: PlayerNodeProps) {
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const secondsLeft = useCountdown(isActive ? turnEndTime : null);
   const [showReaction, setShowReaction] = useState(false);
   const [showThrowPicker, setShowThrowPicker] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState({ x: 0, y: 0 });
   const longPressTimer = useRef<ReturnType<typeof setTimeout>>();
   const avatarRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isActive || !turnEndTime) {
-      setSecondsLeft(null);
-      return;
-    }
-    const tick = () => {
-      const remaining = Math.max(
-        0,
-        Math.ceil((turnEndTime - Date.now()) / 1000),
-      );
-      setSecondsLeft(remaining);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [isActive, turnEndTime]);
 
   const getAnchor = useCallback(() => {
     const rect = avatarRef.current?.getBoundingClientRect();
@@ -108,14 +70,6 @@ export default function PlayerNode({
       setShowReaction(false);
     }
   }, [isMe, getAnchor]);
-
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-  }, []);
-
-  const handleTouchStart = useCallback(() => {
-    // no-op, single tap handles everything
-  }, []);
 
   const handleTouchEnd = useCallback(() => {
     if (longPressTimer.current) {
@@ -172,8 +126,7 @@ export default function PlayerNode({
         className="relative pointer-events-auto"
         style={{ width: avatarSize, height: avatarSize }}
         onClick={handleClick}
-        onContextMenu={handleContextMenu}
-        onTouchStart={handleTouchStart}
+        onContextMenu={(e) => e.preventDefault()}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
       >

@@ -1,6 +1,6 @@
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
-import { AVATAR_COLORS, AVATAR_EMOJIS } from './PlayerNode';
+import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import GoogleRing from '@/shared/components/ui/GoogleRing';
 import { cn, getRoleColor } from '@/shared/lib/utils';
 
