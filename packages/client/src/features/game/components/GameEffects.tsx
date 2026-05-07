@@ -6,6 +6,7 @@ import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { playSound } from '@/shared/sound/sound-manager';
 import { cn } from '@/shared/lib/utils';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from './PlayerNode';
+import CardBack from './CardBack';
 
 interface Effect {
   id: string;
@@ -194,7 +195,15 @@ export default function GameEffects() {
                   {effect.penaltyName && effect.penaltyCount && (
                     <div className="flex items-center gap-2">
                       {effect.penaltyIndex !== undefined && <EffectAvatar index={effect.penaltyIndex} />}
-                      <span className="text-2xl font-bold text-destructive">{effect.penaltyName} 摸 {effect.penaltyCount} 张</span>
+                      <span className="text-2xl font-bold text-destructive">{effect.penaltyName}</span>
+                      <div className="flex items-center gap-1 ml-1">
+                        <div className="flex -space-x-1.5">
+                          {Array.from({ length: Math.min(effect.penaltyCount, 3) }).map((_, i) => (
+                            <CardBack key={i} small />
+                          ))}
+                        </div>
+                        <span className="text-xl font-bold text-destructive">×{effect.penaltyCount}</span>
+                      </div>
                     </div>
                   )}
                 </motion.div>
