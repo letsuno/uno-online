@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Spade } from 'lucide-react';
 import { useAuthStore } from '../stores/auth-store';
+import { getRoleColor } from '@/lib/utils';
 import { useRoomStore } from '../stores/room-store';
 import { getSocket, connectSocket } from '../socket';
 import { Button } from '../components/ui/Button';
@@ -48,7 +49,7 @@ export default function LobbyPage() {
       <h1 className="font-game text-heading-lg text-primary">
         <Spade size={24} className="inline-block align-middle" /> 游戏大厅
       </h1>
-      <p className="text-muted-foreground">欢迎, {user?.nickname ?? user?.username}!</p>
+      <p className="text-muted-foreground">欢迎, <span style={getRoleColor(user?.role) ? { color: getRoleColor(user?.role) } : undefined}>{user?.nickname ?? user?.username}</span>!</p>
       <Button variant="primary" size="lg" onClick={handleCreate} disabled={loading}>
         {loading ? '创建中...' : '创建房间'}
       </Button>

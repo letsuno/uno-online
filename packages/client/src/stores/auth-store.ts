@@ -6,6 +6,7 @@ interface User {
   username: string;
   nickname: string;
   avatarUrl: string | null;
+  role: string;
 }
 
 export interface BindInfo {
