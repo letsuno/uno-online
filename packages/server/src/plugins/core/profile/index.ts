@@ -1,7 +1,7 @@
-import fp from 'fastify-plugin';
+import type { FastifyInstance } from 'fastify';
 import type { PluginContext } from '../../../plugin-context';
 import { registerProfileRoutes } from './routes';
 
-export default fp(async (fastify, opts: { ctx: PluginContext }) => {
+export default async function profilePlugin(fastify: FastifyInstance, opts: { ctx: PluginContext }) {
   registerProfileRoutes(fastify, opts.ctx);
-}, { name: 'profile' });
+}

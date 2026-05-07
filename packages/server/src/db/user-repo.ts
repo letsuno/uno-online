@@ -8,7 +8,7 @@ interface GitHubUserData {
 }
 
 export function resolveAvatar(user: { id: string; avatarData?: string | null; avatarUrl?: string | null; updatedAt?: string }): string | null {
-  if (user.avatarData) return `/avatar/${user.id}?v=${encodeURIComponent(user.updatedAt ?? '')}`;
+  if (user.avatarData) return `/api/avatar/${user.id}?v=${encodeURIComponent(user.updatedAt ?? '')}`;
   return user.avatarUrl ?? null;
 }
 

@@ -13,6 +13,7 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
 COPY packages/server/package.json packages/server/
 COPY packages/client/package.json packages/client/
+COPY packages/admin/package.json packages/admin/
 RUN pnpm install --frozen-lockfile --registry https://registry.npmmirror.com
 
 # ---- Stage 3: Build client ----
@@ -31,19 +32,26 @@ RUN pnpm --filter @uno-online/shared build \
   && pnpm --filter @uno-online/server build \
   && node -e "const fs = require('fs'); const p = 'packages/shared/package.json'; const pkg = JSON.parse(fs.readFileSync(p, 'utf8')); pkg.main = './dist/index.js'; pkg.types = './dist/index.d.ts'; fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');"
 
-# ---- Stage 5: Server runtime ----
+# ---- Stage 5: Build admin ----
+FROM deps AS build-admin
+COPY packages/shared/ packages/shared/
+COPY packages/admin/ packages/admin/
+RUN pnpm --filter @uno-online/shared build && pnpm --filter @uno-online/admin build
+
+# ---- Stage 6: Server runtime ----
 FROM base AS server
 
 COPY --from=build-server /app/ /app/
 # Remove client source (not needed at runtime)
-RUN rm -rf packages/client/src
+RUN rm -rf packages/client/src packages/admin/src
 
 EXPOSE 3001
 
 CMD ["pnpm", "--filter", "@uno-online/server", "start"]
 
-# ---- Stage 6: Caddy (client) ----
+# ---- Stage 7: Caddy (client + admin) ----
 FROM caddy:2-alpine AS caddy
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY --from=build-client /app/packages/client/dist/ /srv/
+COPY --from=build-admin /app/packages/admin/dist/ /srv/admin/
 EXPOSE 80 443

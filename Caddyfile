@@ -2,34 +2,7 @@
 
 encode gzip
 
-@auth_api {
-	path /auth/github /auth/me /auth/dev-login /auth/config /auth/register /auth/login /auth/set-password /auth/bind-github
-}
-handle @auth_api {
-	reverse_proxy server:3001
-}
-
-@auth_callback_post {
-	path /auth/callback
-	method POST
-}
-handle @auth_callback_post {
-	reverse_proxy server:3001
-}
-
-handle /profile {
-	reverse_proxy server:3001
-}
-
-handle /profile/* {
-	reverse_proxy server:3001
-}
-
-handle /avatar/* {
-	reverse_proxy server:3001
-}
-
-handle /health {
+handle /api/* {
 	reverse_proxy server:3001
 }
 
@@ -37,8 +10,13 @@ handle /socket.io/* {
 	reverse_proxy server:3001
 }
 
-handle /server/* {
-	reverse_proxy server:3001
+handle /admin/* {
+	root * /srv
+	try_files {path} /admin/index.html
+	file_server
+
+	@static path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+	header @static Cache-Control "public, max-age=2592000, immutable"
 }
 
 handle {

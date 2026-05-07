@@ -1,4 +1,4 @@
-const API_BASE = '';
+const API_BASE = '/api';
 
 function getToken(): string | null {
   return localStorage.getItem('admin_token');

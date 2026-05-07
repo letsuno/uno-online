@@ -1,7 +1,7 @@
-import fp from 'fastify-plugin';
+import type { FastifyInstance } from 'fastify';
 import type { PluginContext } from '../../../plugin-context';
 import { registerAdminRoutes } from './routes';
 
-export default fp(async (fastify, opts: { ctx: PluginContext }) => {
+export default async function adminPlugin(fastify: FastifyInstance, opts: { ctx: PluginContext }) {
   registerAdminRoutes(fastify, opts.ctx);
-}, { name: 'admin' });
+}
