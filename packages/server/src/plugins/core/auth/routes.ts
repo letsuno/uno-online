@@ -1,53 +1,31 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { Config } from '../config';
-import { exchangeCodeForToken, fetchGitHubUser } from '../auth/github';
-import { signToken, verifyToken } from '../auth/jwt';
-import type { TokenPayload } from '../auth/jwt';
-import type { UserRole } from '@uno-online/shared';
-import { findOrCreateUser, findUserByUsername, createLocalUser, isUsernameTaken, setPassword, bindGithub, resolveAvatar, getUserById } from '../db/user-repo';
-import { hashPassword, verifyPassword } from '../auth/password';
-import { validateUsername, validatePassword, validateNickname } from '../auth/validation';
+import type { FastifyInstance } from 'fastify';
+import type { PluginContext } from '../../../plugin-context';
+import { exchangeCodeForToken, fetchGitHubUser } from '../../../auth/github';
+import { signToken } from '../../../auth/jwt';
+import { findOrCreateUser, findUserByUsername, createLocalUser, isUsernameTaken, setPassword, bindGithub, getUserById } from '../../../db/user-repo';
+import { hashPassword, verifyPassword } from '../../../auth/password';
+import { validateUsername, validatePassword, validateNickname } from '../../../auth/validation';
+import { authPreHandler, makeToken, userResponse } from './service';
+import type { AuthenticatedRequest } from './service';
 
-interface AuthenticatedRequest extends FastifyRequest {
-  user: TokenPayload;
-}
+export function registerAuthRoutes(fastify: FastifyInstance, ctx: PluginContext) {
+  const { config } = ctx;
 
-function userResponse(user: { id: string; username: string; nickname: string; avatarUrl: string | null; avatarData?: string | null; role?: string }) {
-  return { id: user.id, username: user.username, nickname: user.nickname, avatarUrl: resolveAvatar(user), role: user.role ?? 'normal' };
-}
-
-function makeToken(user: { id: string; username: string; nickname: string; avatarUrl: string | null; avatarData?: string | null; role?: string }, secret: string) {
-  return signToken({ userId: user.id, username: user.username, nickname: user.nickname, avatarUrl: resolveAvatar(user), role: (user.role ?? 'normal') as UserRole }, secret);
-}
-
-const authPreHandler = (jwtSecret: string) => async (request: FastifyRequest, reply: FastifyReply) => {
-  const authHeader = request.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    return reply.code(401).send({ error: 'Unauthorized' });
-  }
-  const payload = verifyToken(authHeader.slice(7), jwtSecret);
-  if (!payload) {
-    return reply.code(401).send({ error: 'Invalid token' });
-  }
-  (request as AuthenticatedRequest).user = payload;
-};
-
-export async function registerAuthRoutes(fastify: FastifyInstance, config: Config) {
   fastify.get('/auth/config', async () => ({
     devMode: config.devMode,
     githubClientId: config.githubClientId,
   }));
 
   if (config.devMode) {
-    registerDevRoutes(fastify, config);
+    registerDevRoutes(fastify, ctx);
     return;
   }
 
-  registerProductionRoutes(fastify, config);
+  registerProductionRoutes(fastify, ctx);
 }
 
-// Dev mode: no database, all ephemeral
-function registerDevRoutes(fastify: FastifyInstance, config: Config) {
+export function registerDevRoutes(fastify: FastifyInstance, ctx: PluginContext) {
+  const { config } = ctx;
   let counter = 0;
 
   fastify.post<{ Body: { username: string } }>('/auth/dev-login', async (request, reply) => {
@@ -67,8 +45,8 @@ function registerDevRoutes(fastify: FastifyInstance, config: Config) {
   });
 }
 
-// Production: full auth with database
-function registerProductionRoutes(fastify: FastifyInstance, config: Config) {
+export function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) {
+  const { config } = ctx;
   const preHandler = authPreHandler(config.jwtSecret);
 
   fastify.post<{ Body: { username: string; password: string; nickname: string; avatar?: string } }>('/auth/register', async (request, reply) => {
