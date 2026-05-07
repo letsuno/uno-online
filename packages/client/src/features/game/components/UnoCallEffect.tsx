@@ -8,7 +8,7 @@ export default function UnoCallEffect() {
   const players = useGameStore((s) => s.players);
 
   useEffect(() => {
-    const caller = players.find((p) => p.calledUno && p.handCount <= 2);
+    const caller = players.find((p) => p.calledUno && p.handCount === 1);
     if (caller) {
       setCallerName(caller.name);
       setShow(true);

@@ -135,11 +135,9 @@ function handlePlayCard(
   // Update discard pile
   const newDiscardPile = [...state.discardPile, card];
 
-  // Reset calledUno unless the player is going down to 1 card (pre-play UNO call)
-  const keepUno = newHand.length === 1 && actingPlayer.calledUno;
   const players = state.players.map((p, idx) =>
     idx === actingPlayerIdx
-      ? { ...p, hand: newHand, calledUno: keepUno }
+      ? { ...p, hand: newHand, calledUno: false }
       : { ...p }
   );
 
@@ -406,8 +404,7 @@ function handleCallUno(
   if (idx === -1) return state;
 
   const player = state.players[idx]!;
-  // A player may call before or after playing down to one card, but not at zero.
-  if (player.hand.length < 1 || player.hand.length > 2) return state;
+  if (player.hand.length !== 1) return state;
 
   const players = state.players.map((p, i) =>
     i === idx ? { ...p, calledUno: true } : p
