@@ -36,6 +36,9 @@ interface GameState {
   turnEndTime: number | null;
   lastDrawnCard: Card | null;
   hasDrawnThisTurn: boolean;
+  isSpectator: boolean;
+  deckHash: string | null;
+  setSpectator: (value: boolean) => void;
   infoDrawerOpen: boolean;
   infoDrawerTab: InfoDrawerTab;
   toggleInfoDrawer: () => void;
@@ -64,6 +67,9 @@ export const useGameStore = create<GameState>((set) => ({
   turnEndTime: null,
   lastDrawnCard: null,
   hasDrawnThisTurn: false,
+  isSpectator: false,
+  deckHash: null,
+  setSpectator: (value) => set({ isSpectator: value }),
   infoDrawerOpen: false,
   infoDrawerTab: 'rules' as InfoDrawerTab,
   toggleInfoDrawer: () => set((state) => ({ infoDrawerOpen: !state.infoDrawerOpen })),
@@ -98,6 +104,7 @@ export const useGameStore = create<GameState>((set) => ({
         lastAction,
         hasDrawnThisTurn,
         lastDrawnCard: hasDrawnThisTurn ? state.lastDrawnCard : null,
+        deckHash: (view.deckHash as string | undefined) ?? state.deckHash,
       };
     }),
   setDrawnCard: (card) => set({ lastDrawnCard: card, hasDrawnThisTurn: true }),
@@ -121,6 +128,8 @@ export const useGameStore = create<GameState>((set) => ({
       turnEndTime: null,
       lastDrawnCard: null,
       hasDrawnThisTurn: false,
+      isSpectator: false,
+      deckHash: null,
       infoDrawerOpen: false,
       infoDrawerTab: 'rules' as InfoDrawerTab,
     }),

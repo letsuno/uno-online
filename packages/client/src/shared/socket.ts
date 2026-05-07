@@ -74,6 +74,14 @@ export function getSocket(): Socket {
       }
     });
 
+    socket.on('room:spectator_joined', (data: { nickname: string }) => {
+      useToastStore.getState().addToast(`${data.nickname} 开始观战`, 'info');
+    });
+
+    socket.on('room:spectator_left', (data: { nickname: string }) => {
+      useToastStore.getState().addToast(`${data.nickname} 离开观战`, 'info');
+    });
+
     socket.on('connect', () => {
       connectionStatusCallback?.('connected');
     });
