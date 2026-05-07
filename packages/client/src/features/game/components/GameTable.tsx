@@ -106,24 +106,36 @@ export default function GameTable({ onDraw }: GameTableProps) {
     }
   }, [lastAction]);
 
-  // Track skipped player (show ban overlay for 1.5s)
+  // Track skipped player: show ban overlay until the next action, with a fallback timeout
   const [skippedPlayerId, setSkippedPlayerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (lastAction?.type === 'PLAY_CARD' && lastAction.playerId) {
       const { discardPile: dp, direction: dir, players: ps } = useGameStore.getState();
       const topCard = dp[dp.length - 1];
-      if (topCard?.type === 'skip') {
-        const actorIdx = ps.findIndex((p) => p.id === lastAction.playerId);
-        if (actorIdx >= 0) {
-          const step = dir === 'clockwise' ? 1 : -1;
-          const skippedIdx = ((actorIdx + step) % ps.length + ps.length) % ps.length;
-          setSkippedPlayerId(ps[skippedIdx]?.id ?? null);
-          const timer = window.setTimeout(() => setSkippedPlayerId(null), 1500);
-          return () => window.clearTimeout(timer);
+
+      let skippedIdx = -1;
+      const actorIdx = ps.findIndex((p) => p.id === lastAction.playerId);
+
+      if (actorIdx >= 0) {
+        const step = dir === 'clockwise' ? 1 : -1;
+        const nextIdx = ((actorIdx + step) % ps.length + ps.length) % ps.length;
+
+        if (topCard?.type === 'skip' || topCard?.type === 'draw_two') {
+          skippedIdx = nextIdx;
+        } else if (topCard?.type === 'reverse' && ps.length === 2) {
+          skippedIdx = nextIdx;
         }
       }
+
+      if (skippedIdx >= 0) {
+        setSkippedPlayerId(ps[skippedIdx]?.id ?? null);
+        const timer = window.setTimeout(() => setSkippedPlayerId(null), 1000);
+        return () => window.clearTimeout(timer);
+      }
     }
+
+    setSkippedPlayerId(null);
   }, [lastAction]);
 
   // Listen for chat messages from socket
