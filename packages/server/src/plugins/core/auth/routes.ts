@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { PluginContext } from '../../../plugin-context';
 import { exchangeCodeForToken, fetchGitHubUser } from '../../../auth/github';
-import { signToken } from '../../../auth/jwt';
 import { findOrCreateUser, findUserByUsername, createLocalUser, isUsernameTaken, setPassword, bindGithub, getUserById } from '../../../db/user-repo';
 import { hashPassword, verifyPassword } from '../../../auth/password';
 import { validateUsername, validatePassword, validateNickname } from '../../../auth/validation';
@@ -24,7 +23,7 @@ export function registerAuthRoutes(fastify: FastifyInstance, ctx: PluginContext)
   registerProductionRoutes(fastify, ctx);
 }
 
-export function registerDevRoutes(fastify: FastifyInstance, ctx: PluginContext) {
+function registerDevRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const { config } = ctx;
   let counter = 0;
 
@@ -35,7 +34,7 @@ export function registerDevRoutes(fastify: FastifyInstance, ctx: PluginContext) 
     }
     const name = username.trim();
     const id = `ephemeral_${++counter}_${Date.now()}`;
-    const token = signToken({ userId: id, username: name, nickname: name, avatarUrl: null, role: 'normal' }, config.jwtSecret);
+    const token = makeToken({ id, username: name, nickname: name, avatarUrl: null, role: 'normal' }, config.jwtSecret);
     return { token, user: { id, username: name, nickname: name, avatarUrl: null, role: 'normal' } };
   });
 
@@ -45,7 +44,7 @@ export function registerDevRoutes(fastify: FastifyInstance, ctx: PluginContext) 
   });
 }
 
-export function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) {
+function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const { config } = ctx;
   const preHandler = authPreHandler(config.jwtSecret);
 

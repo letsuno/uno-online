@@ -7,13 +7,8 @@ import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, deleteRoom } f
 import { GameSession } from '../plugins/core/game/session';
 import { saveGameState } from '../plugins/core/game/state-store';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
-import type { TokenPayload } from '../auth/jwt';
 import { setGameStartTime } from './game-events';
-
-interface SocketData {
-  user: TokenPayload;
-  roomCode: string | null;
-}
+import type { SocketData } from './types';
 
 export function registerRoomEvents(
   socket: Socket,

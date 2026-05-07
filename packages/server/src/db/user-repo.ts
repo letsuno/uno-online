@@ -1,7 +1,7 @@
 import { sql } from 'kysely';
 import { getDb } from './database.js';
 
-export interface GitHubUserData {
+interface GitHubUserData {
   githubId: string;
   username: string;
   avatarUrl: string | null;

@@ -1,12 +1,7 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { DtlsParameters, MediaKind, RtpCapabilities, RtpParameters } from 'mediasoup/types';
 import { RoomVoice } from './room-voice';
-import type { TokenPayload } from '../../../auth/jwt';
-
-interface SocketData {
-  user: TokenPayload;
-  roomCode: string | null;
-}
+import type { SocketData } from '../../../ws/types';
 
 const roomVoices = new Map<string, RoomVoice>();
 
@@ -17,14 +12,6 @@ function getOrCreateRoomVoice(roomCode: string): RoomVoice {
     roomVoices.set(roomCode, rv);
   }
   return rv;
-}
-
-export function cleanupRoomVoice(roomCode: string): void {
-  const rv = roomVoices.get(roomCode);
-  if (rv) {
-    rv.close();
-    roomVoices.delete(roomCode);
-  }
 }
 
 export async function removeVoicePeer(roomCode: string, peerId: string, io: SocketIOServer): Promise<void> {
