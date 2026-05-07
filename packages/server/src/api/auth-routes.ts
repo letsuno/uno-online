@@ -10,6 +10,11 @@ interface AuthenticatedRequest extends FastifyRequest {
 }
 
 export async function registerAuthRoutes(fastify: FastifyInstance, config: Config) {
+  fastify.get('/auth/config', async () => ({
+    devMode: config.devMode,
+    githubClientId: config.githubClientId,
+  }));
+
   if (config.devMode) {
     fastify.post<{ Body: { username: string } }>('/auth/dev-login', async (request, reply) => {
       const { username } = request.body;
