@@ -101,27 +101,23 @@ curl http://localhost/server/info
 ### 手动构建 Docker 镜像
 
 ```bash
-# 基于当前源码构建 server 运行时镜像
-docker build --target server -t uno-online-server:local .
+# 直接构建为可推送的 server 标签
+docker build --target server -t djkcyl/uno-online-server:latest .
 
-# 构建 caddy 镜像（包含 client + admin 静态资源）
-docker build --target caddy -t uno-online-caddy:local .
+# 直接构建为可推送的 caddy 标签（包含 client + admin 静态资源）
+docker build --target caddy -t djkcyl/uno-online-caddy:latest .
 ```
 
 无缓存强制重建：
 
 ```bash
-docker build --no-cache --target server -t uno-online-server:local .
-docker build --no-cache --target caddy -t uno-online-caddy:local .
+docker build --no-cache --target server -t djkcyl/uno-online-server:latest .
+docker build --no-cache --target caddy -t djkcyl/uno-online-caddy:latest .
 ```
 
 ### 推送镜像到 Docker Hub
 
 ```bash
-# 给本地镜像打仓库标签
-docker tag uno-online-server:local djkcyl/uno-online-server:latest
-docker tag uno-online-caddy:local djkcyl/uno-online-caddy:latest
-
 # 推送到 Docker Hub
 docker push djkcyl/uno-online-server:latest
 docker push djkcyl/uno-online-caddy:latest

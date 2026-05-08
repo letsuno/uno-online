@@ -107,27 +107,23 @@ curl http://localhost/server/info
 ### Build Docker Images Manually
 
 ```bash
-# Build server runtime image from current source
-docker build --target server -t uno-online-server:local .
+# Build server runtime image with publish tag
+docker build --target server -t djkcyl/uno-online-server:latest .
 
-# Build caddy image (client + admin static assets)
-docker build --target caddy -t uno-online-caddy:local .
+# Build caddy image (client + admin static assets) with publish tag
+docker build --target caddy -t djkcyl/uno-online-caddy:latest .
 ```
 
 Force rebuild without cache:
 
 ```bash
-docker build --no-cache --target server -t uno-online-server:local .
-docker build --no-cache --target caddy -t uno-online-caddy:local .
+docker build --no-cache --target server -t djkcyl/uno-online-server:latest .
+docker build --no-cache --target caddy -t djkcyl/uno-online-caddy:latest .
 ```
 
 ### Push Images to Docker Hub
 
 ```bash
-# Retag local images
-docker tag uno-online-server:local djkcyl/uno-online-server:latest
-docker tag uno-online-caddy:local djkcyl/uno-online-caddy:latest
-
 # Push to Docker Hub
 docker push djkcyl/uno-online-server:latest
 docker push djkcyl/uno-online-caddy:latest
