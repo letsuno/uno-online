@@ -15,7 +15,10 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   if (!player) return [];
 
   if (state.phase === 'challenging') {
-    return [{ type: 'CHALLENGE', playerId }];
+    if (state.pendingDrawPlayerId === playerId) {
+      return [{ type: 'ACCEPT', playerId }];
+    }
+    return [];
   }
 
   if (state.phase === 'choosing_color') {
@@ -37,24 +40,41 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   const topCard = state.discardPile[state.discardPile.length - 1];
   if (!topCard || !state.currentColor) return [{ type: 'DRAW_CARD', playerId }];
 
-  const hr = state.settings.houseRules;
-  const stackingEnabled = hr.stackDrawTwo || hr.stackDrawFour || hr.crossStack;
+  if (state.drawStack > 0) {
+    const hr = state.settings.houseRules;
+    const stackingEnabled = hr.stackDrawTwo || hr.stackDrawFour || hr.crossStack;
 
-  if (state.drawStack > 0 && stackingEnabled) {
-    const stackable = player.hand.filter(c => {
-      if (hr.stackDrawTwo && c.type === 'draw_two' && topCard.type === 'draw_two') return true;
-      if (hr.stackDrawFour && c.type === 'wild_draw_four' && topCard.type === 'wild_draw_four') return true;
-      if (hr.crossStack && ((c.type === 'draw_two' && topCard.type === 'wild_draw_four') || (c.type === 'wild_draw_four' && topCard.type === 'draw_two'))) return true;
-      return false;
-    });
-    if (stackable.length > 0) {
-      const pick = stackable[0]!;
-      const actions: GameAction[] = [{ type: 'PLAY_CARD', playerId, cardId: pick.id }];
-      if (pick.type === 'wild_draw_four') {
-        actions.push({ type: 'CHOOSE_COLOR', playerId, color: bestColor(player.hand, pick.id) });
+    if (stackingEnabled) {
+      const stackable = player.hand.filter(c => {
+        if (hr.stackDrawTwo && c.type === 'draw_two' && topCard.type === 'draw_two') return true;
+        if (hr.stackDrawFour && c.type === 'wild_draw_four' && topCard.type === 'wild_draw_four') return true;
+        if (hr.crossStack && ((c.type === 'draw_two' && topCard.type === 'wild_draw_four') || (c.type === 'wild_draw_four' && topCard.type === 'draw_two'))) return true;
+        return false;
+      });
+      if (stackable.length > 0) {
+        const pick = stackable[0]!;
+        const actions: GameAction[] = [{ type: 'PLAY_CARD', playerId, cardId: pick.id }];
+        if (pick.type === 'wild_draw_four') {
+          actions.push({ type: 'CHOOSE_COLOR', playerId, color: bestColor(player.hand, pick.id) });
+        }
+        return actions;
       }
-      return actions;
     }
+
+    const deflectionEnabled = hr.reverseDeflectDrawTwo || hr.reverseDeflectDrawFour || hr.skipDeflect;
+    if (deflectionEnabled) {
+      const deflectable = player.hand.filter(c => {
+        if (c.type === 'reverse' && hr.reverseDeflectDrawTwo && topCard.type === 'draw_two') return true;
+        if (c.type === 'reverse' && hr.reverseDeflectDrawFour && topCard.type === 'wild_draw_four') return true;
+        if (c.type === 'skip' && hr.skipDeflect) return true;
+        return false;
+      });
+      if (deflectable.length > 0) {
+        const pick = deflectable[0]!;
+        return [{ type: 'PLAY_CARD', playerId, cardId: pick.id }];
+      }
+    }
+
     return [{ type: 'DRAW_CARD', playerId }];
   }
 

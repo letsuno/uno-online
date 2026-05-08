@@ -61,15 +61,20 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       const state = session.getFullState();
       if (state.phase === 'round_end' || state.phase === 'game_over') { stopAutoPlay(userId); return; }
 
-      const currentPlayer = state.players[state.currentPlayerIndex];
-      if (!currentPlayer || currentPlayer.id !== userId) return;
+      const shouldAct = (() => {
+        if (state.phase === 'challenging') return state.pendingDrawPlayerId === userId;
+        return state.players[state.currentPlayerIndex]?.id === userId;
+      })();
+      if (!shouldAct) return;
 
       let acted = false;
       for (let round = 0; round < 5; round++) {
         const st = session.getFullState();
-        const cp = st.players[st.currentPlayerIndex];
-        if (!cp || cp.id !== userId) break;
         if (st.phase === 'round_end' || st.phase === 'game_over') break;
+        const canAct = st.phase === 'challenging'
+          ? st.pendingDrawPlayerId === userId
+          : st.players[st.currentPlayerIndex]?.id === userId;
+        if (!canAct) break;
 
         const actions = chooseAutopilotAction(st, userId);
         if (actions.length === 0) break;
