@@ -520,6 +520,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
         return (
           <TurnIndicator
             playerName={actingPlayer.name}
+            avatarUrl={actingPlayer.avatarUrl}
             playerIndex={actingIndex}
             isMe={actingPlayer.id === userId}
             turnEndTime={turnEndTime}
@@ -574,8 +575,9 @@ export default function GameTable({ onDraw }: GameTableProps) {
   );
 }
 
-function TurnIndicator({ playerName, playerIndex, isMe, turnEndTime, phase, cy }: {
+function TurnIndicator({ playerName, avatarUrl, playerIndex, isMe, turnEndTime, phase, cy }: {
   playerName: string;
+  avatarUrl?: string | null;
   playerIndex: number;
   isMe: boolean;
   turnEndTime: number | null;
@@ -608,10 +610,21 @@ function TurnIndicator({ playerName, playerIndex, isMe, turnEndTime, phase, cy }
     >
       <div className="flex items-center gap-2">
         <div
-          className="relative w-7 h-7 rounded-full flex items-center justify-center text-xs"
+          className="relative w-7 h-7 rounded-full flex items-center justify-center text-xs overflow-hidden"
           style={{ background: AVATAR_COLORS[playerIndex % AVATAR_COLORS.length] }}
         >
-          {AVATAR_EMOJIS[playerIndex % AVATAR_EMOJIS.length]}
+          <span>{AVATAR_EMOJIS[playerIndex % AVATAR_EMOJIS.length]}</span>
+          {avatarUrl && (
+            <img
+              src={avatarUrl}
+              alt={playerName}
+              className="absolute inset-0 w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          )}
           <GoogleRing size={0} className="w-full h-full" />
         </div>
         <span className={cn(

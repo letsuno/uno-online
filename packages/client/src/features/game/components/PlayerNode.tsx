@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot } from 'lucide-react';
+import { Bot, Trophy } from 'lucide-react';
 import type { Card as CardType } from '@uno-online/shared';
 import Card from './Card';
 import CardBack from './CardBack';
@@ -94,6 +94,7 @@ export default function PlayerNode({
   const avatarSize = isMe ? 48 : 44;
   const displayName =
     player.name.length > 8 ? player.name.slice(0, 8) + '...' : player.name;
+  const avatarInnerSize = avatarSize - 4;
 
   return (
     <div
@@ -145,6 +146,7 @@ export default function PlayerNode({
         <div
           className={cn(
             'rounded-full flex items-center justify-center overflow-hidden',
+            'relative',
             'text-sm md:text-lg',
             'transition-[box-shadow] duration-300 ease-in-out',
             isActive && 'animate-draw-pulse shadow-glow-active',
@@ -152,12 +154,34 @@ export default function PlayerNode({
           )}
           style={{
             background: AVATAR_COLORS[index % AVATAR_COLORS.length],
-            width: avatarSize - 4,
-            height: avatarSize - 4,
+            width: avatarInnerSize,
+            height: avatarInnerSize,
             margin: 2,
           }}
         >
-          {AVATAR_EMOJIS[index % AVATAR_EMOJIS.length]}
+          <span>{AVATAR_EMOJIS[index % AVATAR_EMOJIS.length]}</span>
+          {player.avatarUrl && (
+            <img
+              src={player.avatarUrl}
+              alt={player.name}
+              className="absolute inset-0 w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          )}
+        </div>
+
+        {/* Round wins and score */}
+        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-1.5 flex flex-col gap-0.5 pointer-events-none">
+          <div className="h-4 min-w-10 rounded bg-black/45 border border-white/10 px-1.5 flex items-center justify-between gap-1 shadow-card-sm">
+            <Trophy size={10} className="text-accent shrink-0" />
+            <span className="text-2xs leading-none tabular-nums font-bold text-foreground">{player.roundWins ?? 0}</span>
+          </div>
+          <div className="h-4 min-w-10 rounded bg-black/45 border border-white/10 px-1.5 flex items-center justify-between gap-1 shadow-card-sm">
+            <span className="text-2xs leading-none tabular-nums font-bold text-foreground">{player.score}分</span>
+          </div>
         </div>
 
         {/* Google-style colored ring */}
