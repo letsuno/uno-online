@@ -1,33 +1,18 @@
 import { useCallback } from 'react';
 import type { Color } from '@uno-online/shared';
-import { useGameStore } from '../stores/game-store';
 import { getSocket } from '@/shared/socket';
 import { playSound } from '@/shared/sound/sound-manager';
 
 export function useGameActions() {
-  const drawStack = useGameStore((s) => s.drawStack);
-  const settings = useGameStore((s) => s.settings);
-
   const playCard = useCallback((cardId: string) => {
     playSound('play_card');
     getSocket().emit('game:play_card', { cardId }, () => {});
   }, []);
 
   const drawCard = useCallback(() => {
-    const houseRules = settings?.houseRules;
-    const shouldAutoPass =
-      drawStack === 0 &&
-      !houseRules?.drawUntilPlayable &&
-      !houseRules?.deathDraw &&
-      !houseRules?.forcedPlayAfterDraw;
-
     playSound('draw_card');
-    getSocket().emit('game:draw_card', (res: { success: boolean }) => {
-      if (res?.success && shouldAutoPass) {
-        getSocket().emit('game:pass', () => {});
-      }
-    });
-  }, [drawStack, settings?.houseRules]);
+    getSocket().emit('game:draw_card', () => {});
+  }, []);
 
   const chooseColor = useCallback((color: Color) => {
     getSocket().emit('game:choose_color', { color }, () => {});

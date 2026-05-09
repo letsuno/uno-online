@@ -10,6 +10,22 @@ function bestColor(hand: Card[], excludeId?: string): Color {
   return (Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'red') as Color;
 }
 
+function playCardActions(playerId: string, card: Card, hand: Card[]): GameAction[] {
+  const actions: GameAction[] = [{ type: 'PLAY_CARD', playerId, cardId: card.id }];
+  if (card.type === 'wild' || card.type === 'wild_draw_four') {
+    actions.push({ type: 'CHOOSE_COLOR', playerId, color: bestColor(hand, card.id) });
+  }
+  return actions;
+}
+
+function pickPlayableCard(playable: Card[], currentColor: Color): Card {
+  return (
+    playable.find(c => c.color === currentColor) ??
+    playable.find(c => c.color !== null) ??
+    playable[0]!
+  );
+}
+
 export function chooseAutopilotAction(state: GameState, playerId: string): GameAction[] {
   const player = state.players.find(p => p.id === playerId);
   if (!player) return [];
@@ -40,6 +56,19 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   const topCard = state.discardPile[state.discardPile.length - 1];
   if (!topCard || !state.currentColor) return [{ type: 'DRAW_CARD', playerId }];
 
+  const hasDrawnThisTurn =
+    state.lastAction?.type === 'DRAW_CARD' &&
+    state.lastAction.playerId === playerId;
+
+  if (hasDrawnThisTurn && state.drawStack === 0) {
+    const playableAfterDraw = getPlayableCards(player.hand, topCard, state.currentColor);
+    if (playableAfterDraw.length === 0) {
+      return [{ type: 'PASS', playerId }];
+    }
+    const pick = pickPlayableCard(playableAfterDraw, state.currentColor);
+    return playCardActions(playerId, pick, player.hand);
+  }
+
   if (state.drawStack > 0) {
     const hr = state.settings.houseRules;
     const stackingEnabled = hr.stackDrawTwo || hr.stackDrawFour || hr.crossStack;
@@ -53,11 +82,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
       });
       if (stackable.length > 0) {
         const pick = stackable[0]!;
-        const actions: GameAction[] = [{ type: 'PLAY_CARD', playerId, cardId: pick.id }];
-        if (pick.type === 'wild_draw_four') {
-          actions.push({ type: 'CHOOSE_COLOR', playerId, color: bestColor(player.hand, pick.id) });
-        }
-        return actions;
+        return playCardActions(playerId, pick, player.hand);
       }
     }
 
@@ -84,14 +109,6 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   }
 
   // Priority: same-color non-wild > any non-wild > wild as last resort
-  let pick = playable.find(c => c.color === state.currentColor);
-  if (!pick) pick = playable.find(c => c.color !== null);
-  if (!pick) pick = playable[0]!;
-
-  const isWild = pick.type === 'wild' || pick.type === 'wild_draw_four';
-  const actions: GameAction[] = [{ type: 'PLAY_CARD', playerId, cardId: pick.id }];
-  if (isWild) {
-    actions.push({ type: 'CHOOSE_COLOR', playerId, color: bestColor(player.hand, pick.id) });
-  }
-  return actions;
+  const pick = pickPlayableCard(playable, state.currentColor);
+  return playCardActions(playerId, pick, player.hand);
 }
