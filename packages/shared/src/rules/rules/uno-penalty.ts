@@ -16,7 +16,13 @@ export const unoPenalty: HouseRulePlugin = {
     const targetIdx = state.players.findIndex(p => p.id === action.targetId);
     if (targetIdx === -1) return { handled: true, state };
     const target = state.players[targetIdx]!;
-    if (target.hand.length !== 1 || target.calledUno) return { handled: true, state };
-    return { handled: true, state: ctx.drawCardsFromDeck(state, action.targetId, hr.unoPenaltyCount) };
+    if (target.hand.length !== 1 || target.calledUno || target.unoCaught) return { handled: true, state };
+    const players = state.players.map((p, i) =>
+      i === targetIdx ? { ...p, unoCaught: true } : p,
+    );
+    return {
+      handled: true,
+      state: ctx.startPenaltyDraw({ ...state, players }, action.targetId, hr.unoPenaltyCount, state.currentPlayerIndex),
+    };
   },
 };

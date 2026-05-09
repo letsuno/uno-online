@@ -38,6 +38,15 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
   return { ...defaults, ...overrides };
 }
 
+function drawPendingPenalty(state: GameState): GameState {
+  let current = state;
+  while ((current.pendingPenaltyDraws ?? 0) > 0) {
+    const playerId = current.players[current.currentPlayerIndex]!.id;
+    current = applyAction(current, { type: 'DRAW_CARD', playerId });
+  }
+  return current;
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // PLAY_CARD
 // ──────────────────────────────────────────────────────────────────────────────
@@ -170,8 +179,12 @@ describe('PLAY_CARD - draw_two', () => {
       deck: deckCards,
     });
     const next = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'c1' });
-    expect(next.players[1]!.hand).toHaveLength(2); // p2 drew 2
-    expect(next.currentPlayerIndex).toBe(2); // p3's turn (p2 is skipped)
+    expect(next.players[1]!.hand).toHaveLength(0);
+    expect(next.currentPlayerIndex).toBe(1);
+    expect(next.pendingPenaltyDraws).toBe(2);
+    const afterPenalty = drawPendingPenalty(next);
+    expect(afterPenalty.players[1]!.hand).toHaveLength(2);
+    expect(afterPenalty.currentPlayerIndex).toBe(2);
   });
 });
 
@@ -419,10 +432,12 @@ describe('CHALLENGE - WD4 was legal (challenge fails)', () => {
       ],
     });
     const next = applyAction(state, { type: 'CHALLENGE', playerId: 'p2' });
-    // Challenge failed (WD4 was legal), p2 draws 6 (4 + 2 penalty? no, spec says 6)
-    expect(next.players[1]!.hand).toHaveLength(6);
-    // Turn advances past challenger (p2), so to p3
-    expect(next.currentPlayerIndex).toBe(2);
+    expect(next.players[1]!.hand).toHaveLength(0);
+    expect(next.currentPlayerIndex).toBe(1);
+    expect(next.pendingPenaltyDraws).toBe(6);
+    const afterPenalty = drawPendingPenalty(next);
+    expect(afterPenalty.players[1]!.hand).toHaveLength(6);
+    expect(afterPenalty.currentPlayerIndex).toBe(2);
     expect(next.phase).toBe('playing');
     expect(next.pendingDrawPlayerId).toBeNull();
   });
@@ -455,9 +470,11 @@ describe('CHALLENGE - WD4 was illegal (challenge wins)', () => {
       ],
     });
     const next = applyAction(state, { type: 'CHALLENGE', playerId: 'p2' });
-    // Challenge succeeded: p1 (WD4 player) draws 4
-    expect(next.players[0]!.hand).toHaveLength(5); // 1 existing + 4 drawn
-    // Turn advances (past p1 who gets penalized? actually to next player)
+    expect(next.players[0]!.hand).toHaveLength(1);
+    expect(next.currentPlayerIndex).toBe(0);
+    expect(next.pendingPenaltyDraws).toBe(4);
+    const afterPenalty = drawPendingPenalty(next);
+    expect(afterPenalty.players[0]!.hand).toHaveLength(5);
     expect(next.phase).toBe('playing');
     expect(next.pendingDrawPlayerId).toBeNull();
   });
@@ -489,7 +506,8 @@ describe('CHALLENGE - WD4 was illegal (challenge wins)', () => {
 
     const next = applyAction(state, { type: 'CHALLENGE', playerId: 'p2' });
 
-    expect(next.players[0]!.hand).toHaveLength(5);
+    const afterPenalty = drawPendingPenalty(next);
+    expect(afterPenalty.players[0]!.hand).toHaveLength(5);
     expect(next.players[1]!.hand).toHaveLength(0);
     expect(next.phase).toBe('playing');
   });
@@ -516,8 +534,12 @@ describe('ACCEPT', () => {
       deck: deckCards,
     });
     const next = applyAction(state, { type: 'ACCEPT', playerId: 'p2' });
-    expect(next.players[1]!.hand).toHaveLength(4); // p2 drew 4
-    expect(next.currentPlayerIndex).toBe(2); // advances past p2 to p3
+    expect(next.players[1]!.hand).toHaveLength(0);
+    expect(next.currentPlayerIndex).toBe(1);
+    expect(next.pendingPenaltyDraws).toBe(4);
+    const afterPenalty = drawPendingPenalty(next);
+    expect(afterPenalty.players[1]!.hand).toHaveLength(4);
+    expect(afterPenalty.currentPlayerIndex).toBe(2);
     expect(next.phase).toBe('playing');
     expect(next.pendingDrawPlayerId).toBeNull();
   });
@@ -548,10 +570,12 @@ describe('ACCEPT', () => {
     const afterPlay = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4_last' });
     const afterColor = applyAction(afterPlay, { type: 'CHOOSE_COLOR', playerId: 'p1', color: 'green' });
     const afterAccept = applyAction(afterColor, { type: 'ACCEPT', playerId: 'p2' });
+    const afterPenalty = drawPendingPenalty(afterAccept);
 
-    expect(afterAccept.phase).toBe('round_end');
-    expect(afterAccept.winnerId).toBe('p1');
-    expect(afterAccept.players[1]!.hand).toHaveLength(5);
+    expect(afterAccept.phase).toBe('playing');
+    expect(afterPenalty.phase).toBe('round_end');
+    expect(afterPenalty.winnerId).toBe('p1');
+    expect(afterPenalty.players[1]!.hand).toHaveLength(5);
   });
 });
 
@@ -651,7 +675,40 @@ describe('CATCH_UNO - uncalled', () => {
       deck: deckCards,
     });
     const next = applyAction(state, { type: 'CATCH_UNO', catcherId: 'p1', targetId: 'p2' });
-    expect(next.players[1]!.hand).toHaveLength(3); // 1 + 2 penalty
+    expect(next.players[1]!.hand).toHaveLength(1);
+    expect(next.players[1]!.unoCaught).toBe(true);
+    expect(next.pendingPenaltyDraws).toBe(2);
+    const afterPenalty = drawPendingPenalty(next);
+    expect(afterPenalty.players[1]!.hand).toHaveLength(3);
+    expect(afterPenalty.players[1]!.unoCaught).toBe(false);
+  });
+
+  it('does not apply the same missed UNO penalty more than once', () => {
+    const deckCards = [
+      makeCard('number', 'blue', { value: 1, id: 'dc1' }),
+      makeCard('number', 'blue', { value: 2, id: 'dc2' }),
+      makeCard('number', 'green', { value: 3, id: 'dc3' }),
+      makeCard('number', 'green', { value: 4, id: 'dc4' }),
+    ];
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2', name: 'Bob',
+          hand: [makeCard('number', 'red', { value: 5, id: 'p2c1' })],
+          score: 0, connected: true, calledUno: false,
+        },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+      deck: deckCards,
+    });
+
+    const firstCatch = applyAction(state, { type: 'CATCH_UNO', catcherId: 'p1', targetId: 'p2' });
+    const secondCatch = applyAction(firstCatch, { type: 'CATCH_UNO', catcherId: 'p3', targetId: 'p2' });
+
+    expect(secondCatch).toStrictEqual(firstCatch);
+    const afterPenalty = drawPendingPenalty(secondCatch);
+    expect(afterPenalty.players[1]!.hand).toHaveLength(3);
   });
 });
 
@@ -776,9 +833,11 @@ describe('PLAY_CARD - last draw_two triggers effect then ends round', () => {
       deck: deckCards,
     });
     const next = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'c1' });
-    expect(next.phase).toBe('round_end');
-    expect(next.winnerId).toBe('p1');
-    // p2 should have received the 2 penalty cards
-    expect(next.players[1]!.hand).toHaveLength(3); // 1 original + 2 drawn
+    expect(next.phase).toBe('playing');
+    expect(next.pendingPenaltyDraws).toBe(2);
+    const afterPenalty = drawPendingPenalty(next);
+    expect(afterPenalty.phase).toBe('round_end');
+    expect(afterPenalty.winnerId).toBe('p1');
+    expect(afterPenalty.players[1]!.hand).toHaveLength(3);
   });
 });

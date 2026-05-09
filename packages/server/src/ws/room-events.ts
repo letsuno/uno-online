@@ -1,6 +1,6 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
-import type { GameAction, RoomSettings } from '@uno-online/shared';
+import type { GameAction, GameState, RoomSettings } from '@uno-online/shared';
 import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, GameEventType } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager';
 import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, deleteRoom } from '../plugins/core/room/store';
@@ -23,7 +23,8 @@ function canAutopilotActForPlayer(session: GameSession, playerId: string): boole
   return state.players[state.currentPlayerIndex]?.id === playerId;
 }
 
-function shouldPauseAfterAction(session: GameSession, action: GameAction): boolean {
+function shouldPauseAfterAction(before: GameState, session: GameSession, action: GameAction): boolean {
+  if (action.type === 'DRAW_CARD' && (before.pendingPenaltyDraws ?? 0) > 0) return true;
   if (action.type !== 'PLAY_CARD') return false;
   const topCard = session.getFullState().discardPile.at(-1);
   return topCard?.type === 'draw_two' || topCard?.type === 'wild_draw_four';
@@ -246,10 +247,11 @@ export async function executeAutopilot(
     if (actions.length === 0) break;
     let anySuccess = false;
     for (const action of actions) {
+      const beforeAction = session.getFullState();
       const result = session.applyAction(action);
       if (result.success) {
         anySuccess = true;
-        if (shouldPauseAfterAction(session, action)) {
+        if (shouldPauseAfterAction(beforeAction, session, action)) {
           await onPenaltyPause?.();
           await sleep(DRAW_PENALTY_PAUSE_MS);
         }

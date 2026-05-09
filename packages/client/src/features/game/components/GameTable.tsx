@@ -254,33 +254,52 @@ export default function GameTable({ onDraw }: GameTableProps) {
     return playerPositions[idx];
   }, [players, playerPositions]);
 
-  // Draw animation: track who drew and compute target direction
+  // Draw animation: track hand count increases and compute target direction
   const [drawAnim, setDrawAnim] = useState<{ trigger: number; targetX: number; targetY: number }>({ trigger: 0, targetX: 0, targetY: 220 });
+  const prevHandCountsRef = useRef<Map<string, number>>(new Map());
+  const drawAnimationTimersRef = useRef<number[]>([]);
 
   const computeDrawTarget = useCallback((playerId: string) => {
     const pos = getPlayerPosition(playerId);
     if (!pos || dimensions.width === 0) return { x: 0, y: 220 };
     const cx = dimensions.width / 2;
     const cy = dimensions.height / 2;
-    return { x: pos.x - cx, y: pos.y - cy };
-  }, [getPlayerPosition, dimensions]);
+    const isMe = playerId === userId;
+    return { x: pos.x - cx, y: pos.y - cy + (isMe ? 92 : 58) };
+  }, [getPlayerPosition, dimensions, userId]);
 
   useEffect(() => {
-    const socket = getSocket();
-    const handler = (data: { playerId: string }) => {
-      const target = computeDrawTarget(data.playerId);
-      setDrawAnim((prev) => ({ trigger: prev.trigger + 1, targetX: target.x, targetY: target.y }));
-    };
-    socket.on('game:opponent_drew', handler);
-    return () => { socket.off('game:opponent_drew', handler); };
-  }, [computeDrawTarget]);
-
-  useEffect(() => {
-    if (lastAction?.type === 'DRAW_CARD' && lastAction.playerId === userId) {
-      const target = computeDrawTarget(lastAction.playerId);
-      setDrawAnim((prev) => ({ trigger: prev.trigger + 1, targetX: target.x, targetY: target.y }));
+    if (players.length === 0 || dimensions.width === 0) return;
+    const previous = prevHandCountsRef.current;
+    for (const player of players) {
+      const before = previous.get(player.id);
+      const after = player.handCount;
+      if (before !== undefined && after > before) {
+        const added = after - before;
+        for (let i = 0; i < added; i++) {
+          const target = computeDrawTarget(player.id);
+          const timer = window.setTimeout(() => {
+            setDrawAnim((prev) => ({
+              trigger: prev.trigger + 1,
+              targetX: target.x,
+              targetY: target.y,
+            }));
+          }, i * 120);
+          drawAnimationTimersRef.current.push(timer);
+        }
+      }
     }
-  }, [lastAction, userId, computeDrawTarget]);
+    prevHandCountsRef.current = new Map(players.map((p) => [p.id, p.handCount]));
+  }, [players, dimensions.width, computeDrawTarget]);
+
+  useEffect(() => {
+    return () => {
+      for (const timer of drawAnimationTimersRef.current) {
+        window.clearTimeout(timer);
+      }
+      drawAnimationTimersRef.current = [];
+    };
+  }, []);
 
   // Handle reaction from quick reaction menu
   const handleReaction = useCallback((emoji: string) => {

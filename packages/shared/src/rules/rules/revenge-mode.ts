@@ -21,7 +21,7 @@ export const revengeMode: HouseRulePlugin = {
     if (playedCard.type === 'draw_two') {
       const victimIdx = ctx.getNextPlayerIndex(before.currentPlayerIndex, before.players.length, before.direction);
       const victimId = before.players[victimIdx]!.id;
-      return ctx.drawCardsFromDeck(after, victimId, 2);
+      return ctx.startPenaltyDraw(after, victimId, 2, after.pendingPenaltyNextPlayerIndex ?? after.currentPlayerIndex);
     } else {
       return { ...after, drawStack: after.drawStack + 4 };
     }

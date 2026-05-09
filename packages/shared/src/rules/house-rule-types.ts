@@ -17,6 +17,13 @@ export interface RuleContext {
   applyAction: (state: GameState, action: GameAction) => GameState;
   checkRoundEnd: (state: GameState, playerId: string) => GameState;
   drawCardsFromDeck: (state: GameState, playerId: string, count: number) => GameState;
+  startPenaltyDraw: (
+    state: GameState,
+    playerId: string,
+    count: number,
+    nextPlayerIndex: number,
+    sourcePlayerId?: string | null,
+  ) => GameState;
   putAttackCardOnStack: (
     state: GameState,
     action: Extract<GameAction, { type: 'PLAY_CARD' }>,

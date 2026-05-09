@@ -1,4 +1,4 @@
-import type { GameState, GameAction } from '../types/game';
+import type { GameState, GameAction, PendingPenaltyDraw } from '../types/game';
 import type { Color } from '../types/card';
 import { reshuffleDiscardIntoDeck } from './deck';
 import { canPlayCard, isValidWildDrawFour } from './validation';
@@ -6,9 +6,9 @@ import { getNextPlayerIndex, reverseDirection } from './turn';
 import { calculateRoundScores } from './scoring';
 import { UNO_PENALTY_CARDS } from '../constants/scoring';
 
-// ──────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Helpers
-// ──────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 /**
  * Draw `count` cards from the deck into the given player's hand.
@@ -30,6 +30,8 @@ function drawCards(state: GameState, playerId: string, count: number): GameState
     if (deck.length === 0) break; // nothing left even after reshuffle
     const card = deck.shift()!;
     players[playerIdx]!.hand.push(card);
+    players[playerIdx]!.calledUno = false;
+    players[playerIdx]!.unoCaught = false;
   }
 
   return { ...state, deck, discardPile, players };
@@ -75,6 +77,83 @@ function currentPlayerId(state: GameState): string {
   return state.players[state.currentPlayerIndex]!.id;
 }
 
+function startPenaltyDraw(
+  state: GameState,
+  playerId: string,
+  count: number,
+  nextPlayerIndex: number,
+  sourcePlayerId: string | null = null,
+): GameState {
+  if (count <= 0) return state;
+  const playerIdx = playerIndex(state, playerId);
+  if (playerIdx === -1) return state;
+  const queue: PendingPenaltyDraw[] = state.pendingPenaltyDraws && state.pendingPenaltyDraws > 0
+    ? [
+        ...(state.pendingPenaltyQueue ?? []),
+        { playerId, count, nextPlayerIndex, sourcePlayerId },
+      ]
+    : (state.pendingPenaltyQueue ?? []);
+
+  if (state.pendingPenaltyDraws && state.pendingPenaltyDraws > 0) {
+    return { ...state, pendingPenaltyQueue: queue };
+  }
+
+  return {
+    ...state,
+    phase: 'playing',
+    currentPlayerIndex: playerIdx,
+    pendingPenaltyDraws: count,
+    pendingPenaltyNextPlayerIndex: nextPlayerIndex,
+    pendingPenaltySourcePlayerId: sourcePlayerId,
+    pendingPenaltyQueue: queue,
+  };
+}
+
+function finishPenaltyDrawIfNeeded(state: GameState, lastAction: GameAction): GameState {
+  const remaining = state.pendingPenaltyDraws ?? 0;
+  if (remaining <= 0) return state;
+
+  const nextRemaining = Math.max(remaining - 1, 0);
+  if (nextRemaining > 0) {
+    return { ...state, pendingPenaltyDraws: nextRemaining, lastAction };
+  }
+
+  const queued = state.pendingPenaltyQueue ?? [];
+  const [nextPenalty, ...restQueue] = queued;
+  if (nextPenalty) {
+    return startPenaltyDraw(
+      {
+        ...state,
+        pendingPenaltyDraws: 0,
+        pendingPenaltyNextPlayerIndex: null,
+        pendingPenaltySourcePlayerId: null,
+        pendingPenaltyQueue: restQueue,
+        lastAction,
+      },
+      nextPenalty.playerId,
+      nextPenalty.count,
+      nextPenalty.nextPlayerIndex,
+      nextPenalty.sourcePlayerId ?? null,
+    );
+  }
+
+  let finished: GameState = {
+    ...state,
+    pendingPenaltyDraws: 0,
+    pendingPenaltyNextPlayerIndex: null,
+    pendingPenaltySourcePlayerId: null,
+    pendingPenaltyQueue: [],
+    currentPlayerIndex: state.pendingPenaltyNextPlayerIndex ?? state.currentPlayerIndex,
+    lastAction,
+  };
+
+  if (state.pendingPenaltySourcePlayerId) {
+    finished = checkRoundEnd(finished, state.pendingPenaltySourcePlayerId);
+  }
+
+  return finished;
+}
+
 function withChosenColorOnTopDiscard(state: GameState, color: Color): GameState {
   const discardPile = [...state.discardPile];
   const topCard = discardPile[discardPile.length - 1];
@@ -99,9 +178,9 @@ function getWildDrawFourChallengeColor(state: GameState): Color {
   return state.currentColor ?? 'red';
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Action handlers
-// ──────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 function handlePlayCard(
   state: GameState,
@@ -137,7 +216,7 @@ function handlePlayCard(
 
   const players = state.players.map((p, idx) =>
     idx === actingPlayerIdx
-      ? { ...p, hand: newHand, calledUno: false }
+      ? { ...p, hand: newHand, calledUno: false, unoCaught: false }
       : { ...p }
   );
 
@@ -175,7 +254,7 @@ function handlePlayCard(
     case 'reverse': {
       const newDirection = reverseDirection(state.direction);
       if (playerCount === 2) {
-        // In 2-player, reverse acts as skip — current player keeps the turn
+        // In 2-player, reverse acts as skip: current player keeps the turn
         newState = {
           ...newState,
           currentColor: card.color,
@@ -197,17 +276,13 @@ function handlePlayCard(
     case 'draw_two': {
       const nextIdx = getNextPlayerIndex(actingPlayerIdx, playerCount, state.direction);
       const nextPlayerId = state.players[nextIdx]!.id;
-      // Next player draws 2
-      const afterDraw = drawCards(
+      newState = startPenaltyDraw(
         { ...newState, currentColor: card.color },
         nextPlayerId,
         2,
+        getNextPlayerIndex(actingPlayerIdx, playerCount, state.direction, 1),
+        actingPlayer.id,
       );
-      // Skip next player (advance 2 total)
-      newState = {
-        ...afterDraw,
-        currentPlayerIndex: getNextPlayerIndex(actingPlayerIdx, playerCount, state.direction, 1),
-      };
       break;
     }
 
@@ -233,10 +308,7 @@ function handlePlayCard(
     }
   }
 
-  // Check for round end (player emptied their hand)
-  // For draw_two and wild_draw_four the effect must be applied first, then check
-  // (effects above modify the state; now check if the playing player's hand is empty)
-  if (card.type !== 'wild' && card.type !== 'wild_draw_four') {
+  if (card.type !== 'wild' && card.type !== 'wild_draw_four' && card.type !== 'draw_two') {
     newState = checkRoundEnd(newState, actingPlayer.id);
   }
 
@@ -251,6 +323,9 @@ function handleDrawCard(
   if (action.playerId !== currentPlayerId(state)) return state;
 
   const newState = drawCards(state, action.playerId, 1);
+  if ((state.pendingPenaltyDraws ?? 0) > 0) {
+    return finishPenaltyDrawIfNeeded(newState, action);
+  }
   return { ...newState, lastAction: action };
 }
 
@@ -330,47 +405,30 @@ function handleChallenge(
   if (state.phase !== 'challenging') return state;
   if (action.playerId !== state.pendingDrawPlayerId) return state;
 
-  // The WD4 player is the current player (who played WD4)
   const wd4PlayerIdx = state.currentPlayerIndex;
   const wd4Player = state.players[wd4PlayerIdx]!;
   const challengerIdx = playerIndex(state, action.playerId);
-
   const prevColor = getWildDrawFourChallengeColor(state);
-
-  // Check legality: was WD4 valid given the player's hand (minus the WD4 itself)?
-  // The player's current hand represents what they had after playing WD4 (minus WD4)
   const wd4WasLegal = isValidWildDrawFour(wd4Player.hand, prevColor);
 
   if (wd4WasLegal) {
-    // Challenge fails: challenger draws 6
-    let newState = drawCards(state, action.playerId, 6);
-    // Advance past the challenger
     const nextIdx = getNextPlayerIndex(challengerIdx, state.players.length, state.direction);
-    newState = {
-      ...newState,
+    return startPenaltyDraw({
+      ...state,
       phase: 'playing',
-      currentPlayerIndex: nextIdx,
       pendingDrawPlayerId: null,
       lastAction: { ...action, succeeded: false, penaltyPlayerId: action.playerId, penaltyCount: 6 },
-    };
-    return state.lastAction?.type === 'CHOOSE_COLOR'
-      ? checkRoundEnd(newState, wd4Player.id)
-      : newState;
-  } else {
-    // Challenge succeeds: WD4 player draws 4
-    let newState = drawCards(state, wd4Player.id, 4);
-    // Advance to the next player (past wd4 player — the normal next player)
-    const nextIdx = getNextPlayerIndex(wd4PlayerIdx, state.players.length, state.direction);
-    return {
-      ...newState,
-      phase: 'playing',
-      currentPlayerIndex: nextIdx,
-      pendingDrawPlayerId: null,
-      lastAction: { ...action, succeeded: true, penaltyPlayerId: wd4Player.id, penaltyCount: 4 },
-    };
+    }, action.playerId, 6, nextIdx, state.lastAction?.type === 'CHOOSE_COLOR' ? wd4Player.id : null);
   }
-}
 
+  const nextIdx = getNextPlayerIndex(wd4PlayerIdx, state.players.length, state.direction);
+  return startPenaltyDraw({
+    ...state,
+    phase: 'playing',
+    pendingDrawPlayerId: null,
+    lastAction: { ...action, succeeded: true, penaltyPlayerId: wd4Player.id, penaltyCount: 4 },
+  }, wd4Player.id, 4, nextIdx);
+}
 function handleAccept(
   state: GameState,
   action: Extract<GameAction, { type: 'ACCEPT' }>,
@@ -380,22 +438,14 @@ function handleAccept(
 
   const wd4PlayerId = currentPlayerId(state);
   const accepterIdx = playerIndex(state, action.playerId);
-  // Accepter draws 4
-  let newState = drawCards(state, action.playerId, 4);
-  // Advance past the accepter
   const nextIdx = getNextPlayerIndex(accepterIdx, state.players.length, state.direction);
-  newState = {
-    ...newState,
+  return startPenaltyDraw({
+    ...state,
     phase: 'playing',
-    currentPlayerIndex: nextIdx,
     pendingDrawPlayerId: null,
     lastAction: action,
-  };
-  return state.lastAction?.type === 'CHOOSE_COLOR'
-    ? checkRoundEnd(newState, wd4PlayerId)
-    : newState;
+  }, action.playerId, 4, nextIdx, state.lastAction?.type === 'CHOOSE_COLOR' ? wd4PlayerId : null);
 }
-
 function handleCallUno(
   state: GameState,
   action: Extract<GameAction, { type: 'CALL_UNO' }>,
@@ -407,7 +457,7 @@ function handleCallUno(
   if (player.hand.length !== 1) return state;
 
   const players = state.players.map((p, i) =>
-    i === idx ? { ...p, calledUno: true } : p
+    i === idx ? { ...p, calledUno: true, unoCaught: false } : p
   );
   return { ...state, players, lastAction: action };
 }
@@ -421,14 +471,17 @@ function handleCatchUno(
 
   const target = state.players[targetIdx]!;
   // Can only catch a player with exactly 1 card who hasn't called UNO
-  if (target.hand.length !== 1 || target.calledUno) return state;
+  if (target.hand.length !== 1 || target.calledUno || target.unoCaught) return state;
 
-  return drawCards(state, action.targetId, UNO_PENALTY_CARDS);
+  const players = state.players.map((p, i) =>
+    i === targetIdx ? { ...p, unoCaught: true } : p,
+  );
+  return startPenaltyDraw({ ...state, players }, action.targetId, UNO_PENALTY_CARDS, state.currentPlayerIndex);
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Main reducer
-// ──────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 export function applyAction(state: GameState, action: GameAction): GameState {
   switch (action.type) {

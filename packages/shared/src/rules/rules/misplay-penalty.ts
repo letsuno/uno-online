@@ -18,7 +18,10 @@ export const misplayPenalty: HouseRulePlugin = {
     }
     const standardResult = ctx.applyAction(state, action);
     if (standardResult === state) {
-      return { handled: true, state: ctx.drawCardsFromDeck(state, action.playerId, 1) };
+      return {
+        handled: true,
+        state: ctx.startPenaltyDraw(state, action.playerId, 1, state.currentPlayerIndex),
+      };
     }
     return { handled: false };
   },

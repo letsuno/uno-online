@@ -1,11 +1,44 @@
 import type { GameState, GameAction } from '../types/game';
 import type { Card } from '../types/card';
+import type { PendingPenaltyDraw } from '../types/game';
 import { isWildCard } from '../types/card';
 import { reshuffleDiscardIntoDeck } from './deck';
 import { canPlayCard } from './validation';
 import { getNextPlayerIndex } from './turn';
 import { applyAction, checkRoundEnd } from './game-engine';
 import type { RuleContext } from './house-rule-types';
+
+export function startPenaltyDraw(
+  state: GameState,
+  playerId: string,
+  count: number,
+  nextPlayerIndex: number,
+  sourcePlayerId: string | null = null,
+): GameState {
+  if (count <= 0) return state;
+  const playerIndex = state.players.findIndex(p => p.id === playerId);
+  if (playerIndex === -1) return state;
+  const queue: PendingPenaltyDraw[] = state.pendingPenaltyDraws && state.pendingPenaltyDraws > 0
+    ? [
+        ...(state.pendingPenaltyQueue ?? []),
+        { playerId, count, nextPlayerIndex, sourcePlayerId },
+      ]
+    : (state.pendingPenaltyQueue ?? []);
+
+  if (state.pendingPenaltyDraws && state.pendingPenaltyDraws > 0) {
+    return { ...state, pendingPenaltyQueue: queue };
+  }
+
+  return {
+    ...state,
+    phase: 'playing',
+    currentPlayerIndex: playerIndex,
+    pendingPenaltyDraws: count,
+    pendingPenaltyNextPlayerIndex: nextPlayerIndex,
+    pendingPenaltySourcePlayerId: sourcePlayerId,
+    pendingPenaltyQueue: queue,
+  };
+}
 
 export function drawCardsFromDeck(state: GameState, playerId: string, count: number): GameState {
   const playerIndex = state.players.findIndex(p => p.id === playerId);
@@ -23,7 +56,7 @@ export function drawCardsFromDeck(state: GameState, playerId: string, count: num
     drawn.push(deck.shift()!);
   }
   const players = state.players.map((p, idx) =>
-    idx === playerIndex ? { ...p, hand: [...p.hand, ...drawn], calledUno: false } : p,
+    idx === playerIndex ? { ...p, hand: [...p.hand, ...drawn], calledUno: false, unoCaught: false } : p,
   );
   return { ...state, players, deck, discardPile };
 }
@@ -72,7 +105,7 @@ export function putAttackCardOnStack(
       ? { ...card, chosenColor: action.chosenColor }
       : card;
   const players = state.players.map((p, i) =>
-    i === state.currentPlayerIndex ? { ...p, hand: newHand, calledUno: false } : p,
+    i === state.currentPlayerIndex ? { ...p, hand: newHand, calledUno: false, unoCaught: false } : p,
   );
   const nextIdx = getNextPlayerIndex(state.currentPlayerIndex, players.length, state.direction);
   const newColor = card.type === 'draw_two' ? card.color : (action.chosenColor ?? state.currentColor);
@@ -129,7 +162,7 @@ export function handleDrawUntilPlayable(state: GameState, action: Extract<GameAc
     const drawnCard = deck.shift()!;
     const players = current.players.map((p, idx) =>
       idx === current.currentPlayerIndex
-        ? { ...p, hand: [...p.hand, drawnCard], calledUno: false }
+        ? { ...p, hand: [...p.hand, drawnCard], calledUno: false, unoCaught: false }
         : p,
     );
     current = { ...current, players, deck, discardPile, lastAction: action };
@@ -163,6 +196,7 @@ export function buildRuleContext(): RuleContext {
     applyAction,
     checkRoundEnd,
     drawCardsFromDeck,
+    startPenaltyDraw,
     putAttackCardOnStack,
     getCardDrawPenalty,
     canStartDrawStack,

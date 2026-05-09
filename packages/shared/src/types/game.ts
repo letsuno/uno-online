@@ -22,6 +22,7 @@ export interface Player {
   connected: boolean;
   autopilot: boolean;
   calledUno: boolean;
+  unoCaught?: boolean;
   eliminated?: boolean;
   teamId?: number;
   avatarUrl?: string | null;
@@ -46,11 +47,22 @@ export interface GameState {
   currentColor: Color | null;
   drawStack: number;
   pendingDrawPlayerId: string | null;
+  pendingPenaltyDraws?: number;
+  pendingPenaltyNextPlayerIndex?: number | null;
+  pendingPenaltySourcePlayerId?: string | null;
+  pendingPenaltyQueue?: PendingPenaltyDraw[];
   lastAction: GameAction | null;
   roundNumber: number;
   winnerId: string | null;
   deckHash: string;
   settings: RoomSettings;
+}
+
+export interface PendingPenaltyDraw {
+  playerId: string;
+  count: number;
+  nextPlayerIndex: number;
+  sourcePlayerId?: string | null;
 }
 
 export interface RoundResult {

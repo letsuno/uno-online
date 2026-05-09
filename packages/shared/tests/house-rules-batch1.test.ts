@@ -40,6 +40,15 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
   };
 }
 
+function drawPendingPenalty(state: GameState): GameState {
+  let current = state;
+  while ((current.pendingPenaltyDraws ?? 0) > 0) {
+    const playerId = current.players[current.currentPlayerIndex]!.id;
+    current = applyActionWithHouseRules(current, { type: 'DRAW_CARD', playerId });
+  }
+  return current;
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // wildFirstTurn — handleFirstDiscard with skipWild
 // ──────────────────────────────────────────────────────────────────────────────
@@ -241,7 +250,10 @@ describe('revengeMode', () => {
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'd2_play' });
     // Base engine draws 2 for p2, revengeMode draws 2 more = 4 total
     // p2 started with 1 card, so should now have 5
-    expect(next.players[1]!.hand).toHaveLength(5);
+    expect(next.pendingPenaltyDraws).toBe(2);
+    expect(next.pendingPenaltyQueue).toHaveLength(1);
+    const paid = drawPendingPenalty(next);
+    expect(paid.players[1]!.hand).toHaveLength(5);
   });
 
   it('doubles draw penalty when counter-attacking with wild_draw_four after draw_two', () => {
@@ -293,7 +305,9 @@ describe('revengeMode', () => {
     });
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'd2_play' });
     // Normal draw_two: p2 draws 2 (started with 1 -> 3), no doubling
-    expect(next.players[1]!.hand).toHaveLength(3);
+    expect(next.pendingPenaltyDraws).toBe(2);
+    const paid = drawPendingPenalty(next);
+    expect(paid.players[1]!.hand).toHaveLength(3);
   });
 
   it('does NOT double when revengeMode is disabled', () => {
@@ -314,6 +328,8 @@ describe('revengeMode', () => {
     });
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'd2_play' });
     // Standard draw_two: p2 draws 2 (started with 1 -> 3), no revenge doubling
-    expect(next.players[1]!.hand).toHaveLength(3);
+    expect(next.pendingPenaltyDraws).toBe(2);
+    const paid = drawPendingPenalty(next);
+    expect(paid.players[1]!.hand).toHaveLength(3);
   });
 });
