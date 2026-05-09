@@ -36,7 +36,7 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   };
 
   return (
-    <div className="flex justify-center gap-2.5 py-2">
+    <div className="relative z-actions flex justify-center gap-2.5 py-2 pointer-events-auto">
       {me && me.hand.length === 1 && !me.calledUno && (
         <Button variant="primary" onClick={withCooldown(onCallUno)} disabled={cooldown}>喊 UNO!</Button>
       )}

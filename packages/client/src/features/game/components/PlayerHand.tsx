@@ -49,10 +49,10 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   const center = (sorted.length - 1) / 2;
 
   return (
-    <div className="relative z-actions overflow-visible pt-10 -mt-10">
-      <div className="absolute inset-x-0 top-0 h-px bg-primary/15" />
+    <div className="relative z-actions overflow-visible pt-10 -mt-10 pointer-events-none">
+      <div className="absolute inset-x-0 top-0 h-px bg-primary/15 pointer-events-none" />
       <div
-        className="relative rounded-t-2xl px-5 pt-8 pb-hand-pb flex justify-center overflow-x-auto overflow-y-visible scrollbar-hidden"
+        className="relative rounded-t-2xl px-5 pt-8 pb-hand-pb flex justify-center overflow-x-auto overflow-y-visible scrollbar-hidden pointer-events-auto"
         style={{
           background: 'radial-gradient(ellipse at 50% 100%, rgba(251,191,36,0.08) 0%, rgba(0,0,0,0.35) 60%)',
         }}
