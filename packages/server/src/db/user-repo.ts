@@ -30,6 +30,9 @@ export async function findOrCreateUser(data: GitHubUserData) {
     return { ...existing, avatarUrl: data.avatarUrl, isNewUser: false };
   }
 
+  const userCount = await db.selectFrom('users').select(sql<number>`count(*)`.as('count')).executeTakeFirstOrThrow();
+  const role = userCount.count === 0 ? 'admin' : 'normal';
+
   const inserted = await db
     .insertInto('users')
     .values({
@@ -37,6 +40,7 @@ export async function findOrCreateUser(data: GitHubUserData) {
       username: data.username,
       nickname: data.username,
       avatarUrl: data.avatarUrl,
+      role,
     })
     .returningAll()
     .executeTakeFirstOrThrow();

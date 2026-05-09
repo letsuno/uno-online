@@ -104,6 +104,17 @@ export function getSocket(): Socket {
       connectionStatusCallback?.('disconnected');
     });
 
+    socket.on('connect_error', (err) => {
+      if (err.message === 'Authentication failed') {
+        useRoomStore.getState().clearRoom();
+        useGameStore.getState().clearGame();
+        localStorage.removeItem('token');
+        socket?.disconnect();
+        socket = null;
+        window.location.href = '/?session_expired=1';
+      }
+    });
+
     socket.on('auth:kicked', (_data: { reason: string }) => {
       useRoomStore.getState().clearRoom();
       useGameStore.getState().clearGame();
