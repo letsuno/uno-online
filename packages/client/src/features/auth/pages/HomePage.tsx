@@ -36,6 +36,9 @@ export default function HomePage() {
   }, [redirect]);
 
   useEffect(() => {
+    if (searchParams.get('session_expired')) {
+      setError('登录已过期，请重新登录');
+    }
     apiGet<AuthConfig>('/auth/config').then(setAuthConfig).catch(() => {});
     loadUser().then(() => {
       const u = useAuthStore.getState().user;
