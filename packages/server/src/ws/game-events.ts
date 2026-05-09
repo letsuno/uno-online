@@ -10,7 +10,7 @@ import { emitGameUpdate, startTurnTimer } from './room-events';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { recordGameResult } from '../db/user-repo';
 import { saveGameEvents, saveDeckInfo } from '../plugins/core/game-history/service';
-import { setRoomStatus } from '../plugins/core/room/store';
+import { getRoom, setRoomStatus } from '../plugins/core/room/store';
 import type { SocketData } from './types';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
@@ -75,9 +75,46 @@ function checkChatRateLimit(userId: string): boolean {
 }
 
 const gameStartTimes = new Map<string, number>();
+const nextRoundVotes = new Map<string, Set<string>>();
+
+interface NextRoundVoteState {
+  votes: number;
+  required: number;
+  voters: string[];
+}
 
 export function setGameStartTime(roomCode: string): void {
   gameStartTimes.set(roomCode, Date.now());
+}
+
+function getNextRoundVoteState(roomCode: string, session: GameSession): NextRoundVoteState {
+  const voters = [...(nextRoundVotes.get(roomCode) ?? new Set<string>())];
+  const playerCount = session.getFullState().players.length;
+  return {
+    votes: voters.length,
+    required: Math.floor(playerCount / 2) + 1,
+    voters,
+  };
+}
+
+async function startNextRound(
+  io: SocketIOServer,
+  redis: KvStore,
+  roomCode: string,
+  session: GameSession,
+  turnTimer: TurnTimer,
+  sessions: Map<string, GameSession>,
+): Promise<void> {
+  nextRoundVotes.delete(roomCode);
+  session.startNextRound();
+  await saveGameState(redis, roomCode, session.getFullState());
+  io.to(roomCode).emit('game:next_round_vote', { votes: 0, required: Math.floor(session.getFullState().players.length / 2) + 1, voters: [] });
+  const sockets = await io.in(roomCode).fetchSockets();
+  for (const s of sockets) {
+    const userId = (s.data as SocketData).user.userId;
+    s.emit('game:state', session.getPlayerView(userId));
+  }
+  startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
 }
 
 async function emitTerminalStateIfNeeded(
@@ -99,6 +136,8 @@ async function emitTerminalStateIfNeeded(
 
   if (state.phase === 'round_end') {
     const scores = Object.fromEntries(state.players.map((p) => [p.id, p.score]));
+    nextRoundVotes.delete(roomCode);
+    io.to(roomCode).emit('game:next_round_vote', getNextRoundVoteState(roomCode, session));
     session.recordEvent(GameEventType.ROUND_END, { winnerId: state.winnerId!, scores }, null);
   }
 
@@ -316,15 +355,31 @@ export function registerGameEvents(
     if (!session.isRoundEnd()) {
       return callback?.({ success: false, error: 'Round is not over' });
     }
-    session.startNextRound();
-    await saveGameState(redis, roomCode, session.getFullState());
-    const sockets = await io.in(roomCode).fetchSockets();
-    for (const s of sockets) {
-      const userId = (s.data as SocketData).user.userId;
-      s.emit('game:state', session.getPlayerView(userId));
+
+    const room = await getRoom(redis, roomCode);
+    if (room?.ownerId === data.user.userId) {
+      await startNextRound(io, redis, roomCode, session, turnTimer, sessions);
+      return callback?.({ success: true, started: true });
     }
-    startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
-    callback?.({ success: true });
+
+    const playerIds = new Set(session.getFullState().players.map((p) => p.id));
+    if (!playerIds.has(data.user.userId)) {
+      return callback?.({ success: false, error: 'Player not in game' });
+    }
+
+    const votes = nextRoundVotes.get(roomCode) ?? new Set<string>();
+    votes.add(data.user.userId);
+    nextRoundVotes.set(roomCode, votes);
+
+    const voteState = getNextRoundVoteState(roomCode, session);
+    io.to(roomCode).emit('game:next_round_vote', voteState);
+
+    if (voteState.votes >= voteState.required) {
+      await startNextRound(io, redis, roomCode, session, turnTimer, sessions);
+      return callback?.({ success: true, started: true, vote: voteState });
+    }
+
+    callback?.({ success: true, started: false, vote: voteState });
   });
 
   socket.on('game:rematch', async (callback) => {
@@ -334,6 +389,7 @@ export function registerGameEvents(
     if (!session.isGameOver()) {
       return callback?.({ success: false, error: 'Game is not over' });
     }
+    nextRoundVotes.delete(roomCode);
     session.resetForRematch();
     sessions.set(roomCode, session);
     await setRoomStatus(redis, roomCode, 'playing');

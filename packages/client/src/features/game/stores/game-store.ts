@@ -18,6 +18,12 @@ export interface PlayerInfo {
 
 export type InfoDrawerTab = 'rules' | 'house-rules' | 'log' | 'chat';
 
+export interface NextRoundVoteState {
+  votes: number;
+  required: number;
+  voters: string[];
+}
+
 interface GameState {
   viewerId: string | null;
   phase: string | null;
@@ -38,12 +44,14 @@ interface GameState {
   hasDrawnThisTurn: boolean;
   isSpectator: boolean;
   deckHash: string | null;
+  nextRoundVote: NextRoundVoteState | null;
   setSpectator: (value: boolean) => void;
   infoDrawerOpen: boolean;
   infoDrawerTab: InfoDrawerTab;
   toggleInfoDrawer: () => void;
   setInfoDrawerTab: (tab: InfoDrawerTab) => void;
   setGameState: (view: Record<string, unknown>) => void;
+  setNextRoundVote: (vote: NextRoundVoteState | null) => void;
   setDrawnCard: (card: Card | null) => void;
   setTurnEndTime: (t: number | null) => void;
   clearGame: () => void;
@@ -69,6 +77,7 @@ export const useGameStore = create<GameState>((set) => ({
   hasDrawnThisTurn: false,
   isSpectator: false,
   deckHash: null,
+  nextRoundVote: null,
   setSpectator: (value) => set({ isSpectator: value }),
   infoDrawerOpen: false,
   infoDrawerTab: 'rules' as InfoDrawerTab,
@@ -105,8 +114,10 @@ export const useGameStore = create<GameState>((set) => ({
         hasDrawnThisTurn,
         lastDrawnCard: hasDrawnThisTurn ? state.lastDrawnCard : null,
         deckHash: (view.deckHash as string | undefined) ?? state.deckHash,
+        nextRoundVote: phase === 'round_end' ? state.nextRoundVote : null,
       };
     }),
+  setNextRoundVote: (vote) => set({ nextRoundVote: vote }),
   setDrawnCard: (card) => set({ lastDrawnCard: card, hasDrawnThisTurn: true }),
   setTurnEndTime: (t) => set({ turnEndTime: t }),
   clearGame: () =>
@@ -130,6 +141,7 @@ export const useGameStore = create<GameState>((set) => ({
       hasDrawnThisTurn: false,
       isSpectator: false,
       deckHash: null,
+      nextRoundVote: null,
       infoDrawerOpen: false,
       infoDrawerTab: 'rules' as InfoDrawerTab,
     }),
