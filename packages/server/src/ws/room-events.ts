@@ -345,6 +345,9 @@ export async function emitGameUpdate(
   const sockets = await io.in(roomCode).fetchSockets();
   let spectatorMode: 'full' | 'hidden' = 'hidden';
   if (kv) {
+    if (session.getFullState().phase === 'game_over') {
+      await setRoomStatus(kv, roomCode, 'finished');
+    }
     const room = await getRoom(kv, roomCode);
     if (room) spectatorMode = room.settings.spectatorMode ?? 'hidden';
   }
