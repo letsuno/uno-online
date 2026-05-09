@@ -19,6 +19,7 @@ export interface Player {
   name: string;
   hand: Card[];
   score: number;
+  roundWins?: number;
   connected: boolean;
   autopilot: boolean;
   calledUno: boolean;

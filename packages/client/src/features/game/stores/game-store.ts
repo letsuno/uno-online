@@ -7,6 +7,7 @@ export interface PlayerInfo {
   hand: Card[];
   handCount: number;
   score: number;
+  roundWins?: number;
   connected: boolean;
   autopilot: boolean;
   calledUno: boolean;

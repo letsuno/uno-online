@@ -49,6 +49,7 @@ export function checkRoundEnd(state: GameState, playerId: string): GameState {
   const players = state.players.map(p => ({
     ...p,
     score: p.score + (scores[p.id] ?? 0),
+    roundWins: p.id === playerId ? (p.roundWins ?? 0) + 1 : (p.roundWins ?? 0),
   }));
 
   // Check if winner has reached/exceeded the target score

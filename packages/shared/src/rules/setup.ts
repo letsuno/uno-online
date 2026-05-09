@@ -95,6 +95,7 @@ export function initializeGame(
     name: p.name,
     hand: hands[p.id]!,
     score: 0,
+    roundWins: 0,
     connected: true,
     autopilot: false,
     calledUno: false,
@@ -172,6 +173,7 @@ export function initializeNextRound(prevState: GameState): GameState {
     hand: hands[p.id] ?? [],
     calledUno: false,
     unoCaught: false,
+    roundWins: p.roundWins ?? 0,
     connected: p.connected,
     autopilot: p.autopilot,
   }));
