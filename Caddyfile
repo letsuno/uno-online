@@ -15,6 +15,10 @@ handle /mumble-ws* {
 	reverse_proxy mumble-gateway:64737
 }
 
+handle /admin {
+	redir /admin/ permanent
+}
+
 handle /admin/* {
 	root * /srv
 	try_files {path} /admin/index.html
