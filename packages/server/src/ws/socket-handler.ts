@@ -1,11 +1,10 @@
 import type { Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types';
-import { chooseAutopilotAction } from '@uno-online/shared';
 import { authenticateSocket } from '../auth/middleware';
 import { RoomManager } from '../plugins/core/room/manager';
 import { TurnTimer } from '../plugins/core/game/turn-timer';
 import { GameSession } from '../plugins/core/game/session';
-import { registerRoomEvents, emitGameUpdate, startTurnTimer } from './room-events';
+import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot } from './room-events';
 import { registerGameEvents } from './game-events';
 import { getRoom, getRoomPlayers, setRoomOwner } from '../plugins/core/room/store';
 import { saveGameState, loadGameState } from '../plugins/core/game/state-store';
@@ -67,37 +66,10 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       })();
       if (!shouldAct) return;
 
-      let acted = false;
-      for (let round = 0; round < 5; round++) {
-        const st = session.getFullState();
-        if (st.phase === 'round_end' || st.phase === 'game_over') break;
-        const canAct = st.phase === 'challenging'
-          ? st.pendingDrawPlayerId === userId
-          : st.players[st.currentPlayerIndex]?.id === userId;
-        if (!canAct) break;
-
-        const actions = chooseAutopilotAction(st, userId);
-        if (actions.length === 0) break;
-        let anySuccess = false;
-        for (const action of actions) {
-          const result = session.applyAction(action);
-          if (result.success) anySuccess = true;
-        }
-        if (!anySuccess) break;
-        acted = true;
-
-        const after = session.getFullState();
-        if (after.players[after.currentPlayerIndex]?.id !== userId) break;
-        if (after.lastAction?.type === 'DRAW_CARD') {
-          continue;
-        }
-        break;
-      }
-
-      const final = session.getFullState();
-      if (acted && final.players[final.currentPlayerIndex]?.id === userId && final.phase === 'playing') {
-        session.applyAction({ type: 'PASS', playerId: userId });
-      }
+      const acted = await executeAutopilot(session, userId, async () => {
+        await saveGameState(redis, roomCode, session.getFullState());
+        await emitGameUpdate(io, roomCode, session, redis);
+      });
 
       if (acted) {
         await saveGameState(redis, roomCode, session.getFullState());

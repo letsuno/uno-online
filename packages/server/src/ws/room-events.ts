@@ -1,6 +1,6 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
-import type { RoomSettings } from '@uno-online/shared';
+import type { GameAction, RoomSettings } from '@uno-online/shared';
 import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, GameEventType } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager';
 import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, deleteRoom } from '../plugins/core/room/store';
@@ -9,6 +9,25 @@ import { saveGameState } from '../plugins/core/game/state-store';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { setGameStartTime } from './game-events';
 import type { SocketData } from './types';
+
+const DRAW_PENALTY_PAUSE_MS = 500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function canAutopilotActForPlayer(session: GameSession, playerId: string): boolean {
+  const state = session.getFullState();
+  if (state.phase === 'round_end' || state.phase === 'game_over') return false;
+  if (state.phase === 'challenging') return state.pendingDrawPlayerId === playerId;
+  return state.players[state.currentPlayerIndex]?.id === playerId;
+}
+
+function shouldPauseAfterAction(session: GameSession, action: GameAction): boolean {
+  if (action.type !== 'PLAY_CARD') return false;
+  const topCard = session.getFullState().discardPile.at(-1);
+  return topCard?.type === 'draw_two' || topCard?.type === 'wild_draw_four';
+}
 
 export function registerRoomEvents(
   socket: Socket,
@@ -213,34 +232,38 @@ export function registerRoomEvents(
   });
 }
 
-function executeAutopilot(session: GameSession, playerId: string): boolean {
+export async function executeAutopilot(
+  session: GameSession,
+  playerId: string,
+  onPenaltyPause?: () => void | Promise<void>,
+): Promise<boolean> {
   let acted = false;
   for (let round = 0; round < 5; round++) {
-    const st = session.getFullState();
-    const cp = st.players[st.currentPlayerIndex];
-    if (!cp || cp.id !== playerId) break;
-    if (st.phase === 'round_end' || st.phase === 'game_over') break;
+    if (!canAutopilotActForPlayer(session, playerId)) break;
 
+    const st = session.getFullState();
     const actions = chooseAutopilotAction(st, playerId);
     if (actions.length === 0) break;
     let anySuccess = false;
     for (const action of actions) {
       const result = session.applyAction(action);
-      if (result.success) anySuccess = true;
+      if (result.success) {
+        anySuccess = true;
+        if (shouldPauseAfterAction(session, action)) {
+          await onPenaltyPause?.();
+          await sleep(DRAW_PENALTY_PAUSE_MS);
+        }
+      }
     }
     if (!anySuccess) break;
     acted = true;
 
     const after = session.getFullState();
-    if (after.players[after.currentPlayerIndex]?.id !== playerId) break;
-    if (after.lastAction?.type === 'DRAW_CARD') {
+    if (!canAutopilotActForPlayer(session, playerId)) break;
+    if (after.phase === 'playing' && after.lastAction?.type === 'DRAW_CARD') {
       continue;
     }
     break;
-  }
-  const final = session.getFullState();
-  if (acted && final.players[final.currentPlayerIndex]?.id === playerId && final.phase === 'playing') {
-    session.applyAction({ type: 'PASS', playerId });
   }
   return acted;
 }
@@ -261,12 +284,11 @@ export function startTurnTimer(
     turnTimer.start(roomCode, 2, async (code) => {
       const s = sessions.get(code);
       if (!s) return;
-      const st = s.getFullState();
       const pid = s.getCurrentPlayerId();
-      const actions = chooseAutopilotAction(st, pid);
-      for (const action of actions) {
-        s.applyAction(action);
-      }
+      await executeAutopilot(s, pid, async () => {
+        await saveGameState(redis, code, s.getFullState());
+        await emitGameUpdate(io, code, s, redis);
+      });
       await saveGameState(redis, code, s.getFullState());
       emitGameUpdate(io, code, s, redis);
       startTurnTimer(io, redis, code, s, turnTimer, sessions);
@@ -279,8 +301,11 @@ export function startTurnTimer(
     turnTimer.start(roomCode, timeLimit, async (code) => {
       const s = sessions.get(code);
       if (!s) return;
-      const pid = s.getCurrentPlayerId();
-      executeAutopilot(s, pid);
+      const pid = s.getFullState().pendingDrawPlayerId ?? s.getCurrentPlayerId();
+      await executeAutopilot(s, pid, async () => {
+        await saveGameState(redis, code, s.getFullState());
+        await emitGameUpdate(io, code, s, redis);
+      });
       await saveGameState(redis, code, s.getFullState());
       emitGameUpdate(io, code, s, redis);
       io.to(code).emit('player:timeout', { playerId: pid });
@@ -300,7 +325,10 @@ export function startTurnTimer(
     const s = sessions.get(code);
     if (!s) return;
     const pid = s.getCurrentPlayerId();
-    executeAutopilot(s, pid);
+    await executeAutopilot(s, pid, async () => {
+      await saveGameState(redis, code, s.getFullState());
+      await emitGameUpdate(io, code, s, redis);
+    });
     await saveGameState(redis, code, s.getFullState());
     emitGameUpdate(io, code, s, redis);
     io.to(code).emit('player:timeout', { playerId: pid });
