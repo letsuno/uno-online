@@ -49,7 +49,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   const center = (sorted.length - 1) / 2;
 
   return (
-    <div className="relative">
+    <div className="relative z-actions overflow-visible pt-10 -mt-10">
       <div className="absolute inset-x-0 top-0 h-px bg-primary/15" />
       <div
         className="relative rounded-t-2xl px-5 pt-8 pb-hand-pb flex justify-center overflow-x-auto overflow-y-visible scrollbar-hidden"
@@ -60,7 +60,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
         <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-2xs text-muted-foreground whitespace-nowrap">
           我的手牌 · {sorted.length}张
         </span>
-        <div className="flex justify-center items-end">
+        <div className="flex justify-center items-end overflow-visible">
           <AnimatePresence mode="popLayout">
             {sorted.map((card, i) => {
               const angle = (i - center) * spreadAngle;
@@ -82,7 +82,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
                     transformOrigin: 'bottom center',
                     marginLeft: boundary ? 12 : 4,
                     marginBottom: isPlayable ? 10 : 0,
-                    zIndex: i,
+                    zIndex: isPlayable ? 100 + i : i,
                   }}
                 />
               );
