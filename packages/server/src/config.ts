@@ -14,6 +14,7 @@ export interface Config {
   redisUrl?: string;
   githubClientId: string;
   githubClientSecret: string;
+  githubProxy?: string;
   jwtSecret: string;
   clientUrl: string;
   devMode: boolean;
@@ -35,6 +36,7 @@ export function loadConfig(): Config {
     redisUrl: process.env['REDIS_URL'] || undefined,
     githubClientId: devMode ? (process.env['GITHUB_CLIENT_ID'] ?? '') : required('GITHUB_CLIENT_ID'),
     githubClientSecret: devMode ? (process.env['GITHUB_CLIENT_SECRET'] ?? '') : required('GITHUB_CLIENT_SECRET'),
+    githubProxy: process.env['GITHUB_PROXY'] || undefined,
     jwtSecret: required('JWT_SECRET'),
     clientUrl: resolveClientUrl(),
     devMode,
