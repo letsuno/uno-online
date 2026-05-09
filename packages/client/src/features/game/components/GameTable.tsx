@@ -30,11 +30,17 @@ interface ActiveThrow {
   item: string;
 }
 
+interface HandGainBump {
+  id: number;
+  count: number;
+}
+
 interface GameTableProps {
   onDraw: () => void;
 }
 
 let throwIdCounter = 0;
+let handGainBumpId = 0;
 
 export default function GameTable({ onDraw }: GameTableProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,6 +56,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
   const lastAction = useGameStore((s) => s.lastAction);
   const userId = useEffectiveUserId();
   const ownerId = useRoomStore((s) => s.room?.ownerId);
+  const drawUntilEnabled = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
 
   // Mumble speaking state
   const mumbleUsersById = useGatewayStore((s) => s.usersById);
@@ -256,7 +263,11 @@ export default function GameTable({ onDraw }: GameTableProps) {
 
   // Draw animation: track hand count increases and compute target direction
   const [drawAnim, setDrawAnim] = useState<{ trigger: number; targetX: number; targetY: number }>({ trigger: 0, targetX: 0, targetY: 220 });
+  const [handGainBumps, setHandGainBumps] = useState<Map<string, HandGainBump>>(new Map());
+  const [drawUntilCount, setDrawUntilCount] = useState(0);
   const prevHandCountsRef = useRef<Map<string, number>>(new Map());
+  const drawUntilRef = useRef<{ playerId: string | null; count: number; handCount: number | null }>({ playerId: null, count: 0, handCount: null });
+  const handGainTimersRef = useRef<Map<string, number>>(new Map());
   const drawAnimationTimersRef = useRef<number[]>([]);
 
   const computeDrawTarget = useCallback((playerId: string) => {
@@ -276,6 +287,29 @@ export default function GameTable({ onDraw }: GameTableProps) {
       const after = player.handCount;
       if (before !== undefined && after > before) {
         const added = after - before;
+        const bumpId = ++handGainBumpId;
+        setHandGainBumps((prev) => {
+          const next = new Map(prev);
+          const current = next.get(player.id);
+          next.set(player.id, { id: bumpId, count: (current?.count ?? 0) + added });
+          return next;
+        });
+        const existingTimer = handGainTimersRef.current.get(player.id);
+        if (existingTimer) {
+          window.clearTimeout(existingTimer);
+        }
+        const removeTimer = window.setTimeout(() => {
+          setHandGainBumps((prev) => {
+            const current = prev.get(player.id);
+            if (!current || current.id !== bumpId) return prev;
+            const next = new Map(prev);
+            next.delete(player.id);
+            return next;
+          });
+          handGainTimersRef.current.delete(player.id);
+        }, 3000);
+        handGainTimersRef.current.set(player.id, removeTimer);
+
         for (let i = 0; i < added; i++) {
           const target = computeDrawTarget(player.id);
           const timer = window.setTimeout(() => {
@@ -293,11 +327,37 @@ export default function GameTable({ onDraw }: GameTableProps) {
   }, [players, dimensions.width, computeDrawTarget]);
 
   useEffect(() => {
+    if (!drawUntilEnabled || phase !== 'playing' || lastAction?.type !== 'DRAW_CARD') {
+      drawUntilRef.current = { playerId: null, count: 0, handCount: null };
+      setDrawUntilCount(0);
+      return;
+    }
+
+    const currentPlayer = players[currentPlayerIndex];
+    if (!currentPlayer || lastAction.playerId !== currentPlayer.id) {
+      drawUntilRef.current = { playerId: null, count: 0, handCount: null };
+      setDrawUntilCount(0);
+      return;
+    }
+
+    const previous = drawUntilRef.current;
+    if (previous.playerId === lastAction.playerId && previous.handCount === currentPlayer.handCount) return;
+
+    const nextCount = previous.playerId === lastAction.playerId ? previous.count + 1 : 1;
+    drawUntilRef.current = { playerId: lastAction.playerId, count: nextCount, handCount: currentPlayer.handCount };
+    setDrawUntilCount(nextCount);
+  }, [drawUntilEnabled, phase, lastAction, players, currentPlayerIndex]);
+
+  useEffect(() => {
     return () => {
       for (const timer of drawAnimationTimersRef.current) {
         window.clearTimeout(timer);
       }
+      for (const timer of handGainTimersRef.current.values()) {
+        window.clearTimeout(timer);
+      }
       drawAnimationTimersRef.current = [];
+      handGainTimersRef.current.clear();
     };
   }, []);
 
@@ -505,7 +565,13 @@ export default function GameTable({ onDraw }: GameTableProps) {
             </motion.span>
           </motion.div>
 
-          <DrawPile onDraw={onDraw} drawAnimTrigger={drawAnim.trigger} drawTargetX={drawAnim.targetX} drawTargetY={drawAnim.targetY} />
+          <DrawPile
+            onDraw={onDraw}
+            drawAnimTrigger={drawAnim.trigger}
+            drawTargetX={drawAnim.targetX}
+            drawTargetY={drawAnim.targetY}
+            drawUntilCount={drawUntilCount}
+          />
           <DiscardPile />
         </div>
       )}
@@ -553,6 +619,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
             turnTimeLimit={settings?.turnTimeLimit}
             lastPlayedCard={lastPlayed?.card ?? null}
             chatMessage={chatMessages.get(player.id) ?? null}
+            handGain={handGainBumps.get(player.id) ?? null}
             onReaction={handleReaction}
             onThrowItem={(item) => handleThrowItem(player.id, item)}
           />

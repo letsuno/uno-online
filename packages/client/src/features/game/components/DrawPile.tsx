@@ -11,9 +11,10 @@ interface DrawPileProps {
   drawTargetX?: number;
   drawTargetY?: number;
   drawAnimTrigger?: number;
+  drawUntilCount?: number;
 }
 
-export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTrigger = 0 }: DrawPileProps) {
+export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTrigger = 0, drawUntilCount = 0 }: DrawPileProps) {
   const deckCount = useGameStore((s) => s.deckCount);
   const phase = useGameStore((s) => s.phase);
   const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
@@ -24,10 +25,11 @@ export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTri
   const isPenaltyDrawing = pendingPenaltyDraws > 0;
   const playableIds = usePlayableCardIds();
   const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
+  const isDrawUntilTurn = mustDrawUntilPlayable && !isPenaltyDrawing;
   const canContinueDrawUntilPlayable = mustDrawUntilPlayable && hasDrawnThisTurn && playableIds.size === 0;
   const canDraw = isMyTurn && phase === 'playing' && (isPenaltyDrawing || !hasDrawnThisTurn || canContinueDrawUntilPlayable);
 
-  const showNoPlayableHint = canDraw && !isPenaltyDrawing && playableIds.size === 0 && !settings?.houseRules?.noHints;
+  const showNoPlayableHint = canDraw && !isDrawUntilTurn && playableIds.size === 0 && !settings?.houseRules?.noHints;
   const emphasizeDraw = canDraw && !settings?.houseRules?.noHints;
 
   return (
@@ -78,6 +80,18 @@ export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTri
       >
         牌堆 ({deckCount})
       </span>
+      <AnimatePresence>
+        {isDrawUntilTurn && drawUntilCount > 0 && (
+          <motion.span
+            className="font-game text-caption text-primary text-shadow-glow whitespace-nowrap"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+          >
+            已摸 {drawUntilCount} 张
+          </motion.span>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
