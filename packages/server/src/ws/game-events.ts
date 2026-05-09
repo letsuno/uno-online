@@ -10,6 +10,7 @@ import { emitGameUpdate, startTurnTimer } from './room-events';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { recordGameResult } from '../db/user-repo';
 import { saveGameEvents, saveDeckInfo } from '../plugins/core/game-history/service';
+import { setRoomStatus } from '../plugins/core/room/store';
 import type { SocketData } from './types';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
@@ -84,6 +85,7 @@ async function emitTerminalStateIfNeeded(
   roomCode: string,
   session: GameSession,
   turnTimer: TurnTimer,
+  redis: KvStore,
   db: Kysely<Database>,
 ): Promise<boolean> {
   const state = session.getFullState();
@@ -103,6 +105,7 @@ async function emitTerminalStateIfNeeded(
   if (state.phase === 'game_over') {
     const finalScores = Object.fromEntries(state.players.map((p) => [p.id, p.score]));
     session.recordEvent(GameEventType.GAME_OVER, { winnerId: state.winnerId!, finalScores }, null);
+    await setRoomStatus(redis, roomCode, 'finished');
     await persistGameResult(roomCode, session, gameStartTimes.get(roomCode) ?? Date.now(), db);
     gameStartTimes.delete(roomCode);
   }
@@ -142,7 +145,7 @@ export function registerGameEvents(
     }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session, redis);
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, db))) {
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db))) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
     callback?.({ success: true });
@@ -197,7 +200,7 @@ export function registerGameEvents(
     session.recordEvent(GameEventType.CALL_UNO, {}, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session, redis);
-    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, db)) {
+    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db)) {
       return callback?.({ success: true });
     }
     callback?.({ success: true });
@@ -228,7 +231,7 @@ export function registerGameEvents(
     }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session, redis);
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, db))) {
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db))) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
     callback?.({ success: true });
@@ -243,7 +246,7 @@ export function registerGameEvents(
     session.recordEvent(GameEventType.ACCEPT, { drawnCards: [] }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session, redis);
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, db))) {
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db))) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
     callback?.({ success: true });
@@ -262,7 +265,7 @@ export function registerGameEvents(
     session.recordEvent(GameEventType.CHOOSE_COLOR, { color: payload.color }, data.user.userId);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session, redis);
-    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, db)) {
+    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db)) {
       // terminal state already emitted
     } else {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
@@ -333,6 +336,7 @@ export function registerGameEvents(
     }
     session.resetForRematch();
     sessions.set(roomCode, session);
+    await setRoomStatus(redis, roomCode, 'playing');
     await saveGameState(redis, roomCode, session.getFullState());
     const sockets = await io.in(roomCode).fetchSockets();
     for (const s of sockets) {

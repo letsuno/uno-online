@@ -20,6 +20,7 @@ export async function registerRoutes(fastify: FastifyInstance, ctx: PluginContex
       if (!settings.allowSpectators) continue;
 
       const players = await getRoomPlayers(ctx.kv, roomCode);
+      if (players.length === 0) continue;
 
       const spectatorSockets = await ctx.io.in(roomCode).fetchSockets();
       const spectatorCount = spectatorSockets.filter(s => (s.data as { isSpectator?: boolean }).isSpectator).length;
