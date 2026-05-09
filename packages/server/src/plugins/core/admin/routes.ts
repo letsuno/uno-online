@@ -5,6 +5,7 @@ import type { AuthenticatedRequest } from '../auth/service';
 import { adminOnly } from './middleware';
 import { getDb } from '../../../db/database';
 import { getRoom, getRoomPlayers, deleteRoom } from '../room/store';
+import { getGamesList, getGameDetail } from '../game-history/service';
 import { sql } from 'kysely';
 
 export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext) {
@@ -148,5 +149,23 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
 
     await deleteRoom(kv, code);
     return { success: true };
+  });
+
+  // Game history list
+  fastify.get<{
+    Querystring: { page?: string; limit?: string };
+  }>('/admin/games', { preHandler }, async (request) => {
+    const db = getDb();
+    const page = Math.max(1, parseInt(request.query.page ?? '1', 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(request.query.limit ?? '20', 10) || 20));
+    return getGamesList(db, page, limit);
+  });
+
+  // Game detail
+  fastify.get<{ Params: { id: string } }>('/admin/games/:id', { preHandler }, async (request, reply) => {
+    const db = getDb();
+    const detail = await getGameDetail(db, request.params.id);
+    if (!detail) return reply.code(404).send({ error: 'Game not found' });
+    return detail;
   });
 }
