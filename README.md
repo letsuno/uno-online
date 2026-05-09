@@ -100,8 +100,8 @@ cp .env.example .env
 docker compose up -d --build
 
 # 3. Verify
-curl http://localhost/health
-curl http://localhost/server/info
+curl http://localhost/api/health
+curl http://localhost/api/server/info
 ```
 
 ### Build Docker Images Manually
@@ -149,12 +149,12 @@ docker push djkcyl/uno-online-caddy:latest
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/server/info` | No | Server status (name, version, MOTD, online players, rooms, uptime) |
-| `GET` | `/health` | No | Health check |
-| `GET` | `/auth/config` | No | Auth configuration (dev mode, GitHub client ID) |
-| `POST` | `/auth/login` | No | Password login |
-| `POST` | `/auth/register` | No | Register new account |
-| `GET` | `/auth/me` | Yes | Current user info |
+| `GET` | `/api/server/info` | No | Server status (name, version, MOTD, online players, rooms, uptime) |
+| `GET` | `/api/health` | No | Health check |
+| `GET` | `/api/auth/config` | No | Auth configuration (dev mode, GitHub client ID) |
+| `POST` | `/api/auth/login` | No | Password login |
+| `POST` | `/api/auth/register` | No | Register new account |
+| `GET` | `/api/auth/me` | Yes | Current user info |
 
 ## Testing
 
@@ -183,7 +183,7 @@ House rules wrap the core engine: `applyActionWithHouseRules(state, action) => n
 - **Plugin architecture** — all features organized as Fastify plugins with shared `PluginContext`
 - **Authoritative game state** — clients predict for responsiveness, server validates all actions
 - **Game state in KV store** — Redis or in-memory fallback, results persisted to SQLite on game end
-- **Server info endpoint** — `GET /server/info` returns real-time status with CORS support for cross-server querying
+- **Server info endpoint** — `GET /api/server/info` returns real-time status with CORS support for cross-server querying
 - **Turn timer** — configurable (15/30/60s), auto draw+pass on timeout
 - **Disconnect handling** — 60s reconnect window, then auto-play every 5s
 - **Rate limiting** — 20 messages/second per socket

@@ -46,9 +46,8 @@ function buildServerUrl(address: string): string {
 
 async function fetchServerInfo(address: string): Promise<ServerInfo | null> {
   const base = buildServerUrl(address);
-  const url = base ? `${base}/api/server/info` : '/api/server/info';
   try {
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(`${base}/api/server/info`, { cache: 'no-store' });
     if (!res.ok) return null;
     return await res.json() as ServerInfo;
   } catch {
@@ -58,12 +57,12 @@ async function fetchServerInfo(address: string): Promise<ServerInfo | null> {
 
 async function measureLatency(address: string): Promise<number | null> {
   const base = buildServerUrl(address);
-  const url = base ? `${base}/api/server/info` : '/api/server/info';
   const times: number[] = [];
   for (let i = 0; i < 3; i++) {
     const start = performance.now();
     try {
-      await fetch(url, { cache: 'no-store' });
+      const res = await fetch(`${base}/api/server/info`, { cache: 'no-store' });
+      if (!res.ok) return null;
       times.push(performance.now() - start);
     } catch {
       return null;

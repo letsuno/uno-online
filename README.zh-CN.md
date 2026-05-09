@@ -94,8 +94,8 @@ cp .env.example .env
 docker compose up -d --build
 
 # 3. 验证
-curl http://localhost/health
-curl http://localhost/server/info
+curl http://localhost/api/health
+curl http://localhost/api/server/info
 ```
 
 ### 手动构建 Docker 镜像
@@ -143,12 +143,12 @@ docker push djkcyl/uno-online-caddy:latest
 
 | 方法 | 路径 | 认证 | 说明 |
 |------|------|------|------|
-| `GET` | `/server/info` | 否 | 服务器状态（名称、版本、欢迎信息、在线人数、房间数、运行时长） |
-| `GET` | `/health` | 否 | 健康检查 |
-| `GET` | `/auth/config` | 否 | 认证配置（开发模式、GitHub 客户端 ID） |
-| `POST` | `/auth/login` | 否 | 密码登录 |
-| `POST` | `/auth/register` | 否 | 注册新账号 |
-| `GET` | `/auth/me` | 是 | 当前用户信息 |
+| `GET` | `/api/server/info` | 否 | 服务器状态（名称、版本、欢迎信息、在线人数、房间数、运行时长） |
+| `GET` | `/api/health` | 否 | 健康检查 |
+| `GET` | `/api/auth/config` | 否 | 认证配置（开发模式、GitHub 客户端 ID） |
+| `POST` | `/api/auth/login` | 否 | 密码登录 |
+| `POST` | `/api/auth/register` | 否 | 注册新账号 |
+| `GET` | `/api/auth/me` | 是 | 当前用户信息 |
 
 ## 测试
 
@@ -177,7 +177,7 @@ pnpm --filter client exec tsc --noEmit
 - **插件架构** — 所有功能以 Fastify 插件组织，通过 `PluginContext` 共享依赖
 - **权威状态** — 客户端做乐观更新，服务端是唯一规则权威
 - **游戏状态存 KV** — Redis 或内存回退，游戏结束后持久化到 SQLite
-- **服务器信息接口** — `GET /server/info` 返回实时状态，支持 CORS 跨服务器查询
+- **服务器信息接口** — `GET /api/server/info` 返回实时状态，支持 CORS 跨服务器查询
 - **回合计时** — 可配置（15/30/60 秒），超时自动摸牌跳过
 - **掉线处理** — 60 秒重连窗口，超时后每 5 秒自动托管
 - **频率限制** — 每个连接 20 条/秒
