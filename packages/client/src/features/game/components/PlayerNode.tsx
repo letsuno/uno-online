@@ -27,6 +27,7 @@ interface PlayerNodeProps {
   turnTimeLimit?: number;
   lastPlayedCard?: CardType | null;
   chatMessage?: string | null;
+  handGain?: { id: number; count: number } | null;
   onReaction?: (emoji: string) => void;
   onThrowItem?: (item: string) => void;
 }
@@ -44,6 +45,7 @@ export default function PlayerNode({
   turnTimeLimit,
   lastPlayedCard,
   chatMessage,
+  handGain,
   onReaction,
   onThrowItem,
 }: PlayerNodeProps) {
@@ -251,22 +253,40 @@ export default function PlayerNode({
       </span>
 
       {/* Hand count */}
-      {player.handCount > 0 && player.handCount <= 5 ? (
-        <div className="flex -space-x-2">
-          {Array.from({ length: player.handCount }).map((_, i) => (
-            <CardBack key={i} small />
-          ))}
+      {player.handCount > 0 && (
+        <div className="relative flex items-center gap-1">
+          {player.handCount <= 5 ? (
+            <div className="flex -space-x-2">
+              {Array.from({ length: player.handCount }).map((_, i) => (
+                <CardBack key={i} small />
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="flex -space-x-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <CardBack key={i} small />
+                ))}
+              </div>
+              <span className="text-2xs text-muted-foreground font-bold">×{player.handCount}</span>
+            </>
+          )}
+          <AnimatePresence mode="popLayout">
+            {handGain && (
+              <motion.span
+                key={handGain.id}
+                className="absolute left-full ml-1 text-xs font-game font-black text-primary text-shadow-glow tabular-nums"
+                initial={{ y: -10, opacity: 0, scale: 0.9 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                exit={{ y: 14, opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.22 }}
+              >
+                +{handGain.count}
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
-      ) : player.handCount > 0 ? (
-        <div className="flex items-center gap-1">
-          <div className="flex -space-x-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <CardBack key={i} small />
-            ))}
-          </div>
-          <span className="text-2xs text-muted-foreground font-bold">×{player.handCount}</span>
-        </div>
-      ) : null}
+      )}
     </div>
   );
 }
