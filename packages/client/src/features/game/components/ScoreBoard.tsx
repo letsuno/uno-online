@@ -1,16 +1,33 @@
 import { Trophy, BarChart3, Crown } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
+import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
+import { useRoomStore } from '@/shared/stores/room-store';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/Button';
 
-interface ScoreBoardProps { onPlayAgain: () => void; onRematch: () => void; onBackToLobby: () => void; }
+interface ScoreBoardProps {
+  onPlayAgain: () => void;
+  onRematch: () => void;
+  onBackToLobby: () => void;
+}
 
 export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby }: ScoreBoardProps) {
   const players = useGameStore((s) => s.players);
   const winnerId = useGameStore((s) => s.winnerId);
   const phase = useGameStore((s) => s.phase);
+  const vote = useGameStore((s) => s.nextRoundVote);
+  const ownerId = useRoomStore((s) => s.room?.ownerId);
+  const userId = useEffectiveUserId();
   const sorted = [...players].sort((a, b) => b.score - a.score);
   const isGameOver = phase === 'game_over';
+  const isHost = ownerId === userId;
+  const hasVoted = !!userId && !!vote?.voters.includes(userId);
+  const fallbackRequired = Math.floor(players.length / 2) + 1;
+  const nextRoundButtonText = isHost
+    ? '继续下一轮'
+    : hasVoted
+      ? `已投票 (${vote?.votes ?? 0}/${vote?.required ?? fallbackRequired})`
+      : `投票继续${vote ? ` (${vote.votes}/${vote.required})` : ''}`;
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-modal">
@@ -34,8 +51,11 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby }: Sc
             ))}
           </tbody>
         </table>
+        {!isGameOver && !isHost && vote && (
+          <p className="mb-3 text-xs text-muted-foreground">已有 {vote.votes}/{vote.required} 人同意继续下一轮</p>
+        )}
         <div className="flex gap-3 justify-center">
-          {!isGameOver && <Button variant="primary" onClick={onPlayAgain}>继续下一轮</Button>}
+          {!isGameOver && <Button variant="primary" onClick={onPlayAgain} disabled={hasVoted}>{nextRoundButtonText}</Button>}
           {isGameOver && <Button variant="primary" onClick={onRematch}>再来一局</Button>}
           <Button variant="secondary" onClick={onBackToLobby}>返回大厅</Button>
         </div>

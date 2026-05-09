@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
+import { useRoomStore } from '@/shared/stores/room-store';
 import { getSocket, connectSocket, onConnectionStatus } from '@/shared/socket';
 
 export function useGameSocket(roomCode: string | undefined) {
   const phase = useGameStore((s) => s.phase);
   const setGameState = useGameStore((s) => s.setGameState);
+  const setRoom = useRoomStore((s) => s.setRoom);
   const navigate = useNavigate();
   const [connectionStatus, setConnectionStatus] = useState<
     'connected' | 'disconnected' | 'reconnecting'
@@ -18,6 +20,9 @@ export function useGameSocket(roomCode: string | undefined) {
     if (!phase && roomCode) {
       socket.emit('room:rejoin', roomCode, (res: any) => {
         if (res.success && res.gameState) {
+          if (roomCode && res.players && res.room) {
+            setRoom(roomCode, res.players, res.room);
+          }
           setGameState(res.gameState);
         } else {
           navigate(`/room/${roomCode}`);
@@ -34,13 +39,16 @@ export function useGameSocket(roomCode: string | undefined) {
         const socket = getSocket();
         socket.emit('room:rejoin', roomCode, (res: any) => {
           if (res.success && res.gameState) {
+            if (res.players && res.room) {
+              setRoom(roomCode, res.players, res.room);
+            }
             setGameState(res.gameState);
           }
         });
       }
     });
     return () => onConnectionStatus(() => {});
-  }, [roomCode]);
+  }, [roomCode, setGameState, setRoom]);
 
   // Warn before page unload during active game
   useEffect(() => {

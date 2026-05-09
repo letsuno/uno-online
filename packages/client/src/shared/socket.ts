@@ -45,6 +45,10 @@ export function getSocket(): Socket {
     });
     socket.on('game:update', handleGameView);
 
+    socket.on('game:next_round_vote', (vote: { votes: number; required: number; voters: string[] }) => {
+      useGameStore.getState().setNextRoundVote(vote.votes > 0 ? vote : null);
+    });
+
     socket.on('game:card_drawn', (data: { card: unknown }) => {
       useGameStore.getState().setDrawnCard(data.card as any);
     });

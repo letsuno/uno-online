@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import type { Color } from '@uno-online/shared';
 import { getSocket } from '@/shared/socket';
 import { playSound } from '@/shared/sound/sound-manager';
+import { useToastStore } from '@/shared/stores/toast-store';
 
 export function useGameActions() {
   const playCard = useCallback((cardId: string) => {
@@ -44,7 +45,16 @@ export function useGameActions() {
   }, []);
 
   const playAgain = useCallback(() => {
-    getSocket().emit('game:next_round', () => {});
+    getSocket().emit('game:next_round', (res: { success?: boolean; started?: boolean; error?: string; vote?: { votes: number; required: number } }) => {
+      if (!res?.success) {
+        useToastStore.getState().addToast(res?.error || '无法开始下一轮', 'error');
+        return;
+      }
+      if (res.started) return;
+      if (res.vote) {
+        useToastStore.getState().addToast(`已投票 (${res.vote.votes}/${res.vote.required})`, 'info');
+      }
+    });
   }, []);
 
   const rematch = useCallback(() => {
