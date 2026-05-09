@@ -61,6 +61,7 @@ export default function GameLogEntry({ entry }: GameLogEntryProps) {
 
       <span className="text-2xs text-muted-foreground shrink-0">
         {getActionDescription(entry)}
+        {entry.type === 'draw' && (entry.count ?? 1) > 1 ? `x${entry.count}` : ''}
       </span>
 
       {entry.card && (

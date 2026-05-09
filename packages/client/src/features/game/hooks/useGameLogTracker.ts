@@ -1,7 +1,32 @@
 import { useEffect, useRef } from 'react';
 import type { GameAction } from '@uno-online/shared';
 import { useGameStore } from '../stores/game-store';
+import type { PlayerInfo } from '../stores/game-store';
 import { useGameLogStore } from '../stores/game-log-store';
+
+function getActionKey(action: GameAction, players: PlayerInfo[]): string {
+  switch (action.type) {
+    case 'PLAY_CARD':
+      return `${action.type}:${action.playerId}:${action.cardId}`;
+    case 'DRAW_CARD': {
+      const player = players.find((p) => p.id === action.playerId);
+      return `${action.type}:${action.playerId}:${player?.handCount ?? ''}`;
+    }
+    case 'PASS':
+    case 'CALL_UNO':
+      return `${action.type}:${action.playerId}`;
+    case 'CATCH_UNO':
+      return `${action.type}:${action.catcherId}:${action.targetId}`;
+    case 'CHALLENGE':
+      return `${action.type}:${action.playerId}:${action.succeeded ?? ''}:${action.penaltyPlayerId ?? ''}:${action.penaltyCount ?? ''}`;
+    case 'ACCEPT':
+      return `${action.type}:${action.playerId}`;
+    case 'CHOOSE_COLOR':
+      return `${action.type}:${action.playerId}:${action.color}`;
+    default:
+      return JSON.stringify(action);
+  }
+}
 
 export function useGameLogTracker(): void {
   const lastAction = useGameStore((s) => s.lastAction);
@@ -14,12 +39,15 @@ export function useGameLogTracker(): void {
   const addRoundSeparator = useGameLogStore((s) => s.addRoundSeparator);
   const clearLog = useGameLogStore((s) => s.clear);
 
-  const prevActionRef = useRef<GameAction | null>(null);
+  const prevActionKeyRef = useRef<string | null>(null);
 
   // Map lastAction to game log entries
   useEffect(() => {
-    if (!lastAction || lastAction === prevActionRef.current) return;
-    prevActionRef.current = lastAction;
+    if (!lastAction) return;
+
+    const actionKey = getActionKey(lastAction, players);
+    if (actionKey === prevActionKeyRef.current) return;
+    prevActionKeyRef.current = actionKey;
 
     const findPlayer = (id: string) => players.find((p) => p.id === id);
 
