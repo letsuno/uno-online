@@ -15,9 +15,8 @@ handle /mumble-ws* {
 	reverse_proxy mumble-gateway:64737
 }
 
-handle /admin {
-	redir /admin/ permanent
-}
+@admin_exact path /admin
+redir @admin_exact /admin/ permanent
 
 handle /admin/* {
 	root * /srv
