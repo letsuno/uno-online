@@ -1,0 +1,15 @@
+{
+  "servers": [
+    {
+      "id": "uno",
+      "name": "UNO Online",
+      "host": "mumble",
+      "port": 64738,
+      "tls": {
+        "rejectUnauthorized": false,
+        "useCertificate": false
+      },
+      "forceTcp": true
+    }
+  ]
+}
