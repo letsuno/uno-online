@@ -13,6 +13,7 @@ export interface GameLogEntry {
   targetName?: string;
   card?: Card;
   extra?: string;
+  count?: number;
   roundNumber?: number;
 }
 
@@ -26,7 +27,18 @@ export const useGameLogStore = create<{
 }>((set) => ({
   entries: [],
   addEntry: (entry) => set((state) => ({
-    entries: [...state.entries.slice(-99), { ...entry, id: `log_${++entryId}`, timestamp: Date.now() }],
+    entries: (() => {
+      const timestamp = Date.now();
+      const last = state.entries[state.entries.length - 1];
+      if (entry.type === 'draw' && last?.type === 'draw' && last.playerId === entry.playerId) {
+        return [
+          ...state.entries.slice(0, -1),
+          { ...last, count: (last.count ?? 1) + (entry.count ?? 1), timestamp },
+        ].slice(-100);
+      }
+
+      return [...state.entries.slice(-99), { ...entry, count: entry.count ?? 1, id: `log_${++entryId}`, timestamp }];
+    })(),
   })),
   addRoundSeparator: (roundNumber) => set((state) => ({
     entries: [...state.entries, {
