@@ -38,10 +38,10 @@ export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginConte
       .send(buffer);
   });
 
-  fastify.get('/profile', { preHandler }, async (request) => {
+  fastify.get('/profile', { preHandler }, async (request, reply) => {
     const { userId } = (request as AuthenticatedRequest).user;
     const profile = await getUserProfile(userId);
-    if (!profile) return { error: 'User not found' };
+    if (!profile) return reply.code(401).send({ error: 'User not found' });
     return {
       user: {
         id: profile.user.id,

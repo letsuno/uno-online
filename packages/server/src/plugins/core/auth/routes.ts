@@ -167,10 +167,10 @@ function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) 
     return { token, user: userResponse(updated) };
   });
 
-  fastify.get('/auth/me', { preHandler }, async (request) => {
+  fastify.get('/auth/me', { preHandler }, async (request, reply) => {
     const { userId } = (request as AuthenticatedRequest).user;
     const user = await getUserById(userId);
-    if (!user) return { error: 'User not found' };
+    if (!user) return reply.code(401).send({ error: 'User not found' });
     return userResponse(user);
   });
 }
