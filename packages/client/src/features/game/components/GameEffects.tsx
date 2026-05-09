@@ -43,8 +43,9 @@ export default function GameEffects() {
   const players = useGameStore((s) => s.players);
   const userId = useEffectiveUserId();
   const discardPile = useGameStore((s) => s.discardPile);
-  const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
+  const direction = useGameStore((s) => s.direction);
   const lastAction = useGameStore((s) => s.lastAction);
+  const pendingDrawPlayerId = useGameStore((s) => s.pendingDrawPlayerId);
   const prevTopCardRef = useRef<string | undefined>();
   const prevActionRef = useRef<typeof lastAction>(null);
 
@@ -58,28 +59,47 @@ export default function GameEffects() {
 
   const findPlayerIndex = (id: string) => players.findIndex((p) => p.id === id);
 
+  const getNextPlayerFromActor = () => {
+    if (lastAction?.type !== 'PLAY_CARD') return null;
+    const actorIdx = findPlayerIndex(lastAction.playerId);
+    if (actorIdx < 0 || players.length === 0) return null;
+
+    const step = direction === 'clockwise' ? 1 : -1;
+    const targetIdx = ((actorIdx + step) % players.length + players.length) % players.length;
+    const target = players[targetIdx];
+    return target ? { player: target, index: targetIdx } : null;
+  };
+
   const topCard = discardPile[discardPile.length - 1];
 
   useEffect(() => {
     if (!topCard || topCard.id === prevTopCardRef.current) return;
     prevTopCardRef.current = topCard.id;
-    const skippedPlayer = players[currentPlayerIndex];
+
+    const affected = getNextPlayerFromActor();
+
     if (topCard.type === 'skip') {
-      addEffect('skip', '跳过!', skippedPlayer?.name, currentPlayerIndex);
+      addEffect('skip', '跳过!', affected?.player.name, affected?.index);
       playSound('skip');
     } else if (topCard.type === 'reverse') {
-      addEffect('reverse', '反转!');
+      if (players.length === 2) {
+        addEffect('skip', '跳过!', affected?.player.name, affected?.index);
+      } else {
+        addEffect('reverse', '反转!');
+      }
       playSound('reverse');
     } else if (topCard.type === 'draw_two') {
-      addEffect('draw', '+2!', skippedPlayer?.name, currentPlayerIndex);
+      addEffect('draw', '+2!', affected?.player.name, affected?.index);
       playSound('draw_two');
     } else if (topCard.type === 'wild_draw_four') {
-      addEffect('draw', '+4!');
+      const pendingIdx = pendingDrawPlayerId ? findPlayerIndex(pendingDrawPlayerId) : -1;
+      const pendingPlayer = pendingIdx >= 0 ? players[pendingIdx] : affected?.player;
+      addEffect('draw', '+4!', pendingPlayer?.name, pendingIdx >= 0 ? pendingIdx : affected?.index);
       playSound('wild');
     } else if (topCard.type === 'wild') {
       playSound('wild');
     }
-  }, [topCard?.id]);
+  }, [topCard?.id, lastAction, players, direction, pendingDrawPlayerId]);
 
   useEffect(() => {
     if (phase === 'round_end' || phase === 'game_over') {
@@ -149,8 +169,7 @@ export default function GameEffects() {
               transition={{ type: 'spring', stiffness: 300, damping: 15 }}
               className={cn(
                 'absolute font-game font-black whitespace-nowrap flex flex-col items-center gap-2 text-shadow-bold text-white',
-                effect.type === 'victory' ? 'text-effect-xl' :
-                'text-effect'
+                effect.type === 'victory' ? 'text-effect-xl' : 'text-effect',
               )}
             >
               <span className="flex items-center gap-2">
