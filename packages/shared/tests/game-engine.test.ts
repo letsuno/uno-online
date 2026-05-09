@@ -234,6 +234,8 @@ describe('PLAY_CARD - last card triggers round end', () => {
     const next = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'c1' });
     expect(next.phase).toBe('round_end');
     expect(next.winnerId).toBe('p1');
+    expect(next.players.find(p => p.id === 'p1')!.roundWins).toBe(1);
+    expect(next.players.find(p => p.id === 'p2')!.roundWins).toBe(0);
   });
 });
 

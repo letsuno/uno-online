@@ -14,6 +14,7 @@ export interface PlayerView {
     hand: Card[];
     handCount: number;
     score: number;
+    roundWins?: number;
     connected: boolean;
     autopilot: boolean;
     calledUno: boolean;
@@ -93,6 +94,7 @@ export class GameSession {
           hand: shouldReveal ? p.hand : [],
           handCount: p.hand.length,
           score: p.score,
+          roundWins: p.roundWins ?? 0,
           connected: p.connected,
           autopilot: p.autopilot,
           calledUno: p.calledUno,
@@ -225,6 +227,7 @@ export class GameSession {
         hand: mode === 'full' ? p.hand : [],
         handCount: p.hand.length,
         score: p.score,
+        roundWins: p.roundWins ?? 0,
         connected: p.connected,
         autopilot: p.autopilot,
         calledUno: p.calledUno,
