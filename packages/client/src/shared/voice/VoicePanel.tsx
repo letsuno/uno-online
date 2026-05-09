@@ -74,24 +74,38 @@ export default function VoicePanel() {
 
     const engine = setupVoiceEngine();
 
+    const createDecoder = (userId: number) => {
+      let decoder: ReturnType<typeof createWebCodecsOpusDecoder>;
+      decoder = createWebCodecsOpusDecoder({
+        sampleRate: 48000,
+        channels: 1,
+        onPcm: (pcm) => {
+          engine.pushRemotePcm({
+            userId,
+            channels: 1,
+            sampleRate: 48000,
+            pcm,
+          });
+        },
+        onError: () => {
+          if (decodersRef.current.get(userId) === decoder) {
+            decodersRef.current.delete(userId);
+          }
+        },
+      });
+      return decoder;
+    };
+
     setVoiceSink((frame) => {
       let decoder = decodersRef.current.get(frame.userId);
       if (!decoder) {
-        decoder = createWebCodecsOpusDecoder({
-          sampleRate: 48000,
-          channels: 1,
-          onPcm: (pcm) => {
-            engine.pushRemotePcm({
-              userId: frame.userId,
-              channels: 1,
-              sampleRate: 48000,
-              pcm,
-            });
-          },
-        });
+        decoder = createDecoder(frame.userId);
         decodersRef.current.set(frame.userId, decoder);
       }
-      decoder.decode(frame.opus);
+      const decoded = decoder.decode(frame.opus);
+      if (!decoded && decodersRef.current.get(frame.userId) === decoder) {
+        decodersRef.current.delete(frame.userId);
+      }
     });
 
     return () => {
