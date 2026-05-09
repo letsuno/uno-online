@@ -94,6 +94,6 @@ export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginConte
     }
 
     await updateAvatar(userId, avatar);
-    return { success: true, avatarUrl: `/avatar/${userId}` };
+    return { success: true, avatarUrl: `/api/avatar/${userId}` };
   });
 }
