@@ -10,10 +10,18 @@ function bestColor(hand: Card[], excludeId?: string): Color {
   return (Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'red') as Color;
 }
 
-function playCardActions(playerId: string, card: Card, hand: Card[]): GameAction[] {
-  const actions: GameAction[] = [{ type: 'PLAY_CARD', playerId, cardId: card.id }];
+function playCardActions(playerId: string, card: Card, hand: Card[], chooseColorOnPlay = false): GameAction[] {
+  const color = bestColor(hand, card.id);
+  const actions: GameAction[] = [{
+    type: 'PLAY_CARD',
+    playerId,
+    cardId: card.id,
+    ...(chooseColorOnPlay ? { chosenColor: color } : {}),
+  }];
   if (card.type === 'wild' || card.type === 'wild_draw_four') {
-    actions.push({ type: 'CHOOSE_COLOR', playerId, color: bestColor(hand, card.id) });
+    if (!chooseColorOnPlay) {
+      actions.push({ type: 'CHOOSE_COLOR', playerId, color });
+    }
   }
   return actions;
 }
@@ -82,7 +90,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
       });
       if (stackable.length > 0) {
         const pick = stackable[0]!;
-        return playCardActions(playerId, pick, player.hand);
+        return playCardActions(playerId, pick, player.hand, pick.type === 'wild_draw_four');
       }
     }
 
