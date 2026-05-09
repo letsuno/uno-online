@@ -116,7 +116,7 @@ describe('wildFirstTurn (handleFirstDiscard skipWild)', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 
 describe('deathDraw', () => {
-  it('DRAW_CARD draws until a playable card is found', () => {
+  it('DRAW_CARD draws one card at a time until a playable card is found', () => {
     const deck = [
       makeCard('number', 'blue', { value: 1, id: 'blue1' }),
       makeCard('number', 'blue', { value: 2, id: 'blue2' }),
@@ -137,10 +137,14 @@ describe('deathDraw', () => {
         houseRules: { ...DEFAULT_HOUSE_RULES, deathDraw: true },
       },
     });
-    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
-    // Should draw blue1, blue2, then red7 (playable found)
-    expect(next.players[0]!.hand).toHaveLength(3);
-    expect(next.players[0]!.hand[2]!.id).toBe('red7');
+    const afterFirstDraw = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    expect(afterFirstDraw.players[0]!.hand.map(c => c.id)).toEqual(['blue1']);
+
+    const afterSecondDraw = applyActionWithHouseRules(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p1' });
+    expect(afterSecondDraw.players[0]!.hand.map(c => c.id)).toEqual(['blue1', 'blue2']);
+
+    const afterThirdDraw = applyActionWithHouseRules(afterSecondDraw, { type: 'DRAW_CARD', playerId: 'p1' });
+    expect(afterThirdDraw.players[0]!.hand.map(c => c.id)).toEqual(['blue1', 'blue2', 'red7']);
   });
 
   it('PASS is blocked when player has no playable card (force more drawing)', () => {
@@ -215,9 +219,7 @@ describe('deathDraw', () => {
       },
     });
     const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
-    // Should still draw until playable
-    expect(next.players[0]!.hand).toHaveLength(2);
-    expect(next.players[0]!.hand[1]!.id).toBe('red7');
+    expect(next.players[0]!.hand.map(c => c.id)).toEqual(['blue1']);
   });
 });
 

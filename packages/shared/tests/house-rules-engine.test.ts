@@ -481,7 +481,7 @@ describe('doubleScore', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 
 describe('drawUntilPlayable', () => {
-  it('draws multiple cards until a playable card is found', () => {
+  it('draws one card at a time until a playable card is found', () => {
     // Current color is red. Deck has non-playable blue cards, then a red card.
     const deck = [
       makeCard('number', 'blue', { value: 1, id: 'blue1' }),
@@ -503,10 +503,17 @@ describe('drawUntilPlayable', () => {
         houseRules: { ...DEFAULT_HOUSE_RULES, drawUntilPlayable: true },
       },
     });
-    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
-    // Should draw blue1, blue2, then red7 (playable found)
-    expect(next.players[0]!.hand).toHaveLength(3);
-    expect(next.players[0]!.hand[2]!.id).toBe('red7');
+    const afterFirstDraw = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    expect(afterFirstDraw.players[0]!.hand.map(c => c.id)).toEqual(['blue1']);
+
+    const rejectedPass = applyActionWithHouseRules(afterFirstDraw, { type: 'PASS', playerId: 'p1' });
+    expect(rejectedPass).toStrictEqual(afterFirstDraw);
+
+    const afterSecondDraw = applyActionWithHouseRules(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p1' });
+    expect(afterSecondDraw.players[0]!.hand.map(c => c.id)).toEqual(['blue1', 'blue2']);
+
+    const afterThirdDraw = applyActionWithHouseRules(afterSecondDraw, { type: 'DRAW_CARD', playerId: 'p1' });
+    expect(afterThirdDraw.players[0]!.hand.map(c => c.id)).toEqual(['blue1', 'blue2', 'red7']);
   });
 
   it('draws single card if first drawn card is playable', () => {

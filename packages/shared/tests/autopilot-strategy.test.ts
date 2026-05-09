@@ -90,4 +90,26 @@ describe('chooseAutopilotAction after drawing', () => {
       { type: 'PASS', playerId: 'p1' },
     ]);
   });
+
+  it('keeps drawing after drawing an unplayable card in draw-until-playable mode', () => {
+    const drawn = makeCard('number', 'blue', { value: 9, id: 'drawn_blue_9' });
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [drawn], score: 0, connected: true, autopilot: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
+      ],
+      lastAction: { type: 'DRAW_CARD', playerId: 'p1' },
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        allowSpectators: true,
+        spectatorMode: 'hidden',
+        houseRules: { ...DEFAULT_HOUSE_RULES, drawUntilPlayable: true },
+      },
+    });
+
+    expect(chooseAutopilotAction(state, 'p1')).toEqual([
+      { type: 'DRAW_CARD', playerId: 'p1' },
+    ]);
+  });
 });

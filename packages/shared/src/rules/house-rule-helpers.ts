@@ -143,36 +143,7 @@ export function applyDoubleScore(before: GameState, after: GameState): GameState
 }
 
 export function handleDrawUntilPlayable(state: GameState, action: Extract<GameAction, { type: 'DRAW_CARD' }>): GameState {
-  if (state.phase !== 'playing') return applyAction(state, action);
-
-  const topCard = state.discardPile[state.discardPile.length - 1]!;
-  const currentColor = state.currentColor!;
-  let current = state;
-
-  while (true) {
-    let deck = [...current.deck];
-    let discardPile = [...current.discardPile];
-    if (deck.length === 0) {
-      const r = reshuffleDiscardIntoDeck(deck, discardPile);
-      deck = r.deck;
-      discardPile = r.discardPile;
-    }
-    if (deck.length === 0) break;
-
-    const drawnCard = deck.shift()!;
-    const players = current.players.map((p, idx) =>
-      idx === current.currentPlayerIndex
-        ? { ...p, hand: [...p.hand, drawnCard], calledUno: false, unoCaught: false }
-        : p,
-    );
-    current = { ...current, players, deck, discardPile, lastAction: action };
-
-    if (canPlayCard(drawnCard, topCard, currentColor)) {
-      break;
-    }
-  }
-
-  return current;
+  return applyAction(state, action);
 }
 
 export function handleForcedPlayAfterDraw(stateAfterDraw: GameState, originalAction: Extract<GameAction, { type: 'DRAW_CARD' }>): GameState {

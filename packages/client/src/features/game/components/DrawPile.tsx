@@ -22,9 +22,10 @@ export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTri
 
   const isMyTurn = useIsMyTurn();
   const isPenaltyDrawing = pendingPenaltyDraws > 0;
-  const canDraw = isMyTurn && phase === 'playing' && (isPenaltyDrawing || !hasDrawnThisTurn);
-
   const playableIds = usePlayableCardIds();
+  const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
+  const canContinueDrawUntilPlayable = mustDrawUntilPlayable && hasDrawnThisTurn && playableIds.size === 0;
+  const canDraw = isMyTurn && phase === 'playing' && (isPenaltyDrawing || !hasDrawnThisTurn || canContinueDrawUntilPlayable);
 
   const showNoPlayableHint = canDraw && !isPenaltyDrawing && playableIds.size === 0 && !settings?.houseRules?.noHints;
   const emphasizeDraw = canDraw && !settings?.houseRules?.noHints;
@@ -40,7 +41,7 @@ export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTri
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
           >
-            罚摸 {pendingPenaltyDraws} 张
+            还要摸 {pendingPenaltyDraws} 张
           </motion.div>
         )}
         {showNoPlayableHint && (
