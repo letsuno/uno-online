@@ -4,8 +4,14 @@ import { useGatewayStore } from './gateway-store';
 import { VoiceEngine } from './voice-engine';
 import { createWebCodecsOpusEncoder, createWebCodecsOpusDecoder, canUseWebCodecsOpus } from './webcodecs-opus';
 import { cn } from '@/shared/lib/utils';
+import { useAuthStore } from '@/features/auth/stores/auth-store';
 
 const MUMBLE_SERVER_ID = 'uno';
+
+function toMumbleUsername(name: string | undefined): string {
+  const cleaned = name?.trim().replace(/[^\p{L}\p{N}_ .-]/gu, '').slice(0, 32);
+  return cleaned || `player_${Date.now()}`;
+}
 
 export default function VoicePanel() {
   const engineRef = useRef<VoiceEngine | null>(null);
@@ -30,6 +36,7 @@ export default function VoicePanel() {
   const [muted, setMuted] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [peerVolumes, setPeerVolumes] = useState<Map<number, number>>(new Map());
+  const voiceName = useAuthStore((s) => s.user?.nickname || s.user?.username);
 
   const connected = status === 'connected';
   const unsupported = !canUseWebCodecsOpus();
@@ -102,8 +109,8 @@ export default function VoicePanel() {
     console.log('[voice] joining voice, gateway status:', gatewayStatus, 'status:', status);
     const engine = setupVoiceEngine();
     await engine.enableAudio();
-    connect({ serverId: MUMBLE_SERVER_ID, username: `player_${Date.now()}` });
-  }, [unsupported, setupVoiceEngine, connect, gatewayStatus, status]);
+    connect({ serverId: MUMBLE_SERVER_ID, username: toMumbleUsername(voiceName) });
+  }, [unsupported, setupVoiceEngine, connect, gatewayStatus, status, voiceName]);
 
   const leaveVoice = useCallback(() => {
     const engine = engineRef.current;
