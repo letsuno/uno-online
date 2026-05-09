@@ -87,11 +87,12 @@ export default function RoomPage() {
         房间 {roomCode}
         <button
           onClick={() => {
-            navigator.clipboard.writeText(roomCode ?? '');
-            useToastStore.getState().addToast('房间号已复制', 'success');
+            const url = `${window.location.origin}/room/${roomCode}`;
+            navigator.clipboard.writeText(url);
+            useToastStore.getState().addToast('房间链接已复制', 'success');
           }}
           className="bg-white/10 hover:bg-white/20 rounded-lg p-1.5 cursor-pointer transition-colors"
-          title="复制房间号"
+          title="复制房间链接"
         >
           <Copy size={14} className="text-muted-foreground" />
         </button>

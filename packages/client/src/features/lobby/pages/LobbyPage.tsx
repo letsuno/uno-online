@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Spade, LogOut, User, Hexagon, Circle, Upload, X, Type, Eye, History, Users, Clock } from 'lucide-react';
+import { Spade, LogOut, User, Hexagon, Circle, Upload, X, Type, Eye, History, Users, Clock, ClipboardPaste } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { getRoleColor } from '@/shared/lib/utils';
 import { useRoomStore } from '@/shared/stores/room-store';
@@ -44,14 +44,32 @@ export default function LobbyPage() {
     });
   };
 
+  const extractRoomCode = (input: string): string => {
+    const urlMatch = input.match(/\/(?:room|game)\/([A-Za-z0-9]{6})/);
+    if (urlMatch) return urlMatch[1]!.toUpperCase();
+    return input.trim().toUpperCase();
+  };
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const code = extractRoomCode(text);
+      setJoinCode(code);
+      setError('');
+    } catch {
+      setError('无法读取剪贴板');
+    }
+  };
+
   const handleJoin = () => {
-    if (joinCode.length !== 6) { setError('请输入 6 位房间码'); return; }
+    const code = extractRoomCode(joinCode);
+    if (code !== joinCode) setJoinCode(code);
+    if (code.length !== 6) { setError('请输入 6 位房间码'); return; }
     setLoading(true);
     connectSocket();
-    getSocket().emit('room:join', joinCode.toUpperCase(), (res: any) => {
+    getSocket().emit('room:join', code, (res: any) => {
       setLoading(false);
       if (res.success) {
-        const code = joinCode.toUpperCase();
         setRoom(code, res.players, res.room);
         navigate(res.rejoin ? `/game/${code}` : `/room/${code}`);
       } else {
@@ -90,12 +108,20 @@ export default function LobbyPage() {
         <div className="flex gap-2">
           <Input
             value={joinCode}
-            onChange={(e) => { setJoinCode(e.target.value.toUpperCase()); setError(''); }}
-            placeholder="输入房间码"
-            maxLength={6}
+            onChange={(e) => { setJoinCode(extractRoomCode(e.target.value)); setError(''); }}
+            onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+            placeholder="房间码或链接"
+            maxLength={100}
             className="flex-1 text-center uppercase tracking-room-code"
             inputSize="lg"
           />
+          <button
+            onClick={handlePaste}
+            className="bg-white/10 hover:bg-white/20 rounded-lg px-2.5 cursor-pointer transition-colors"
+            title="从剪贴板粘贴"
+          >
+            <ClipboardPaste size={18} className="text-muted-foreground" />
+          </button>
           <Button variant="outline" onClick={handleJoin} disabled={loading} className="px-6">
             加入
           </Button>

@@ -119,7 +119,7 @@ function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) 
     }
     try {
       const accessToken = await exchangeCodeForToken(code, config);
-      const githubUser = await fetchGitHubUser(accessToken);
+      const githubUser = await fetchGitHubUser(accessToken, config);
       const githubId = String(githubUser.id);
 
       const existing = await findUserByUsername(githubUser.login);
