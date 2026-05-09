@@ -17,20 +17,32 @@ export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTri
   const deckCount = useGameStore((s) => s.deckCount);
   const phase = useGameStore((s) => s.phase);
   const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
+  const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
   const settings = useGameStore((s) => s.settings);
 
   const isMyTurn = useIsMyTurn();
-  const canDraw = isMyTurn && !hasDrawnThisTurn && phase === 'playing';
+  const isPenaltyDrawing = pendingPenaltyDraws > 0;
+  const canDraw = isMyTurn && phase === 'playing' && (isPenaltyDrawing || !hasDrawnThisTurn);
 
   const playableIds = usePlayableCardIds();
 
-  const showNoPlayableHint = canDraw && playableIds.size === 0 && !settings?.houseRules?.noHints;
+  const showNoPlayableHint = canDraw && !isPenaltyDrawing && playableIds.size === 0 && !settings?.houseRules?.noHints;
   const emphasizeDraw = canDraw && !settings?.houseRules?.noHints;
 
   return (
     <div className="flex flex-col items-center gap-1.5 z-card relative min-w-draw-pile-min">
       <DrawCardAnimation trigger={drawAnimTrigger} targetX={drawTargetX} targetY={drawTargetY} />
       <AnimatePresence>
+        {isPenaltyDrawing && canDraw && (
+          <motion.div
+            className="absolute bottom-hint-bottom left-1/2 -translate-x-1/2 whitespace-nowrap font-game text-caption text-destructive text-shadow-glow"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+          >
+            罚摸 {pendingPenaltyDraws} 张
+          </motion.div>
+        )}
         {showNoPlayableHint && (
           <motion.div
             className="absolute bottom-hint-bottom left-1/2 -translate-x-1/2 whitespace-nowrap font-game text-caption text-primary text-shadow-glow"

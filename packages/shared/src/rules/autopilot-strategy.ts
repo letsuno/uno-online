@@ -61,6 +61,10 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   const currentPlayer = state.players[state.currentPlayerIndex];
   if (!currentPlayer || currentPlayer.id !== playerId) return [];
 
+  if ((state.pendingPenaltyDraws ?? 0) > 0) {
+    return [{ type: 'DRAW_CARD', playerId }];
+  }
+
   const topCard = state.discardPile[state.discardPile.length - 1];
   if (!topCard || !state.currentColor) return [{ type: 'DRAW_CARD', playerId }];
 

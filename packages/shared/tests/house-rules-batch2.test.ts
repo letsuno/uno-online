@@ -40,6 +40,15 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
   };
 }
 
+function drawPendingPenalty(state: GameState): GameState {
+  let current = state;
+  while ((current.pendingPenaltyDraws ?? 0) > 0) {
+    const playerId = current.players[current.currentPlayerIndex]!.id;
+    current = applyActionWithHouseRules(current, { type: 'DRAW_CARD', playerId });
+  }
+  return current;
+}
+
 describe('multiplePlaySameNumber', () => {
   it('keeps turn on same player after playing a number card when they have more of same number', () => {
     const red5 = makeCard('number', 'red', { value: 5, id: 'red5' });
@@ -108,9 +117,12 @@ describe('bombCard', () => {
     });
 
     const result = applyActionWithHouseRules(state, { type: 'PASS', playerId: 'p1' });
-    expect(result.currentPlayerIndex).toBe(1);
-    const bob = result.players.find(p => p.id === 'p2')!;
-    const carol = result.players.find(p => p.id === 'p3')!;
+    expect(result.pendingPenaltyDraws).toBe(1);
+    expect(result.pendingPenaltyQueue).toHaveLength(1);
+    const paid = drawPendingPenalty(result);
+    expect(paid.currentPlayerIndex).toBe(1);
+    const bob = paid.players.find(p => p.id === 'p2')!;
+    const carol = paid.players.find(p => p.id === 'p3')!;
     expect(bob.hand.length).toBe(2);
     expect(carol.hand.length).toBe(2);
   });

@@ -52,12 +52,15 @@ export const stacking: HouseRulePlugin = {
     if (action.type === 'DRAW_CARD' && state.drawStack > 0) {
       const player = state.players[state.currentPlayerIndex];
       if (!player || player.id !== action.playerId) return { handled: true, state };
-      let newState = ctx.drawCardsFromDeck(state, action.playerId, state.drawStack);
-      const nextIdx = ctx.getNextPlayerIndex(newState.currentPlayerIndex, newState.players.length, newState.direction);
-      newState = { ...newState, drawStack: 0, currentPlayerIndex: nextIdx, lastAction: action };
-      if (state.lastAction?.type === 'PLAY_CARD') {
-        return { handled: true, state: ctx.applyDoubleScore(state, ctx.checkRoundEnd(newState, state.lastAction.playerId)) };
-      }
+      const nextIdx = ctx.getNextPlayerIndex(state.currentPlayerIndex, state.players.length, state.direction);
+      const pendingState = ctx.startPenaltyDraw(
+        { ...state, drawStack: 0, lastAction: action },
+        action.playerId,
+        state.drawStack,
+        nextIdx,
+        state.lastAction?.type === 'PLAY_CARD' ? state.lastAction.playerId : null,
+      );
+      const newState = ctx.applyAction(pendingState, action);
       return { handled: true, state: newState };
     }
 

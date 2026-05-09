@@ -33,7 +33,7 @@ export const multiPlayPass: HouseRulePlugin = {
       if (bombCount >= 3) {
         for (const p of result.players) {
           if (p.id !== player.id) {
-            result = ctx.drawCardsFromDeck(result, p.id, 1);
+            result = ctx.startPenaltyDraw(result, p.id, 1, nextIdx);
           }
         }
       }

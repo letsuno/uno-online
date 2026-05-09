@@ -39,6 +39,15 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
   };
 }
 
+function drawPendingPenalty(state: GameState): GameState {
+  let current = state;
+  while ((current.pendingPenaltyDraws ?? 0) > 0) {
+    const playerId = current.players[current.currentPlayerIndex]!.id;
+    current = applyActionWithHouseRules(current, { type: 'DRAW_CARD', playerId });
+  }
+  return current;
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // stackDrawTwo
 // ──────────────────────────────────────────────────────────────────────────────
@@ -122,10 +131,12 @@ describe('stackDrawTwo', () => {
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'd2play' });
     // Card was played
     expect(next.discardPile[next.discardPile.length - 1]!.id).toBe('d2play');
+    expect(next.pendingPenaltyDraws).toBe(2);
+    const paid = drawPendingPenalty(next);
     // p2 drew 2 from deck (standard draw_two effect)
-    expect(next.players[1]!.hand).toHaveLength(3); // 1 existing + 2 drawn
+    expect(paid.players[1]!.hand).toHaveLength(3); // 1 existing + 2 drawn
     // drawStack field unchanged (standard engine doesn't use it)
-    expect(next.drawStack).toBe(2);
+    expect(paid.drawStack).toBe(2);
   });
 
   it('DRAW_CARD with active stack draws full stack amount', () => {
@@ -150,12 +161,14 @@ describe('stackDrawTwo', () => {
 
     const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
 
-    // p1 draws all 4 stacked cards
-    expect(next.players[0]!.hand).toHaveLength(4);
+    expect(next.pendingPenaltyDraws).toBe(3);
+    // p1 draws the first stacked card immediately, then pays the rest one by one.
+    const paid = drawPendingPenalty(next);
+    expect(paid.players[0]!.hand).toHaveLength(4);
     // drawStack resets to 0
-    expect(next.drawStack).toBe(0);
+    expect(paid.drawStack).toBe(0);
     // Turn advances to p2
-    expect(next.currentPlayerIndex).toBe(1);
+    expect(paid.currentPlayerIndex).toBe(1);
   });
 
   it('ends the round after a last-card stack is paid', () => {
@@ -181,11 +194,12 @@ describe('stackDrawTwo', () => {
     });
 
     const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    const paid = drawPendingPenalty(next);
 
-    expect(next.phase).toBe('round_end');
-    expect(next.winnerId).toBe('p2');
-    expect(next.drawStack).toBe(0);
-    expect(next.players[0]!.hand).toHaveLength(3);
+    expect(paid.phase).toBe('round_end');
+    expect(paid.winnerId).toBe('p2');
+    expect(paid.drawStack).toBe(0);
+    expect(paid.players[0]!.hand).toHaveLength(3);
   });
 });
 
@@ -541,12 +555,14 @@ describe('misplayPenalty', () => {
 
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'invalid' });
 
+    expect(next.pendingPenaltyDraws).toBe(1);
+    const paid = drawPendingPenalty(next);
     // p1 draws 1 penalty card (had 2, now has 3)
-    expect(next.players[0]!.hand).toHaveLength(3);
+    expect(paid.players[0]!.hand).toHaveLength(3);
     // invalidCard still in hand (wasn't played)
-    expect(next.players[0]!.hand.find(c => c.id === 'invalid')).toBeDefined();
+    expect(paid.players[0]!.hand.find(c => c.id === 'invalid')).toBeDefined();
     // discard pile unchanged
-    expect(next.discardPile[next.discardPile.length - 1]!.id).toBe('top');
+    expect(paid.discardPile[paid.discardPile.length - 1]!.id).toBe('top');
   });
 
   it('does NOT penalize for invalid play when misplayPenalty is off', () => {

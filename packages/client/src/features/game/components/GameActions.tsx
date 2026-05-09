@@ -25,7 +25,7 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
 
   const me = players.find((p) => p.id === userId);
   const isMyTurn = useIsMyTurn();
-  const catchTargets = players.filter((p) => p.id !== userId && p.handCount === 1 && !p.calledUno);
+  const catchTargets = players.filter((p) => p.id !== userId && p.handCount === 1 && !p.calledUno && !p.unoCaught);
   const noChallengeWD4 = settings?.houseRules?.noChallengeWildFour ?? false;
 
   const withCooldown = (fn: () => void) => () => {

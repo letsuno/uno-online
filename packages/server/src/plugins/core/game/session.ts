@@ -17,6 +17,7 @@ export interface PlayerView {
     connected: boolean;
     autopilot: boolean;
     calledUno: boolean;
+    unoCaught?: boolean;
     eliminated?: boolean;
     teamId?: number;
     avatarUrl?: string | null;
@@ -27,6 +28,7 @@ export interface PlayerView {
   discardPile: Card[];
   currentColor: GameState['currentColor'];
   drawStack: number;
+  pendingPenaltyDraws?: number;
   deckCount: number;
   roundNumber: number;
   winnerId: string | null;
@@ -94,6 +96,7 @@ export class GameSession {
           connected: p.connected,
           autopilot: p.autopilot,
           calledUno: p.calledUno,
+          unoCaught: p.unoCaught,
           eliminated: p.eliminated,
           teamId: p.teamId,
           avatarUrl: p.avatarUrl,
@@ -105,6 +108,7 @@ export class GameSession {
       discardPile: this.state.discardPile.slice(-1),
       currentColor: this.state.currentColor,
       drawStack: this.state.drawStack,
+      pendingPenaltyDraws: this.state.pendingPenaltyDraws ?? 0,
       deckCount: this.state.deck.length,
       roundNumber: this.state.roundNumber,
       winnerId: this.state.winnerId,
@@ -224,6 +228,7 @@ export class GameSession {
         connected: p.connected,
         autopilot: p.autopilot,
         calledUno: p.calledUno,
+        unoCaught: p.unoCaught,
         eliminated: p.eliminated,
         teamId: p.teamId,
         avatarUrl: p.avatarUrl,
@@ -234,6 +239,7 @@ export class GameSession {
       discardPile: this.state.discardPile.slice(-1),
       currentColor: this.state.currentColor,
       drawStack: this.state.drawStack,
+      pendingPenaltyDraws: this.state.pendingPenaltyDraws ?? 0,
       deckCount: this.state.deck.length,
       roundNumber: this.state.roundNumber,
       winnerId: this.state.winnerId,

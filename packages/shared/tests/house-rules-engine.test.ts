@@ -39,6 +39,15 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
   };
 }
 
+function drawPendingPenalty(state: GameState): GameState {
+  let current = state;
+  while ((current.pendingPenaltyDraws ?? 0) > 0) {
+    const playerId = current.players[current.currentPlayerIndex]!.id;
+    current = applyActionWithHouseRules(current, { type: 'DRAW_CARD', playerId });
+  }
+  return current;
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Default behavior (all rules off) matches standard applyAction
 // ──────────────────────────────────────────────────────────────────────────────
@@ -251,7 +260,10 @@ describe('silentUno', () => {
       deck: deckCards,
     });
     const next = applyActionWithHouseRules(state, { type: 'CATCH_UNO', catcherId: 'p1', targetId: 'p2' });
-    expect(next.players[1]!.hand).toHaveLength(3); // 1 + 2 penalty
+    expect(next.pendingPenaltyDraws).toBe(2);
+    expect(next.players[1]!.unoCaught).toBe(true);
+    const paid = drawPendingPenalty(next);
+    expect(paid.players[1]!.hand).toHaveLength(3); // 1 + 2 penalty
   });
 });
 
@@ -321,7 +333,9 @@ describe('noChallengeWildFour', () => {
     const next = applyActionWithHouseRules(state, { type: 'CHALLENGE', playerId: 'p2' });
     // Should process the challenge (p2 draws 6 since WD4 was legal — p1 had no red)
     expect(next.phase).toBe('playing');
-    expect(next.players[1]!.hand).toHaveLength(6);
+    expect(next.pendingPenaltyDraws).toBe(6);
+    const paid = drawPendingPenalty(next);
+    expect(paid.players[1]!.hand).toHaveLength(6);
   });
 });
 
@@ -352,7 +366,9 @@ describe('unoPenaltyCount', () => {
       },
     });
     const next = applyActionWithHouseRules(state, { type: 'CATCH_UNO', catcherId: 'p1', targetId: 'p2' });
-    expect(next.players[1]!.hand).toHaveLength(7); // 1 + 6 penalty
+    expect(next.pendingPenaltyDraws).toBe(6);
+    const paid = drawPendingPenalty(next);
+    expect(paid.players[1]!.hand).toHaveLength(7); // 1 + 6 penalty
   });
 
   it('draws 4 cards when unoPenaltyCount=4', () => {
@@ -377,7 +393,9 @@ describe('unoPenaltyCount', () => {
       },
     });
     const next = applyActionWithHouseRules(state, { type: 'CATCH_UNO', catcherId: 'p1', targetId: 'p2' });
-    expect(next.players[1]!.hand).toHaveLength(5); // 1 + 4 penalty
+    expect(next.pendingPenaltyDraws).toBe(4);
+    const paid = drawPendingPenalty(next);
+    expect(paid.players[1]!.hand).toHaveLength(5); // 1 + 4 penalty
   });
 
   it('draws 2 cards (default) when unoPenaltyCount=2', () => {
@@ -402,7 +420,9 @@ describe('unoPenaltyCount', () => {
       },
     });
     const next = applyActionWithHouseRules(state, { type: 'CATCH_UNO', catcherId: 'p1', targetId: 'p2' });
-    expect(next.players[1]!.hand).toHaveLength(3); // 1 + 2 penalty
+    expect(next.pendingPenaltyDraws).toBe(2);
+    const paid = drawPendingPenalty(next);
+    expect(paid.players[1]!.hand).toHaveLength(3); // 1 + 2 penalty
   });
 });
 

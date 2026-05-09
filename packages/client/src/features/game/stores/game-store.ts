@@ -10,6 +10,7 @@ export interface PlayerInfo {
   connected: boolean;
   autopilot: boolean;
   calledUno: boolean;
+  unoCaught?: boolean;
   eliminated?: boolean;
   teamId?: number;
   avatarUrl?: string | null;
@@ -33,6 +34,7 @@ interface GameState {
   discardPile: Card[];
   currentColor: Color | null;
   drawStack: number;
+  pendingPenaltyDraws: number;
   deckCount: number;
   roundNumber: number;
   winnerId: string | null;
@@ -66,6 +68,7 @@ export const useGameStore = create<GameState>((set) => ({
   discardPile: [],
   currentColor: null,
   drawStack: 0,
+  pendingPenaltyDraws: 0,
   deckCount: 0,
   roundNumber: 0,
   winnerId: null,
@@ -105,6 +108,7 @@ export const useGameStore = create<GameState>((set) => ({
         discardPile: view.discardPile as Card[],
         currentColor: view.currentColor as Color | null,
         drawStack: view.drawStack as number,
+        pendingPenaltyDraws: (view.pendingPenaltyDraws as number | undefined) ?? 0,
         deckCount: view.deckCount as number,
         roundNumber: view.roundNumber as number,
         winnerId: view.winnerId as string | null,
@@ -130,6 +134,7 @@ export const useGameStore = create<GameState>((set) => ({
       discardPile: [],
       currentColor: null,
       drawStack: 0,
+      pendingPenaltyDraws: 0,
       deckCount: 0,
       roundNumber: 0,
       winnerId: null,

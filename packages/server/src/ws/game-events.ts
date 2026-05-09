@@ -194,6 +194,7 @@ export function registerGameEvents(
     const ctx = getSession(socket, sessions);
     if (!ctx) return callback?.({ success: false });
     const { session, roomCode } = ctx;
+    const beforeState = session.getFullState();
     const result = session.applyAction({ type: 'DRAW_CARD', playerId: data.user.userId });
     if (!result.success) {
       socket.emit('game:action_rejected', { action: 'draw_card', reason: result.error });
@@ -206,14 +207,16 @@ export function registerGameEvents(
     if (result.drawnCard && !gameState.settings.houseRules.blindDraw) {
       socket.emit('game:card_drawn', { card: result.drawnCard });
     }
-    const sockets = await io.in(roomCode).fetchSockets();
-    for (const s of sockets) {
-      if ((s.data as SocketData).user.userId !== data.user.userId) {
-        s.emit('game:opponent_drew', { playerId: data.user.userId });
-      }
-    }
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session, redis);
+    const afterState = session.getFullState();
+    if (
+      (beforeState.pendingPenaltyDraws ?? 0) > 0 &&
+      (afterState.pendingPenaltyDraws ?? 0) === 0 &&
+      !(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db))
+    ) {
+      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+    }
     callback?.({ success: true });
   });
 
