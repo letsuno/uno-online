@@ -45,23 +45,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   loading: false,
 
   init: () => {
-    const token = localStorage.getItem('admin_token');
+    const token = localStorage.getItem('admin_token') ?? localStorage.getItem('token');
     if (!token) return;
     const payload = decodeJwt(token);
-    if (!payload) {
-      localStorage.removeItem('admin_token');
-      return;
-    }
-    // Check expiry
-    if (payload.exp * 1000 < Date.now()) {
+    if (!payload || payload.exp * 1000 < Date.now()) {
       localStorage.removeItem('admin_token');
       return;
     }
     if (payload.role !== 'admin') {
       localStorage.removeItem('admin_token');
-      set({ error: 'This account does not have admin access' });
+      set({ error: '该账号没有管理员权限' });
       return;
     }
+    localStorage.setItem('admin_token', token);
     set({
       token,
       user: {
