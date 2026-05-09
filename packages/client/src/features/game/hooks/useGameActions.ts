@@ -5,9 +5,9 @@ import { playSound } from '@/shared/sound/sound-manager';
 import { useToastStore } from '@/shared/stores/toast-store';
 
 export function useGameActions() {
-  const playCard = useCallback((cardId: string) => {
+  const playCard = useCallback((cardId: string, chosenColor?: Color) => {
     playSound('play_card');
-    getSocket().emit('game:play_card', { cardId }, () => {});
+    getSocket().emit('game:play_card', chosenColor ? { cardId, chosenColor } : { cardId }, () => {});
   }, []);
 
   const drawCard = useCallback(() => {

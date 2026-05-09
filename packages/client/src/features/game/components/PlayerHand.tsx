@@ -1,15 +1,16 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import type { Card as CardType } from '@uno-online/shared';
+import type { Card as CardType, Color } from '@uno-online/shared';
 import { sortHand } from '@uno-online/shared';
 import AnimatedCard from './AnimatedCard';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useIsMyTurn } from '../hooks/useIsMyTurn';
 import { usePlayableCardIds } from '../hooks/usePlayableCardIds';
+import ColorPicker from './ColorPicker';
 
 interface PlayerHandProps {
-  onPlayCard: (cardId: string) => void;
+  onPlayCard: (cardId: string, chosenColor?: Color) => void;
 }
 
 function getSpreadAngle(count: number): number {
@@ -34,6 +35,8 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   const players = useGameStore((s) => s.players);
   const phase = useGameStore((s) => s.phase);
   const settings = useGameStore((s) => s.settings);
+  const drawStack = useGameStore((s) => s.drawStack);
+  const discardPile = useGameStore((s) => s.discardPile);
 
   const me = players.find((p) => p.id === userId);
   const isMyTurn = useIsMyTurn();
@@ -42,14 +45,36 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   const hintedIds = settings?.houseRules?.noHints ? new Set<string>() : playableIds;
 
   const sorted = useMemo(() => sortHand(me?.hand ?? []), [me?.hand]);
+  const [pendingColorCardId, setPendingColorCardId] = useState<string | null>(null);
 
   if (!me) return null;
+
+  const topCard = discardPile[discardPile.length - 1];
+  const houseRules = settings?.houseRules;
+  const shouldPickColorBeforePlay = (card: CardType) => {
+    if (card.type !== 'wild_draw_four' || !houseRules || !topCard) return false;
+    if (topCard.type !== 'draw_two' && topCard.type !== 'wild_draw_four') {
+      return houseRules.stackDrawFour || houseRules.crossStack;
+    }
+    return (
+      drawStack > 0 ||
+      (drawStack === 0 && (houseRules.stackDrawFour || houseRules.crossStack))
+    );
+  };
 
   const spreadAngle = getSpreadAngle(sorted.length);
   const center = (sorted.length - 1) / 2;
 
   return (
     <div className="relative z-actions overflow-visible pt-10 -mt-10 pointer-events-none">
+      {pendingColorCardId && (
+        <ColorPicker
+          onPick={(color) => {
+            onPlayCard(pendingColorCardId, color);
+            setPendingColorCardId(null);
+          }}
+        />
+      )}
       <div className="absolute inset-x-0 top-0 h-px bg-primary/15 pointer-events-none" />
       <div
         className="relative rounded-t-2xl px-5 pt-8 pb-hand-pb flex justify-center overflow-x-auto overflow-y-visible scrollbar-hidden pointer-events-auto"
@@ -75,7 +100,14 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
                   playable={hintedIds.has(card.id)}
                   clickable={isPlayable}
                   dimmed={isDimmed}
-                  onClick={() => isPlayable && onPlayCard(card.id)}
+                  onClick={() => {
+                    if (!isPlayable) return;
+                    if (shouldPickColorBeforePlay(card)) {
+                      setPendingColorCardId(card.id);
+                      return;
+                    }
+                    onPlayCard(card.id);
+                  }}
                   className="snap-center"
                   style={{
                     transform: `rotate(${angle}deg)`,

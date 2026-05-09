@@ -24,7 +24,7 @@ export default function ColorPicker({ onPick }: ColorPickerProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-modal">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-modal pointer-events-auto">
       <AnimatePresence>
         {picked && (
           <motion.div
