@@ -31,10 +31,21 @@ export default function PlayerListPanel() {
                 )}
               >
                 <div
-                  className="relative w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0"
+                  className="relative w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 overflow-hidden"
                   style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
                 >
-                  {AVATAR_EMOJIS[i % AVATAR_EMOJIS.length]}
+                  <span>{AVATAR_EMOJIS[i % AVATAR_EMOJIS.length]}</span>
+                  {p.avatarUrl && (
+                    <img
+                      src={p.avatarUrl}
+                      alt={p.name}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  )}
                   <GoogleRing size={0} className="w-full h-full" />
                 </div>
                 <div className="flex-1 min-w-0">
