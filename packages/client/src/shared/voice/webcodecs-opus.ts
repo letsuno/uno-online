@@ -84,7 +84,7 @@ export function createWebCodecsOpusEncoder(params: {
 }
 
 export type WebCodecsOpusDecoder = {
-  decode: (opus: Uint8Array) => void
+  decode: (opus: Uint8Array) => boolean
   close: () => void
 }
 
@@ -99,6 +99,8 @@ export function createWebCodecsOpusDecoder(params: {
     throw new Error('WebCodecs is not available (AudioDecoder/EncodedAudioChunk missing)')
   }
 
+  let closed = false
+
   const decoder = new g.AudioDecoder({
     output: (audioData: any) => {
       try {
@@ -106,13 +108,19 @@ export function createWebCodecsOpusDecoder(params: {
         const channels = Number(audioData.numberOfChannels) || params.channels
         const pcm = new Float32Array(frames * channels)
         audioData.copyTo(pcm, { planeIndex: 0, format: 'f32' })
-        audioData.close()
         params.onPcm(pcm)
       } catch (err) {
         params.onError?.(err)
+      } finally {
+        try {
+          audioData.close()
+        } catch {}
       }
     },
-    error: (err: unknown) => params.onError?.(err)
+    error: (err: unknown) => {
+      closed = true
+      params.onError?.(err)
+    }
   }) as AnyDecoder
 
   decoder.configure({
@@ -125,6 +133,8 @@ export function createWebCodecsOpusDecoder(params: {
 
   return {
     decode: (opus: Uint8Array) => {
+      if (closed || decoder.state === 'closed') return false
+
       const chunk = new g.EncodedAudioChunk({
         type: 'key',
         timestamp: timestampUs,
@@ -132,9 +142,18 @@ export function createWebCodecsOpusDecoder(params: {
       }) as AnyEncodedAudioChunk
 
       timestampUs += 20_000
-      decoder.decode(chunk)
+      try {
+        decoder.decode(chunk)
+        return true
+      } catch (err) {
+        closed = true
+        params.onError?.(err)
+        return false
+      }
     },
     close: () => {
+      if (closed) return
+      closed = true
       try {
         decoder.close()
       } catch {}
