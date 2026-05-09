@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useIsMyTurn } from '../hooks/useIsMyTurn';
+import { usePlayableCardIds } from '../hooks/usePlayableCardIds';
 import { playSound } from '@/shared/sound/sound-manager';
 import { Button } from '@/shared/components/ui/Button';
 
@@ -27,6 +28,9 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   const isMyTurn = useIsMyTurn();
   const catchTargets = players.filter((p) => p.id !== userId && p.handCount === 1 && !p.calledUno && !p.unoCaught);
   const noChallengeWD4 = settings?.houseRules?.noChallengeWildFour ?? false;
+  const playableIds = usePlayableCardIds();
+  const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
+  const canPassAfterDraw = hasDrawnThisTurn && (!mustDrawUntilPlayable || playableIds.size > 0);
 
   const withCooldown = (fn: () => void) => () => {
     if (cooldown) return;
@@ -49,7 +53,7 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
           <Button variant="secondary" onClick={onAccept}>接受</Button>
         </>
       )}
-      {isMyTurn && hasDrawnThisTurn && phase === 'playing' && (
+      {isMyTurn && canPassAfterDraw && phase === 'playing' && (
         <Button variant="secondary" onClick={onPass}>跳过</Button>
       )}
       {phase === 'choosing_swap_target' && isMyTurn && (
