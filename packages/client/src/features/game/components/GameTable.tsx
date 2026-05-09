@@ -396,7 +396,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
             initial={{ opacity: 0 }}
             animate={{
               opacity: 1,
-              strokeDashoffset: isClockwise ? [0, -28] : [0, 28],
+              strokeDashoffset: [0, -28],
             }}
             transition={{
               opacity: { duration: 0.3 },
@@ -406,12 +406,13 @@ export default function GameTable({ onDraw }: GameTableProps) {
           {/* Arrowhead at end of highlight arc */}
           {(() => {
             const { x, y, tx, ty } = directionArc.arrowTip;
-            const size = 8;
+            const length = 12;
+            const halfWidth = 11;
             const nx = -ty, ny = tx;
-            const p1x = x - tx * size + nx * size * 0.5;
-            const p1y = y - ty * size + ny * size * 0.5;
-            const p2x = x - tx * size - nx * size * 0.5;
-            const p2y = y - ty * size - ny * size * 0.5;
+            const p1x = x - tx * length + nx * halfWidth;
+            const p1y = y - ty * length + ny * halfWidth;
+            const p2x = x - tx * length - nx * halfWidth;
+            const p2y = y - ty * length - ny * halfWidth;
             return (
               <motion.polygon
                 key={`arrow-${currentPlayerIndex}`}
@@ -439,11 +440,12 @@ export default function GameTable({ onDraw }: GameTableProps) {
               const atx = (tangentX / len) * dir;
               const aty = (tangentY / len) * dir;
               const anx = -aty, any_ = atx;
-              const s = 5;
+              const length = 8;
+              const halfWidth = 8;
               arrows.push(
                 <polygon
                   key={`dir-arrow-${i}`}
-                  points={`${ax + atx * s},${ay + aty * s} ${ax - atx * s + anx * s * 0.5},${ay - aty * s + any_ * s * 0.5} ${ax - atx * s - anx * s * 0.5},${ay - aty * s - any_ * s * 0.5}`}
+                  points={`${ax + atx * length},${ay + aty * length} ${ax - atx * length + anx * halfWidth},${ay - aty * length + any_ * halfWidth} ${ax - atx * length - anx * halfWidth},${ay - aty * length - any_ * halfWidth}`}
                   fill="rgba(251, 191, 36, 0.15)"
                 />
               );
@@ -465,16 +467,20 @@ export default function GameTable({ onDraw }: GameTableProps) {
         >
           {/* Direction indicator */}
           <motion.div
+            key={direction}
             className="absolute w-32 h-32 md:w-40 md:h-40 border-2 border-dashed border-primary/30 rounded-full flex items-center justify-center pointer-events-none"
-            animate={{ rotate: isClockwise ? 0 : 180 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+            animate={{ rotate: isClockwise ? 360 : -360 }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
           >
             <motion.span
               className="text-direction text-primary/50"
-              key={direction}
               initial={{ scale: 1.6, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+              animate={{ scale: 1, opacity: 1, rotate: isClockwise ? -360 : 360 }}
+              transition={{
+                scale: { type: 'spring', stiffness: 300, damping: 15 },
+                opacity: { duration: 0.2 },
+                rotate: { duration: 3, repeat: Infinity, ease: 'linear' },
+              }}
             >
               {isClockwise ? '↻' : '↺'}
             </motion.span>
