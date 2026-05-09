@@ -10,6 +10,11 @@ handle /socket.io/* {
 	reverse_proxy server:3001
 }
 
+handle /mumble-ws* {
+	uri strip_prefix /mumble-ws
+	reverse_proxy mumble-gateway:64737
+}
+
 handle /admin/* {
 	root * /srv
 	try_files {path} /admin/index.html

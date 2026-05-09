@@ -55,13 +55,12 @@ services:
       - ./data/mumble:/data
     environment:
       MUMBLE_SUPERUSER_PASSWORD: ${MUMBLE_SUPERUSER_PASSWORD:-admin}
-      MUMBLE_CONFIG_allowTemporaryChannels: "true"
     restart: unless-stopped
 
   mumble-gateway:
     image: djkcyl/uno-online-mumble-gateway:latest
     volumes:
-      - ./data/mumble/config:/app/config
+      - ./mumble-gateway.config.json:/app/config/config.json:ro
     depends_on:
       - mumble
     ports:
