@@ -31,7 +31,7 @@ function getPlayOrigin(
 export default function DiscardPile() {
   const discardPile = useGameStore((s) => s.discardPile);
   const drawStack = useGameStore((s) => s.drawStack);
-  const currentColor = useGameStore((s) => s.currentColor);
+  const phase = useGameStore((s) => s.phase);
   const lastAction = useGameStore((s) => s.lastAction);
   const players = useGameStore((s) => s.players);
   const selfId = useEffectiveUserId();
@@ -44,7 +44,8 @@ export default function DiscardPile() {
   const isSelf = playedBy === selfId;
 
   const isWild = topCard.type === 'wild' || topCard.type === 'wild_draw_four';
-  const chosenColor = isWild ? (topCard.chosenColor ?? currentColor) : null;
+  const chosenColor = isWild ? (topCard.chosenColor ?? null) : null;
+  const isWaitingForColor = isWild && !chosenColor && phase === 'choosing_color';
   const colorGlowMap: Record<string, string> = {
     red: 'rgba(255, 51, 102, 0.6)',
     blue: 'rgba(68, 136, 255, 0.6)',
@@ -105,6 +106,10 @@ export default function DiscardPile() {
                 boxShadow: `0 0 18px 4px ${colorGlowMap[chosenColor] ?? 'transparent'}`,
                 outline: `2.5px solid ${colorBorderMap[chosenColor] ?? 'transparent'}`,
                 outlineOffset: '1px',
+              } : isWaitingForColor ? {
+                boxShadow: '0 0 16px 3px rgba(255, 255, 255, 0.22)',
+                outline: '2.5px dashed rgba(255, 255, 255, 0.55)',
+                outlineOffset: '1px',
               } : {}),
             }}
           >
@@ -116,6 +121,16 @@ export default function DiscardPile() {
               >
                 打{colorLabelMap[chosenColor]}！
               </span>
+            )}
+            {isWaitingForColor && (
+              <motion.span
+                className="absolute -bottom-1 -right-1 text-xs font-game font-black px-1 py-0.5 rounded bg-black/65 leading-none whitespace-nowrap text-white"
+                initial={{ opacity: 0.6, scale: 0.96 }}
+                animate={{ opacity: [0.6, 1, 0.6], scale: [0.96, 1, 0.96] }}
+                transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                待选色
+              </motion.span>
             )}
           </motion.div>
         </AnimatePresence>
