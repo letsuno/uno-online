@@ -149,7 +149,7 @@ export interface GameListItem {
   id: string;
   roomCode: string;
   players: { userId: string; nickname: string; placement: number; finalScore: number }[];
-  winnerId: string;
+  winnerId: string | null;
   winnerName: string;
   playerCount: number;
   rounds: number;

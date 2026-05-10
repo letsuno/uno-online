@@ -194,7 +194,7 @@ export async function getUserProfile(userId: string) {
 
 export async function recordGameResult(
   roomCode: string,
-  winnerId: string,
+  winnerId: string | null,
   rounds: number,
   duration: number,
   playerResults: { userId: string; finalScore: number; placement: number }[],
@@ -230,7 +230,7 @@ export async function recordGameResult(
         .set({ totalGames: sql`total_games + 1`, updatedAt: sql`datetime('now')` })
         .where('id', '=', p.userId);
 
-      if (p.userId === winnerId) {
+      if (winnerId && p.userId === winnerId) {
         await tx
           .updateTable('users')
           .set({
