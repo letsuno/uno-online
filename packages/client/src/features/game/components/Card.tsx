@@ -40,9 +40,11 @@ interface CardProps {
   onClick?: () => void;
   style?: React.CSSProperties;
   className?: string;
+  forceCornerLabel?: boolean;
+  disableHoverLift?: boolean;
 }
 
-export default function Card({ card, playable = false, clickable = playable, dimmed = false, mini = false, onClick, style, className }: CardProps) {
+export default function Card({ card, playable = false, clickable = playable, dimmed = false, mini = false, onClick, style, className, forceCornerLabel = false, disableHoverLift = false }: CardProps) {
   const colorBlindMode = useSettingsStore((s) => s.colorBlindMode);
   const cardImagePack = useSettingsStore((s) => s.cardImagePack);
 
@@ -52,7 +54,7 @@ export default function Card({ card, playable = false, clickable = playable, dim
     : colorClasses[card.color!] ?? '';
 
   const label = getCardLabel(card);
-  const showCorners = !isWild && !mini;
+  const showCorners = (!isWild || forceCornerLabel) && !mini;
 
   if (cardImagePack && isPackLoaded()) {
     const imgUrl = getCardImageUrl(card);
@@ -66,7 +68,8 @@ export default function Card({ card, playable = false, clickable = playable, dim
             'select-none shrink-0 relative',
             'transition-[transform,box-shadow,opacity] duration-200',
             playable && [
-              'cursor-pointer hover:-translate-y-3 hover:scale-105',
+              'cursor-pointer',
+              !disableHoverLift && 'hover:-translate-y-3 hover:scale-105',
             ],
             dimmed && 'opacity-40',
             className,
@@ -75,6 +78,11 @@ export default function Card({ card, playable = false, clickable = playable, dim
           style={style}
         >
           <img src={imgUrl} alt={label} className="w-full h-full object-contain pointer-events-none" draggable={false} />
+          {forceCornerLabel && (
+            <span className="absolute top-0.5 left-1 leading-none text-white text-shadow-card">
+              <span className="text-2xs font-bold">{label}</span>
+            </span>
+          )}
           {colorBlindMode && card.color && <ColorBlindOverlay color={card.color} />}
         </div>
       );
@@ -95,7 +103,8 @@ export default function Card({ card, playable = false, clickable = playable, dim
         playable && [
           'border-3 border-primary',
           'shadow-card-playable',
-          'cursor-pointer hover:-translate-y-3 hover:scale-105',
+          'cursor-pointer',
+          !disableHoverLift && 'hover:-translate-y-3 hover:scale-105',
         ],
         dimmed && 'opacity-40',
         className,
