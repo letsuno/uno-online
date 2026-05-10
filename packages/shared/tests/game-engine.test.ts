@@ -622,6 +622,47 @@ describe('CALL_UNO', () => {
     expect(next.players[0]!.calledUno).toBe(true);
   });
 
+  it('does not set calledUno flag for player with 2 cards outside their turn', () => {
+    const state = makeState({
+      players: [
+        {
+          id: 'p1', name: 'Alice',
+          hand: [
+            makeCard('number', 'red', { value: 1, id: 'c1' }),
+            makeCard('number', 'blue', { value: 2, id: 'c2' }),
+          ],
+          score: 0, connected: true, calledUno: false
+        },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+      currentPlayerIndex: 1,
+    });
+
+    const next = applyAction(state, { type: 'CALL_UNO', playerId: 'p1' });
+
+    expect(next.players[0]!.calledUno).toBe(false);
+  });
+
+  it('allows a player with 1 card to call UNO outside their turn before being caught', () => {
+    const state = makeState({
+      players: [
+        {
+          id: 'p1', name: 'Alice',
+          hand: [makeCard('number', 'red', { value: 1, id: 'c1' })],
+          score: 0, connected: true, calledUno: false
+        },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+      currentPlayerIndex: 1,
+    });
+
+    const next = applyAction(state, { type: 'CALL_UNO', playerId: 'p1' });
+
+    expect(next.players[0]!.calledUno).toBe(true);
+  });
+
   it('does not set calledUno flag for player with 2 cards in strict UNO mode', () => {
     const state = makeState({
       players: [
