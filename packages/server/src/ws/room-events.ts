@@ -207,7 +207,7 @@ export function registerRoomEvents(
     setGameStartTime(roomCode);
     const fullState = session.getFullState();
     session.recordEvent(GameEventType.GAME_START, {
-      initialDeck: fullState.deck,
+      initialDeck: [...fullState.deckLeft, ...fullState.deckRight],
       deckHash: fullState.deckHash,
       playerHands: Object.fromEntries(fullState.players.map(p => [p.id, p.hand])),
       firstDiscard: fullState.discardPile[0]!,
