@@ -171,14 +171,6 @@ async function emitTerminalStateIfNeeded(
     const voteState = getNextRoundVoteState(roomCode, session);
     io.to(roomCode).emit('game:next_round_vote', voteState);
 
-    if (voteState.votes >= voteState.required) {
-      const room = await getRoom(redis, roomCode);
-      const ownerIsAutopilot = state.players.some((p) => p.id === room?.ownerId && p.autopilot);
-      if (ownerIsAutopilot) {
-        await startNextRound(io, redis, roomCode, session, turnTimer, sessions);
-        return true;
-      }
-    }
   }
 
   if (state.phase === 'game_over') {
@@ -437,13 +429,14 @@ export function registerGameEvents(
     const room = await getRoom(redis, roomCode);
     const isOwner = room?.ownerId === data.user.userId;
     const votes = nextRoundVotes.get(roomCode) ?? new Set<string>();
+    const hadAlreadyVoted = votes.has(data.user.userId);
     votes.add(data.user.userId);
     nextRoundVotes.set(roomCode, votes);
 
     const voteState = getNextRoundVoteState(roomCode, session);
     io.to(roomCode).emit('game:next_round_vote', voteState);
 
-    if (isOwner && voteState.votes >= voteState.required) {
+    if (isOwner && hadAlreadyVoted && voteState.votes >= voteState.required) {
       await startNextRound(io, redis, roomCode, session, turnTimer, sessions);
       return callback?.({ success: true, started: true, vote: voteState });
     }
