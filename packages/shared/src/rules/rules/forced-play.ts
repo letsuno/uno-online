@@ -1,7 +1,7 @@
 import type { HouseRulePlugin } from '../house-rule-types';
 import type { GameState, GameAction } from '../../types/game';
 import type { RuleContext, PreCheckResult } from '../house-rule-types';
-import { hasPendingDrawObligation } from '../house-rule-helpers';
+import { hasPendingDrawObligation, hasPlayableCard } from '../house-rule-helpers';
 
 export const forcedPlay: HouseRulePlugin = {
   meta: {
@@ -18,10 +18,7 @@ export const forcedPlay: HouseRulePlugin = {
     const player = state.players[state.currentPlayerIndex];
     if (player?.id !== action.playerId) return { handled: false };
     const topCard = state.discardPile[state.discardPile.length - 1];
-    if (topCard && state.currentColor) {
-      const playable = player.hand.filter(c => ctx.canPlayCard(c, topCard, state.currentColor!));
-      if (playable.length > 0) return { handled: true, state };
-    }
+    if (hasPlayableCard(player.hand, topCard, state.currentColor, ctx.canPlayCard)) return { handled: true, state };
     return { handled: false };
   },
 };
