@@ -121,6 +121,10 @@ export function putAttackCardOnStack(
   card: Card,
   stackAdd: number,
 ): GameState {
+  if (card.type === 'wild_draw_four' && !action.chosenColor) {
+    return state;
+  }
+
   const player = state.players[state.currentPlayerIndex]!;
   const newHand = player.hand.filter(c => c.id !== action.cardId);
   const playedCard =
