@@ -1,22 +1,28 @@
-# UNO Online
+<p align="center">
+  <img src="packages/client/public/favicon.svg" width="120" alt="UNO Online Logo" />
+</p>
 
-[![GitHub](https://img.shields.io/github/license/letsuno/uno-online)](https://github.com/letsuno/uno-online)
+<h1 align="center">UNO Online</h1>
 
-[中文文档](README.zh-CN.md)
+<p align="center">
+  <a href="https://github.com/letsuno/uno-online"><img src="https://img.shields.io/github/license/letsuno/uno-online" alt="License" /></a>
+</p>
 
-Web-based multiplayer UNO card game with voice chat, 32 configurable house rules, server selector, and a cartoon visual style.
+<p align="center"><a href="README.zh-CN.md">中文文档</a></p>
+
+Web-based multiplayer UNO card game with voice chat, 33 configurable house rules, server selector, and a cartoon visual style.
 
 ## Features
 
 - **2-10 players** per room, invite via 6-character room code
 - **Complete UNO rules** — all card types, challenge mechanics, scoring, multi-round play
-- **32 house rules** — stacking, deflection, jump-in, 0-rotate, 7-swap, elimination, blitz, team mode, and more
+- **33 house rules** — stacking, deflection, jump-in, 0-rotate, 7-swap, elimination, blitz, team mode, and more
 - **3 presets** — Classic (standard), Party (common house rules), Crazy (everything on)
 - **Server selector** — browse and switch between servers, view real-time status (players, rooms, latency), add custom servers
-- **Voice chat** — mediasoup SFU, per-player mute, speaking indicators
+- **Voice chat** — Mumble protocol via mumble-web-gateway, per-player mute, speaking indicators
 - **Real-time** — Socket.IO with authoritative server, client-side prediction
 - **Animations** — Framer Motion card animations, game effects, confetti
-- **Sound effects** — Web Audio API synthesizer (no audio files)
+- **Sound effects** — Web Audio API synthesizer + mp3 assets, 21 sound effects
 - **Color-blind mode** — pattern overlays + symbol markers on cards
 - **Mobile responsive** — touch-optimized hand scrolling, adaptive layout
 - **Admin panel** — user management, room monitoring, dashboard stats
@@ -33,7 +39,7 @@ Web-based multiplayer UNO card game with voice chat, 32 configurable house rules
 | Animation | Framer Motion + CSS |
 | Backend | Fastify, TypeScript |
 | Realtime | Socket.IO |
-| Voice | mediasoup (SFU) |
+| Voice | Mumble (via mumble-web-gateway) |
 | Database | SQLite (Kysely) |
 | Cache | Redis (optional, in-memory fallback) |
 | Auth | GitHub OAuth + password + JWT |
@@ -46,7 +52,7 @@ Web-based multiplayer UNO card game with voice chat, 32 configurable house rules
 uno-online/
 ├── packages/
 │   ├── shared/          # Rules engine, types, constants (pure logic, no I/O)
-│   ├── server/          # Fastify + Socket.IO + mediasoup + SQLite
+│   ├── server/          # Fastify + Socket.IO + SQLite
 │   ├── client/          # React SPA (Vite + Tailwind CSS v4)
 │   └── admin/           # Admin panel (React + Vite)
 ├── Dockerfile
@@ -155,26 +161,33 @@ docker push djkcyl/uno-online-caddy:latest
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/api/server/info` | No | Server status (name, version, MOTD, online players, rooms, uptime) |
 | `GET` | `/api/health` | No | Health check |
+| `GET` | `/api/server/info` | No | Server status (name, version, MOTD, online players, rooms, uptime) |
 | `GET` | `/api/auth/config` | No | Auth configuration (dev mode, GitHub client ID) |
+| `POST` | `/api/auth/dev-login` | No | Dev mode login (dev mode only) |
 | `POST` | `/api/auth/login` | No | Password login |
 | `POST` | `/api/auth/register` | No | Register new account |
-| `POST` | `/api/auth/set-password` | Yes | Set/change password |
 | `GET` | `/api/auth/me` | Yes | Current user info |
+| `POST` | `/api/auth/set-password` | Yes | Set/change password |
 | `GET` | `/api/auth/github` | No | Initiate GitHub OAuth flow |
-| `GET` | `/api/auth/callback` | No | GitHub OAuth callback |
-| `POST` | `/api/auth/bind-github` | Yes | Bind GitHub account |
+| `POST` | `/api/auth/callback` | No | GitHub OAuth callback |
+| `POST` | `/api/auth/bind-github` | No | Bind GitHub account (password in body) |
+| `GET` | `/api/avatar/:userId` | No | Get user avatar image |
 | `GET` | `/api/profile` | Yes | Get user profile |
-| `PUT` | `/api/profile` | Yes | Update profile |
+| `PATCH` | `/api/profile` | Yes | Update profile |
 | `POST` | `/api/profile/avatar` | Yes | Upload avatar |
 | `GET` | `/api/rooms/active` | Yes | List active rooms |
 | `GET` | `/api/games` | Yes | List game history |
 | `GET` | `/api/games/:id` | Yes | Get game record detail |
+| `GET` | `/api/games/:id/verify` | Yes | Verify game deck integrity |
 | `GET` | `/api/admin/dashboard` | Admin | Admin dashboard stats |
+| `GET` | `/api/admin/users` | Admin | Paginated user list |
+| `PATCH` | `/api/admin/users/:id/role` | Admin | Change user role |
+| `PATCH` | `/api/admin/users/:id/profile` | Admin | Update user profile |
 | `GET` | `/api/admin/rooms` | Admin | List all rooms |
 | `DELETE` | `/api/admin/rooms/:code` | Admin | Force dissolve a room |
-| `DELETE` | `/api/admin/games/:id` | Admin | Delete game record |
+| `GET` | `/api/admin/games` | Admin | Paginated game history |
+| `GET` | `/api/admin/games/:id` | Admin | Game record detail |
 
 ## Testing
 
@@ -214,10 +227,10 @@ House rules wrap the core engine: `applyActionWithHouseRules(state, action) => n
 - **Zustand stores** — auth, room, game, settings, server (with localStorage persistence)
 - **Server selector** — switch between servers with real-time status display, latency measurement (3x HTTP RTT average)
 - **Socket.IO** — auto-reconnect (5 attempts, exponential backoff), auto-rejoin room on reconnect
-- **Voice** — mediasoup-client with transport reconnect, browser capability detection
-- **Sound** — Web Audio API oscillator-based synthesizer, 13 sound effects
+- **Voice** — Mumble protocol via WebSocket gateway, AudioWorklet capture/playback
+- **Sound** — Web Audio API oscillator synthesizer + mp3 throw sounds, 21 effects
 
-## House Rules (32)
+## House Rules (33)
 
 | Category | Rules |
 |----------|-------|
@@ -226,7 +239,7 @@ House rules wrap the core engine: `applyActionWithHouseRules(state, action) => n
 | Card rules | 0-rotate hands, 7-swap hands, jump-in, multi-play same number, wild first turn |
 | Draw rules | Draw until playable, forced play after draw |
 | Hand rules | Hand limit (15/20/25), forced play, hand reveal threshold |
-| Penalties | Custom UNO penalty (2/4/6), misplay penalty |
+| Penalties | Custom UNO penalty (2/4/6), strict UNO call, misplay penalty |
 | Pacing | Death draw, fast mode, no hints |
 | Game modes | Elimination, blitz (timed), revenge mode |
 | Social | Silent UNO, team mode (2v2/3v3) |
@@ -239,4 +252,4 @@ This project is maintained under [github.com/letsuno](https://github.com/letsuno
 
 ## License
 
-Private project.
+[AGPL-3.0](LICENSE)

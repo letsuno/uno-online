@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f0a2e"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+    <linearGradient id="cRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#dc2626"/>
+    </linearGradient>
+    <linearGradient id="cBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="cGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#16a34a"/>
+    </linearGradient>
+    <linearGradient id="cYellow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#eab308"/>
+      <stop offset="100%" stop-color="#ca8a04"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- Decorative cards -->
+  <rect x="80" y="160" width="140" height="200" rx="14" fill="url(#cGreen)" transform="rotate(-20 150 260)" opacity="0.7"/>
+  <rect x="160" y="140" width="140" height="200" rx="14" fill="url(#cBlue)" transform="rotate(-8 230 240)" opacity="0.8"/>
+  <rect x="250" y="130" width="140" height="200" rx="14" fill="url(#cRed)" transform="rotate(5 320 230)" opacity="0.9"/>
+  <rect x="340" y="150" width="140" height="200" rx="14" fill="url(#cYellow)" transform="rotate(18 410 250)" opacity="0.75"/>
+  <!-- Title -->
+  <text x="740" y="260" font-family="Arial Black, Arial, sans-serif" font-size="120" font-weight="900" fill="#ffffff" text-anchor="middle">UNO Online</text>
+  <!-- Subtitle -->
+  <text x="740" y="340" font-family="Arial, sans-serif" font-size="36" fill="#a5b4fc" text-anchor="middle">多人在线 UNO 卡牌游戏</text>
+  <!-- Features -->
+  <text x="740" y="420" font-family="Arial, sans-serif" font-size="26" fill="#94a3b8" text-anchor="middle">2-10人对战 · 语音通话 · 自定义村规 · 观战回放</text>
+  <!-- Bottom accent line -->
+  <rect x="540" y="470" width="400" height="4" rx="2" fill="#6366f1" opacity="0.6"/>
+</svg>

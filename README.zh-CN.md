@@ -1,20 +1,26 @@
-# UNO Online
+<p align="center">
+  <img src="packages/client/public/favicon.svg" width="120" alt="UNO Online Logo" />
+</p>
 
-[![GitHub](https://img.shields.io/github/license/letsuno/uno-online)](https://github.com/letsuno/uno-online)
+<h1 align="center">UNO Online</h1>
 
-基于 Web 技术栈的在线多人 UNO 卡牌对战游戏，支持语音通话、32 条可配置村规、多服务器切换、卡通趣味视觉风格。
+<p align="center">
+  <a href="https://github.com/letsuno/uno-online"><img src="https://img.shields.io/github/license/letsuno/uno-online" alt="License" /></a>
+</p>
+
+基于 Web 技术栈的在线多人 UNO 卡牌对战游戏，支持语音通话、33 条可配置村规、多服务器切换、卡通趣味视觉风格。
 
 ## 功能特性
 
 - **2-10 人房间制** — 通过 6 位房间码邀请好友加入
 - **完整 UNO 规则** — 全部牌型、质疑机制、计分系统、多轮制
-- **32 条可配置村规** — 叠加、反弹、抢出、0 牌轮转、7 牌交换、淘汰制、闪电战、团队模式等
+- **33 条可配置村规** — 叠加、反弹、抢出、0 牌轮转、7 牌交换、淘汰制、闪电战、团队模式等
 - **3 套预设** — 经典（标准规则）、派对（常见村规）、疯狂（全部开启）
 - **服务器选择** — 浏览和切换服务器，实时查看状态（在线人数、房间数、延迟），支持自定义服务器
-- **语音通话** — mediasoup SFU 架构，逐人静音，说话状态指示
+- **语音通话** — Mumble 协议（mumble-web-gateway），逐人静音，说话状态指示
 - **实时对战** — Socket.IO 通信，权威服务器 + 客户端预测
 - **动画效果** — Framer Motion 卡牌动画、功能牌特效、胜利彩纸
-- **音效系统** — Web Audio API 合成器（无需音频文件）
+- **音效系统** — Web Audio API 合成器 + mp3 音效，共 21 种音效
 - **色盲友好** — 纹理图案叠加 + 颜色符号标识（♦♠♣♥）
 - **移动端适配** — 触摸滑动优化、响应式布局
 - **管理后台** — 用户管理、房间监控、数据看板
@@ -31,7 +37,7 @@
 | 动画 | Framer Motion + CSS |
 | 后端 | Fastify + TypeScript |
 | 实时通信 | Socket.IO (WebSocket) |
-| 语音 | mediasoup (SFU) |
+| 语音 | Mumble (mumble-web-gateway) |
 | 数据库 | SQLite (Kysely) |
 | 缓存 | Redis（可选，内存回退） |
 | 认证 | GitHub OAuth + 密码 + JWT |
@@ -44,7 +50,7 @@
 uno-online/
 ├── packages/
 │   ├── shared/          # 规则引擎、类型定义、常量（纯逻辑，无 I/O）
-│   ├── server/          # Fastify + Socket.IO + mediasoup + SQLite
+│   ├── server/          # Fastify + Socket.IO + SQLite
 │   ├── client/          # React SPA (Vite + Tailwind CSS v4)
 │   └── admin/           # 管理后台 (React + Vite)
 ├── Dockerfile
@@ -149,26 +155,33 @@ docker push djkcyl/uno-online-caddy:latest
 
 | 方法 | 路径 | 认证 | 说明 |
 |------|------|------|------|
-| `GET` | `/api/server/info` | 否 | 服务器状态（名称、版本、欢迎信息、在线人数、房间数、运行时长） |
 | `GET` | `/api/health` | 否 | 健康检查 |
+| `GET` | `/api/server/info` | 否 | 服务器状态（名称、版本、欢迎信息、在线人数、房间数、运行时长） |
 | `GET` | `/api/auth/config` | 否 | 认证配置（开发模式、GitHub 客户端 ID） |
+| `POST` | `/api/auth/dev-login` | 否 | 开发模式登录 |
 | `POST` | `/api/auth/login` | 否 | 密码登录 |
 | `POST` | `/api/auth/register` | 否 | 注册新账号 |
-| `POST` | `/api/auth/set-password` | 是 | 设置/修改密码 |
 | `GET` | `/api/auth/me` | 是 | 当前用户信息 |
+| `POST` | `/api/auth/set-password` | 是 | 设置/修改密码 |
 | `GET` | `/api/auth/github` | 否 | 发起 GitHub OAuth 流程 |
-| `GET` | `/api/auth/callback` | 否 | GitHub OAuth 回调 |
-| `POST` | `/api/auth/bind-github` | 是 | 绑定 GitHub 账号 |
+| `POST` | `/api/auth/callback` | 否 | GitHub OAuth 回调 |
+| `POST` | `/api/auth/bind-github` | 否 | 绑定 GitHub 账号（请求体含密码验证） |
+| `GET` | `/api/avatar/:userId` | 否 | 获取用户头像 |
 | `GET` | `/api/profile` | 是 | 获取用户资料 |
-| `PUT` | `/api/profile` | 是 | 更新用户资料 |
+| `PATCH` | `/api/profile` | 是 | 更新用户资料 |
 | `POST` | `/api/profile/avatar` | 是 | 上传头像 |
 | `GET` | `/api/rooms/active` | 是 | 获取活跃房间列表 |
 | `GET` | `/api/games` | 是 | 游戏记录列表 |
 | `GET` | `/api/games/:id` | 是 | 游戏记录详情 |
+| `GET` | `/api/games/:id/verify` | 是 | 验证游戏牌组完整性 |
 | `GET` | `/api/admin/dashboard` | 管理员 | 管理后台统计 |
+| `GET` | `/api/admin/users` | 管理员 | 分页用户列表 |
+| `PATCH` | `/api/admin/users/:id/role` | 管理员 | 修改用户角色 |
+| `PATCH` | `/api/admin/users/:id/profile` | 管理员 | 修改用户资料 |
 | `GET` | `/api/admin/rooms` | 管理员 | 所有房间列表 |
 | `DELETE` | `/api/admin/rooms/:code` | 管理员 | 强制解散房间 |
-| `DELETE` | `/api/admin/games/:id` | 管理员 | 删除游戏记录 |
+| `GET` | `/api/admin/games` | 管理员 | 分页游戏记录 |
+| `GET` | `/api/admin/games/:id` | 管理员 | 游戏记录详情 |
 
 ## 测试
 
@@ -208,10 +221,10 @@ pnpm --filter client exec tsc --noEmit
 - **Zustand 状态管理** — auth、room、game、settings、server（localStorage 持久化）
 - **服务器选择器** — 切换服务器并实时展示状态，延迟测量（3 次 HTTP RTT 取平均）
 - **Socket.IO** — 自动重连（5 次，指数退避），重连后自动恢复房间
-- **语音** — mediasoup-client，transport 断线自动重连，浏览器兼容性检测
-- **音效** — Web Audio API 振荡器合成，13 种音效
+- **语音** — Mumble 协议，WebSocket 网关桥接，AudioWorklet 采集/播放
+- **音效** — Web Audio API 振荡器合成 + mp3 投掷音效，共 21 种
 
-## 村规列表（32 条）
+## 村规列表（33 条）
 
 | 分类 | 规则 |
 |------|------|
@@ -220,7 +233,7 @@ pnpm --filter client exec tsc --noEmit
 | 出牌 | 0 牌轮转手牌、7 牌指定交换、同牌抢出、同数字全出、万能牌开局可出 |
 | 摸牌 | 摸到能出为止、摸牌后必须出 |
 | 手牌 | 手牌上限（15/20/25）、强制出牌、手牌透明 |
-| 惩罚 | UNO 罚摸数量（2/4/6）、误操作惩罚 |
+| 惩罚 | UNO 罚摸数量（2/4/6）、严格喊牌、误操作惩罚 |
 | 节奏 | 死亡抽牌、快速模式、无提示模式 |
 | 模式 | 淘汰制、限时闪电战、复仇模式 |
 | 社交 | 静默 UNO、团队模式（2v2/3v3） |
@@ -233,4 +246,4 @@ pnpm --filter client exec tsc --noEmit
 
 ## 许可证
 
-私有项目。
+[AGPL-3.0](LICENSE)
