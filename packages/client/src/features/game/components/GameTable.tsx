@@ -766,7 +766,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
             isSpeaking={mumbleSpeakingNames.has(player.name)}
             position={pos}
             turnEndTime={isActive ? turnEndTime : null}
-            turnTimeLimit={settings?.turnTimeLimit}
+            turnTimeLimit={settings ? (settings.houseRules?.fastMode ? Math.floor(settings.turnTimeLimit / 2) : settings.turnTimeLimit) : undefined}
             lastPlayedCard={lastPlayed?.card ?? null}
             chatMessage={chatMessages.get(player.id) ?? null}
             handGain={handGainBumps.get(player.id) ?? null}

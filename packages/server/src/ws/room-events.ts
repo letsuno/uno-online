@@ -318,7 +318,9 @@ export function startTurnTimer(
   }
 
   if (phase === 'challenging' || phase === 'choosing_color' || phase === 'choosing_swap_target') {
-    const timeLimit = state.settings.turnTimeLimit;
+    const timeLimit = state.settings.houseRules.fastMode
+      ? Math.floor(state.settings.turnTimeLimit / 2)
+      : state.settings.turnTimeLimit;
     turnTimer.start(roomCode, timeLimit, async (code) => {
       const s = sessions.get(code);
       if (!s) return;
