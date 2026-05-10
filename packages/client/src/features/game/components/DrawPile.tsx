@@ -18,6 +18,7 @@ interface DrawPileProps {
 
 export default function DrawPile({ side, isPortrait, onDraw, drawTargetX, drawTargetY, drawAnimTrigger = 0, drawUntilCount = 0 }: DrawPileProps) {
   const deckCount = useGameStore((s) => side === 'left' ? s.deckLeftCount : s.deckRightCount);
+  const discardPileLength = useGameStore((s) => s.discardPile.length);
   const phase = useGameStore((s) => s.phase);
   const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
   const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
@@ -31,7 +32,8 @@ export default function DrawPile({ side, isPortrait, onDraw, drawTargetX, drawTa
   const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
   const isDrawUntilTurn = mustDrawUntilPlayable && !isPenaltyDrawing;
   const canContinueDrawUntilPlayable = !isPenaltyDrawing && mustDrawUntilPlayable && hasDrawnThisTurn && playableIds.size === 0;
-  const canDraw = isMyTurn && phase === 'playing' && deckCount > 0 && (isPenaltyDrawing || !hasDrawnThisTurn || canContinueDrawUntilPlayable);
+  const hasCardsAvailable = deckCount > 0 || discardPileLength > 1;
+  const canDraw = isMyTurn && phase === 'playing' && hasCardsAvailable && (isPenaltyDrawing || !hasDrawnThisTurn || canContinueDrawUntilPlayable);
 
   const showNoPlayableHint = canDraw && !isDrawUntilTurn && !isPenaltyDrawing && drawStack === 0 && playableIds.size === 0 && !settings?.houseRules?.noHints;
   const emphasizeDraw = canDraw && !settings?.houseRules?.noHints;
@@ -79,7 +81,7 @@ export default function DrawPile({ side, isPortrait, onDraw, drawTargetX, drawTa
         )}
         style={{
           cursor: canDraw ? 'pointer' : 'default',
-          opacity: deckCount === 0 ? 0.25 : canDraw ? 1 : 0.5,
+          opacity: deckCount === 0 && !canDraw ? 0.25 : canDraw ? 1 : 0.5,
         }}
       />
       <span

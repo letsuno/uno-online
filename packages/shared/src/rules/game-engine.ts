@@ -10,6 +10,10 @@ import { UNO_PENALTY_CARDS } from '../constants/scoring';
 // Helpers
 // -----------------------------------------------------------------------------
 
+function hasCardsAvailable(state: GameState): boolean {
+  return state.deckLeft.length > 0 || state.deckRight.length > 0 || state.discardPile.length > 1;
+}
+
 /**
  * Draw `count` cards from the specified side deck into the given player's hand.
  * Reshuffles from the discard pile into the side deck if it runs out mid-draw.
@@ -396,20 +400,21 @@ function handlePass(
   action: Extract<GameAction, { type: 'PASS' }>,
 ): GameState {
   if (state.phase !== 'playing') return state;
-
-  // Penalty draws from +2/+4 are not a normal draw-then-pass turn.
-  if ((state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0) return state;
-
   if (action.playerId !== currentPlayerId(state)) return state;
-  if ((state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0) return state;
 
-  // Can only pass after drawing
-  if (
-    !state.lastAction ||
-    state.lastAction.type !== 'DRAW_CARD' ||
-    state.lastAction.playerId !== action.playerId
-  ) {
-    return state;
+  const noCards = !hasCardsAvailable(state);
+
+  if (!noCards) {
+    if ((state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0) return state;
+
+    // Can only pass after drawing
+    if (
+      !state.lastAction ||
+      state.lastAction.type !== 'DRAW_CARD' ||
+      state.lastAction.playerId !== action.playerId
+    ) {
+      return state;
+    }
   }
 
   const newIndex = getNextPlayerIndex(
@@ -417,7 +422,18 @@ function handlePass(
     state.players.length,
     state.direction,
   );
-  return { ...state, currentPlayerIndex: newIndex, lastAction: action };
+  return {
+    ...state,
+    currentPlayerIndex: newIndex,
+    lastAction: action,
+    ...(noCards ? {
+      pendingPenaltyDraws: 0,
+      drawStack: 0,
+      pendingPenaltyNextPlayerIndex: null,
+      pendingPenaltySourcePlayerId: null,
+      pendingPenaltyQueue: [],
+    } : {}),
+  };
 }
 
 function handleChooseColor(

@@ -38,3 +38,13 @@ export function getPlayableCardIds(params: {
 
   return new Set(playable.map((card) => card.id));
 }
+
+export function getJumpInCardIds(hand: Card[], topCard?: Card): Set<string> {
+  if (!topCard) return new Set();
+  const ids = hand.filter((card) =>
+    card.type === topCard.type &&
+    card.color === topCard.color &&
+    (card.type !== 'number' || (topCard.type === 'number' && card.value === topCard.value)),
+  ).map((card) => card.id);
+  return new Set(ids);
+}
