@@ -5,6 +5,14 @@ import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 
 const VISIBLE_DISCARD_STACK = 8;
 
+function hashCardId(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
 /**
  * Compute the initial animation offset based on the seat position
  * of the player who played the card.
@@ -67,21 +75,21 @@ export default function DiscardPile() {
 
   return (
     <div className="flex flex-col items-center gap-1.5 z-card relative">
-      <div className="relative w-[82px] h-[112px]">
+      <div className="relative w-[120px] h-[140px]">
         {visibleStack.slice(0, -1).map((card, stackIndex) => {
-          const depth = visibleStack.length - stackIndex - 1;
-          const rotate = ((stackIndex % 5) - 2) * 2.2;
-          const x = Math.min(depth * 1.6, 10);
-          const y = Math.min(depth * 1.2, 8);
+          const seed = hashCardId(card.id);
+          const rotate = (seed % 360) * 0.1 - 18;
+          const x = ((seed >> 4) % 40) - 20;
+          const y = ((seed >> 8) % 30) - 15;
 
           return (
             <div
               key={`${card.id}-stack-${stackIndex}`}
-              className="absolute top-0 left-0 pointer-events-none"
+              className="absolute top-1/2 left-1/2 pointer-events-none"
               style={{
-                transform: `translate(${x}px, ${y}px) rotate(${rotate}deg)`,
+                transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) rotate(${rotate}deg)`,
                 zIndex: stackIndex,
-                opacity: Math.max(0.35, 0.9 - depth * 0.06),
+                opacity: Math.max(0.4, 0.85 - stackIndex * 0.06),
               }}
             >
               <Card card={card} />
@@ -98,8 +106,10 @@ export default function DiscardPile() {
             transition={{ duration: 0.35, ease: 'easeOut' }}
             style={{
               position: 'absolute',
-              top: 0,
-              left: 0,
+              top: '50%',
+              left: '50%',
+              marginLeft: '-41px',
+              marginTop: '-56px',
               zIndex: visibleStack.length,
               borderRadius: '18px',
               ...(chosenColor ? {
