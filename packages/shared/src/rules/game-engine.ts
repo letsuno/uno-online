@@ -1,6 +1,6 @@
-import type { GameState, GameAction, PendingPenaltyDraw } from '../types/game';
+import type { GameState, GameAction, PendingPenaltyDraw, DrawSide } from '../types/game';
 import type { Color } from '../types/card';
-import { reshuffleDiscardIntoDeck } from './deck';
+import { reshuffleSideFromDiscard } from './deck';
 import { canPlayCard, isValidWildDrawFour } from './validation';
 import { getNextPlayerIndex, reverseDirection } from './turn';
 import { calculateRoundScores } from './scoring';
@@ -11,30 +11,37 @@ import { UNO_PENALTY_CARDS } from '../constants/scoring';
 // -----------------------------------------------------------------------------
 
 /**
- * Draw `count` cards from the deck into the given player's hand.
- * Reshuffles the discard pile into the deck if the deck runs out mid-draw.
+ * Draw `count` cards from the specified side deck into the given player's hand.
+ * Reshuffles from the discard pile into the side deck if it runs out mid-draw.
  */
-function drawCards(state: GameState, playerId: string, count: number): GameState {
-  let deck = [...state.deck];
+function drawCards(state: GameState, playerId: string, count: number, side: DrawSide): GameState {
+  let sideDeck = side === 'left' ? [...state.deckLeft] : [...state.deckRight];
   let discardPile = [...state.discardPile];
+  const initialCount = side === 'left' ? state.deckLeftInitialCount : state.deckRightInitialCount;
   const players = state.players.map(p => ({ ...p, hand: [...p.hand] }));
   const playerIdx = players.findIndex(p => p.id === playerId);
   if (playerIdx === -1) return state;
 
   for (let i = 0; i < count; i++) {
-    if (deck.length === 0) {
-      const reshuffled = reshuffleDiscardIntoDeck(deck, discardPile);
-      deck = reshuffled.deck;
+    if (sideDeck.length === 0) {
+      const reshuffled = reshuffleSideFromDiscard(sideDeck, discardPile, initialCount);
+      sideDeck = reshuffled.sideDeck;
       discardPile = reshuffled.discardPile;
     }
-    if (deck.length === 0) break; // nothing left even after reshuffle
-    const card = deck.shift()!;
+    if (sideDeck.length === 0) break;
+    const card = sideDeck.shift()!;
     players[playerIdx]!.hand.push(card);
     players[playerIdx]!.calledUno = false;
     players[playerIdx]!.unoCaught = false;
   }
 
-  return { ...state, deck, discardPile, players };
+  return {
+    ...state,
+    deckLeft: side === 'left' ? sideDeck : state.deckLeft,
+    deckRight: side === 'right' ? sideDeck : state.deckRight,
+    discardPile,
+    players,
+  };
 }
 
 /**
@@ -326,7 +333,7 @@ function handleDrawCard(
   if (state.phase !== 'playing') return state;
   if (action.playerId !== currentPlayerId(state)) return state;
 
-  const newState = drawCards(state, action.playerId, 1);
+  const newState = drawCards(state, action.playerId, 1, action.side);
   if ((state.pendingPenaltyDraws ?? 0) > 0) {
     return finishPenaltyDrawIfNeeded(newState, action);
   }
