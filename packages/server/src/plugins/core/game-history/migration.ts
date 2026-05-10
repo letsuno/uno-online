@@ -24,9 +24,19 @@ export async function migrate(db: Kysely<Database>): Promise<void> {
 
   try {
     await db.schema.alterTable('game_records').addColumn('deck_hash', 'text').execute();
-  } catch { /* column already exists */ }
+  } catch (err) {
+    const msg = (err as Error).message ?? '';
+    if (!msg.includes('duplicate column name')) {
+      throw err;
+    }
+  }
 
   try {
     await db.schema.alterTable('game_records').addColumn('initial_deck', 'text').execute();
-  } catch { /* column already exists */ }
+  } catch (err) {
+    const msg = (err as Error).message ?? '';
+    if (!msg.includes('duplicate column name')) {
+      throw err;
+    }
+  }
 }

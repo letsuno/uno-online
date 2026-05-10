@@ -6,8 +6,8 @@ import { getPlayableCardIds, getJumpInCardIds } from '@/shared/utils/playable-ca
 
 export function usePlayableCardIds(): Set<string> {
   const userId = useEffectiveUserId();
-  const players = useGameStore((s) => s.players);
-  const discardPile = useGameStore((s) => s.discardPile);
+  const myHand = useGameStore((s) => s.players.find((p) => p.id === userId)?.hand);
+  const topCard = useGameStore((s) => s.discardPile[s.discardPile.length - 1]);
   const currentColor = useGameStore((s) => s.currentColor);
   const drawStack = useGameStore((s) => s.drawStack);
   const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
@@ -15,22 +15,19 @@ export function usePlayableCardIds(): Set<string> {
   const phase = useGameStore((s) => s.phase);
   const isMyTurn = useIsMyTurn();
 
-  const me = players.find((p) => p.id === userId);
-  const topCard = discardPile[discardPile.length - 1];
-
   return useMemo(() => {
     if (phase !== 'playing') return new Set<string>();
     if (!isMyTurn) {
       if (!settings?.houseRules?.jumpIn) return new Set<string>();
-      return getJumpInCardIds(me?.hand ?? [], topCard);
+      return getJumpInCardIds(myHand ?? [], topCard);
     }
     if (pendingPenaltyDraws > 0) return new Set<string>();
     return getPlayableCardIds({
-      hand: me?.hand ?? [],
+      hand: myHand ?? [],
       topCard,
       currentColor,
       drawStack,
       houseRules: settings?.houseRules,
     });
-  }, [currentColor, drawStack, isMyTurn, me?.hand, pendingPenaltyDraws, phase, settings?.houseRules, topCard]);
+  }, [currentColor, drawStack, isMyTurn, myHand, pendingPenaltyDraws, phase, settings?.houseRules, topCard]);
 }

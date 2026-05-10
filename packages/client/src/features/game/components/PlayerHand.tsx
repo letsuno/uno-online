@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import type { Card as CardType, Color } from '@uno-online/shared';
-import { sortHand } from '@uno-online/shared';
+import { sortHand, isWildCard } from '@uno-online/shared';
 import AnimatedCard from './AnimatedCard';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
@@ -44,8 +44,8 @@ function isColorBoundary(sorted: CardType[], index: number): boolean {
   if (index === 0) return false;
   const prev = sorted[index - 1]!;
   const curr = sorted[index]!;
-  const prevIsWild = prev.type === 'wild' || prev.type === 'wild_draw_four';
-  const currIsWild = curr.type === 'wild' || curr.type === 'wild_draw_four';
+  const prevIsWild = isWildCard(prev);
+  const currIsWild = isWildCard(curr);
   if (prevIsWild !== currIsWild) return true;
   if (!prevIsWild && !currIsWild && prev.color !== curr.color) return true;
   return false;

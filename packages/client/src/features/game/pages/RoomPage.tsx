@@ -108,9 +108,10 @@ export default function RoomPage() {
         <h3 className="mb-3 text-sm text-muted-foreground">
           玩家 ({players.length}/10)
         </h3>
-        {players.map((p) => (
-          <div key={p.userId} className="flex items-center justify-between border-b border-white/5 py-2">
-            <span className="flex min-w-0 flex-1 items-center gap-1.5" style={getRoleColor(p.role) ? { color: getRoleColor(p.role) } : undefined}>
+        {players.map((p) => {
+          const roleColor = getRoleColor(p.role);
+          return <div key={p.userId} className="flex items-center justify-between border-b border-white/5 py-2">
+            <span className="flex min-w-0 flex-1 items-center gap-1.5" style={roleColor ? { color: roleColor } : undefined}>
               <span className="truncate">{p.nickname}</span>
               {room?.ownerId === p.userId && <Crown size={14} className="shrink-0" />}
               <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={p.userId === user?.id} className="shrink-0" />
@@ -118,8 +119,8 @@ export default function RoomPage() {
             <span className={cn('text-xs', p.ready ? 'text-uno-green' : 'text-muted-foreground')}>
               {p.ready ? <><Check size={12} className="inline-block align-middle" /> 已准备</> : '未准备'}
             </span>
-          </div>
-        ))}
+          </div>;
+        })}
       </div>
       {/* Spectator settings */}
       <div className="min-w-room-min rounded-2xl bg-card p-5 space-y-3">
@@ -139,7 +140,7 @@ export default function RoomPage() {
             <label className="text-sm">观战模式</label>
             <select
               value={room?.settings?.spectatorMode ?? 'hidden'}
-              onChange={(e) => getSocket().emit('room:update_settings', { spectatorMode: e.target.value })}
+              onChange={(e) => getSocket().emit('room:update_settings', { spectatorMode: e.target.value as 'full' | 'hidden' })}
               className="bg-card text-foreground border border-white/15 rounded px-2 py-1 text-sm"
               disabled={!isOwner}
             >

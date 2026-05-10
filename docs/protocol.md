@@ -278,6 +278,7 @@ GitHub OAuth 回调处理。
 - **回调响应格式**: 所有带回调的事件统一返回 `{ success: boolean; error?: string; ...data }`
 - **速率限制**: 全局 20 消息/秒/连接
 - **重连**: 最多 5 次，延迟 1s~10s
+- **类型定义**: 所有事件的 TypeScript 类型定义在 `packages/shared/src/types/socket-events.ts`（`ServerToClientEvents` / `ClientToServerEvents`）
 
 ### 3.2 客户端 → 服务端事件
 
@@ -299,7 +300,7 @@ GitHub OAuth 回调处理。
 | 事件名 | 载荷 | 回调响应 |
 |--------|------|---------|
 | `game:play_card` | `{ cardId: string; chosenColor?: Color }` | `{ success, error? }` |
-| `game:draw_card` | _(无)_ | `{ success, error? }` |
+| `game:draw_card` | `{ side?: 'left' \| 'right' }` | `{ success, error? }` |
 | `game:pass` | _(无)_ | `{ success, error? }` |
 | `game:call_uno` | _(无)_ | `{ success, error? }` |
 | `game:catch_uno` | `{ targetPlayerId: string }` | `{ success, error? }` |
@@ -309,6 +310,7 @@ GitHub OAuth 回调处理。
 | `game:choose_swap_target` | `{ targetId: string }` | `{ success, error? }` |
 | `game:next_round` | _(无)_ | `{ success, error? }` |
 | `game:rematch` | _(无)_ | `{ success, error? }` |
+| `game:kick_player` | `{ targetId?: string }` | `{ success, error? }` |
 
 #### 玩家操作
 
@@ -325,6 +327,13 @@ GitHub OAuth 回调处理。
 
 有效物品列表: `['🥚', '🍅', '🌹', '💩', '👍', '💖']`
 
+#### 语音
+
+| 事件名 | 载荷 | 回调响应 |
+|--------|------|---------|
+| `voice:presence` | `Partial<VoicePresence>` | `{ success, error? }` |
+| `voice:presence:get` | _(无)_ | `(presence: Record<string, VoicePresence>)` |
+
 #### 观战
 
 | 事件名 | 载荷 | 回调响应 |
@@ -338,7 +347,7 @@ GitHub OAuth 回调处理。
 | 事件名 | 载荷 | 说明 |
 |--------|------|------|
 | `room:updated` | `{ players?: RoomPlayer[]; room?: RoomData }` | 房间状态变更通知 |
-| `room:dissolved` | _(无)_ | 房间被房主解散 |
+| `room:dissolved` | `{ reason?: string }` | 房间被解散（房主操作或闲置超时） |
 | `room:rejoin_redirect` | `{ roomCode: string }` | 提示客户端跳转到游戏中的房间 |
 
 #### 游戏状态
@@ -348,11 +357,11 @@ GitHub OAuth 回调处理。
 | `game:state` | `PlayerView` | 完整游戏状态（初始化、新回合时发送） |
 | `game:update` | `PlayerView` | 增量游戏状态更新 |
 | `game:card_drawn` | `{ card: Card }` | 通知抽牌者抽到的卡（仅发给抽牌者） |
-| `game:opponent_drew` | `{ playerId: string }` | 通知其他玩家有人抽牌 |
 | `game:action_rejected` | `{ action: string; reason: string }` | 操作被拒绝 |
 | `game:over` | `{ winnerId: string; scores: Record<string, number>; reason?: string }` | 游戏结束 |
 | `game:round_end` | `{ winnerId: string; scores: Record<string, number> }` | 回合结束 |
 | `game:next_round_vote` | `{ votes: number; required: number; voters: string[] }` | 下一局投票状态 |
+| `game:kicked` | `{ reason: string }` | 被踢出游戏（房主操作） |
 
 #### 玩家状态
 
@@ -370,6 +379,12 @@ GitHub OAuth 回调处理。
 | `chat:message` | `{ userId, nickname, text, timestamp, role }` | 聊天消息广播 |
 | `chat:rate_limited` | `{ message: string }` | 聊天频率限制提示 |
 | `throw:item` | `{ fromId: string; targetId: string; item: string }` | 投掷物品动画广播 |
+
+#### 语音
+
+| 事件名 | 载荷 | 说明 |
+|--------|------|------|
+| `voice:presence` | `Record<string, VoicePresence>` | 玩家语音状态广播（麦克风、扬声器、说话中） |
 
 #### 认证
 
@@ -391,12 +406,6 @@ GitHub OAuth 回调处理。
 | `chat:history` | `ChatMessage[]` | 加入房间时推送聊天记录 |
 | `chat:cleared` | _(无)_ | 聊天记录被清空 |
 
-#### 房间生命周期
-
-| 事件名 | 载荷 | 说明 |
-|--------|------|------|
-| `room:dissolved` | `{ reason?: string }` | 房间被解散（房主操作或闲置超时） |
-
 ---
 
 ## 四、核心数据类型
@@ -415,9 +424,11 @@ interface PlayerView {
     hand: Card[];      // 仅自己和符合 handRevealThreshold 的玩家可见
     handCount: number;  // 所有玩家的手牌数量
     score: number;
+    roundWins?: number;
     connected: boolean;
     autopilot: boolean; // 是否处于托管模式（掉线超时或手动开启）
     calledUno: boolean;
+    unoCaught?: boolean;
     eliminated?: boolean;
     teamId?: number;
     avatarUrl?: string | null;
@@ -428,12 +439,15 @@ interface PlayerView {
   discardPile: Card[];       // 完整弃牌堆（客户端展示最近若干张）
   currentColor: Color | null;
   drawStack: number;
-  deckCount: number;         // 牌堆剩余数量
+  pendingPenaltyDraws?: number;
+  deckLeftCount: number;     // 左牌堆剩余数量
+  deckRightCount: number;    // 右牌堆剩余数量
   roundNumber: number;
   winnerId: string | null;
   settings: RoomSettings;
   pendingDrawPlayerId: string | null;
   lastAction: GameAction | null;
+  deckHash?: string;         // 牌序校验哈希
 }
 ```
 
@@ -458,6 +472,7 @@ interface RoomData {
   status: 'waiting' | 'playing' | 'finished';
   settings: RoomSettings;
   createdAt: string;
+  lastActivityAt: string;
 }
 ```
 

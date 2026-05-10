@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { RoomSettings } from '@uno-online/shared';
 
-interface RoomPlayer {
+export interface RoomPlayer {
   userId: string;
   nickname: string;
   avatarUrl?: string | null;
@@ -9,7 +9,7 @@ interface RoomPlayer {
   role?: string;
 }
 
-interface RoomData {
+export interface RoomData {
   ownerId: string;
   status: string;
   settings: RoomSettings;

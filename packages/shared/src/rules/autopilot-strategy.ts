@@ -1,6 +1,6 @@
 import type { GameState, GameAction, DrawSide } from '../types/game';
 import type { Color, Card } from '../types/card';
-import { getPlayableCards } from './validation';
+import { getPlayableCards, isExactJumpInMatch } from './validation';
 
 function bestColor(hand: Card[], excludeId?: string): Color {
   const counts: Record<Color, number> = { red: 0, blue: 0, green: 0, yellow: 0 };
@@ -31,14 +31,6 @@ function pickPlayableCard(playable: Card[], currentColor: Color): Card {
     playable.find(c => c.color === currentColor) ??
     playable.find(c => c.color !== null) ??
     playable[0]!
-  );
-}
-
-function isExactJumpInMatch(card: Card, topCard: Card): boolean {
-  return (
-    card.type === topCard.type &&
-    card.color === topCard.color &&
-    (card.type !== 'number' || (topCard.type === 'number' && card.value === topCard.value))
   );
 }
 

@@ -6,9 +6,9 @@ import { TurnTimer } from '../plugins/core/game/turn-timer';
 import { GameSession } from '../plugins/core/game/session';
 import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, notifyAutopilotAction, resetPlayerTimeout } from './room-events';
 import { getAutopilotActionPlayerId } from './autopilot-action-player';
-import { registerGameEvents, addAutopilotVote } from './game-events';
+import { registerGameEvents, addAutopilotVote, clearChatTimestamps } from './game-events';
 import { getRoom, getRoomPlayers, setRoomOwner } from '../plugins/core/room/store';
-import { saveGameState, loadGameState } from '../plugins/core/game/state-store';
+import { loadGameState, GameStatePersister } from '../plugins/core/game/state-store';
 import { checkRateLimit, clearRateLimit } from './rate-limiter';
 import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws';
 import { setupSpectateHandlers } from '../plugins/core/spectate/ws';
@@ -29,6 +29,8 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
   const sessions = new Map<string, GameSession>();
   const disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const autoPlayIntervals = new Map<string, ReturnType<typeof setInterval>>();
+  const userSocketMap = new Map<string, string>();
+  const persister = new GameStatePersister(redis);
 
   io.use((socket, next) => {
     const payload = authenticateSocket(socket, jwtSecret);
@@ -70,15 +72,15 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       if (getAutopilotActionPlayerId(state) !== userId) return;
 
       const acted = await executeAutopilot(session, userId, async () => {
-        await saveGameState(redis, roomCode, session.getFullState());
+        persister.markDirty(roomCode, session.getFullState());
         await emitGameUpdate(io, roomCode, session, redis);
       }, (action) => notifyAutopilotAction(roomCode, session, action));
 
       if (acted) {
-        await saveGameState(redis, roomCode, session.getFullState());
+        persister.markDirty(roomCode, session.getFullState());
         await emitGameUpdate(io, roomCode, session, redis);
         io.to(roomCode).emit('player:timeout', { playerId: userId });
-        startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+        startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
       }
     }, AUTOPILOT_THINK_MS);
     autoPlayIntervals.set(userId, interval);
@@ -108,7 +110,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       if (!Number.isFinite(lastActivityAt) || now - lastActivityAt < roomIdleTimeoutMs) continue;
 
       stopAutoPlayForRoom(roomCode);
-      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, 'idle_timeout', getDb());
+      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'idle_timeout', getDb());
     }
   }
 
@@ -121,13 +123,15 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
     const userId = socket.data.user.userId;
 
     // Multi-tab: kick existing connection for same user
-    const existingSockets = await io.fetchSockets();
-    for (const existing of existingSockets) {
-      if (existing.id !== socket.id && existing.data?.user?.userId === userId) {
-        existing.emit('auth:kicked', { reason: '已在其他地方登录' });
-        existing.disconnect(true);
+    const existingSocketId = userSocketMap.get(userId);
+    if (existingSocketId && existingSocketId !== socket.id) {
+      const existingSocket = io.sockets.sockets.get(existingSocketId);
+      if (existingSocket) {
+        existingSocket.emit('auth:kicked', { reason: '已在其他地方登录' });
+        existingSocket.disconnect(true);
       }
     }
+    userSocketMap.set(userId, socket.id);
 
     // Cancel any pending disconnect timeout for this user (reconnection)
     const pendingTimer = disconnectTimers.get(userId);
@@ -157,7 +161,8 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
         session.setPlayerConnected(userId, true);
         session.setPlayerAutopilot(userId, false);
         resetPlayerTimeout(roomCode, userId);
-        await saveGameState(redis, roomCode, session.getFullState());
+        persister.markDirty(roomCode, session.getFullState());
+        await persister.flushNow(roomCode);
         await emitGameUpdate(io, roomCode, session, redis);
         io.to(roomCode).emit('player:reconnected', { playerId: userId });
         io.to(roomCode).emit('player:autopilot', { playerId: userId, enabled: false });
@@ -167,7 +172,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
         const state = session.getFullState();
         const connectedCount = state.players.filter(p => p.connected).length;
         if (connectedCount >= 2 && state.phase === 'playing') {
-          startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+          startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
         }
       } else {
         const players = await getRoomPlayers(redis, roomCode);
@@ -185,8 +190,8 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       }
     });
 
-    registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions, getDb());
-    registerGameEvents(socket, io, redis, turnTimer, sessions, getDb());
+    registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions, getDb(), persister);
+    registerGameEvents(socket, io, redis, turnTimer, sessions, getDb(), persister);
     registerInteractionEvents(socket, io);
     registerVoicePresenceEvents(socket, io);
 
@@ -214,7 +219,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
         stopAutoPlay(userId);
         resetPlayerTimeout(roomCode, userId);
       }
-      await saveGameState(redis, roomCode, session.getFullState());
+      persister.markDirty(roomCode, session.getFullState());
       await emitGameUpdate(io, roomCode, session, redis);
       io.to(roomCode).emit('player:autopilot', { playerId: userId, enabled: nextAutopilot });
       callback?.({ success: true, autopilot: nextAutopilot });
@@ -223,7 +228,11 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
     socket.on('disconnect', async () => {
       clearRateLimit(socket.id);
       clearThrowTimestamp(userId);
+      clearChatTimestamps(userId);
       autopilotToggleTimestamps.delete(userId);
+      if (userSocketMap.get(userId) === socket.id) {
+        userSocketMap.delete(userId);
+      }
       const roomCode = socket.data.roomCode;
       if (!roomCode) return;
       removeVoicePresence(io, roomCode, userId);
@@ -231,7 +240,8 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       const session = sessions.get(roomCode);
       if (session) {
         session.setPlayerConnected(userId, false);
-        await saveGameState(redis, roomCode, session.getFullState());
+        persister.markDirty(roomCode, session.getFullState());
+        await persister.flushNow(roomCode);
         await emitGameUpdate(io, roomCode, session, redis);
         io.to(roomCode).emit('player:disconnected', { playerId: userId });
 
@@ -262,7 +272,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
           const stillDisconnected = st.players.find(p => p.id === userId && !p.connected);
           if (stillDisconnected) {
             s.setPlayerAutopilot(userId, true);
-            await saveGameState(redis, roomCode, s.getFullState());
+            persister.markDirty(roomCode, s.getFullState());
             await emitGameUpdate(io, roomCode, s, redis);
             io.to(roomCode).emit('player:autopilot', { playerId: userId, enabled: true });
             addAutopilotVote(roomCode, userId, s, io);

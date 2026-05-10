@@ -78,6 +78,8 @@ export default function LobbyPage() {
     });
   };
 
+  const userRoleColor = getRoleColor(user?.role);
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-5">
       {/* Header */}
@@ -86,7 +88,7 @@ export default function LobbyPage() {
           <Spade size={32} className="inline-block align-middle" /> 游戏大厅
         </h1>
         <p className="mt-2 text-muted-foreground">
-          欢迎回来, <span className="font-bold" style={getRoleColor(user?.role) ? { color: getRoleColor(user?.role) } : undefined}>{user?.nickname ?? user?.username}</span>
+          欢迎回来, <span className="font-bold" style={userRoleColor ? { color: userRoleColor } : undefined}>{user?.nickname ?? user?.username}</span>
         </p>
       </div>
 

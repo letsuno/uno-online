@@ -1,6 +1,7 @@
 import type { HouseRulePlugin } from '../house-rule-types';
 import type { GameState, GameAction } from '../../types/game';
 import type { RuleContext, PreCheckResult } from '../house-rule-types';
+import { isExactJumpInMatch } from '../validation';
 
 export const jumpIn: HouseRulePlugin = {
   meta: {
@@ -24,12 +25,7 @@ export const jumpIn: HouseRulePlugin = {
     const topCard = state.discardPile[state.discardPile.length - 1];
     if (!topCard) return { handled: true, state };
 
-    const exactMatch =
-      card.type === topCard.type &&
-      card.color === topCard.color &&
-      (card.type !== 'number' || (topCard.type === 'number' && card.value === topCard.value));
-
-    if (exactMatch) {
+    if (isExactJumpInMatch(card, topCard)) {
       const newHand = jumper.hand.filter(c => c.id !== action.cardId);
       const players = state.players.map((p, i) =>
         i === jumperIdx ? { ...p, hand: newHand } : p,

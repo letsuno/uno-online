@@ -14,7 +14,51 @@ export async function loadGameState(redis: KvStore, roomCode: string): Promise<G
   return JSON.parse(raw) as GameState;
 }
 
-export async function deleteGameState(redis: KvStore, roomCode: string): Promise<void> {
-  await redis.del(GAME_STATE_KEY(roomCode));
-}
+export class GameStatePersister {
+  private dirty = new Map<string, GameState>();
+  private flushTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private kv: KvStore;
 
+  constructor(kv: KvStore) {
+    this.kv = kv;
+  }
+
+  markDirty(roomCode: string, state: GameState): void {
+    this.dirty.set(roomCode, state);
+    if (!this.flushTimers.has(roomCode)) {
+      const timer = setTimeout(() => { void this.flush(roomCode); }, 500);
+      this.flushTimers.set(roomCode, timer);
+    }
+  }
+
+  async flushNow(roomCode: string): Promise<void> {
+    const timer = this.flushTimers.get(roomCode);
+    if (timer) {
+      clearTimeout(timer);
+      this.flushTimers.delete(roomCode);
+    }
+    const state = this.dirty.get(roomCode);
+    if (state) {
+      this.dirty.delete(roomCode);
+      await saveGameState(this.kv, roomCode, state);
+    }
+  }
+
+  private async flush(roomCode: string): Promise<void> {
+    this.flushTimers.delete(roomCode);
+    const state = this.dirty.get(roomCode);
+    if (state) {
+      this.dirty.delete(roomCode);
+      await saveGameState(this.kv, roomCode, state);
+    }
+  }
+
+  cleanup(roomCode: string): void {
+    const timer = this.flushTimers.get(roomCode);
+    if (timer) {
+      clearTimeout(timer);
+      this.flushTimers.delete(roomCode);
+    }
+    this.dirty.delete(roomCode);
+  }
+}

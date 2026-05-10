@@ -17,6 +17,24 @@ export interface RoomPlayer {
   role?: string;
 }
 
+const roomPlayerLocks = new Map<string, Promise<void>>();
+
+async function withRoomPlayerLock<T>(roomCode: string, fn: () => Promise<T>): Promise<T> {
+  const key = `room:${roomCode}:players`;
+  while (roomPlayerLocks.has(key)) {
+    await roomPlayerLocks.get(key);
+  }
+  let resolve!: () => void;
+  const promise = new Promise<void>(r => { resolve = r; });
+  roomPlayerLocks.set(key, promise);
+  try {
+    return await fn();
+  } finally {
+    roomPlayerLocks.delete(key);
+    resolve();
+  }
+}
+
 export async function createRoom(kv: KvStore, roomCode: string, ownerId: string, settings: RoomSettings): Promise<void> {
   const now = new Date().toISOString();
   await kv.hset(`room:${roomCode}`, {
@@ -56,38 +74,49 @@ export async function setRoomOwner(kv: KvStore, roomCode: string, ownerId: strin
   await kv.hset(`room:${roomCode}`, { ownerId });
 }
 
+export async function getRoomPlayers(kv: KvStore, roomCode: string): Promise<RoomPlayer[]> {
+  const raw = await kv.get(`room:${roomCode}:players`);
+  if (!raw) return [];
+  return JSON.parse(raw) as RoomPlayer[];
+}
+
+async function setRoomPlayers(kv: KvStore, roomCode: string, players: RoomPlayer[]): Promise<void> {
+  if (players.length === 0) {
+    await kv.del(`room:${roomCode}:players`);
+  } else {
+    await kv.set(`room:${roomCode}:players`, JSON.stringify(players));
+  }
+}
+
 export async function addPlayerToRoom(kv: KvStore, roomCode: string, player: { userId: string; nickname: string; avatarUrl?: string | null; role?: string }): Promise<void> {
-  const existing = await getRoomPlayers(kv, roomCode);
-  if (existing.some(p => p.userId === player.userId)) return;
-  await kv.rpush(`room:${roomCode}:players`, JSON.stringify({ userId: player.userId, nickname: player.nickname, avatarUrl: player.avatarUrl ?? null, ready: false, role: player.role ?? 'normal' }));
+  await withRoomPlayerLock(roomCode, async () => {
+    const existing = await getRoomPlayers(kv, roomCode);
+    if (existing.some(p => p.userId === player.userId)) return;
+    existing.push({ userId: player.userId, nickname: player.nickname, avatarUrl: player.avatarUrl ?? null, ready: false, role: player.role ?? 'normal' });
+    await setRoomPlayers(kv, roomCode, existing);
+  });
 }
 
 export async function removePlayerFromRoom(kv: KvStore, roomCode: string, userId: string): Promise<void> {
-  const players = await getRoomPlayers(kv, roomCode);
-  await kv.del(`room:${roomCode}:players`);
-  const remaining = players.filter((p) => p.userId !== userId);
-  if (remaining.length > 0) {
-    await kv.rpush(`room:${roomCode}:players`, ...remaining.map((p) => JSON.stringify(p)));
-  }
-}
-
-export async function getRoomPlayers(kv: KvStore, roomCode: string): Promise<RoomPlayer[]> {
-  const raw = await kv.lrange(`room:${roomCode}:players`, 0, -1);
-  return raw.map((s) => JSON.parse(s) as RoomPlayer);
+  await withRoomPlayerLock(roomCode, async () => {
+    const players = await getRoomPlayers(kv, roomCode);
+    const remaining = players.filter((p) => p.userId !== userId);
+    await setRoomPlayers(kv, roomCode, remaining);
+  });
 }
 
 export async function setPlayerReady(kv: KvStore, roomCode: string, userId: string, ready: boolean): Promise<void> {
-  const players = await getRoomPlayers(kv, roomCode);
-  const updated = players.map((p) => p.userId === userId ? { ...p, ready } : p);
-  await kv.del(`room:${roomCode}:players`);
-  if (updated.length > 0) {
-    await kv.rpush(`room:${roomCode}:players`, ...updated.map((p) => JSON.stringify(p)));
-  }
+  await withRoomPlayerLock(roomCode, async () => {
+    const players = await getRoomPlayers(kv, roomCode);
+    const updated = players.map((p) => p.userId === userId ? { ...p, ready } : p);
+    await setRoomPlayers(kv, roomCode, updated);
+  });
 }
 
 export async function deleteRoom(kv: KvStore, roomCode: string): Promise<void> {
-  const keys = await kv.keys(`room:${roomCode}*`);
-  if (keys.length > 0) await kv.del(...keys);
-  const gameKeys = await kv.keys(`game:${roomCode}*`);
-  if (gameKeys.length > 0) await kv.del(...gameKeys);
+  await kv.del(
+    `room:${roomCode}`,
+    `room:${roomCode}:players`,
+    `game:${roomCode}:state`,
+  );
 }

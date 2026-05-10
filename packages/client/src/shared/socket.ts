@@ -1,20 +1,23 @@
-import { io, Socket } from 'socket.io-client';
+import { io, type Socket as SocketType } from 'socket.io-client';
 import { getApiUrl } from './env';
+import type { ServerToClientEvents, ClientToServerEvents, PlayerView } from '@uno-online/shared';
 import { useGameStore } from '@/features/game/stores/game-store';
-import { useRoomStore } from './stores/room-store';
+import { useRoomStore, type RoomPlayer, type RoomData } from './stores/room-store';
 import { useToastStore } from './stores/toast-store';
 import { playSound } from './sound/sound-manager';
-import { useGatewayStore } from './voice/gateway-store';
+import { useGatewayStore, type PlayerVoicePresence } from './voice/gateway-store';
 import { leaveVoiceSession } from './voice/voice-runtime';
 
-let socket: Socket | null = null;
+type TypedSocket = SocketType<ServerToClientEvents, ClientToServerEvents>;
+
+let socket: TypedSocket | null = null;
 let connectionStatusCallback: ((status: 'connected' | 'disconnected' | 'reconnecting') => void) | null = null;
 
 export function onConnectionStatus(cb: (status: 'connected' | 'disconnected' | 'reconnecting') => void) {
   connectionStatusCallback = cb;
 }
 
-export function getSocket(): Socket {
+export function getSocket(): TypedSocket {
   if (!socket) {
     const token = localStorage.getItem('token');
     socket = io(getApiUrl(), {
@@ -27,14 +30,14 @@ export function getSocket(): Socket {
     });
 
     socket.on('room:updated', (data) => {
-      useRoomStore.getState().updateRoom(data);
+      useRoomStore.getState().updateRoom(data as unknown as { players?: RoomPlayer[]; room?: RoomData });
     });
 
     socket.on('voice:presence', (presence) => {
-      useGatewayStore.getState().setPlayerVoicePresence(presence ?? {});
+      useGatewayStore.getState().setPlayerVoicePresence((presence ?? {}) as Record<string, PlayerVoicePresence>);
     });
 
-    const handleGameView = (view: { phase?: string; settings?: { turnTimeLimit: number; houseRules?: { fastMode?: boolean } } }) => {
+    const handleGameView = (view: PlayerView) => {
       useGameStore.getState().setGameState(view);
       const settings = view.settings;
       if (!settings || view.phase === 'round_end' || view.phase === 'game_over') {
@@ -47,21 +50,21 @@ export function getSocket(): Socket {
       }
     };
 
-    socket.on('game:state', (view: Record<string, unknown>) => {
-      handleGameView(view as { phase?: string; settings?: { turnTimeLimit: number; houseRules?: { fastMode?: boolean } } });
-      const deckHash = (view as { deckHash?: string }).deckHash;
+    socket.on('game:state', (view) => {
+      handleGameView(view);
+      const deckHash = view.deckHash;
       if (deckHash) {
         useToastStore.getState().addToast(`牌序 Hash: ${deckHash.slice(0, 16)}...`, 'info');
       }
     });
     socket.on('game:update', handleGameView);
 
-    socket.on('game:next_round_vote', (vote: { votes: number; required: number; voters: string[] }) => {
+    socket.on('game:next_round_vote', (vote) => {
       useGameStore.getState().setNextRoundVote(vote.votes > 0 ? vote : null);
     });
 
-    socket.on('game:card_drawn', (data: { card: unknown }) => {
-      useGameStore.getState().setDrawnCard(data.card as any);
+    socket.on('game:card_drawn', (data) => {
+      useGameStore.getState().setDrawnCard(data.card);
     });
 
     socket.on('game:action_rejected', (data) => {
@@ -69,8 +72,8 @@ export function getSocket(): Socket {
       playSound('error');
     });
 
-    socket.on('player:timeout', (data) => {
-      console.log('Player timed out:', data.playerId);
+    socket.on('player:timeout', (_data) => {
+      // noop
     });
 
     socket.on('player:disconnected', (data) => {
@@ -85,7 +88,7 @@ export function getSocket(): Socket {
       playSound('player_join');
     });
 
-    socket.on('player:autopilot', (data: { playerId: string; enabled: boolean }) => {
+    socket.on('player:autopilot', (data) => {
       const player = useGameStore.getState().players.find(p => p.id === data.playerId);
       if (player) {
         useToastStore.getState().addToast(
@@ -95,11 +98,11 @@ export function getSocket(): Socket {
       }
     });
 
-    socket.on('room:spectator_joined', (data: { nickname: string }) => {
+    socket.on('room:spectator_joined', (data) => {
       useToastStore.getState().addToast(`${data.nickname} 开始观战`, 'info');
     });
 
-    socket.on('room:spectator_left', (data: { nickname: string }) => {
+    socket.on('room:spectator_left', (data) => {
       useToastStore.getState().addToast(`${data.nickname} 离开观战`, 'info');
     });
 
@@ -131,7 +134,7 @@ export function getSocket(): Socket {
       }
     });
 
-    socket.on('auth:kicked', (_data: { reason: string }) => {
+    socket.on('auth:kicked', (_data) => {
       useRoomStore.getState().clearRoom();
       useGameStore.getState().clearGame();
       leaveVoiceSession();
@@ -139,7 +142,7 @@ export function getSocket(): Socket {
       window.location.href = '/';
     });
 
-    socket.on('game:kicked', (data: { reason: string }) => {
+    socket.on('game:kicked', (data) => {
       useRoomStore.getState().clearRoom();
       useGameStore.getState().clearGame();
       leaveVoiceSession();
@@ -149,7 +152,7 @@ export function getSocket(): Socket {
       }
     });
 
-    socket.on('room:dissolved', (data?: { reason?: string }) => {
+    socket.on('room:dissolved', (data) => {
       useRoomStore.getState().clearRoom();
       useGameStore.getState().clearGame();
       leaveVoiceSession();
@@ -167,8 +170,8 @@ export function getSocket(): Socket {
 
 export function refreshVoicePresence(): void {
   const s = getSocket();
-  s.emit('voice:presence:get', (presence: Record<string, unknown>) => {
-    useGatewayStore.getState().setPlayerVoicePresence((presence as any) ?? {});
+  s.emit('voice:presence:get', (presence) => {
+    useGatewayStore.getState().setPlayerVoicePresence(presence as Record<string, PlayerVoicePresence>);
   });
 }
 

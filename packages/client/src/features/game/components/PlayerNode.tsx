@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { memo, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Trophy } from 'lucide-react';
 import type { Card as CardType } from '@uno-online/shared';
@@ -33,7 +33,7 @@ interface PlayerNodeProps {
   onThrowItem?: (item: string) => void;
 }
 
-export default function PlayerNode({
+function PlayerNode({
   player,
   index,
   isActive,
@@ -104,6 +104,7 @@ export default function PlayerNode({
       ? player.hand
       : [];
   const shouldShowRevealedHand = !isMe && revealedHand.length > 0 && player.handCount <= 5;
+  const roleColor = getRoleColor(player.role);
 
   return (
     <div
@@ -252,8 +253,8 @@ export default function PlayerNode({
           isActive && 'text-primary font-bold',
           isMe && 'text-primary',
         )}
-        style={(!isActive && !isMe && getRoleColor(player.role))
-          ? { color: getRoleColor(player.role) }
+        style={(!isActive && !isMe && roleColor)
+          ? { color: roleColor }
           : undefined}
       >
         {displayName}
@@ -314,3 +315,36 @@ export default function PlayerNode({
     </div>
   );
 }
+
+export default memo(PlayerNode, (prev, next) => {
+  return (
+    prev.player.id === next.player.id &&
+    prev.player.handCount === next.player.handCount &&
+    prev.player.connected === next.player.connected &&
+    prev.player.autopilot === next.player.autopilot &&
+    prev.player.calledUno === next.player.calledUno &&
+    prev.player.eliminated === next.player.eliminated &&
+    prev.player.score === next.player.score &&
+    prev.player.roundWins === next.player.roundWins &&
+    prev.player.avatarUrl === next.player.avatarUrl &&
+    prev.player.role === next.player.role &&
+    prev.player.hand.length === next.player.hand.length &&
+    prev.index === next.index &&
+    prev.isActive === next.isActive &&
+    prev.isMe === next.isMe &&
+    prev.isHost === next.isHost &&
+    prev.isSkipped === next.isSkipped &&
+    prev.isSpeaking === next.isSpeaking &&
+    prev.position.x === next.position.x &&
+    prev.position.y === next.position.y &&
+    prev.turnEndTime === next.turnEndTime &&
+    prev.turnTimeLimit === next.turnTimeLimit &&
+    prev.lastPlayedCard?.id === next.lastPlayedCard?.id &&
+    prev.chatMessage === next.chatMessage &&
+    prev.handGain?.id === next.handGain?.id &&
+    prev.handGain?.count === next.handGain?.count &&
+    prev.handSwap?.id === next.handSwap?.id &&
+    prev.onReaction === next.onReaction &&
+    prev.onThrowItem === next.onThrowItem
+  );
+});

@@ -5,6 +5,7 @@ import type { Database } from '../db/database';
 import type { GameSession } from '../plugins/core/game/session';
 import { deleteRoom } from '../plugins/core/room/store';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
+import type { GameStatePersister } from '../plugins/core/game/state-store';
 import { persistGameOnDissolve } from './game-events';
 import { clearRoomTimeouts } from './room-events';
 import type { SocketData } from './types';
@@ -16,11 +17,13 @@ export async function dissolveRoom(
   roomCode: string,
   sessions: Map<string, GameSession>,
   turnTimer: TurnTimer,
+  persister: GameStatePersister,
   reason: 'host_closed' | 'idle_timeout' | 'empty' = 'host_closed',
   db?: Kysely<Database>,
 ): Promise<void> {
   turnTimer.stop(roomCode);
   clearRoomTimeouts(roomCode);
+  persister.cleanup(roomCode);
   const session = sessions.get(roomCode);
 
   if (session && db) {

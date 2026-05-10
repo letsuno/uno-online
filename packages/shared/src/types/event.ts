@@ -1,7 +1,6 @@
 import type { Card, Color } from './card';
 import type { ChatMessage } from './chat';
-import type { RoomSettings } from './game';
-import type { Direction } from './game';
+import type { RoomSettings, Direction } from './game';
 
 export const GameEventType = {
   GAME_START: 'game_start',

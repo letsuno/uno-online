@@ -4,7 +4,7 @@
 
 ## 项目结构
 
-pnpm monorepo，三个包：
+pnpm monorepo，四个包：
 
 - `packages/shared` — 游戏类型、规则引擎、常量（纯逻辑，无 IO 依赖）
 - `packages/server` — Fastify + Socket.IO 后端，SQLite 持久化，插件架构

@@ -12,16 +12,20 @@ export function resolveAvatar(user: { id: string; avatarData?: string | null; av
   return user.avatarUrl ?? null;
 }
 
+const userPublicFields = [
+  'id', 'username', 'nickname', 'avatarUrl', 'avatarData', 'role',
+  'totalGames', 'totalWins', 'createdAt', 'updatedAt', 'githubId',
+] as const;
+
 export async function findOrCreateUser(data: GitHubUserData) {
   const db = getDb();
   const existing = await db
     .selectFrom('users')
-    .selectAll()
+    .select([...userPublicFields])
     .where('githubId', '=', data.githubId)
     .executeTakeFirst();
 
   if (existing) {
-    // Only update avatarUrl (from GitHub), not username/nickname (user-controlled)
     await db
       .updateTable('users')
       .set({ avatarUrl: data.avatarUrl, updatedAt: sql`datetime('now')` })
@@ -42,17 +46,18 @@ export async function findOrCreateUser(data: GitHubUserData) {
       avatarUrl: data.avatarUrl,
       role,
     })
-    .returningAll()
+    .returning([...userPublicFields])
     .executeTakeFirstOrThrow();
 
   return { ...inserted, isNewUser: true };
 }
 
+// passwordHash included: callers verify credentials against it
 export async function findUserByUsername(username: string) {
   const db = getDb();
   return db
     .selectFrom('users')
-    .selectAll()
+    .select([...userPublicFields, 'passwordHash'])
     .where('username', '=', username)
     .executeTakeFirst() ?? null;
 }
@@ -80,7 +85,7 @@ export async function createLocalUser(data: { username: string; nickname: string
       avatarData: data.avatarData ?? null,
       role,
     })
-    .returningAll()
+    .returning([...userPublicFields])
     .executeTakeFirstOrThrow();
 }
 
@@ -133,7 +138,7 @@ export async function getUserById(id: string) {
   const db = getDb();
   return db
     .selectFrom('users')
-    .selectAll()
+    .select([...userPublicFields])
     .where('id', '=', id)
     .executeTakeFirst() ?? null;
 }
@@ -142,7 +147,7 @@ export async function getUserProfile(userId: string) {
   const db = getDb();
   const user = await db
     .selectFrom('users')
-    .selectAll()
+    .select([...userPublicFields])
     .where('id', '=', userId)
     .executeTakeFirst();
 
@@ -211,7 +216,7 @@ export async function recordGameResult(
         rounds,
         duration,
       })
-      .returningAll()
+      .returning(['id'])
       .executeTakeFirstOrThrow();
 
     for (const p of playerResults) {

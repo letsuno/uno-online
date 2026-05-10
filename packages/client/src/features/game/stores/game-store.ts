@@ -1,22 +1,7 @@
 import { create } from 'zustand';
-import type { Card, Color, GameAction, HouseRules } from '@uno-online/shared';
+import type { Card, Color, GameAction, HouseRules, PlayerView, PlayerViewPlayer } from '@uno-online/shared';
 
-export interface PlayerInfo {
-  id: string;
-  name: string;
-  hand: Card[];
-  handCount: number;
-  score: number;
-  roundWins?: number;
-  connected: boolean;
-  autopilot: boolean;
-  calledUno: boolean;
-  unoCaught?: boolean;
-  eliminated?: boolean;
-  teamId?: number;
-  avatarUrl?: string | null;
-  role?: string;
-}
+export type PlayerInfo = PlayerViewPlayer;
 
 export type InfoDrawerTab = 'rules' | 'house-rules' | 'log' | 'chat';
 
@@ -55,7 +40,7 @@ interface GameState {
   toggleInfoDrawer: () => void;
   openInfoDrawer: (tab?: InfoDrawerTab) => void;
   setInfoDrawerTab: (tab: InfoDrawerTab) => void;
-  setGameState: (view: Record<string, unknown>) => void;
+  setGameState: (view: PlayerView) => void;
   setNextRoundVote: (vote: NextRoundVoteState | null) => void;
   setDrawnCard: (card: Card | null) => void;
   setTurnEndTime: (t: number | null) => void;
@@ -93,11 +78,11 @@ export const useGameStore = create<GameState>((set) => ({
   setInfoDrawerTab: (tab: InfoDrawerTab) => set({ infoDrawerTab: tab }),
   setGameState: (view) =>
     set((state) => {
-      const players = view.players as PlayerInfo[];
-      const viewerId = (view.viewerId as string | undefined) ?? state.viewerId;
-      const currentPlayerIndex = view.currentPlayerIndex as number;
-      const phase = view.phase as string;
-      const lastAction = (view.lastAction as GameAction | null) ?? null;
+      const players = view.players;
+      const viewerId = view.viewerId ?? state.viewerId;
+      const currentPlayerIndex = view.currentPlayerIndex;
+      const phase = view.phase;
+      const lastAction = view.lastAction ?? null;
       const currentPlayerId = players[currentPlayerIndex]?.id;
       const hasDrawnThisTurn =
         phase === 'playing' &&
@@ -109,22 +94,22 @@ export const useGameStore = create<GameState>((set) => ({
         viewerId,
         players,
         currentPlayerIndex,
-        direction: view.direction as 'clockwise' | 'counter_clockwise',
-        discardPile: view.discardPile as Card[],
-        currentColor: view.currentColor as Color | null,
-        drawStack: view.drawStack as number,
-        pendingPenaltyDraws: (view.pendingPenaltyDraws as number | undefined) ?? 0,
-        deckLeftCount: view.deckLeftCount as number,
-        deckRightCount: view.deckRightCount as number,
-        roundNumber: view.roundNumber as number,
-        winnerId: view.winnerId as string | null,
-        pendingDrawPlayerId: view.pendingDrawPlayerId as string | null,
-        settings: view.settings as { turnTimeLimit: number; targetScore: number; houseRules?: HouseRules },
+        direction: view.direction,
+        discardPile: view.discardPile,
+        currentColor: view.currentColor,
+        drawStack: view.drawStack,
+        pendingPenaltyDraws: view.pendingPenaltyDraws ?? 0,
+        deckLeftCount: view.deckLeftCount,
+        deckRightCount: view.deckRightCount,
+        roundNumber: view.roundNumber,
+        winnerId: view.winnerId,
+        pendingDrawPlayerId: view.pendingDrawPlayerId,
+        settings: view.settings,
         lastAction,
         turnEndTime: phase === 'round_end' || phase === 'game_over' ? null : state.turnEndTime,
         hasDrawnThisTurn,
         lastDrawnCard: hasDrawnThisTurn ? state.lastDrawnCard : null,
-        deckHash: (view.deckHash as string | undefined) ?? state.deckHash,
+        deckHash: view.deckHash ?? state.deckHash,
         nextRoundVote: phase === 'round_end' ? state.nextRoundVote : null,
       };
     }),

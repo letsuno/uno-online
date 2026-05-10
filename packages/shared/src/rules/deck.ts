@@ -1,18 +1,9 @@
 import type { Card } from '../types/card';
 import { COLORS } from '../constants/deck';
 
-let cardIdCounter = 0;
-
-function nextId(): string {
-  return `card_${++cardIdCounter}`;
-}
-
-export function resetCardIdCounter(): void {
-  cardIdCounter = 0;
-}
-
 export function createDeck(): Card[] {
-  resetCardIdCounter();
+  let counter = 0;
+  const nextId = (): string => `card_${++counter}`;
   const cards: Card[] = [];
 
   for (const color of COLORS) {
