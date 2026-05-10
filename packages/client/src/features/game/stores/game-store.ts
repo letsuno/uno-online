@@ -52,6 +52,7 @@ interface GameState {
   infoDrawerOpen: boolean;
   infoDrawerTab: InfoDrawerTab;
   toggleInfoDrawer: () => void;
+  openInfoDrawer: (tab?: InfoDrawerTab) => void;
   setInfoDrawerTab: (tab: InfoDrawerTab) => void;
   setGameState: (view: Record<string, unknown>) => void;
   setNextRoundVote: (vote: NextRoundVoteState | null) => void;
@@ -86,6 +87,7 @@ export const useGameStore = create<GameState>((set) => ({
   infoDrawerOpen: false,
   infoDrawerTab: 'rules' as InfoDrawerTab,
   toggleInfoDrawer: () => set((state) => ({ infoDrawerOpen: !state.infoDrawerOpen })),
+  openInfoDrawer: (tab = 'rules') => set({ infoDrawerOpen: true, infoDrawerTab: tab }),
   setInfoDrawerTab: (tab: InfoDrawerTab) => set({ infoDrawerTab: tab }),
   setGameState: (view) =>
     set((state) => {
