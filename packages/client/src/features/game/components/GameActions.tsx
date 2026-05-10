@@ -3,7 +3,6 @@ import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useIsMyTurn } from '../hooks/useIsMyTurn';
 import { usePlayableCardIds } from '../hooks/usePlayableCardIds';
-import { playSound } from '@/shared/sound/sound-manager';
 import { Button } from '@/shared/components/ui/Button';
 
 interface GameActionsProps {
@@ -46,7 +45,7 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
         <Button variant="primary" onClick={withCooldown(onCallUno)} disabled={cooldown}>喊 UNO!</Button>
       )}
       {catchTargets.map((t) => (
-        <Button key={t.id} variant="danger" onClick={withCooldown(() => { playSound('uno_catch'); onCatchUno(t.id); })} disabled={cooldown}>抓 {t.name}!</Button>
+        <Button key={t.id} variant="danger" onClick={withCooldown(() => onCatchUno(t.id))} disabled={cooldown}>抓 {t.name}!</Button>
       ))}
       {phase === 'challenging' && pendingDrawPlayerId === userId && (
         <>

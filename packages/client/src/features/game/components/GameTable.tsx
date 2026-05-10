@@ -16,6 +16,7 @@ import { getSocket } from '@/shared/socket';
 import { useToastStore } from '@/shared/stores/toast-store';
 import { useGatewayStore } from '@/shared/voice/gateway-store';
 import { useChatStore } from '../stores/chat-store';
+import { playThrowHitSound } from '@/shared/sound/sound-manager';
 import { cn } from '@/shared/lib/utils';
 
 interface ThrowEvent {
@@ -233,6 +234,9 @@ export default function GameTable({ onDraw }: GameTableProps) {
       const fromPos = getPlayerPosition(data.fromId);
       const toPos = getPlayerPosition(data.targetId);
       if (!fromPos || !toPos) return;
+      if (data.targetId === userId) {
+        playThrowHitSound(data.item);
+      }
 
       const rect = containerRef.current?.getBoundingClientRect();
       const ox = rect?.left ?? 0;
