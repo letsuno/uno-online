@@ -6,6 +6,7 @@ import type { GameSession } from '../plugins/core/game/session';
 import { deleteRoom } from '../plugins/core/room/store';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { persistGameOnDissolve } from './game-events';
+import { clearRoomTimeouts } from './room-events';
 import type { SocketData } from './types';
 import { clearVoicePresence } from './voice-presence';
 
@@ -19,6 +20,7 @@ export async function dissolveRoom(
   db?: Kysely<Database>,
 ): Promise<void> {
   turnTimer.stop(roomCode);
+  clearRoomTimeouts(roomCode);
   const session = sessions.get(roomCode);
 
   if (session && db) {

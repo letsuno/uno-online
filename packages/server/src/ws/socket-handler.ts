@@ -4,7 +4,7 @@ import { authenticateSocket } from '../auth/middleware';
 import { RoomManager } from '../plugins/core/room/manager';
 import { TurnTimer } from '../plugins/core/game/turn-timer';
 import { GameSession } from '../plugins/core/game/session';
-import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot } from './room-events';
+import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, resetPlayerTimeout } from './room-events';
 import { registerGameEvents } from './game-events';
 import { getRoom, getRoomPlayers, setRoomOwner } from '../plugins/core/room/store';
 import { saveGameState, loadGameState } from '../plugins/core/game/state-store';
@@ -156,6 +156,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       if (session) {
         session.setPlayerConnected(userId, true);
         session.setPlayerAutopilot(userId, false);
+        resetPlayerTimeout(roomCode, userId);
         await saveGameState(redis, roomCode, session.getFullState());
         await emitGameUpdate(io, roomCode, session, redis);
         io.to(roomCode).emit('player:reconnected', { playerId: userId });
@@ -204,6 +205,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
         startAutoPlay(userId, roomCode);
       } else {
         stopAutoPlay(userId);
+        resetPlayerTimeout(roomCode, userId);
       }
       await saveGameState(redis, roomCode, session.getFullState());
       await emitGameUpdate(io, roomCode, session, redis);
