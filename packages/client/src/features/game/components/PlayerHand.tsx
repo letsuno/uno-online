@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import type { Card as CardType, Color } from '@uno-online/shared';
 import { sortHand } from '@uno-online/shared';
@@ -31,6 +31,15 @@ function isColorBoundary(sorted: CardType[], index: number): boolean {
 }
 
 export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
+  const handScrollRef = useRef<HTMLDivElement>(null);
+  const handDragRef = useRef({
+    active: false,
+    pointerId: -1,
+    startX: 0,
+    scrollLeft: 0,
+    hasDragged: false,
+    suppressClick: false,
+  });
   const userId = useEffectiveUserId();
   const players = useGameStore((s) => s.players);
   const phase = useGameStore((s) => s.phase);
@@ -64,6 +73,75 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
 
   const spreadAngle = getSpreadAngle(sorted.length);
   const center = (sorted.length - 1) / 2;
+  const [isDraggingHand, setIsDraggingHand] = useState(false);
+
+  const handleHandPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    const scrollEl = handScrollRef.current;
+    if (!scrollEl) return;
+
+    handDragRef.current = {
+      active: true,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      scrollLeft: scrollEl.scrollLeft,
+      hasDragged: false,
+      suppressClick: false,
+    };
+    scrollEl.setPointerCapture(event.pointerId);
+  };
+
+  const handleHandPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = handDragRef.current;
+    const scrollEl = handScrollRef.current;
+    if (!drag.active || drag.pointerId !== event.pointerId || !scrollEl) return;
+
+    const deltaX = event.clientX - drag.startX;
+    if (Math.abs(deltaX) > 3) {
+      drag.hasDragged = true;
+      drag.suppressClick = true;
+      setIsDraggingHand(true);
+    }
+    if (!drag.hasDragged) return;
+
+    event.preventDefault();
+    scrollEl.scrollLeft = drag.scrollLeft - deltaX;
+  };
+
+  const handleHandPointerEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = handDragRef.current;
+    const scrollEl = handScrollRef.current;
+    if (!drag.active || drag.pointerId !== event.pointerId) return;
+
+    drag.active = false;
+    setIsDraggingHand(false);
+    if (scrollEl?.hasPointerCapture(event.pointerId)) {
+      scrollEl.releasePointerCapture(event.pointerId);
+    }
+    window.setTimeout(() => {
+      handDragRef.current.suppressClick = false;
+    }, 0);
+  };
+
+  const handleHandPointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = handDragRef.current;
+    const scrollEl = handScrollRef.current;
+    if (drag.pointerId === event.pointerId) {
+      drag.active = false;
+      drag.suppressClick = false;
+      setIsDraggingHand(false);
+    }
+    if (scrollEl?.hasPointerCapture(event.pointerId)) {
+      scrollEl.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const handleHandClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!handDragRef.current.suppressClick) return;
+    handDragRef.current.suppressClick = false;
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
   return (
     <div className="relative z-actions overflow-visible pt-10 -mt-10 pointer-events-none">
@@ -76,12 +154,20 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
         />
       )}
       <div
-        className="relative rounded-t-2xl px-5 pt-8 pb-hand-pb flex justify-center overflow-x-auto overflow-y-visible scrollbar-hidden pointer-events-auto"
+        ref={handScrollRef}
+        className={`relative rounded-t-2xl px-5 pt-8 pb-hand-pb flex justify-start overflow-x-auto overflow-y-visible scrollbar-hidden pointer-events-auto touch-pan-x ${
+          isDraggingHand ? 'cursor-grabbing' : 'cursor-grab'
+        }`}
+        onPointerDown={handleHandPointerDown}
+        onPointerMove={handleHandPointerMove}
+        onPointerUp={handleHandPointerEnd}
+        onPointerCancel={handleHandPointerCancel}
+        onClickCapture={handleHandClickCapture}
       >
         <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-2xs text-muted-foreground whitespace-nowrap">
           我的手牌 · {sorted.length}张
         </span>
-        <div className="flex justify-center items-end overflow-visible">
+        <div className="flex min-w-full w-max justify-center items-end overflow-visible">
           <AnimatePresence mode="popLayout">
             {sorted.map((card, i) => {
               const angle = (i - center) * spreadAngle;
