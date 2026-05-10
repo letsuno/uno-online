@@ -34,18 +34,21 @@ export function getSocket(): Socket {
       useGatewayStore.getState().setPlayerVoicePresence(presence ?? {});
     });
 
-    const handleGameView = (view: { phase?: string; settings?: { turnTimeLimit: number } }) => {
+    const handleGameView = (view: { phase?: string; settings?: { turnTimeLimit: number; houseRules?: { fastMode?: boolean } } }) => {
       useGameStore.getState().setGameState(view);
       const settings = view.settings;
       if (!settings || view.phase === 'round_end' || view.phase === 'game_over') {
         useGameStore.getState().setTurnEndTime(null);
       } else {
-        useGameStore.getState().setTurnEndTime(Date.now() + settings.turnTimeLimit * 1000);
+        const timeLimit = settings.houseRules?.fastMode
+          ? Math.floor(settings.turnTimeLimit / 2)
+          : settings.turnTimeLimit;
+        useGameStore.getState().setTurnEndTime(Date.now() + timeLimit * 1000);
       }
     };
 
     socket.on('game:state', (view: Record<string, unknown>) => {
-      handleGameView(view as { phase?: string; settings?: { turnTimeLimit: number } });
+      handleGameView(view as { phase?: string; settings?: { turnTimeLimit: number; houseRules?: { fastMode?: boolean } } });
       const deckHash = (view as { deckHash?: string }).deckHash;
       if (deckHash) {
         useToastStore.getState().addToast(`牌序 Hash: ${deckHash.slice(0, 16)}...`, 'info');
