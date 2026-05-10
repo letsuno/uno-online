@@ -24,7 +24,10 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     ],
     currentPlayerIndex: 0,
     direction: 'clockwise',
-    deck: [],
+    deckLeft: [],
+    deckRight: [],
+    deckLeftInitialCount: 0,
+    deckRightInitialCount: 0,
     discardPile: [makeCard('number', 'red', { value: 5, id: 'top' })],
     currentColor: 'red',
     drawStack: 0,
@@ -57,10 +60,13 @@ describe('penalty draw flow', () => {
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
       ],
-      deck: [
+      deckLeft: [
         makeCard('number', 'green', { value: 1, id: 'draw1' }),
         makeCard('number', 'yellow', { value: 2, id: 'draw2' }),
       ],
+      deckRight: [],
+      deckLeftInitialCount: 2,
+      deckRightInitialCount: 0,
     });
 
     const afterPlay = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'd2' });
@@ -68,12 +74,12 @@ describe('penalty draw flow', () => {
     expect(afterPlay.currentPlayerIndex).toBe(1);
     expect(afterPlay.pendingPenaltyDraws).toBe(2);
 
-    const afterFirstDraw = applyAction(afterPlay, { type: 'DRAW_CARD', playerId: 'p2' });
+    const afterFirstDraw = applyAction(afterPlay, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
     expect(afterFirstDraw.players[1]!.hand.map(c => c.id)).toEqual(['draw1']);
     expect(afterFirstDraw.currentPlayerIndex).toBe(1);
     expect(afterFirstDraw.pendingPenaltyDraws).toBe(1);
 
-    const afterSecondDraw = applyAction(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p2' });
+    const afterSecondDraw = applyAction(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
     expect(afterSecondDraw.players[1]!.hand.map(c => c.id)).toEqual(['draw1', 'draw2']);
     expect(afterSecondDraw.currentPlayerIndex).toBe(2);
     expect(afterSecondDraw.pendingPenaltyDraws).toBe(0);
@@ -91,13 +97,16 @@ describe('penalty draw flow', () => {
       pendingPenaltyDraws: 8,
       pendingPenaltyNextPlayerIndex: 2,
       pendingPenaltySourcePlayerId: 'p1',
-      deck: [
+      deckLeft: [
         playableDrawn,
         makeCard('number', 'blue', { value: 1, id: 'draw2' }),
       ],
+      deckRight: [],
+      deckLeftInitialCount: 2,
+      deckRightInitialCount: 0,
     });
 
-    const afterFirstDraw = applyAction(state, { type: 'DRAW_CARD', playerId: 'p2' });
+    const afterFirstDraw = applyAction(state, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
     expect(afterFirstDraw.players[1]!.hand.map(c => c.id)).toEqual(['drawn_red']);
     expect(afterFirstDraw.pendingPenaltyDraws).toBe(7);
     expect(afterFirstDraw.currentPlayerIndex).toBe(1);
@@ -185,20 +194,23 @@ describe('penalty draw flow', () => {
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, autopilot: false, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 1, id: 'p3c' })], score: 0, connected: true, autopilot: false, calledUno: false },
       ],
-      deck: [
+      deckLeft: [
         makeCard('number', 'green', { value: 2, id: 'draw1' }),
         makeCard('number', 'yellow', { value: 3, id: 'draw2' }),
       ],
+      deckRight: [],
+      deckLeftInitialCount: 2,
+      deckRightInitialCount: 0,
     });
 
     const afterPlay = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'last_d2' });
     expect(afterPlay.phase).toBe('playing');
     expect(afterPlay.pendingPenaltySourcePlayerId).toBe('p1');
 
-    const afterFirstDraw = applyAction(afterPlay, { type: 'DRAW_CARD', playerId: 'p2' });
+    const afterFirstDraw = applyAction(afterPlay, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
     expect(afterFirstDraw.phase).toBe('playing');
 
-    const afterSecondDraw = applyAction(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p2' });
+    const afterSecondDraw = applyAction(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
     expect(afterSecondDraw.phase).toBe('round_end');
     expect(afterSecondDraw.winnerId).toBe('p1');
   });
