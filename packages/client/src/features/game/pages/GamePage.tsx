@@ -11,7 +11,8 @@ import { useGameLogTracker } from '../hooks/useGameLogTracker';
 import { useAutoPlay } from '../hooks/useAutoPlay';
 import { useGameActions } from '../hooks/useGameActions';
 import { playSound } from '@/shared/sound/sound-manager';
-import { getSocket } from '@/shared/socket';
+import { getSocket, refreshVoicePresence } from '@/shared/socket';
+import { leaveVoiceSession } from '@/shared/voice/voice-runtime';
 import { useRoomStore } from '@/shared/stores/room-store';
 import TopBar from '../components/TopBar';
 import GameTable from '../components/GameTable';
@@ -40,6 +41,10 @@ export default function GamePage() {
 
   const connectionStatus = useGameSocket(roomCode);
   useGameLogTracker();
+
+  useEffect(() => {
+    refreshVoicePresence();
+  }, []);
 
   const {
     playCard,
@@ -93,6 +98,8 @@ export default function GamePage() {
   };
 
   const backToLobby = () => {
+    getSocket().emit('voice:presence', { inVoice: false, micEnabled: false, speakerMuted: false, speaking: false });
+    leaveVoiceSession();
     getSocket().emit('room:leave', () => {
       clearRoom();
       clearGame();

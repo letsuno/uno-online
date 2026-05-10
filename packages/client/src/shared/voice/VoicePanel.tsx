@@ -1,10 +1,11 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Mic, MicOff, Volume2, VolumeX, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGatewayStore } from './gateway-store';
-import { VoiceEngine } from './voice-engine';
-import { createWebCodecsOpusEncoder, createWebCodecsOpusDecoder, canUseWebCodecsOpus } from './webcodecs-opus';
+import { canUseWebCodecsOpus } from './webcodecs-opus';
+import { closeVoiceDecoders, decodeVoiceFrame, getVoiceEngine, leaveVoiceSession } from './voice-runtime';
 import { cn } from '@/shared/lib/utils';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
+import { getSocket } from '@/shared/socket';
 
 const MUMBLE_SERVER_ID = 'uno';
 
@@ -14,10 +15,6 @@ function toMumbleUsername(name: string | undefined): string {
 }
 
 export default function VoicePanel() {
-  const engineRef = useRef<VoiceEngine | null>(null);
-  const encoderRef = useRef<ReturnType<typeof createWebCodecsOpusEncoder> | null>(null);
-  const decodersRef = useRef<Map<number, ReturnType<typeof createWebCodecsOpusDecoder>>>(new Map());
-
   const status = useGatewayStore((s) => s.status);
   const gatewayStatus = useGatewayStore((s) => s.gatewayStatus);
   const usersById = useGatewayStore((s) => s.usersById);
@@ -25,15 +22,17 @@ export default function VoicePanel() {
   const selfUserId = useGatewayStore((s) => s.selfUserId);
   const init = useGatewayStore((s) => s.init);
   const connect = useGatewayStore((s) => s.connect);
-  const disconnect = useGatewayStore((s) => s.disconnect);
   const setVoiceSink = useGatewayStore((s) => s.setVoiceSink);
   const sendMicOpus = useGatewayStore((s) => s.sendMicOpus);
   const sendMicEnd = useGatewayStore((s) => s.sendMicEnd);
+  const micEnabled = useGatewayStore((s) => s.micEnabled);
+  const speakerMuted = useGatewayStore((s) => s.speakerMuted);
+  const setMicEnabled = useGatewayStore((s) => s.setMicEnabled);
+  const setSpeakerMuted = useGatewayStore((s) => s.setSpeakerMuted);
+  const selfSpeaking = useGatewayStore((s) => s.selfSpeaking);
 
   const connectError = useGatewayStore((s) => s.connectError);
 
-  const [micEnabled, setMicEnabled] = useState(false);
-  const [muted, setMuted] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [peerVolumes, setPeerVolumes] = useState<Map<number, number>>(new Map());
   const voiceName = useAuthStore((s) => s.user?.nickname || s.user?.username);
@@ -41,124 +40,70 @@ export default function VoicePanel() {
   const connected = status === 'connected';
   const unsupported = !canUseWebCodecsOpus();
 
+  const emitPresence = useCallback((presence: { inVoice: boolean; micEnabled: boolean; speakerMuted: boolean; speaking: boolean }) => {
+    getSocket().emit('voice:presence', presence);
+  }, []);
+
   useEffect(() => {
     init();
   }, [init]);
 
-  const setupVoiceEngine = useCallback(() => {
-    if (engineRef.current) return engineRef.current;
-
-    const engine = new VoiceEngine({
-      onMicPcm: (pcm, sampleRate) => {
-        if (!encoderRef.current) {
-          encoderRef.current = createWebCodecsOpusEncoder({
-            sampleRate,
-            channels: 1,
-            bitrate: 24000,
-            onOpus: (opus) => sendMicOpus(opus),
-          });
-        }
-        encoderRef.current.encode(pcm);
-      },
-      onMicEnd: () => {
-        sendMicEnd();
-      },
-    });
-
-    engineRef.current = engine;
-    return engine;
-  }, [sendMicOpus, sendMicEnd]);
-
   useEffect(() => {
     if (!connected) return;
 
-    const engine = setupVoiceEngine();
-
-    const createDecoder = (userId: number) => {
-      let decoder: ReturnType<typeof createWebCodecsOpusDecoder>;
-      decoder = createWebCodecsOpusDecoder({
-        sampleRate: 48000,
-        channels: 1,
-        onPcm: (pcm) => {
-          engine.pushRemotePcm({
-            userId,
-            channels: 1,
-            sampleRate: 48000,
-            pcm,
-          });
-        },
-        onError: () => {
-          if (decodersRef.current.get(userId) === decoder) {
-            decodersRef.current.delete(userId);
-          }
-        },
-      });
-      return decoder;
-    };
-
     setVoiceSink((frame) => {
-      let decoder = decodersRef.current.get(frame.userId);
-      if (!decoder) {
-        decoder = createDecoder(frame.userId);
-        decodersRef.current.set(frame.userId, decoder);
-      }
-      const decoded = decoder.decode(frame.opus);
-      if (!decoded && decodersRef.current.get(frame.userId) === decoder) {
-        decodersRef.current.delete(frame.userId);
-      }
+      decodeVoiceFrame(frame.userId, frame.opus, sendMicOpus, sendMicEnd);
     });
 
     return () => {
       setVoiceSink(null);
-      for (const d of decodersRef.current.values()) d.close();
-      decodersRef.current.clear();
+      closeVoiceDecoders();
     };
-  }, [connected, setupVoiceEngine, setVoiceSink]);
+  }, [connected, setVoiceSink, sendMicOpus, sendMicEnd]);
 
-  const joinVoice = useCallback(async (roomCode: string) => {
+  const joinVoice = useCallback(async () => {
     if (unsupported) {
       console.warn('[voice] WebCodecs not supported');
       return;
     }
     console.log('[voice] joining voice, gateway status:', gatewayStatus, 'status:', status);
-    const engine = setupVoiceEngine();
+    const engine = getVoiceEngine(sendMicOpus, sendMicEnd);
     await engine.enableAudio();
+    engine.setMuted(speakerMuted);
     connect({ serverId: MUMBLE_SERVER_ID, username: toMumbleUsername(voiceName) });
-  }, [unsupported, setupVoiceEngine, connect, gatewayStatus, status, voiceName]);
+  }, [unsupported, connect, gatewayStatus, status, voiceName, sendMicOpus, sendMicEnd, speakerMuted]);
 
   const leaveVoice = useCallback(() => {
-    const engine = engineRef.current;
-    if (engine) {
-      engine.disableMic();
-    }
-    encoderRef.current?.close();
-    encoderRef.current = null;
-    for (const d of decodersRef.current.values()) d.close();
-    decodersRef.current.clear();
-    disconnect();
-    setMicEnabled(false);
-    setMuted(false);
-  }, [disconnect]);
+    emitPresence({ inVoice: false, micEnabled: false, speakerMuted: false, speaking: false });
+    leaveVoiceSession();
+  }, [emitPresence]);
 
   const toggleMic = useCallback(async () => {
-    const engine = engineRef.current;
-    if (!engine) return;
+    const engine = getVoiceEngine(sendMicOpus, sendMicEnd);
     if (micEnabled) {
       engine.disableMic();
       setMicEnabled(false);
+      useGatewayStore.getState().setSelfSpeaking(false);
+      emitPresence({ inVoice: connected, micEnabled: false, speakerMuted, speaking: false });
     } else {
       await engine.enableMic();
       setMicEnabled(true);
+      emitPresence({ inVoice: connected, micEnabled: true, speakerMuted, speaking: selfSpeaking });
     }
-  }, [micEnabled]);
+  }, [micEnabled, sendMicOpus, sendMicEnd, setMicEnabled, emitPresence, connected, speakerMuted, selfSpeaking]);
 
   const toggleMute = useCallback(() => {
-    const engine = engineRef.current;
-    if (!engine) return;
-    const next = !muted;
+    const engine = getVoiceEngine(sendMicOpus, sendMicEnd);
+    const next = !speakerMuted;
     engine.setMuted(next);
-    setMuted(next);
-  }, [muted]);
+    setSpeakerMuted(next);
+    emitPresence({ inVoice: connected, micEnabled, speakerMuted: next, speaking: selfSpeaking });
+  }, [speakerMuted, sendMicOpus, sendMicEnd, setSpeakerMuted, emitPresence, connected, micEnabled, selfSpeaking]);
+
+  useEffect(() => {
+    if (!connected) return;
+    emitPresence({ inVoice: true, micEnabled, speakerMuted, speaking: selfSpeaking });
+  }, [connected, micEnabled, speakerMuted, selfSpeaking, emitPresence]);
 
   const setPeerVolume = useCallback((userId: number, volume: number) => {
     setPeerVolumes((prev) => {
@@ -182,7 +127,7 @@ export default function VoicePanel() {
     <div className="fixed right-3 bottom-4 flex max-w-[9rem] flex-col items-center gap-2 z-fab">
       {!connected ? (
         <button
-          onClick={() => joinVoice('default')}
+          onClick={joinVoice}
           disabled={unsupported}
           className={cn(
             voiceBtn(false),
@@ -197,8 +142,8 @@ export default function VoicePanel() {
           <button onClick={toggleMic} className={voiceBtn(micEnabled)} title={micEnabled ? '关闭麦克风' : '开启麦克风'}>
             {micEnabled ? <Mic size={16} /> : <MicOff size={16} />}
           </button>
-          <button onClick={toggleMute} className={voiceBtn(!muted)} title={muted ? '打开扬声器' : '关闭扬声器'}>
-            {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          <button onClick={toggleMute} className={voiceBtn(!speakerMuted)} title={speakerMuted ? '打开扬声器' : '关闭扬声器'}>
+            {speakerMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
           <button
             onClick={leaveVoice}
