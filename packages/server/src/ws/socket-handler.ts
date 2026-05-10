@@ -4,7 +4,7 @@ import { authenticateSocket } from '../auth/middleware';
 import { RoomManager } from '../plugins/core/room/manager';
 import { TurnTimer } from '../plugins/core/game/turn-timer';
 import { GameSession } from '../plugins/core/game/session';
-import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, resetPlayerTimeout } from './room-events';
+import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, notifyAutopilotAction, resetPlayerTimeout } from './room-events';
 import { getAutopilotActionPlayerId } from './autopilot-action-player';
 import { registerGameEvents, addAutopilotVote } from './game-events';
 import { getRoom, getRoomPlayers, setRoomOwner } from '../plugins/core/room/store';
@@ -72,7 +72,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       const acted = await executeAutopilot(session, userId, async () => {
         await saveGameState(redis, roomCode, session.getFullState());
         await emitGameUpdate(io, roomCode, session, redis);
-      });
+      }, (action) => notifyAutopilotAction(roomCode, session, action));
 
       if (acted) {
         await saveGameState(redis, roomCode, session.getFullState());

@@ -17,9 +17,19 @@ import { getAutopilotActionPlayerId } from './autopilot-action-player';
 
 const DRAW_PENALTY_PAUSE_MS = 500;
 const AUTO_AUTOPILOT_THRESHOLD = 2;
+type AutopilotActionHandler = (roomCode: string, session: GameSession, action: GameAction) => void;
 
 // Track consecutive timeouts per player per room
 const timeoutCounts = new Map<string, Map<string, number>>();
+let autopilotActionHandler: AutopilotActionHandler | null = null;
+
+export function setAutopilotActionHandler(handler: AutopilotActionHandler | null): void {
+  autopilotActionHandler = handler;
+}
+
+export function notifyAutopilotAction(roomCode: string, session: GameSession, action: GameAction): void {
+  autopilotActionHandler?.(roomCode, session, action);
+}
 
 export function getTimeoutCounts(): Map<string, Map<string, number>> {
   return timeoutCounts;
@@ -299,6 +309,7 @@ export async function executeAutopilot(
   session: GameSession,
   playerId: string,
   onPenaltyPause?: () => void | Promise<void>,
+  onActionSuccess?: (action: GameAction) => void | Promise<void>,
 ): Promise<boolean> {
   let acted = false;
   for (let round = 0; round < 5; round++) {
@@ -313,6 +324,7 @@ export async function executeAutopilot(
       const result = session.applyAction(action);
       if (result.success) {
         anySuccess = true;
+        await onActionSuccess?.(action);
         if (shouldPauseAfterAction(beforeAction, session, action)) {
           await onPenaltyPause?.();
           await sleep(DRAW_PENALTY_PAUSE_MS);
@@ -356,7 +368,7 @@ export function startTurnTimer(
       await executeAutopilot(s, pid, async () => {
         await saveGameState(redis, code, s.getFullState());
         await emitGameUpdate(io, code, s, redis);
-      });
+      }, (action) => notifyAutopilotAction(code, s, action));
       await saveGameState(redis, code, s.getFullState());
       await emitGameUpdate(io, code, s, redis);
       startTurnTimer(io, redis, code, s, turnTimer, sessions);
@@ -379,7 +391,7 @@ export function startTurnTimer(
       await executeAutopilot(s, pid, async () => {
         await saveGameState(redis, code, s.getFullState());
         await emitGameUpdate(io, code, s, redis);
-      });
+      }, (action) => notifyAutopilotAction(code, s, action));
       await saveGameState(redis, code, s.getFullState());
       await emitGameUpdate(io, code, s, redis);
       io.to(code).emit('player:timeout', { playerId: pid });
@@ -407,7 +419,7 @@ export function startTurnTimer(
     await executeAutopilot(s, pid, async () => {
       await saveGameState(redis, code, s.getFullState());
       await emitGameUpdate(io, code, s, redis);
-    });
+    }, (action) => notifyAutopilotAction(code, s, action));
     await saveGameState(redis, code, s.getFullState());
     await emitGameUpdate(io, code, s, redis);
     io.to(code).emit('player:timeout', { playerId: pid });
