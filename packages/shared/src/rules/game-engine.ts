@@ -477,7 +477,7 @@ function handleCatchUno(
   const players = state.players.map((p, i) =>
     i === targetIdx ? { ...p, unoCaught: true } : p,
   );
-  return startPenaltyDraw({ ...state, players }, action.targetId, UNO_PENALTY_CARDS, state.currentPlayerIndex);
+  return startPenaltyDraw({ ...state, players, lastAction: action }, action.targetId, UNO_PENALTY_CARDS, state.currentPlayerIndex);
 }
 
 // -----------------------------------------------------------------------------

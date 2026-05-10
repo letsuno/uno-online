@@ -88,6 +88,15 @@ export function useGameLogTracker(): void {
         playerId: lastAction.playerId,
         playerName: player.name,
       });
+    } else if (lastAction.type === 'CALL_UNO') {
+      const player = findPlayer(lastAction.playerId);
+      if (!player) return;
+      addLogEntry({
+        type: 'call_uno',
+        playerId: lastAction.playerId,
+        playerName: player.name,
+        extra: 'UNO!',
+      });
     } else if (lastAction.type === 'CATCH_UNO') {
       const catcher = findPlayer(lastAction.catcherId);
       const target = findPlayer(lastAction.targetId);

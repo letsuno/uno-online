@@ -22,7 +22,7 @@ export const unoPenalty: HouseRulePlugin = {
     );
     return {
       handled: true,
-      state: ctx.startPenaltyDraw({ ...state, players }, action.targetId, hr.unoPenaltyCount, state.currentPlayerIndex),
+      state: ctx.startPenaltyDraw({ ...state, players, lastAction: action }, action.targetId, hr.unoPenaltyCount, state.currentPlayerIndex),
     };
   },
 };
