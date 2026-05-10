@@ -26,11 +26,15 @@ import Confetti from '../components/Confetti';
 import MobileFAB from '../components/MobileFAB';
 import InfoDrawer from '../components/InfoDrawer';
 import PlayerListPanel from '../components/PlayerListPanel';
+import GameStartRulesModal from '../components/GameStartRulesModal';
 
 export default function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
   const phase = useGameStore((s) => s.phase);
+  const roundNumber = useGameStore((s) => s.roundNumber);
+  const settings = useGameStore((s) => s.settings);
+  const openInfoDrawer = useGameStore((s) => s.openInfoDrawer);
   const clearGame = useGameStore((s) => s.clearGame);
   const clearRoom = useRoomStore((s) => s.clearRoom);
 
@@ -41,10 +45,23 @@ export default function GamePage() {
 
   const connectionStatus = useGameSocket(roomCode);
   useGameLogTracker();
+  const [showStartRules, setShowStartRules] = useState(false);
+  const shownStartRulesRef = useRef<string | null>(null);
 
   useEffect(() => {
     refreshVoicePresence();
   }, []);
+
+  useEffect(() => {
+    if (!roomCode || !settings || roundNumber !== 1) return;
+    if (phase !== 'playing' && phase !== 'challenging' && phase !== 'choosing_color' && phase !== 'choosing_swap_target') return;
+
+    const key = `${roomCode}:round-${roundNumber}`;
+    if (shownStartRulesRef.current === key) return;
+    shownStartRulesRef.current = key;
+    openInfoDrawer('rules');
+    setShowStartRules(true);
+  }, [roomCode, settings, roundNumber, phase, openInfoDrawer]);
 
   const {
     playCard,
@@ -168,6 +185,11 @@ export default function GamePage() {
       <VoicePanel />
       <InfoDrawer />
       <MobileFAB />
+      <GameStartRulesModal
+        open={showStartRules}
+        houseRules={settings?.houseRules}
+        onClose={() => setShowStartRules(false)}
+      />
       <GameEffects />
       {(phase === 'round_end' || phase === 'game_over') && <Confetti />}
       {needsColorPick && <ColorPicker onPick={chooseColor} />}
