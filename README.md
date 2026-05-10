@@ -1,8 +1,14 @@
-# UNO Online
+<p align="center">
+  <img src="packages/client/public/favicon.svg" width="120" alt="UNO Online Logo" />
+</p>
 
-[![GitHub](https://img.shields.io/github/license/letsuno/uno-online)](https://github.com/letsuno/uno-online)
+<h1 align="center">UNO Online</h1>
 
-[中文文档](README.zh-CN.md)
+<p align="center">
+  <a href="https://github.com/letsuno/uno-online"><img src="https://img.shields.io/github/license/letsuno/uno-online" alt="License" /></a>
+</p>
+
+<p align="center"><a href="README.zh-CN.md">中文文档</a></p>
 
 Web-based multiplayer UNO card game with voice chat, 32 configurable house rules, server selector, and a cartoon visual style.
 
