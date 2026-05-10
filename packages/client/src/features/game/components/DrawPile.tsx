@@ -23,7 +23,8 @@ export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTri
   const settings = useGameStore((s) => s.settings);
 
   const isMyTurn = useIsMyTurn();
-  const isPenaltyDrawing = pendingPenaltyDraws > 0;
+  const remainingPenaltyDraws = pendingPenaltyDraws > 0 ? pendingPenaltyDraws : drawStack;
+  const isPenaltyDrawing = remainingPenaltyDraws > 0;
   const playableIds = usePlayableCardIds();
   const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
   const isDrawUntilTurn = mustDrawUntilPlayable && !isPenaltyDrawing;
@@ -44,7 +45,7 @@ export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTri
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
           >
-            还要摸 {pendingPenaltyDraws} 张
+            还要摸 {remainingPenaltyDraws} 张
           </motion.div>
         )}
         {showNoPlayableHint && (

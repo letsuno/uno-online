@@ -196,8 +196,6 @@ function handlePlayCard(
   // Must be the current player
   if (action.playerId !== currentPlayerId(state)) return state;
 
-  if ((state.pendingPenaltyDraws ?? 0) > 0) return state;
-
   const actingPlayerIdx = state.currentPlayerIndex;
   const actingPlayer = state.players[actingPlayerIdx]!;
 
@@ -465,6 +463,12 @@ function handleCallUno(
   if (idx === -1) return state;
 
   const player = state.players[idx]!;
+  const isPayingUnoPenalty =
+    (state.pendingPenaltyDraws ?? 0) > 0 &&
+    state.currentPlayerIndex === idx &&
+    state.pendingPenaltySourcePlayerId === null;
+  if (player.unoCaught || isPayingUnoPenalty) return state;
+
   const strictUnoCall = state.settings.houseRules?.strictUnoCall ?? false;
   const canCallUno = player.hand.length === 1
     || (!strictUnoCall && player.hand.length === 2 && currentPlayerId(state) === action.playerId);
