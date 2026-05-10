@@ -93,6 +93,15 @@ export function registerRoomEvents(
   socket.on('room:leave', async (callback) => {
     const roomCode = data.roomCode;
     if (!roomCode) return callback?.({ success: false, error: 'Not in a room' });
+    if (data.isSpectator) {
+      socket.to(roomCode).emit('room:spectator_left', {
+        nickname: data.user.nickname,
+      });
+      socket.leave(roomCode);
+      data.roomCode = null;
+      data.isSpectator = false;
+      return callback?.({ success: true });
+    }
     const room = await getRoom(redis, roomCode);
     if (room?.ownerId === data.user.userId) {
       await dissolveRoom(io, redis, roomCode, sessions, turnTimer, 'host_closed', db);

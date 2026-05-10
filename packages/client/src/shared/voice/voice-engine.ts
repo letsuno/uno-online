@@ -349,6 +349,7 @@ registerProcessor('mumble-capture', MumbleCaptureProcessor);
     this._micEnabled = false
     this._postCaptureConfig()
     this._config.onMicEnd()
+    this._config.onCaptureStats?.({ rms: 0, sending: false })
 
     if (this._micSource) {
       try {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Loader2, Eye } from 'lucide-react';
+import { Loader2, Eye, LogOut } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useGameStore } from '../stores/game-store';
 import { useIsMyTurn } from '../hooks/useIsMyTurn';
@@ -178,8 +178,14 @@ export default function GamePage() {
       {!isSpectator && <PlayerHand onPlayCard={playCard} />}
       </LayoutGroup>
       {isSpectator && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-actions bg-card/90 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-muted-foreground flex items-center gap-2">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-actions bg-card/90 backdrop-blur-sm rounded-full px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
           <Eye size={16} /> 观战中
+          <button
+            onClick={backToLobby}
+            className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-xs text-foreground transition-colors hover:bg-white/20"
+          >
+            <LogOut size={12} /> 退出
+          </button>
         </div>
       )}
       <VoicePanel />
