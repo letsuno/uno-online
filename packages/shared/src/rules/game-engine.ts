@@ -455,7 +455,11 @@ function handleCallUno(
   if (idx === -1) return state;
 
   const player = state.players[idx]!;
-  if (player.hand.length < 1 || player.hand.length > 2) return state;
+  const strictUnoCall = state.settings.houseRules?.strictUnoCall ?? false;
+  const canCallUno = strictUnoCall
+    ? player.hand.length === 1
+    : player.hand.length >= 1 && player.hand.length <= 2;
+  if (!canCallUno) return state;
 
   const players = state.players.map((p, i) =>
     i === idx ? { ...p, calledUno: true, unoCaught: false } : p

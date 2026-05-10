@@ -16,6 +16,7 @@ export interface HouseRules {
   forcedPlay: boolean;
   handRevealThreshold: number | null;
   unoPenaltyCount: 2 | 4 | 6;
+  strictUnoCall: boolean;
   misplayPenalty: boolean;
   deathDraw: boolean;
   fastMode: boolean;
@@ -51,6 +52,7 @@ export const DEFAULT_HOUSE_RULES: HouseRules = {
   forcedPlay: false,
   handRevealThreshold: null,
   unoPenaltyCount: 2,
+  strictUnoCall: false,
   misplayPenalty: false,
   deathDraw: false,
   fastMode: false,

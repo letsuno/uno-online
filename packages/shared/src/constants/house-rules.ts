@@ -22,6 +22,7 @@ export const HOUSE_RULE_DEFINITIONS: HouseRuleDefinition[] = [
   { key: 'forcedPlayAfterDraw', label: '摸牌后必须出', description: '摸到可出的牌时强制打出' },
   { key: 'forcedPlay', label: '强制出牌', description: '有能出的牌就必须出' },
   { key: 'unoPenaltyCount', label: 'UNO 罚摸数量', description: '不喊 UNO 被抓罚摸张数' },
+  { key: 'strictUnoCall', label: '严格 UNO 喊牌', description: '只能在手牌剩 1 张时喊 UNO' },
   { key: 'misplayPenalty', label: '误操作惩罚', description: '出非法牌罚摸 1 张' },
   { key: 'silentUno', label: '静默 UNO', description: '取消 UNO 喊话机制' },
   { key: 'noFunctionCardFinish', label: '空手赢不算', description: '最后一张不能是 +2/+4' },
