@@ -1098,3 +1098,52 @@ describe('PLAY_CARD - last draw_two triggers effect then ends round', () => {
     expect(afterPenalty.players[1]!.hand).toHaveLength(3);
   });
 });
+
+describe('CATCH_UNO during choosing_color phase', () => {
+  it('does not interrupt choosing_color - penalty queued until color is chosen', () => {
+    const wildCard = makeCard('wild', null, { id: 'w1' });
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [wildCard], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'red', { value: 1, id: 'b1' })], score: 0, connected: true, calledUno: false },
+      ],
+      deckLeft: [makeCard('number', 'blue', { value: 3, id: 'd1' }), makeCard('number', 'green', { value: 4, id: 'd2' })],
+      currentPlayerIndex: 0,
+    });
+
+    // p1 plays wild -> choosing_color, p1 has 0 cards but just played so hand is empty
+    const afterPlay = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'w1' });
+    expect(afterPlay.phase).toBe('choosing_color');
+    expect(afterPlay.players[0]!.hand).toHaveLength(0);
+
+    // p2 catches p1's UNO (p1 didn't call)... but wait, p1 has 0 cards so can't be caught
+    // Actual scenario: p1 had 2 cards, plays wild, now has 1 card, didn't call UNO
+    const wildCard2 = makeCard('wild', null, { id: 'w2' });
+    const state2 = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [wildCard2, makeCard('number', 'red', { value: 5, id: 'x1' })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'red', { value: 1, id: 'b1' })], score: 0, connected: true, calledUno: false },
+      ],
+      deckLeft: [makeCard('number', 'blue', { value: 3, id: 'd1' }), makeCard('number', 'green', { value: 4, id: 'd2' })],
+      currentPlayerIndex: 0,
+    });
+
+    const afterPlay2 = applyAction(state2, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'w2' });
+    expect(afterPlay2.phase).toBe('choosing_color');
+    expect(afterPlay2.players[0]!.hand).toHaveLength(1);
+    expect(afterPlay2.players[0]!.calledUno).toBe(false);
+
+    // p2 catches p1 during choosing_color
+    const afterCatch = applyAction(afterPlay2, { type: 'CATCH_UNO', catcherId: 'p2', targetId: 'p1' });
+    // Phase should still be choosing_color - penalty is queued
+    expect(afterCatch.phase).toBe('choosing_color');
+    expect(afterCatch.players[0]!.unoCaught).toBe(true);
+    expect(afterCatch.pendingPenaltyQueue?.length).toBeGreaterThan(0);
+
+    // p1 chooses color -> penalty kicks in
+    const afterColor = applyAction(afterCatch, { type: 'CHOOSE_COLOR', playerId: 'p1', color: 'blue' });
+    expect(afterColor.phase).toBe('playing');
+    expect(afterColor.pendingPenaltyDraws).toBeGreaterThan(0);
+    expect(afterColor.players[afterColor.currentPlayerIndex]!.id).toBe('p1');
+  });
+});
