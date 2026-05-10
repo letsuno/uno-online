@@ -603,7 +603,7 @@ describe('CALL_UNO', () => {
     expect(next.players[0]!.calledUno).toBe(true);
   });
 
-  it('sets calledUno flag for player with 2 cards by default', () => {
+  it('sets calledUno flag for player with 2 cards and a playable card by default', () => {
     const state = makeState({
       players: [
         {
@@ -619,6 +619,106 @@ describe('CALL_UNO', () => {
       ],
     });
     const next = applyAction(state, { type: 'CALL_UNO', playerId: 'p1' });
+    expect(next.players[0]!.calledUno).toBe(true);
+  });
+
+  it('does not set calledUno flag for player with 2 cards and no playable card', () => {
+    const state = makeState({
+      players: [
+        {
+          id: 'p1', name: 'Alice',
+          hand: [
+            makeCard('number', 'blue', { value: 1, id: 'c1' }),
+            makeCard('number', 'green', { value: 2, id: 'c2' }),
+          ],
+          score: 0, connected: true, calledUno: false
+        },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+    });
+
+    const next = applyAction(state, { type: 'CALL_UNO', playerId: 'p1' });
+
+    expect(next.players[0]!.calledUno).toBe(false);
+  });
+
+  it('allows a player with 2 cards to call UNO before playing a wild card', () => {
+    const state = makeState({
+      players: [
+        {
+          id: 'p1', name: 'Alice',
+          hand: [
+            makeCard('wild', null, { id: 'wild1' }),
+            makeCard('number', 'green', { value: 2, id: 'c2' }),
+          ],
+          score: 0, connected: true, calledUno: false
+        },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+    });
+
+    const next = applyAction(state, { type: 'CALL_UNO', playerId: 'p1' });
+
+    expect(next.players[0]!.calledUno).toBe(true);
+  });
+
+  it('allows a player with 2 cards to call UNO before stacking a draw card', () => {
+    const state = makeState({
+      players: [
+        {
+          id: 'p1', name: 'Alice',
+          hand: [
+            makeCard('draw_two', 'blue', { id: 'd2_blue' }),
+            makeCard('number', 'green', { value: 2, id: 'c2' }),
+          ],
+          score: 0, connected: true, calledUno: false
+        },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+      discardPile: [makeCard('draw_two', 'red', { id: 'discard_d2' })],
+      currentColor: 'red',
+      drawStack: 2,
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, stackDrawTwo: true },
+      },
+    });
+
+    const next = applyAction(state, { type: 'CALL_UNO', playerId: 'p1' });
+
+    expect(next.players[0]!.calledUno).toBe(true);
+  });
+
+  it('allows a player with 2 cards to call UNO before deflecting a draw card', () => {
+    const state = makeState({
+      players: [
+        {
+          id: 'p1', name: 'Alice',
+          hand: [
+            makeCard('reverse', 'blue', { id: 'rev_blue' }),
+            makeCard('number', 'green', { value: 2, id: 'c2' }),
+          ],
+          score: 0, connected: true, calledUno: false
+        },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+      discardPile: [makeCard('draw_two', 'red', { id: 'discard_d2' })],
+      currentColor: 'red',
+      drawStack: 2,
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, reverseDeflectDrawTwo: true },
+      },
+    });
+
+    const next = applyAction(state, { type: 'CALL_UNO', playerId: 'p1' });
+
     expect(next.players[0]!.calledUno).toBe(true);
   });
 
