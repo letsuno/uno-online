@@ -79,6 +79,36 @@ describe('penalty draw flow', () => {
     expect(afterSecondDraw.pendingPenaltyDraws).toBe(0);
   });
 
+  it('does not allow playing or passing until all pending penalty cards are drawn', () => {
+    const playableDrawn = makeCard('number', 'red', { value: 7, id: 'drawn_red' });
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
+      ],
+      currentPlayerIndex: 1,
+      pendingPenaltyDraws: 8,
+      pendingPenaltyNextPlayerIndex: 2,
+      pendingPenaltySourcePlayerId: 'p1',
+      deck: [
+        playableDrawn,
+        makeCard('number', 'blue', { value: 1, id: 'draw2' }),
+      ],
+    });
+
+    const afterFirstDraw = applyAction(state, { type: 'DRAW_CARD', playerId: 'p2' });
+    expect(afterFirstDraw.players[1]!.hand.map(c => c.id)).toEqual(['drawn_red']);
+    expect(afterFirstDraw.pendingPenaltyDraws).toBe(7);
+    expect(afterFirstDraw.currentPlayerIndex).toBe(1);
+
+    const afterIllegalPlay = applyAction(afterFirstDraw, { type: 'PLAY_CARD', playerId: 'p2', cardId: 'drawn_red' });
+    expect(afterIllegalPlay).toStrictEqual(afterFirstDraw);
+
+    const afterIllegalPass = applyAction(afterFirstDraw, { type: 'PASS', playerId: 'p2' });
+    expect(afterIllegalPass).toStrictEqual(afterFirstDraw);
+  });
+
   it('checks round end only after the queued penalty has been paid', () => {
     const drawTwo = makeCard('draw_two', 'red', { id: 'last_d2' });
     const state = makeState({
