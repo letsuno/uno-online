@@ -32,6 +32,28 @@ describe('GameSession event recording', () => {
     session.clearEvents();
     expect(session.getEvents()).toEqual([]);
   });
+
+  it('records chat messages in history and event buffer', () => {
+    const session = GameSession.create(players);
+    const message = {
+      id: 'm1',
+      userId: 'p1',
+      nickname: 'Alice',
+      text: 'hello',
+      timestamp: 123,
+      role: 'normal',
+    };
+
+    session.addChatMessage(message);
+
+    expect(session.getChatHistory()).toEqual([message]);
+    expect(session.getFullState().chatHistory).toEqual([message]);
+    expect(session.getEvents()[0]).toMatchObject({
+      eventType: GameEventType.CHAT_MESSAGE,
+      playerId: 'p1',
+      payload: { message },
+    });
+  });
 });
 
 describe('GameSession deck hash', () => {

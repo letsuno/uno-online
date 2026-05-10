@@ -14,7 +14,10 @@ export async function dissolveRoom(
   reason: 'host_closed' | 'idle_timeout' | 'empty' = 'host_closed',
 ): Promise<void> {
   turnTimer.stop(roomCode);
+  const session = sessions.get(roomCode);
+  session?.clearChatHistory();
   sessions.delete(roomCode);
+  io.to(roomCode).emit('chat:cleared');
   io.to(roomCode).emit('room:dissolved', { reason });
 
   const sockets = await io.in(roomCode).fetchSockets();

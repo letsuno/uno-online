@@ -161,6 +161,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
         io.to(roomCode).emit('player:autopilot', { playerId: userId, enabled: false });
         const players = await getRoomPlayers(redis, roomCode);
         callback?.({ success: true, gameState: session.getPlayerView(userId), players, room });
+        socket.emit('chat:history', session.getChatHistory());
         const state = session.getFullState();
         const connectedCount = state.players.filter(p => p.connected).length;
         if (connectedCount >= 2 && state.phase === 'playing') {

@@ -14,6 +14,7 @@ import { useRoomStore } from '@/shared/stores/room-store';
 import { getSocket } from '@/shared/socket';
 import { useToastStore } from '@/shared/stores/toast-store';
 import { useGatewayStore } from '@/shared/voice/gateway-store';
+import { useChatStore } from '../stores/chat-store';
 import { cn } from '@/shared/lib/utils';
 
 interface ThrowEvent {
@@ -75,6 +76,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
   // Chat messages per player
   const [chatMessages, setChatMessages] = useState<Map<string, string>>(new Map());
   const chatTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const latestChatMessage = useChatStore((s) => s.latestLiveMessage);
 
   // Active throw animations
   const [activeThrows, setActiveThrows] = useState<ActiveThrow[]>([]);
@@ -171,36 +173,36 @@ export default function GameTable({ onDraw }: GameTableProps) {
     setSkippedPlayerId(null);
   }, [lastAction]);
 
-  // Listen for chat messages from socket
   useEffect(() => {
-    const socket = getSocket();
-    const handler = (data: { userId: string; text: string }) => {
+    if (!latestChatMessage) {
+      setChatMessages(new Map());
+      chatTimers.current.forEach((t) => clearTimeout(t));
+      chatTimers.current.clear();
+      return;
+    }
+
+    setChatMessages((prev) => {
+      const next = new Map(prev);
+      next.set(latestChatMessage.userId, latestChatMessage.text);
+      return next;
+    });
+
+    const existing = chatTimers.current.get(latestChatMessage.userId);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(() => {
       setChatMessages((prev) => {
         const next = new Map(prev);
-        next.set(data.userId, data.text);
+        next.delete(latestChatMessage.userId);
         return next;
       });
+      chatTimers.current.delete(latestChatMessage.userId);
+    }, 3000);
+    chatTimers.current.set(latestChatMessage.userId, timer);
+  }, [latestChatMessage]);
 
-      // Clear previous timer for this player
-      const existing = chatTimers.current.get(data.userId);
-      if (existing) clearTimeout(existing);
-
-      // Auto-dismiss after 3s
-      const timer = setTimeout(() => {
-        setChatMessages((prev) => {
-          const next = new Map(prev);
-          next.delete(data.userId);
-          return next;
-        });
-        chatTimers.current.delete(data.userId);
-      }, 3000);
-      chatTimers.current.set(data.userId, timer);
-    };
-
-    socket.on('chat:message', handler);
+  useEffect(() => {
     return () => {
-      socket.off('chat:message', handler);
-      // Clean up timers
       chatTimers.current.forEach((t) => clearTimeout(t));
       chatTimers.current.clear();
     };

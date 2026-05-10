@@ -1,6 +1,6 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
-import type { Color } from '@uno-online/shared';
+import type { ChatMessage, Color } from '@uno-online/shared';
 import { GameEventType } from '@uno-online/shared';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/database';
@@ -72,6 +72,17 @@ function checkChatRateLimit(userId: string): boolean {
   recent.push(now);
   chatTimestamps.set(userId, recent);
   return true;
+}
+
+function buildChatMessage(user: SocketData['user'], text: string): ChatMessage {
+  return {
+    id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    userId: user.userId,
+    nickname: user.nickname,
+    text,
+    timestamp: Date.now(),
+    role: user.role ?? 'normal',
+  };
 }
 
 const gameStartTimes = new Map<string, number>();
@@ -148,6 +159,9 @@ async function emitTerminalStateIfNeeded(
     await setRoomStatus(redis, roomCode, 'finished');
     await touchRoomActivity(redis, roomCode);
     await persistGameResult(roomCode, session, gameStartTimes.get(roomCode) ?? Date.now(), db);
+    session.clearChatHistory();
+    await saveGameState(redis, roomCode, session.getFullState());
+    io.to(roomCode).emit('chat:cleared');
     gameStartTimes.delete(roomCode);
   }
 
@@ -163,6 +177,10 @@ export function registerGameEvents(
   db: Kysely<Database>,
 ) {
   const data = socket.data as SocketData;
+  const initialSession = data.roomCode ? sessions.get(data.roomCode) : null;
+  if (initialSession) {
+    socket.emit('chat:history', initialSession.getChatHistory());
+  }
 
   socket.on('game:play_card', async (payload: { cardId: string; chosenColor?: Color }, callback) => {
     const ctx = getSession(socket, sessions);
@@ -346,21 +364,22 @@ export function registerGameEvents(
   socket.on('chat:message', (payload: { text: string }) => {
     const roomCode = data.roomCode;
     if (!roomCode || !payload.text) return;
+    const session = sessions.get(roomCode);
+    if (!session) return;
 
     if (!checkChatRateLimit(data.user.userId)) {
       socket.emit('chat:rate_limited', { message: '发言太快，请稍后再试' });
       return;
     }
 
-    const text = payload.text.slice(0, 500);
+    const text = payload.text.trim().slice(0, 500);
+    if (!text) return;
+
+    const message = buildChatMessage(data.user, text);
+    session.addChatMessage(message);
     touchRoomActivity(redis, roomCode).catch(() => {});
-    io.to(roomCode).emit('chat:message', {
-      userId: data.user.userId,
-      nickname: data.user.nickname,
-      text,
-      timestamp: Date.now(),
-      role: data.user.role ?? 'normal',
-    });
+    void saveGameState(redis, roomCode, session.getFullState());
+    io.to(roomCode).emit('chat:message', message);
   });
 
   socket.on('game:next_round', async (callback) => {
@@ -410,6 +429,7 @@ export function registerGameEvents(
     await setRoomStatus(redis, roomCode, 'playing');
     await touchRoomActivity(redis, roomCode);
     await saveGameState(redis, roomCode, session.getFullState());
+    io.to(roomCode).emit('chat:cleared');
     const sockets = await io.in(roomCode).fetchSockets();
     for (const s of sockets) {
       const userId = (s.data as SocketData).user.userId;

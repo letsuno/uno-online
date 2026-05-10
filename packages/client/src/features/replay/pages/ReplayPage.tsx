@@ -72,6 +72,11 @@ export default function ReplayPage() {
                   操作者: {gameDetail.players.find(p => p.userId === currentEvent.playerId)?.nickname ?? currentEvent.playerId}
                 </p>
               )}
+              {currentEvent.eventType === 'chat_message' && 'message' in currentEvent.payload && (
+                <p className="text-sm mt-3 rounded-lg bg-muted px-3 py-2 text-left">
+                  {currentEvent.payload.message.text}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -91,6 +96,7 @@ export default function ReplayPage() {
 }
 
 function formatEventType(type: string): string {
+  if (type === 'chat_message') return '聊天消息';
   const map: Record<string, string> = {
     game_start: '游戏开始',
     play_card: '出牌',

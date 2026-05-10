@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
-import { initializeGame, applyActionWithHouseRules } from '@uno-online/shared';
+import { initializeGame, applyActionWithHouseRules, GameEventType } from '@uno-online/shared';
 import { initializeNextRound, serializeDeck } from '@uno-online/shared';
 import type { GameState, GameAction, RoomSettings, UserRole } from '@uno-online/shared';
 import type { Card } from '@uno-online/shared';
 import type { GameEvent, GameEventPayload, GameEventType as GameEventTypeValue } from '@uno-online/shared';
+import type { ChatMessage } from '@uno-online/shared';
 
 export interface PlayerView {
   viewerId: string;
@@ -47,6 +48,7 @@ interface ActionResult {
 export class GameSession {
   private state: GameState;
   private events: GameEvent[] = [];
+  private chatHistory: ChatMessage[] = [];
   private initialDeckSerialized: string = '';
 
   private constructor(state: GameState) {
@@ -72,11 +74,14 @@ export class GameSession {
   }
 
   static fromState(state: GameState): GameSession {
-    return new GameSession(state);
+    const { chatHistory, ...restState } = state;
+    const session = new GameSession(restState);
+    session.chatHistory = chatHistory ?? [];
+    return session;
   }
 
   getFullState(): GameState {
-    return this.state;
+    return { ...this.state, chatHistory: this.chatHistory };
   }
 
   getPlayerView(playerId: string): PlayerView {
@@ -193,6 +198,7 @@ export class GameSession {
     this.state = { ...fresh, settings, deckHash };
     this.initialDeckSerialized = serializeDeck(fresh.deck);
     this.events = [];
+    this.chatHistory = [];
   }
 
   recordEvent(eventType: GameEventTypeValue, payload: GameEventPayload, playerId: string | null): void {
@@ -211,6 +217,21 @@ export class GameSession {
 
   clearEvents(): void {
     this.events = [];
+  }
+
+  addChatMessage(message: ChatMessage): void {
+    this.chatHistory = [...this.chatHistory, message].slice(-200);
+    this.state = { ...this.state, chatHistory: this.chatHistory };
+    this.recordEvent(GameEventType.CHAT_MESSAGE, { message }, message.userId);
+  }
+
+  getChatHistory(): ChatMessage[] {
+    return this.chatHistory;
+  }
+
+  clearChatHistory(): void {
+    this.chatHistory = [];
+    this.state = { ...this.state, chatHistory: [] };
   }
 
   getInitialDeckSerialized(): string {

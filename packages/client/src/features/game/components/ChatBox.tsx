@@ -3,33 +3,28 @@ import { MessageCircle, X } from 'lucide-react';
 import { getSocket } from '@/shared/socket';
 import { useToastStore } from '@/shared/stores/toast-store';
 import { getRoleColor } from '@/shared/lib/utils';
+import { useChatStore } from '../stores/chat-store';
 
 const QUICK_PHRASES = ['嘻嘻😜', '嘿嘿😏', '哈哈😂', '饶命🙏', '稳了💪', '完蛋😱', '好牌!👍', '等等✋'];
-
-interface ChatMessage { userId: string; nickname: string; text: string; timestamp: number; role?: string; }
 
 interface ChatBoxProps {
   embedded?: boolean;
 }
 
 export default function ChatBox({ embedded = false }: ChatBoxProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const messages = useChatStore((s) => s.messages);
   const [input, setInput] = useState('');
   const [open, setOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const socket = getSocket();
-    const handler = (msg: ChatMessage) => { setMessages((prev) => [...prev.slice(-50), msg]); };
-    socket.on('chat:message', handler);
-
     const rateLimitHandler = (data: { message: string }) => {
       useToastStore.getState().addToast(data.message, 'error');
     };
     socket.on('chat:rate_limited', rateLimitHandler);
 
     return () => {
-      socket.off('chat:message', handler);
       socket.off('chat:rate_limited', rateLimitHandler);
     };
   }, []);
@@ -50,8 +45,8 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
     return (
       <div className="w-full flex flex-col gap-2 select-text" data-allow-selection>
         <div className="max-h-48 overflow-y-auto text-xs">
-          {messages.map((m, i) => (
-            <div key={i} className="mb-1">
+          {messages.map((m) => (
+            <div key={m.id} className="mb-1">
               <span className="font-bold" style={{ color: getRoleColor(m.role) || 'var(--accent)' }}>{m.nickname}: </span>
               <span>{m.text}</span>
             </div>
@@ -105,8 +100,8 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-2 text-xs">
-        {messages.map((m, i) => (
-          <div key={i} className="mb-1">
+        {messages.map((m) => (
+          <div key={m.id} className="mb-1">
             <span className="text-accent font-bold">{m.nickname}: </span>
             <span>{m.text}</span>
           </div>
