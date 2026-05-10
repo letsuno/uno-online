@@ -15,6 +15,23 @@ import { dissolveRoom } from './room-lifecycle';
 import { removeVoicePresence } from './voice-presence';
 
 const DRAW_PENALTY_PAUSE_MS = 500;
+const AUTO_AUTOPILOT_THRESHOLD = 2;
+
+// Track consecutive timeouts per player per room
+const timeoutCounts = new Map<string, Map<string, number>>();
+
+export function getTimeoutCounts(): Map<string, Map<string, number>> {
+  return timeoutCounts;
+}
+
+export function resetPlayerTimeout(roomCode: string, playerId: string): void {
+  const roomCounts = timeoutCounts.get(roomCode);
+  if (roomCounts) roomCounts.delete(playerId);
+}
+
+export function clearRoomTimeouts(roomCode: string): void {
+  timeoutCounts.delete(roomCode);
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -332,6 +349,7 @@ export function startTurnTimer(
       await saveGameState(redis, code, s.getFullState());
       emitGameUpdate(io, code, s, redis);
       io.to(code).emit('player:timeout', { playerId: pid });
+      incrementTimeoutAndAutoAutopilot(io, redis, code, s, pid);
       startTurnTimer(io, redis, code, s, turnTimer, sessions);
     });
     return;
@@ -355,8 +373,30 @@ export function startTurnTimer(
     await saveGameState(redis, code, s.getFullState());
     emitGameUpdate(io, code, s, redis);
     io.to(code).emit('player:timeout', { playerId: pid });
+    incrementTimeoutAndAutoAutopilot(io, redis, code, s, pid);
     startTurnTimer(io, redis, code, s, turnTimer, sessions);
   });
+}
+
+async function incrementTimeoutAndAutoAutopilot(
+  io: SocketIOServer,
+  redis: KvStore,
+  roomCode: string,
+  session: GameSession,
+  playerId: string,
+): Promise<void> {
+  if (!timeoutCounts.has(roomCode)) timeoutCounts.set(roomCode, new Map());
+  const roomCounts = timeoutCounts.get(roomCode)!;
+  const count = (roomCounts.get(playerId) ?? 0) + 1;
+  roomCounts.set(playerId, count);
+
+  const player = session.getFullState().players.find(p => p.id === playerId);
+  if (count >= AUTO_AUTOPILOT_THRESHOLD && player && !player.autopilot) {
+    session.setPlayerAutopilot(playerId, true);
+    await saveGameState(redis, roomCode, session.getFullState());
+    await emitGameUpdate(io, roomCode, session, redis);
+    io.to(roomCode).emit('player:autopilot', { playerId, enabled: true });
+  }
 }
 
 export async function emitGameUpdate(

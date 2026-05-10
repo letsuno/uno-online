@@ -6,7 +6,7 @@ import type { Kysely } from 'kysely';
 import type { Database } from '../db/database';
 import { GameSession } from '../plugins/core/game/session';
 import { saveGameState } from '../plugins/core/game/state-store';
-import { emitGameUpdate, startTurnTimer } from './room-events';
+import { emitGameUpdate, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts } from './room-events';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { recordGameResult } from '../db/user-repo';
 import { saveGameEvents, saveDeckInfo } from '../plugins/core/game-history/service';
@@ -149,6 +149,7 @@ async function emitTerminalStateIfNeeded(
   if (state.phase !== 'round_end' && state.phase !== 'game_over') return false;
 
   turnTimer.stop(roomCode);
+  clearRoomTimeouts(roomCode);
   io.to(roomCode).emit(state.phase === 'game_over' ? 'game:over' : 'game:round_end', {
     winnerId: state.winnerId,
     scores: Object.fromEntries(state.players.map((p) => [p.id, p.score])),
@@ -204,6 +205,7 @@ export function registerGameEvents(
       socket.emit('game:action_rejected', { action: 'play_card', reason: result.error });
       return callback?.({ success: false, error: result.error });
     }
+    resetPlayerTimeout(roomCode, data.user.userId);
     const playedCard = session.getFullState().discardPile.at(-1);
     session.recordEvent(GameEventType.PLAY_CARD, {
       cardId: payload.cardId,
@@ -233,6 +235,7 @@ export function registerGameEvents(
       socket.emit('game:action_rejected', { action: 'draw_card', reason: result.error });
       return callback?.({ success: false, error: result.error });
     }
+    resetPlayerTimeout(roomCode, data.user.userId);
     if (result.drawnCard) {
       session.recordEvent(GameEventType.DRAW_CARD, { card: result.drawnCard }, data.user.userId);
     }
@@ -260,6 +263,7 @@ export function registerGameEvents(
     const { session, roomCode } = ctx;
     const result = session.applyAction({ type: 'PASS', playerId: data.user.userId });
     if (!result.success) return callback?.({ success: false, error: result.error });
+    resetPlayerTimeout(roomCode, data.user.userId);
     session.recordEvent(GameEventType.PASS, {}, data.user.userId);
     await touchRoomActivity(redis, roomCode);
     await saveGameState(redis, roomCode, session.getFullState());
@@ -303,6 +307,7 @@ export function registerGameEvents(
     const { session, roomCode } = ctx;
     const result = session.applyAction({ type: 'CHALLENGE', playerId: data.user.userId });
     if (!result.success) return callback?.({ success: false, error: result.error });
+    resetPlayerTimeout(roomCode, data.user.userId);
     const challengeState = session.getFullState();
     session.recordEvent(GameEventType.CHALLENGE, {
       success: challengeState.lastAction?.type === 'CHALLENGE' ? challengeState.lastAction.succeeded ?? false : false,
@@ -323,6 +328,7 @@ export function registerGameEvents(
     const { session, roomCode } = ctx;
     const result = session.applyAction({ type: 'ACCEPT', playerId: data.user.userId });
     if (!result.success) return callback?.({ success: false, error: result.error });
+    resetPlayerTimeout(roomCode, data.user.userId);
     session.recordEvent(GameEventType.ACCEPT, { drawnCards: [] }, data.user.userId);
     await touchRoomActivity(redis, roomCode);
     await saveGameState(redis, roomCode, session.getFullState());
@@ -343,6 +349,7 @@ export function registerGameEvents(
       color: payload.color,
     });
     if (!result.success) return callback?.({ success: false, error: result.error });
+    resetPlayerTimeout(roomCode, data.user.userId);
     session.recordEvent(GameEventType.CHOOSE_COLOR, { color: payload.color }, data.user.userId);
     await touchRoomActivity(redis, roomCode);
     await saveGameState(redis, roomCode, session.getFullState());
@@ -365,6 +372,7 @@ export function registerGameEvents(
       targetId: payload.targetId,
     });
     if (!result.success) return callback?.({ success: false, error: result.error });
+    resetPlayerTimeout(roomCode, data.user.userId);
     session.recordEvent(GameEventType.CHOOSE_SWAP_TARGET, { targetId: payload.targetId }, data.user.userId);
     await touchRoomActivity(redis, roomCode);
     await saveGameState(redis, roomCode, session.getFullState());
