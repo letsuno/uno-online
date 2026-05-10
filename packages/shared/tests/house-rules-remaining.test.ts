@@ -116,6 +116,7 @@ describe('stackDrawTwo', () => {
   it('without stackDrawTwo, playing +2 with an active drawStack falls through to standard engine', () => {
     const d2Top = makeCard('draw_two', 'red', { id: 'd2top' });
     const d2Play = makeCard('draw_two', 'red', { id: 'd2play' });
+    const extra = makeCard('number', 'red', { value: 9, id: 'extra' });
     const deck = Array.from({ length: 5 }, (_, i) => makeCard('number', 'blue', { value: i, id: `d${i}` }));
     const state = makeState({
       discardPile: [makeCard('number', 'red', { value: 1, id: 'base' }), d2Top],
@@ -126,22 +127,17 @@ describe('stackDrawTwo', () => {
       deckLeftInitialCount: deck.length,
       deckRightInitialCount: 0,
       players: [
-        { id: 'p1', name: 'Alice', hand: [d2Play], score: 0, connected: true, calledUno: false },
+        { id: 'p1', name: 'Alice', hand: [d2Play, extra], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
       ],
     });
 
-    // Without stackDrawTwo the stacking intercept is skipped — standard engine handles it
-    // Standard engine plays the draw_two: p2 draws 2 from deck, turn advances past p2
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'd2play' });
-    // Card was played
     expect(next.discardPile[next.discardPile.length - 1]!.id).toBe('d2play');
     expect(next.pendingPenaltyDraws).toBe(2);
     const paid = drawPendingPenalty(next);
-    // p2 drew 2 from deck (standard draw_two effect)
-    expect(paid.players[1]!.hand).toHaveLength(3); // 1 existing + 2 drawn
-    // drawStack field unchanged (standard engine doesn't use it)
+    expect(paid.players[1]!.hand).toHaveLength(3);
     expect(paid.drawStack).toBe(2);
   });
 
