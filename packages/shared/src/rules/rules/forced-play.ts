@@ -12,7 +12,7 @@ export const forcedPlay: HouseRulePlugin = {
   isEnabled: (hr) => hr.forcedPlay,
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     if (action.type !== 'DRAW_CARD') return { handled: false };
-    if ((state.pendingPenaltyDraws ?? 0) > 0) return { handled: false };
+    if ((state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0) return { handled: false };
     if (state.phase !== 'playing') return { handled: false };
     const player = state.players[state.currentPlayerIndex];
     if (player?.id !== action.playerId) return { handled: false };
