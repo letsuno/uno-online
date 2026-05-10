@@ -197,6 +197,26 @@ describe('sevenSwapHands', () => {
     expect(afterSwap.players[2]!.hand.some(c => c.id === 'a1')).toBe(true);
   });
 
+  it('treats players swapped down to one card as already called UNO', () => {
+    const seven = makeCard('number', 'red', { value: 7, id: 'seven_uno_swap' });
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [seven, makeCard('number', 'blue', { value: 1, id: 'alice_left' })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 2, id: 'bob_a' }), makeCard('number', 'yellow', { value: 3, id: 'bob_b' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 4, id: 'carol_only' })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, sevenSwapHands: true } },
+    });
+
+    const afterPlay = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'seven_uno_swap' });
+    const afterSwap = applyActionWithHouseRules(afterPlay, { type: 'CHOOSE_SWAP_TARGET', playerId: 'p1', targetId: 'p3' });
+    expect(afterSwap.players[0]!.hand).toHaveLength(1);
+    expect(afterSwap.players[0]!.calledUno).toBe(true);
+
+    const caught = applyActionWithHouseRules(afterSwap, { type: 'CATCH_UNO', catcherId: 'p2', targetId: 'p1' });
+    expect(caught).toBe(afterSwap);
+  });
+
   it('does not swap when rule is disabled', () => {
     const seven = makeCard('number', 'red', { value: 7, id: 'seven2' });
     const state = makeState({
