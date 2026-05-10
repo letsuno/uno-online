@@ -1,9 +1,9 @@
-import type { GameState, GameAction } from '../types/game';
+import type { GameState, GameAction, DrawSide } from '../types/game';
 import type { Card } from '../types/card';
 import type { Color } from '../types/card';
 import type { PendingPenaltyDraw } from '../types/game';
 import { isWildCard } from '../types/card';
-import { reshuffleDiscardIntoDeck } from './deck';
+import { reshuffleSideFromDiscard } from './deck';
 import { canPlayCard } from './validation';
 import { getNextPlayerIndex } from './turn';
 import { applyAction, checkRoundEnd } from './game-engine';
@@ -44,22 +44,30 @@ export function startPenaltyDraw(
 export function drawCardsFromDeck(state: GameState, playerId: string, count: number): GameState {
   const playerIndex = state.players.findIndex(p => p.id === playerId);
   if (playerIndex === -1) return state;
-  let deck = [...state.deck];
+  const side: DrawSide = state.deckLeft.length >= state.deckRight.length ? 'left' : 'right';
+  let sideDeck = side === 'left' ? [...state.deckLeft] : [...state.deckRight];
   let discardPile = [...state.discardPile];
+  const initialCount = side === 'left' ? state.deckLeftInitialCount : state.deckRightInitialCount;
   const drawn: Card[] = [];
   for (let i = 0; i < count; i++) {
-    if (deck.length === 0) {
-      const r = reshuffleDiscardIntoDeck(deck, discardPile);
-      deck = r.deck;
+    if (sideDeck.length === 0) {
+      const r = reshuffleSideFromDiscard(sideDeck, discardPile, initialCount);
+      sideDeck = r.sideDeck;
       discardPile = r.discardPile;
     }
-    if (deck.length === 0) break;
-    drawn.push(deck.shift()!);
+    if (sideDeck.length === 0) break;
+    drawn.push(sideDeck.shift()!);
   }
   const players = state.players.map((p, idx) =>
     idx === playerIndex ? { ...p, hand: [...p.hand, ...drawn], calledUno: false, unoCaught: false } : p,
   );
-  return { ...state, players, deck, discardPile };
+  return {
+    ...state,
+    players,
+    deckLeft: side === 'left' ? sideDeck : state.deckLeft,
+    deckRight: side === 'right' ? sideDeck : state.deckRight,
+    discardPile,
+  };
 }
 
 export function hasPendingDrawObligation(state: GameState): boolean {

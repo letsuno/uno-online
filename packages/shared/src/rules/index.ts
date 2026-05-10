@@ -1,4 +1,4 @@
-export { createDeck, shuffleDeck, reshuffleDiscardIntoDeck, serializeDeck, cardToIdentity } from './deck';
+export { createDeck, shuffleDeck, reshuffleDiscardIntoDeck, reshuffleSideFromDiscard, serializeDeck, serializeDecks, cardToIdentity } from './deck';
 export type { CardIdentity } from './deck';
 export { canPlayCard, getPlayableCards, isValidWildDrawFour } from './validation';
 export { getNextPlayerIndex, reverseDirection } from './turn';

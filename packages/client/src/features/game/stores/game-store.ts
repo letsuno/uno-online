@@ -36,7 +36,8 @@ interface GameState {
   currentColor: Color | null;
   drawStack: number;
   pendingPenaltyDraws: number;
-  deckCount: number;
+  deckLeftCount: number;
+  deckRightCount: number;
   roundNumber: number;
   winnerId: string | null;
   pendingDrawPlayerId: string | null;
@@ -71,7 +72,8 @@ export const useGameStore = create<GameState>((set) => ({
   currentColor: null,
   drawStack: 0,
   pendingPenaltyDraws: 0,
-  deckCount: 0,
+  deckLeftCount: 0,
+  deckRightCount: 0,
   roundNumber: 0,
   winnerId: null,
   pendingDrawPlayerId: null,
@@ -112,7 +114,8 @@ export const useGameStore = create<GameState>((set) => ({
         currentColor: view.currentColor as Color | null,
         drawStack: view.drawStack as number,
         pendingPenaltyDraws: (view.pendingPenaltyDraws as number | undefined) ?? 0,
-        deckCount: view.deckCount as number,
+        deckLeftCount: view.deckLeftCount as number,
+        deckRightCount: view.deckRightCount as number,
         roundNumber: view.roundNumber as number,
         winnerId: view.winnerId as string | null,
         pendingDrawPlayerId: view.pendingDrawPlayerId as string | null,
@@ -139,7 +142,8 @@ export const useGameStore = create<GameState>((set) => ({
       currentColor: null,
       drawStack: 0,
       pendingPenaltyDraws: 0,
-      deckCount: 0,
+      deckLeftCount: 0,
+      deckRightCount: 0,
       roundNumber: 0,
       winnerId: null,
       pendingDrawPlayerId: null,
