@@ -12,6 +12,7 @@ See `CLAUDE.md` and `README.md` for full docs, commands, and architecture detail
 
 ### Key dev notes
 
+- Repository: `https://github.com/letsuno/uno-online`
 - All API routes are registered under `/api` prefix (e.g. `/api/health`, `/api/auth/login`, `/api/server/info`).
 - `DEV_MODE=true` bypasses GitHub OAuth — login with any username. `JWT_SECRET` env var is **required**.
 - Redis is **optional**; the server falls back to an in-memory KV store. Without Redis, some server tests (`room-store`, `room-manager`, `game-store`) will fail — this is expected. Core game-engine and auth tests pass without Redis.

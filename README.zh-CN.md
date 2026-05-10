@@ -1,5 +1,7 @@
 # UNO Online
 
+[![GitHub](https://img.shields.io/github/license/letsuno/uno-online)](https://github.com/letsuno/uno-online)
+
 基于 Web 技术栈的在线多人 UNO 卡牌对战游戏，支持语音通话、32 条可配置村规、多服务器切换、卡通趣味视觉风格。
 
 ## 功能特性
@@ -16,6 +18,8 @@
 - **色盲友好** — 纹理图案叠加 + 颜色符号标识（♦♠♣♥）
 - **移动端适配** — 触摸滑动优化、响应式布局
 - **管理后台** — 用户管理、房间监控、数据看板
+- **观战模式** — 实时观看游戏，支持隐藏/可见手牌视角
+- **游戏回放** — 查看历史对局记录
 - **GitHub OAuth** + 密码登录
 
 ## 技术栈
@@ -59,7 +63,7 @@ uno-online/
 
 ```bash
 # 克隆并安装依赖
-git clone <repo-url> && cd uno-online
+git clone https://github.com/letsuno/uno-online.git && cd uno-online
 corepack enable && corepack prepare pnpm@10.11.0 --activate
 pnpm install
 
@@ -139,6 +143,7 @@ docker push djkcyl/uno-online-caddy:latest
 | `ROOM_IDLE_TIMEOUT_MS` | 房间无活动后自动解散的毫秒数 | `7200000` |
 | `SERVER_NAME` | 服务器显示名称（服务器选择器中展示） | `UNO Online` |
 | `SERVER_MOTD` | 服务器欢迎信息 | `欢迎来到 UNO Online！` |
+| `GITHUB_PROXY` | GitHub OAuth 请求的 HTTP 代理（可选） | （无） |
 
 ## API 接口
 
@@ -149,7 +154,21 @@ docker push djkcyl/uno-online-caddy:latest
 | `GET` | `/api/auth/config` | 否 | 认证配置（开发模式、GitHub 客户端 ID） |
 | `POST` | `/api/auth/login` | 否 | 密码登录 |
 | `POST` | `/api/auth/register` | 否 | 注册新账号 |
+| `POST` | `/api/auth/set-password` | 是 | 设置/修改密码 |
 | `GET` | `/api/auth/me` | 是 | 当前用户信息 |
+| `GET` | `/api/auth/github` | 否 | 发起 GitHub OAuth 流程 |
+| `GET` | `/api/auth/callback` | 否 | GitHub OAuth 回调 |
+| `POST` | `/api/auth/bind-github` | 是 | 绑定 GitHub 账号 |
+| `GET` | `/api/profile` | 是 | 获取用户资料 |
+| `PUT` | `/api/profile` | 是 | 更新用户资料 |
+| `POST` | `/api/profile/avatar` | 是 | 上传头像 |
+| `GET` | `/api/rooms/active` | 是 | 获取活跃房间列表 |
+| `GET` | `/api/games` | 是 | 游戏记录列表 |
+| `GET` | `/api/games/:id` | 是 | 游戏记录详情 |
+| `GET` | `/api/admin/dashboard` | 管理员 | 管理后台统计 |
+| `GET` | `/api/admin/rooms` | 管理员 | 所有房间列表 |
+| `DELETE` | `/api/admin/rooms/:code` | 管理员 | 强制解散房间 |
+| `DELETE` | `/api/admin/games/:id` | 管理员 | 删除游戏记录 |
 
 ## 测试
 
@@ -207,6 +226,10 @@ pnpm --filter client exec tsc --noEmit
 | 社交 | 静默 UNO、团队模式（2v2/3v3） |
 | 终局 | 空手赢不算、末牌限制、积分翻倍 |
 | 趣味 | 无质疑 +4、暗牌模式、炸弹牌 |
+
+## 贡献
+
+本项目在 [github.com/letsuno](https://github.com/letsuno) 组织下维护。欢迎提交 Pull Request — 请从 `main` 分支创建新分支并遵循现有代码风格。
 
 ## 许可证
 

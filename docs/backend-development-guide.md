@@ -39,9 +39,19 @@ packages/server/src/
       routes.ts           # 服务器状态查询路由
     interaction/
       ws.ts               # 扔道具 WS 事件
+    game-history/
+      index.ts            # 插件入口
+      routes.ts           # 游戏记录查询路由
+      service.ts          # 记录存储逻辑
+      migration.ts        # 数据库迁移
+    spectate/
+      index.ts            # 插件入口
+      routes.ts           # 观战 HTTP 路由
+      ws.ts               # 观战 WS 事件
   ws/                     # WebSocket 核心
     socket-handler.ts     # 连接管理、中间件、事件分发
     room-events.ts        # 房间 WS 事件
+    room-lifecycle.ts     # 房间生命周期（闲置清理）
     game-events.ts        # 游戏 WS 事件
     rate-limiter.ts       # WS 速率限制
     types.ts              # SocketData 等共享类型
@@ -200,3 +210,7 @@ interface SocketData {
 | `GITHUB_CLIENT_ID` | 生产必需 | — | GitHub OAuth |
 | `GITHUB_CLIENT_SECRET` | 生产必需 | — | GitHub OAuth |
 | `CLIENT_URL` | 否 | 自动推断 | 客户端 URL（CORS） |
+| `GITHUB_PROXY` | 否 | — | GitHub OAuth HTTP 代理 |
+| `ROOM_IDLE_TIMEOUT_MS` | 否 | 7200000 | 房间闲置自动解散（毫秒） |
+| `SERVER_NAME` | 否 | UNO Online | 服务器显示名称 |
+| `SERVER_MOTD` | 否 | 欢迎来到 UNO Online！ | 服务器欢迎信息 |
