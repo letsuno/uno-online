@@ -10,6 +10,7 @@ export function usePlayableCardIds(): Set<string> {
   const discardPile = useGameStore((s) => s.discardPile);
   const currentColor = useGameStore((s) => s.currentColor);
   const drawStack = useGameStore((s) => s.drawStack);
+  const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
   const settings = useGameStore((s) => s.settings);
   const phase = useGameStore((s) => s.phase);
   const isMyTurn = useIsMyTurn();
@@ -19,6 +20,7 @@ export function usePlayableCardIds(): Set<string> {
 
   return useMemo(() => {
     if (!isMyTurn || phase !== 'playing') return new Set<string>();
+    if (pendingPenaltyDraws > 0) return new Set<string>();
     return getPlayableCardIds({
       hand: me?.hand ?? [],
       topCard,
@@ -26,5 +28,5 @@ export function usePlayableCardIds(): Set<string> {
       drawStack,
       houseRules: settings?.houseRules,
     });
-  }, [currentColor, drawStack, isMyTurn, me?.hand, phase, settings?.houseRules, topCard]);
+  }, [currentColor, drawStack, isMyTurn, me?.hand, pendingPenaltyDraws, phase, settings?.houseRules, topCard]);
 }
