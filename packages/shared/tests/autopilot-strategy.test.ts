@@ -23,7 +23,10 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     ],
     currentPlayerIndex: 0,
     direction: 'clockwise',
-    deck: [],
+    deckLeft: [],
+    deckRight: [],
+    deckLeftInitialCount: 0,
+    deckRightInitialCount: 0,
     discardPile: [makeCard('number', 'red', { value: 5, id: 'top' })],
     currentColor: 'red',
     drawStack: 0,
@@ -51,7 +54,7 @@ describe('chooseAutopilotAction after drawing', () => {
         { id: 'p1', name: 'Alice', hand: [drawn], score: 0, connected: true, autopilot: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
       ],
-      lastAction: { type: 'DRAW_CARD', playerId: 'p1' },
+      lastAction: { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const },
     });
 
     expect(chooseAutopilotAction(state, 'p1')).toEqual([
@@ -67,7 +70,7 @@ describe('chooseAutopilotAction after drawing', () => {
         { id: 'p1', name: 'Alice', hand: [wild, blue], score: 0, connected: true, autopilot: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
       ],
-      lastAction: { type: 'DRAW_CARD', playerId: 'p1' },
+      lastAction: { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const },
     });
 
     expect(chooseAutopilotAction(state, 'p1')).toEqual([
@@ -83,7 +86,7 @@ describe('chooseAutopilotAction after drawing', () => {
         { id: 'p1', name: 'Alice', hand: [drawn], score: 0, connected: true, autopilot: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
       ],
-      lastAction: { type: 'DRAW_CARD', playerId: 'p1' },
+      lastAction: { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const },
     });
 
     expect(chooseAutopilotAction(state, 'p1')).toEqual([
@@ -98,7 +101,7 @@ describe('chooseAutopilotAction after drawing', () => {
         { id: 'p1', name: 'Alice', hand: [drawn], score: 0, connected: true, autopilot: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
       ],
-      lastAction: { type: 'DRAW_CARD', playerId: 'p1' },
+      lastAction: { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const },
       settings: {
         turnTimeLimit: 30,
         targetScore: 500,
@@ -108,8 +111,53 @@ describe('chooseAutopilotAction after drawing', () => {
       },
     });
 
+    const result = chooseAutopilotAction(state, 'p1');
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ type: 'DRAW_CARD', playerId: 'p1' });
+  });
+});
+
+describe('chooseAutopilotAction for seven swap', () => {
+  it('chooses the player with the fewest cards as the swap target', () => {
+    const state = makeState({
+      phase: 'choosing_swap_target',
+      players: [
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'red', { value: 1, id: 'p1c1' })],
+          score: 0,
+          connected: true,
+          autopilot: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [
+            makeCard('number', 'blue', { value: 1, id: 'p2c1' }),
+            makeCard('number', 'blue', { value: 2, id: 'p2c2' }),
+            makeCard('number', 'blue', { value: 3, id: 'p2c3' }),
+          ],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 1, id: 'p3c1' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+        },
+      ],
+    });
+
     expect(chooseAutopilotAction(state, 'p1')).toEqual([
-      { type: 'DRAW_CARD', playerId: 'p1' },
+      { type: 'CHOOSE_SWAP_TARGET', playerId: 'p1', targetId: 'p3' },
     ]);
   });
 });

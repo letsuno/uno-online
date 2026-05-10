@@ -27,7 +27,10 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     ],
     currentPlayerIndex: 0,
     direction: 'clockwise',
-    deck: Array.from({ length: 20 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `deck_${i}` })),
+    deckLeft: Array.from({ length: 20 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `deck_${i}` })),
+    deckRight: [],
+    deckLeftInitialCount: 20,
+    deckRightInitialCount: 0,
     discardPile: [makeCard('number', 'red', { value: 5, id: 'discard_top' })],
     currentColor: 'red',
     drawStack: 0,
@@ -44,7 +47,7 @@ function drawPendingPenalty(state: GameState): GameState {
   let current = state;
   while ((current.pendingPenaltyDraws ?? 0) > 0) {
     const playerId = current.players[current.currentPlayerIndex]!.id;
-    current = applyActionWithHouseRules(current, { type: 'DRAW_CARD', playerId });
+    current = applyActionWithHouseRules(current, { type: 'DRAW_CARD', playerId, side: 'left' as const });
   }
   return current;
 }
@@ -128,7 +131,10 @@ describe('deathDraw', () => {
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       currentColor: 'red',
       discardPile: [makeCard('number', 'red', { value: 5, id: 'discard_top' })],
       settings: {
@@ -137,13 +143,13 @@ describe('deathDraw', () => {
         houseRules: { ...DEFAULT_HOUSE_RULES, deathDraw: true },
       },
     });
-    const afterFirstDraw = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    const afterFirstDraw = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
     expect(afterFirstDraw.players[0]!.hand.map(c => c.id)).toEqual(['blue1']);
 
-    const afterSecondDraw = applyActionWithHouseRules(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p1' });
+    const afterSecondDraw = applyActionWithHouseRules(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
     expect(afterSecondDraw.players[0]!.hand.map(c => c.id)).toEqual(['blue1', 'blue2']);
 
-    const afterThirdDraw = applyActionWithHouseRules(afterSecondDraw, { type: 'DRAW_CARD', playerId: 'p1' });
+    const afterThirdDraw = applyActionWithHouseRules(afterSecondDraw, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
     expect(afterThirdDraw.players[0]!.hand.map(c => c.id)).toEqual(['blue1', 'blue2', 'red7']);
   });
 
@@ -160,7 +166,7 @@ describe('deathDraw', () => {
       ],
       currentColor: 'red',
       discardPile: [makeCard('number', 'red', { value: 5, id: 'discard_top' })],
-      lastAction: { type: 'DRAW_CARD', playerId: 'p1' },
+      lastAction: { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const },
       settings: {
         turnTimeLimit: 30,
         targetScore: 500,
@@ -185,7 +191,7 @@ describe('deathDraw', () => {
       ],
       currentColor: 'red',
       discardPile: [makeCard('number', 'red', { value: 5, id: 'discard_top' })],
-      lastAction: { type: 'DRAW_CARD', playerId: 'p1' },
+      lastAction: { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const },
       settings: {
         turnTimeLimit: 30,
         targetScore: 500,
@@ -209,7 +215,10 @@ describe('deathDraw', () => {
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       currentColor: 'red',
       discardPile: [makeCard('number', 'red', { value: 5, id: 'discard_top' })],
       settings: {
@@ -218,7 +227,7 @@ describe('deathDraw', () => {
         houseRules: { ...DEFAULT_HOUSE_RULES, deathDraw: true, drawUntilPlayable: true },
       },
     });
-    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
     expect(next.players[0]!.hand.map(c => c.id)).toEqual(['blue1']);
   });
 });

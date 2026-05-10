@@ -93,6 +93,15 @@ export function registerRoomEvents(
   socket.on('room:leave', async (callback) => {
     const roomCode = data.roomCode;
     if (!roomCode) return callback?.({ success: false, error: 'Not in a room' });
+    if (data.isSpectator) {
+      socket.to(roomCode).emit('room:spectator_left', {
+        nickname: data.user.nickname,
+      });
+      socket.leave(roomCode);
+      data.roomCode = null;
+      data.isSpectator = false;
+      return callback?.({ success: true });
+    }
     const room = await getRoom(redis, roomCode);
     if (room?.ownerId === data.user.userId) {
       await dissolveRoom(io, redis, roomCode, sessions, turnTimer, 'host_closed', db);
@@ -198,7 +207,7 @@ export function registerRoomEvents(
     setGameStartTime(roomCode);
     const fullState = session.getFullState();
     session.recordEvent(GameEventType.GAME_START, {
-      initialDeck: fullState.deck,
+      initialDeck: [...fullState.deckLeft, ...fullState.deckRight],
       deckHash: fullState.deckHash,
       playerHands: Object.fromEntries(fullState.players.map(p => [p.id, p.hand])),
       firstDiscard: fullState.discardPile[0]!,
@@ -309,7 +318,9 @@ export function startTurnTimer(
   }
 
   if (phase === 'challenging' || phase === 'choosing_color' || phase === 'choosing_swap_target') {
-    const timeLimit = state.settings.turnTimeLimit;
+    const timeLimit = state.settings.houseRules.fastMode
+      ? Math.floor(state.settings.turnTimeLimit / 2)
+      : state.settings.turnTimeLimit;
     turnTimer.start(roomCode, timeLimit, async (code) => {
       const s = sessions.get(code);
       if (!s) return;

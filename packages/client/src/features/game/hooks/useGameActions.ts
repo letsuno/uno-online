@@ -8,8 +8,8 @@ export function useGameActions() {
     getSocket().emit('game:play_card', chosenColor ? { cardId, chosenColor } : { cardId }, () => {});
   }, []);
 
-  const drawCard = useCallback(() => {
-    getSocket().emit('game:draw_card', () => {});
+  const drawCard = useCallback((side: 'left' | 'right') => {
+    getSocket().emit('game:draw_card', { side }, () => {});
   }, []);
 
   const chooseColor = useCallback((color: Color) => {

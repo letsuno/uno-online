@@ -26,7 +26,10 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     ],
     currentPlayerIndex: 0,
     direction: 'clockwise',
-    deck: Array.from({ length: 20 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `deck_${i}` })),
+    deckLeft: Array.from({ length: 20 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `deck_${i}` })),
+    deckRight: [],
+    deckLeftInitialCount: 20,
+    deckRightInitialCount: 0,
     discardPile: [makeCard('number', 'red', { value: 5, id: 'discard_top' })],
     currentColor: 'red',
     drawStack: 0,
@@ -43,7 +46,7 @@ function drawPendingPenalty(state: GameState): GameState {
   let current = state;
   while ((current.pendingPenaltyDraws ?? 0) > 0) {
     const playerId = current.players[current.currentPlayerIndex]!.id;
-    current = applyActionWithHouseRules(current, { type: 'DRAW_CARD', playerId });
+    current = applyActionWithHouseRules(current, { type: 'DRAW_CARD', playerId, side: 'left' as const });
   }
   return current;
 }
@@ -118,7 +121,10 @@ describe('stackDrawTwo', () => {
       discardPile: [makeCard('number', 'red', { value: 1, id: 'base' }), d2Top],
       currentColor: 'red',
       drawStack: 2,
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [d2Play], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
@@ -146,7 +152,10 @@ describe('stackDrawTwo', () => {
       discardPile: [makeCard('number', 'red', { value: 1, id: 'base' }), d2Top],
       currentColor: 'red',
       drawStack: 4,
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
@@ -159,7 +168,7 @@ describe('stackDrawTwo', () => {
       },
     });
 
-    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
 
     expect(next.pendingPenaltyDraws).toBe(3);
     // p1 draws the first stacked card immediately, then pays the rest one by one.
@@ -178,7 +187,10 @@ describe('stackDrawTwo', () => {
     const state = makeState({
       discardPile: [makeCard('number', 'red', { value: 1, id: 'base' })],
       currentColor: 'red',
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [firstD2, makeCard('number', 'blue', { value: 1, id: 'p1c' })], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [secondD2, makeCard('number', 'blue', { value: 2, id: 'p2c' })], score: 0, connected: true, calledUno: false },
@@ -199,7 +211,7 @@ describe('stackDrawTwo', () => {
     expect(afterSecondD2.drawStack).toBe(4);
     expect(afterSecondD2.currentPlayerIndex).toBe(2);
 
-    const next = applyActionWithHouseRules(afterSecondD2, { type: 'DRAW_CARD', playerId: 'p3' });
+    const next = applyActionWithHouseRules(afterSecondD2, { type: 'DRAW_CARD', playerId: 'p3', side: 'left' as const });
 
     expect(next).not.toBe(afterSecondD2);
     expect(next.pendingPenaltyDraws).toBe(3);
@@ -217,7 +229,10 @@ describe('stackDrawTwo', () => {
       currentColor: 'red',
       currentPlayerIndex: 0,
       drawStack: 2,
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       lastAction: { type: 'PLAY_CARD', playerId: 'p2', cardId: 'd2top' },
       players: [
         { id: 'p1', name: 'Alice', hand: [makeCard('number', 'blue', { value: 1, id: 'p1c' })], score: 0, connected: true, calledUno: false },
@@ -231,7 +246,7 @@ describe('stackDrawTwo', () => {
       },
     });
 
-    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
     const paid = drawPendingPenalty(next);
 
     expect(paid.phase).toBe('round_end');
@@ -315,7 +330,10 @@ describe('stackDrawFour', () => {
       currentColor: 'green',
       currentPlayerIndex: 0,
       drawStack: 4,
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       lastAction: { type: 'PLAY_CARD', playerId: 'p3', cardId: 'wd4top' },
       players: [
         { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
@@ -329,21 +347,46 @@ describe('stackDrawFour', () => {
       },
     });
 
-    let next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    let next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
     expect(next.pendingPenaltyDraws).toBe(3);
     expect(next.drawStack).toBe(0);
 
-    next = applyActionWithHouseRules(next, { type: 'DRAW_CARD', playerId: 'p1' });
+    next = applyActionWithHouseRules(next, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
     expect(next.pendingPenaltyDraws).toBe(2);
-    next = applyActionWithHouseRules(next, { type: 'DRAW_CARD', playerId: 'p1' });
+    next = applyActionWithHouseRules(next, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
     expect(next.pendingPenaltyDraws).toBe(1);
-    next = applyActionWithHouseRules(next, { type: 'DRAW_CARD', playerId: 'p1' });
+    next = applyActionWithHouseRules(next, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
     expect(next.pendingPenaltyDraws).toBe(0);
     expect(next.currentPlayerIndex).toBe(1);
 
     next = applyActionWithHouseRules(next, { type: 'PLAY_CARD', playerId: 'p2', cardId: 'p2green3' });
     expect(next.discardPile[next.discardPile.length - 1]!.id).toBe('p2green3');
     expect(next.currentPlayerIndex).toBe(2);
+  });
+
+  it('blocks passing while a +4 stack penalty is waiting to be drawn', () => {
+    const wd4Top = makeCard('wild_draw_four', null, { id: 'wd4top' });
+    const state = makeState({
+      discardPile: [makeCard('number', 'red', { value: 1, id: 'base' }), wd4Top],
+      currentColor: 'green',
+      currentPlayerIndex: 0,
+      drawStack: 4,
+      lastAction: { type: 'DRAW_CARD', playerId: 'p1' },
+      players: [
+        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'green', { value: 3, id: 'p1green3' })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 4, id: 'p2green4' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 5, id: 'p3green5' })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, stackDrawFour: true },
+      },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'PASS', playerId: 'p1' });
+
+    expect(next).toStrictEqual(state);
   });
 
   it('lets the third player draw 8 after two +4 cards are stacked', () => {
@@ -353,7 +396,10 @@ describe('stackDrawFour', () => {
     const state = makeState({
       discardPile: [makeCard('number', 'red', { value: 1, id: 'base' })],
       currentColor: 'red',
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [firstWd4, makeCard('number', 'blue', { value: 1, id: 'p1c' })], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [secondWd4, makeCard('number', 'blue', { value: 2, id: 'p2c' })], score: 0, connected: true, calledUno: false },
@@ -384,7 +430,7 @@ describe('stackDrawFour', () => {
     expect(afterSecondWd4.drawStack).toBe(8);
     expect(afterSecondWd4.currentPlayerIndex).toBe(2);
 
-    const next = applyActionWithHouseRules(afterSecondWd4, { type: 'DRAW_CARD', playerId: 'p3' });
+    const next = applyActionWithHouseRules(afterSecondWd4, { type: 'DRAW_CARD', playerId: 'p3', side: 'left' as const });
 
     expect(next).not.toBe(afterSecondWd4);
     expect(next.pendingPenaltyDraws).toBe(7);
@@ -473,7 +519,10 @@ describe('crossStack', () => {
     const state = makeState({
       discardPile: [makeCard('number', 'red', { value: 1, id: 'base' })],
       currentColor: 'red',
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [firstD2, makeCard('number', 'blue', { value: 1, id: 'p1c' })], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [secondWd4, makeCard('number', 'blue', { value: 2, id: 'p2c' })], score: 0, connected: true, calledUno: false },
@@ -499,7 +548,7 @@ describe('crossStack', () => {
     expect(afterSecondWd4.drawStack).toBe(6);
     expect(afterSecondWd4.currentPlayerIndex).toBe(2);
 
-    const next = applyActionWithHouseRules(afterSecondWd4, { type: 'DRAW_CARD', playerId: 'p3' });
+    const next = applyActionWithHouseRules(afterSecondWd4, { type: 'DRAW_CARD', playerId: 'p3', side: 'left' as const });
 
     expect(next).not.toBe(afterSecondWd4);
     expect(next.pendingPenaltyDraws).toBe(5);
@@ -539,7 +588,10 @@ describe('penalty draws with forced draw/play rules', () => {
       pendingPenaltyDraws: 2,
       pendingPenaltyNextPlayerIndex: 2,
       pendingPenaltySourcePlayerId: 'p1',
-      deck: [drawnPlayable, makeCard('number', 'blue', { value: 1, id: 'second_penalty' })],
+      deckLeft: [drawnPlayable, makeCard('number', 'blue', { value: 1, id: 'second_penalty' })],
+      deckRight: [],
+      deckLeftInitialCount: 2,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [makeCard('number', 'green', { value: 1, id: 'p1extra' })], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 9, id: 'p2old' })], score: 0, connected: true, calledUno: false },
@@ -548,7 +600,7 @@ describe('penalty draws with forced draw/play rules', () => {
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: forcedDrawRules },
     });
 
-    const afterFirstDraw = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p2' });
+    const afterFirstDraw = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
     expect(afterFirstDraw.players[1]!.hand.map(c => c.id)).toEqual(['p2old', 'drawn_playable']);
     expect(afterFirstDraw.pendingPenaltyDraws).toBe(1);
     expect(afterFirstDraw.currentPlayerIndex).toBe(1);
@@ -564,7 +616,7 @@ describe('penalty draws with forced draw/play rules', () => {
     const passAttempt = applyActionWithHouseRules(afterFirstDraw, { type: 'PASS', playerId: 'p2' });
     expect(passAttempt).toBe(afterFirstDraw);
 
-    const afterSecondDraw = applyActionWithHouseRules(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p2' });
+    const afterSecondDraw = applyActionWithHouseRules(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
     expect(afterSecondDraw.pendingPenaltyDraws).toBe(0);
     expect(afterSecondDraw.currentPlayerIndex).toBe(2);
     expect(afterSecondDraw.players[1]!.hand.map(c => c.id)).toEqual(['p2old', 'drawn_playable', 'second_penalty']);
@@ -580,7 +632,10 @@ describe('penalty draws with forced draw/play rules', () => {
       pendingPenaltyDraws: 1,
       pendingPenaltyNextPlayerIndex: 2,
       pendingPenaltySourcePlayerId: 'p1',
-      deck: [drawnPlayable],
+      deckLeft: [drawnPlayable],
+      deckRight: [],
+      deckLeftInitialCount: 1,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 9, id: 'p2old' })], score: 0, connected: true, calledUno: false },
@@ -590,7 +645,7 @@ describe('penalty draws with forced draw/play rules', () => {
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: forcedDrawRules },
     });
 
-    const afterPenalty = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p2' });
+    const afterPenalty = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
 
     expect(afterPenalty.phase).toBe('round_end');
     expect(afterPenalty.winnerId).toBe('p1');
@@ -725,7 +780,10 @@ describe('forcedPlay', () => {
     const state = makeState({
       currentColor: 'red',
       discardPile: [makeCard('number', 'red', { value: 5, id: 'top' })],
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [playable, unplayable], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
@@ -738,7 +796,7 @@ describe('forcedPlay', () => {
       },
     });
 
-    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
 
     // State should be unchanged — drawing rejected
     expect(next.players[0]!.hand).toHaveLength(2);
@@ -752,7 +810,10 @@ describe('forcedPlay', () => {
     const state = makeState({
       currentColor: 'red',
       discardPile: [makeCard('number', 'red', { value: 5, id: 'top' })],
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [unplayable], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
@@ -765,7 +826,7 @@ describe('forcedPlay', () => {
       },
     });
 
-    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
 
     // Drawing should succeed — p1 now has 2 cards
     expect(next.players[0]!.hand).toHaveLength(2);
@@ -778,7 +839,10 @@ describe('forcedPlay', () => {
     const state = makeState({
       currentColor: 'red',
       discardPile: [makeCard('number', 'red', { value: 5, id: 'top' })],
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [playable], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
@@ -786,7 +850,7 @@ describe('forcedPlay', () => {
       ],
     });
 
-    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
 
     // Without forcedPlay rule, drawing is allowed
     expect(next.players[0]!.hand).toHaveLength(2);
@@ -807,7 +871,10 @@ describe('misplayPenalty', () => {
     const state = makeState({
       currentColor: 'red',
       discardPile: [makeCard('number', 'red', { value: 5, id: 'top' })],
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [invalidCard, validCard], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
@@ -839,7 +906,10 @@ describe('misplayPenalty', () => {
     const state = makeState({
       currentColor: 'red',
       discardPile: [makeCard('number', 'red', { value: 5, id: 'top' })],
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [invalidCard], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
@@ -861,7 +931,10 @@ describe('misplayPenalty', () => {
     const state = makeState({
       currentColor: 'red',
       discardPile: [makeCard('number', 'red', { value: 5, id: 'top' })],
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [validCard, makeCard('number', 'blue', { value: 1, id: 'extra' })], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
@@ -888,7 +961,10 @@ describe('misplayPenalty', () => {
       currentPlayerIndex: 0,
       currentColor: 'red',
       discardPile: [makeCard('number', 'red', { value: 5, id: 'top' })],
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [makeCard('number', 'red', { value: 1, id: 'p1c' })], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [invalidCard], score: 0, connected: true, calledUno: false },
@@ -919,7 +995,10 @@ describe('handLimit', () => {
     const deck = [makeCard('number', 'green', { value: 1, id: 'd1' })];
 
     const state = makeState({
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: handCards, score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
@@ -932,7 +1011,7 @@ describe('handLimit', () => {
       },
     });
 
-    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
 
     // Drawing should be rejected — hand stays at 10
     expect(next.players[0]!.hand).toHaveLength(10);
@@ -946,7 +1025,10 @@ describe('handLimit', () => {
     const deck = [makeCard('number', 'green', { value: 1, id: 'd1' })];
 
     const state = makeState({
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: handCards, score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
@@ -959,7 +1041,7 @@ describe('handLimit', () => {
       },
     });
 
-    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
 
     // Drawing should be rejected — hand stays at 12
     expect(next.players[0]!.hand).toHaveLength(12);
@@ -973,7 +1055,10 @@ describe('handLimit', () => {
     const deck = [makeCard('number', 'green', { value: 1, id: 'd1' })];
 
     const state = makeState({
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: handCards, score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
@@ -986,7 +1071,7 @@ describe('handLimit', () => {
       },
     });
 
-    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
 
     // Drawing should succeed — p1 now has 6 cards
     expect(next.players[0]!.hand).toHaveLength(6);
@@ -999,7 +1084,10 @@ describe('handLimit', () => {
     const deck = [makeCard('number', 'green', { value: 1, id: 'd1' })];
 
     const state = makeState({
-      deck,
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: handCards, score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
@@ -1008,7 +1096,7 @@ describe('handLimit', () => {
       // handLimit: null is the default
     });
 
-    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
 
     // No limit — drawing succeeds
     expect(next.players[0]!.hand).toHaveLength(51);

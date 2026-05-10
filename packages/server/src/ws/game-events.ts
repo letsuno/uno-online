@@ -219,12 +219,16 @@ export function registerGameEvents(
     callback?.({ success: true });
   });
 
-  socket.on('game:draw_card', async (callback) => {
+  socket.on('game:draw_card', async (payload: { side?: string }, callback) => {
+    const side = payload?.side;
+    if (side !== 'left' && side !== 'right') {
+      return callback?.({ success: false, error: 'invalid side' });
+    }
     const ctx = getSession(socket, sessions);
     if (!ctx) return callback?.({ success: false });
     const { session, roomCode } = ctx;
     const beforeState = session.getFullState();
-    const result = session.applyAction({ type: 'DRAW_CARD', playerId: data.user.userId });
+    const result = session.applyAction({ type: 'DRAW_CARD', playerId: data.user.userId, side });
     if (!result.success) {
       socket.emit('game:action_rejected', { action: 'draw_card', reason: result.error });
       return callback?.({ success: false, error: result.error });

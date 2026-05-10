@@ -7,15 +7,17 @@ import { usePlayableCardIds } from '../hooks/usePlayableCardIds';
 import { cn } from '@/shared/lib/utils';
 
 interface DrawPileProps {
-  onDraw: () => void;
+  side: 'left' | 'right';
+  isPortrait: boolean;
+  onDraw: (side: 'left' | 'right') => void;
   drawTargetX?: number;
   drawTargetY?: number;
   drawAnimTrigger?: number;
   drawUntilCount?: number;
 }
 
-export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTrigger = 0, drawUntilCount = 0 }: DrawPileProps) {
-  const deckCount = useGameStore((s) => s.deckCount);
+export default function DrawPile({ side, isPortrait, onDraw, drawTargetX, drawTargetY, drawAnimTrigger = 0, drawUntilCount = 0 }: DrawPileProps) {
+  const deckCount = useGameStore((s) => side === 'left' ? s.deckLeftCount : s.deckRightCount);
   const phase = useGameStore((s) => s.phase);
   const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
   const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
@@ -29,16 +31,22 @@ export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTri
   const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
   const isDrawUntilTurn = mustDrawUntilPlayable && !isPenaltyDrawing;
   const canContinueDrawUntilPlayable = !isPenaltyDrawing && mustDrawUntilPlayable && hasDrawnThisTurn && playableIds.size === 0;
-  const canDraw = isMyTurn && phase === 'playing' && (isPenaltyDrawing || !hasDrawnThisTurn || canContinueDrawUntilPlayable);
+  const canDraw = isMyTurn && phase === 'playing' && deckCount > 0 && (isPenaltyDrawing || !hasDrawnThisTurn || canContinueDrawUntilPlayable);
 
-  const showNoPlayableHint = canDraw && !isDrawUntilTurn && playableIds.size === 0 && !settings?.houseRules?.noHints;
+  const showNoPlayableHint = canDraw && !isDrawUntilTurn && !isPenaltyDrawing && drawStack === 0 && playableIds.size === 0 && !settings?.houseRules?.noHints;
   const emphasizeDraw = canDraw && !settings?.houseRules?.noHints;
+
+  const label = isPortrait
+    ? (side === 'left' ? '上牌堆' : '下牌堆')
+    : (side === 'left' ? '左牌堆' : '右牌堆');
+
+  const handleClick = () => onDraw(side);
 
   return (
     <div className="flex flex-col items-center gap-1.5 z-card relative min-w-draw-pile-min">
       <DrawCardAnimation trigger={drawAnimTrigger} targetX={drawTargetX} targetY={drawTargetY} />
       <AnimatePresence>
-        {isPenaltyDrawing && canDraw && (
+        {isPenaltyDrawing && canDraw && side === 'left' && (
           <motion.div
             className="absolute bottom-hint-bottom left-1/2 -translate-x-1/2 whitespace-nowrap font-game text-caption text-destructive text-shadow-glow"
             initial={{ opacity: 0, y: 6 }}
@@ -48,7 +56,7 @@ export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTri
             还要摸 {remainingPenaltyDraws} 张
           </motion.div>
         )}
-        {showNoPlayableHint && (
+        {showNoPlayableHint && side === 'left' && (
           <motion.div
             className="absolute bottom-hint-bottom left-1/2 -translate-x-1/2 whitespace-nowrap font-game text-caption text-primary text-shadow-glow"
             initial={{ opacity: 0, y: 6 }}
@@ -60,7 +68,7 @@ export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTri
         )}
       </AnimatePresence>
       <CardBack
-        onClick={canDraw ? onDraw : undefined}
+        onClick={canDraw ? handleClick : undefined}
         className={cn(
           emphasizeDraw && [
             'border-primary',
@@ -71,19 +79,19 @@ export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTri
         )}
         style={{
           cursor: canDraw ? 'pointer' : 'default',
-          opacity: canDraw ? 1 : 0.5,
+          opacity: deckCount === 0 ? 0.25 : canDraw ? 1 : 0.5,
         }}
       />
       <span
         className={cn(
           'text-xs text-muted-foreground',
-          deckCount <= 10 && 'text-destructive font-bold',
+          deckCount <= 10 && deckCount > 0 && 'text-destructive font-bold',
         )}
       >
-        牌堆 ({deckCount})
+        {label} ({deckCount})
       </span>
       <AnimatePresence>
-        {isDrawUntilTurn && drawUntilCount > 0 && (
+        {isDrawUntilTurn && drawUntilCount > 0 && side === 'left' && (
           <motion.span
             className="font-game text-caption text-primary text-shadow-glow whitespace-nowrap"
             initial={{ opacity: 0, y: -4 }}

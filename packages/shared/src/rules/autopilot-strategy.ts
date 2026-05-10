@@ -1,4 +1,4 @@
-import type { GameState, GameAction } from '../types/game';
+import type { GameState, GameAction, DrawSide } from '../types/game';
 import type { Color, Card } from '../types/card';
 import { getPlayableCards } from './validation';
 
@@ -38,6 +38,8 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   const player = state.players.find(p => p.id === playerId);
   if (!player) return [];
 
+  const autopilotSide: DrawSide = state.deckLeft.length >= state.deckRight.length ? 'left' : 'right';
+
   if (state.phase === 'challenging') {
     if (state.pendingDrawPlayerId === playerId) {
       return [{ type: 'ACCEPT', playerId }];
@@ -62,11 +64,11 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   if (!currentPlayer || currentPlayer.id !== playerId) return [];
 
   if ((state.pendingPenaltyDraws ?? 0) > 0) {
-    return [{ type: 'DRAW_CARD', playerId }];
+    return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
   }
 
   const topCard = state.discardPile[state.discardPile.length - 1];
-  if (!topCard || !state.currentColor) return [{ type: 'DRAW_CARD', playerId }];
+  if (!topCard || !state.currentColor) return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
 
   const hasDrawnThisTurn =
     state.lastAction?.type === 'DRAW_CARD' &&
@@ -76,7 +78,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
     const playableAfterDraw = getPlayableCards(player.hand, topCard, state.currentColor);
     if (playableAfterDraw.length === 0) {
       if (state.settings.houseRules.drawUntilPlayable || state.settings.houseRules.deathDraw) {
-        return [{ type: 'DRAW_CARD', playerId }];
+        return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
       }
       return [{ type: 'PASS', playerId }];
     }
@@ -115,12 +117,12 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
       }
     }
 
-    return [{ type: 'DRAW_CARD', playerId }];
+    return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
   }
 
   const playable = getPlayableCards(player.hand, topCard, state.currentColor);
   if (playable.length === 0) {
-    return [{ type: 'DRAW_CARD', playerId }];
+    return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
   }
 
   // Priority: same-color non-wild > any non-wild > wild as last resort
