@@ -16,6 +16,11 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
   const [input, setInput] = useState('');
   const [open, setOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (embedded) inputRef.current?.focus();
+  }, [embedded]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -70,7 +75,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
           ))}
         </div>
         <div className="flex gap-1">
-          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()}
+          <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()}
             placeholder="发送消息..."
             className="flex-1 px-2.5 py-1.5 rounded-lg border border-white/20 bg-muted text-foreground text-xs"
           />

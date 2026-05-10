@@ -171,7 +171,7 @@ export function initializeNextRound(prevState: GameState): GameState {
   const skipWild = !hr.wildFirstTurn;
   const { topCard, remainingDeck: deckAfterDiscard, effect } = handleFirstDiscard(deckAfterDeal, skipWild);
 
-  const players: Player[] = prevState.players.map(p => ({
+  let players: Player[] = prevState.players.map(p => ({
     ...p,
     hand: hands[p.id] ?? [],
     calledUno: false,
@@ -180,6 +180,13 @@ export function initializeNextRound(prevState: GameState): GameState {
     connected: p.connected,
     autopilot: p.autopilot,
   }));
+
+  if (hr.shuffleSeats) {
+    for (let i = players.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [players[i], players[j]] = [players[j]!, players[i]!];
+    }
+  }
 
   let direction: GameState['direction'] = 'clockwise';
   let currentPlayerIndex = prevState.currentPlayerIndex;
