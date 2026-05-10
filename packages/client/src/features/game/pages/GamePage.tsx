@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { MouseEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Loader2, Eye } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
@@ -77,6 +78,17 @@ export default function GamePage() {
     prevTurnRef.current = isMyTurn && phase === 'playing';
   }, [isMyTurn, phase]);
 
+  const isSelectionAllowed = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return false;
+    return Boolean(target.closest('[data-allow-selection], input, textarea, select, [contenteditable="true"]'));
+  };
+
+  const suppressContextMenu = (event: MouseEvent<HTMLDivElement>) => {
+    if (!isSelectionAllowed(event.target)) {
+      event.preventDefault();
+    }
+  };
+
   if (!phase) {
     return <div className="flex flex-1 items-center justify-center">
       <p className="text-muted-foreground">加载游戏中...</p>
@@ -84,7 +96,15 @@ export default function GamePage() {
   }
 
   return (
-    <div className="flex h-screen flex-col relative overflow-hidden">
+    <div
+      className="flex h-screen flex-col relative overflow-hidden select-none"
+      onContextMenu={suppressContextMenu}
+      onMouseDown={(event) => {
+        if (event.detail > 1 && !isSelectionAllowed(event.target)) {
+          event.preventDefault();
+        }
+      }}
+    >
       {connectionStatus !== 'connected' && (
         <div className="fixed inset-0 z-connection flex flex-col items-center justify-center gap-3 bg-black/75">
           <Loader2 size={36} className="animate-spin text-white" />
