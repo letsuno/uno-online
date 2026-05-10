@@ -171,6 +171,44 @@ describe('stackDrawTwo', () => {
     expect(paid.currentPlayerIndex).toBe(1);
   });
 
+  it('lets the third player draw 4 after two +2 cards are stacked', () => {
+    const firstD2 = makeCard('draw_two', 'red', { id: 'first_d2' });
+    const secondD2 = makeCard('draw_two', 'red', { id: 'second_d2' });
+    const deck = Array.from({ length: 10 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `d${i}` }));
+    const state = makeState({
+      discardPile: [makeCard('number', 'red', { value: 1, id: 'base' })],
+      currentColor: 'red',
+      deck,
+      players: [
+        { id: 'p1', name: 'Alice', hand: [firstD2, makeCard('number', 'blue', { value: 1, id: 'p1c' })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [secondD2, makeCard('number', 'blue', { value: 2, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 3, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, stackDrawTwo: true },
+      },
+    });
+
+    const afterFirstD2 = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'first_d2' });
+    expect(afterFirstD2.drawStack).toBe(2);
+    expect(afterFirstD2.currentPlayerIndex).toBe(1);
+
+    const afterSecondD2 = applyActionWithHouseRules(afterFirstD2, { type: 'PLAY_CARD', playerId: 'p2', cardId: 'second_d2' });
+    expect(afterSecondD2.drawStack).toBe(4);
+    expect(afterSecondD2.currentPlayerIndex).toBe(2);
+
+    const next = applyActionWithHouseRules(afterSecondD2, { type: 'DRAW_CARD', playerId: 'p3' });
+
+    expect(next).not.toBe(afterSecondD2);
+    expect(next.pendingPenaltyDraws).toBe(3);
+    const paid = drawPendingPenalty(next);
+    expect(paid.players[2]!.hand.map(c => c.id)).toEqual(['p3c', 'd0', 'd1', 'd2', 'd3']);
+    expect(paid.drawStack).toBe(0);
+    expect(paid.currentPlayerIndex).toBe(0);
+  });
+
   it('ends the round after a last-card stack is paid', () => {
     const d2Top = makeCard('draw_two', 'red', { id: 'd2top' });
     const deck = Array.from({ length: 10 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `d${i}` }));
@@ -307,6 +345,64 @@ describe('stackDrawFour', () => {
     expect(next.discardPile[next.discardPile.length - 1]!.id).toBe('p2green3');
     expect(next.currentPlayerIndex).toBe(2);
   });
+
+  it('lets the third player draw 8 after two +4 cards are stacked', () => {
+    const firstWd4 = makeCard('wild_draw_four', null, { id: 'first_wd4' });
+    const secondWd4 = makeCard('wild_draw_four', null, { id: 'second_wd4' });
+    const deck = Array.from({ length: 12 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `wd4d${i}` }));
+    const state = makeState({
+      discardPile: [makeCard('number', 'red', { value: 1, id: 'base' })],
+      currentColor: 'red',
+      deck,
+      players: [
+        { id: 'p1', name: 'Alice', hand: [firstWd4, makeCard('number', 'blue', { value: 1, id: 'p1c' })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [secondWd4, makeCard('number', 'blue', { value: 2, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 3, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, stackDrawFour: true },
+      },
+    });
+
+    const afterFirstWd4 = applyActionWithHouseRules(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: 'first_wd4',
+      chosenColor: 'red',
+    });
+    expect(afterFirstWd4.drawStack).toBe(4);
+    expect(afterFirstWd4.currentPlayerIndex).toBe(1);
+
+    const afterSecondWd4 = applyActionWithHouseRules(afterFirstWd4, {
+      type: 'PLAY_CARD',
+      playerId: 'p2',
+      cardId: 'second_wd4',
+      chosenColor: 'red',
+    });
+    expect(afterSecondWd4.drawStack).toBe(8);
+    expect(afterSecondWd4.currentPlayerIndex).toBe(2);
+
+    const next = applyActionWithHouseRules(afterSecondWd4, { type: 'DRAW_CARD', playerId: 'p3' });
+
+    expect(next).not.toBe(afterSecondWd4);
+    expect(next.pendingPenaltyDraws).toBe(7);
+    const paid = drawPendingPenalty(next);
+    expect(paid.players[2]!.hand.map(c => c.id)).toEqual([
+      'p3c',
+      'wd4d0',
+      'wd4d1',
+      'wd4d2',
+      'wd4d3',
+      'wd4d4',
+      'wd4d5',
+      'wd4d6',
+      'wd4d7',
+    ]);
+    expect(paid.drawStack).toBe(0);
+    expect(paid.currentPlayerIndex).toBe(0);
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -368,6 +464,57 @@ describe('crossStack', () => {
     expect(next.drawStack).toBe(6);
     expect(next.discardPile[next.discardPile.length - 1]!.id).toBe('wd4play');
     expect(next.currentPlayerIndex).toBe(1);
+  });
+
+  it('lets the third player draw 6 after +2 then +4 are stacked', () => {
+    const firstD2 = makeCard('draw_two', 'red', { id: 'first_d2_cross' });
+    const secondWd4 = makeCard('wild_draw_four', null, { id: 'second_wd4_cross' });
+    const deck = Array.from({ length: 10 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `crossd${i}` }));
+    const state = makeState({
+      discardPile: [makeCard('number', 'red', { value: 1, id: 'base' })],
+      currentColor: 'red',
+      deck,
+      players: [
+        { id: 'p1', name: 'Alice', hand: [firstD2, makeCard('number', 'blue', { value: 1, id: 'p1c' })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [secondWd4, makeCard('number', 'blue', { value: 2, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 3, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, crossStack: true },
+      },
+    });
+
+    const afterFirstD2 = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'first_d2_cross' });
+    expect(afterFirstD2.drawStack).toBe(2);
+    expect(afterFirstD2.currentPlayerIndex).toBe(1);
+
+    const afterSecondWd4 = applyActionWithHouseRules(afterFirstD2, {
+      type: 'PLAY_CARD',
+      playerId: 'p2',
+      cardId: 'second_wd4_cross',
+      chosenColor: 'red',
+    });
+    expect(afterSecondWd4.drawStack).toBe(6);
+    expect(afterSecondWd4.currentPlayerIndex).toBe(2);
+
+    const next = applyActionWithHouseRules(afterSecondWd4, { type: 'DRAW_CARD', playerId: 'p3' });
+
+    expect(next).not.toBe(afterSecondWd4);
+    expect(next.pendingPenaltyDraws).toBe(5);
+    const paid = drawPendingPenalty(next);
+    expect(paid.players[2]!.hand.map(c => c.id)).toEqual([
+      'p3c',
+      'crossd0',
+      'crossd1',
+      'crossd2',
+      'crossd3',
+      'crossd4',
+      'crossd5',
+    ]);
+    expect(paid.drawStack).toBe(0);
+    expect(paid.currentPlayerIndex).toBe(0);
   });
 });
 
