@@ -222,7 +222,7 @@ export default function GameEffects() {
       <AnimatePresence>
         {hasEffects && (
           <motion.div
-            className="fixed inset-0 z-effects bg-black/50"
+            className="pointer-events-none fixed inset-0 z-effects bg-black/50"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -230,7 +230,7 @@ export default function GameEffects() {
           />
         )}
       </AnimatePresence>
-      <div className={cn('fixed inset-0 z-effects flex items-center justify-center', hasEffects ? 'pointer-events-auto' : 'pointer-events-none')}>
+      <div className="pointer-events-none fixed inset-0 z-effects flex items-center justify-center">
         <AnimatePresence>
           {effects.map((effect) => (
             <motion.div

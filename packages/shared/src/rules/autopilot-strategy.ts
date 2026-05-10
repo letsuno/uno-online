@@ -52,7 +52,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   if (state.phase === 'choosing_swap_target') {
     const targets = state.players.filter(p => p.id !== playerId && !p.eliminated);
     if (targets.length === 0) return [];
-    const target = targets.reduce((best, p) => p.hand.length > best.hand.length ? p : best, targets[0]!);
+    const target = targets.reduce((best, p) => p.hand.length < best.hand.length ? p : best, targets[0]!);
     return [{ type: 'CHOOSE_SWAP_TARGET', playerId, targetId: target.id }];
   }
 
