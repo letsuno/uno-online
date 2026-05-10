@@ -28,6 +28,7 @@ interface PlayerNodeProps {
   lastPlayedCard?: CardType | null;
   chatMessage?: string | null;
   handGain?: { id: number; count: number } | null;
+  handSwap?: { id: number; fromX: number } | null;
   onReaction?: (emoji: string) => void;
   onThrowItem?: (item: string) => void;
 }
@@ -46,6 +47,7 @@ export default function PlayerNode({
   lastPlayedCard,
   chatMessage,
   handGain,
+  handSwap,
   onReaction,
   onThrowItem,
 }: PlayerNodeProps) {
@@ -258,9 +260,17 @@ export default function PlayerNode({
       </span>
 
       {/* Hand count */}
-      {player.handCount > 0 && (
-        <div className="relative flex items-center gap-1">
-          {player.handCount <= 5 ? (
+      {(player.handCount > 0 || handSwap) && (
+        <motion.div
+          key={handSwap ? `${player.id}-swap-${handSwap.id}-${player.handCount}` : `${player.id}-hand-${player.handCount}`}
+          className="relative flex min-h-card-mini-h items-center gap-1"
+          initial={handSwap ? { x: handSwap.fromX, opacity: 0.2, scale: 0.92 } : false}
+          animate={{ x: 0, opacity: 1, scale: 1 }}
+          transition={{ duration: 0.34, ease: 'easeOut' }}
+        >
+          {player.handCount === 0 ? (
+            <span className="h-card-mini-h min-w-card-mini-w rounded-sm border border-dashed border-white/20 bg-black/20" />
+          ) : player.handCount <= 5 ? (
             <div className="flex -space-x-2">
               {shouldShowRevealedHand
                 ? revealedHand.map((card) => (
@@ -299,7 +309,7 @@ export default function PlayerNode({
               </motion.span>
             )}
           </AnimatePresence>
-        </div>
+        </motion.div>
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import type { Card as CardType } from '@uno-online/shared';
 import DrawPile from './DrawPile';
 import DiscardPile from './DiscardPile';
 import PlayerNode from './PlayerNode';
+import CardBack from './CardBack';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import GoogleRing from '@/shared/components/ui/GoogleRing';
 import ThrowAnimation from './ThrowAnimation';
@@ -36,12 +37,25 @@ interface HandGainBump {
   count: number;
 }
 
+interface ActiveHandSwap {
+  id: string;
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  count: number;
+}
+
+interface HandSwapEffect {
+  id: number;
+  fromX: number;
+}
+
 interface GameTableProps {
   onDraw: () => void;
 }
 
 let throwIdCounter = 0;
 let handGainBumpId = 0;
+let handSwapId = 0;
 
 export default function GameTable({ onDraw }: GameTableProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -55,6 +69,8 @@ export default function GameTable({ onDraw }: GameTableProps) {
   const pendingDrawPlayerId = useGameStore((s) => s.pendingDrawPlayerId);
   const settings = useGameStore((s) => s.settings);
   const lastAction = useGameStore((s) => s.lastAction);
+  const discardPile = useGameStore((s) => s.discardPile);
+  const roundNumber = useGameStore((s) => s.roundNumber);
   const userId = useEffectiveUserId();
   const ownerId = useRoomStore((s) => s.room?.ownerId);
   const drawUntilEnabled = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
@@ -80,6 +96,8 @@ export default function GameTable({ onDraw }: GameTableProps) {
 
   // Active throw animations
   const [activeThrows, setActiveThrows] = useState<ActiveThrow[]>([]);
+  const [activeHandSwaps, setActiveHandSwaps] = useState<ActiveHandSwap[]>([]);
+  const [handSwapEffects, setHandSwapEffects] = useState<Map<string, HandSwapEffect>>(new Map());
 
   // Track container dimensions with ResizeObserver
   useEffect(() => {
@@ -280,6 +298,8 @@ export default function GameTable({ onDraw }: GameTableProps) {
   const drawUntilRef = useRef<{ playerId: string | null; count: number; handCount: number | null }>({ playerId: null, count: 0, handCount: null });
   const handGainTimersRef = useRef<Map<string, number>>(new Map());
   const drawAnimationTimersRef = useRef<number[]>([]);
+  const handSwapEffectTimersRef = useRef<number[]>([]);
+  const lastHandSwapActionKeyRef = useRef<string | null>(null);
 
   const computeDrawTarget = useCallback((playerId: string) => {
     const pos = getPlayerPosition(playerId);
@@ -290,13 +310,104 @@ export default function GameTable({ onDraw }: GameTableProps) {
     return { x: pos.x - cx, y: pos.y - cy + (isMe ? 92 : 58) };
   }, [getPlayerPosition, dimensions, userId]);
 
+  const enqueueHandSwapAnimations = useCallback((routes: Array<{ fromId: string; toId: string; count: number }>) => {
+    const swaps: ActiveHandSwap[] = [];
+    const effects = new Map<string, HandSwapEffect>();
+
+    for (const route of routes) {
+      const from = getPlayerPosition(route.fromId);
+      const to = getPlayerPosition(route.toId);
+      if (!from || !to) continue;
+
+      const id = ++handSwapId;
+      effects.set(route.toId, {
+        id,
+        fromX: Math.max(-48, Math.min(48, from.x - to.x)),
+      });
+
+      if (route.count > 0) {
+        swaps.push({
+          id: `hand_swap_${id}`,
+          from: { x: from.x, y: from.y + 54 },
+          to: { x: to.x, y: to.y + 54 },
+          count: route.count,
+        });
+      }
+    }
+
+    if (swaps.length > 0) {
+      setActiveHandSwaps((prev) => [...prev, ...swaps]);
+    }
+
+    if (effects.size > 0) {
+      setHandSwapEffects(effects);
+      const timer = window.setTimeout(() => {
+        setHandSwapEffects((prev) => {
+          const next = new Map(prev);
+          for (const [playerId, effect] of effects) {
+            if (next.get(playerId)?.id === effect.id) {
+              next.delete(playerId);
+            }
+          }
+          return next;
+        });
+      }, 900);
+      handSwapEffectTimersRef.current.push(timer);
+    }
+  }, [getPlayerPosition]);
+
+  const handleHandSwapComplete = useCallback((id: string) => {
+    setActiveHandSwaps((prev) => prev.filter((swap) => swap.id !== id));
+  }, []);
+
   useEffect(() => {
     if (players.length === 0 || dimensions.width === 0) return;
     const previous = prevHandCountsRef.current;
+    const topCard = discardPile[discardPile.length - 1];
+    const isZeroRotate =
+      lastAction?.type === 'PLAY_CARD' &&
+      settings?.houseRules?.zeroRotateHands &&
+      topCard?.type === 'number' &&
+      topCard.value === 0;
+    const isSevenSwap = lastAction?.type === 'CHOOSE_SWAP_TARGET';
+    const swapActionKey = isSevenSwap
+      ? `${roundNumber}:seven:${lastAction.playerId}:${lastAction.targetId}`
+      : isZeroRotate
+        ? `${roundNumber}:zero:${lastAction.playerId}:${lastAction.cardId}`
+        : null;
+
+    if (previous.size > 0 && swapActionKey && lastHandSwapActionKeyRef.current !== swapActionKey) {
+      lastHandSwapActionKeyRef.current = swapActionKey;
+
+      if (isSevenSwap) {
+        const actorCount = previous.get(lastAction.playerId) ?? 0;
+        const targetCount = previous.get(lastAction.targetId) ?? 0;
+        enqueueHandSwapAnimations([
+          { fromId: lastAction.playerId, toId: lastAction.targetId, count: actorCount },
+          { fromId: lastAction.targetId, toId: lastAction.playerId, count: targetCount },
+        ]);
+      } else if (isZeroRotate) {
+        const routes = players.map((player, index) => {
+          const sourceIndex = direction === 'clockwise'
+            ? (index - 1 + players.length) % players.length
+            : (index + 1) % players.length;
+          const source = players[sourceIndex]!;
+          const playedCardAdjustment = source.id === lastAction.playerId ? 1 : 0;
+          return {
+            fromId: source.id,
+            toId: player.id,
+            count: Math.max(0, (previous.get(source.id) ?? 0) - playedCardAdjustment),
+          };
+        });
+        enqueueHandSwapAnimations(routes);
+      }
+    }
+
+    const shouldAnimateDraw = lastAction?.type === 'DRAW_CARD';
     for (const player of players) {
       const before = previous.get(player.id);
       const after = player.handCount;
-      if (before !== undefined && after > before) {
+      if (shouldAnimateDraw && player.id === lastAction.playerId && before !== undefined && after > before) {
         const added = after - before;
         const bumpId = ++handGainBumpId;
         setHandGainBumps((prev) => {
@@ -329,13 +440,13 @@ export default function GameTable({ onDraw }: GameTableProps) {
               targetX: target.x,
               targetY: target.y,
             }));
-          }, i * 120);
+          }, i * 300);
           drawAnimationTimersRef.current.push(timer);
         }
       }
     }
     prevHandCountsRef.current = new Map(players.map((p) => [p.id, p.handCount]));
-  }, [players, dimensions.width, computeDrawTarget]);
+  }, [players, dimensions.width, computeDrawTarget, lastAction, discardPile, settings, direction, roundNumber, enqueueHandSwapAnimations]);
 
   useEffect(() => {
     if (!drawUntilEnabled || phase !== 'playing' || lastAction?.type !== 'DRAW_CARD') {
@@ -367,8 +478,12 @@ export default function GameTable({ onDraw }: GameTableProps) {
       for (const timer of handGainTimersRef.current.values()) {
         window.clearTimeout(timer);
       }
+      for (const timer of handSwapEffectTimersRef.current) {
+        window.clearTimeout(timer);
+      }
       drawAnimationTimersRef.current = [];
       handGainTimersRef.current.clear();
+      handSwapEffectTimersRef.current = [];
     };
   }, []);
 
@@ -631,6 +746,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
             lastPlayedCard={lastPlayed?.card ?? null}
             chatMessage={chatMessages.get(player.id) ?? null}
             handGain={handGainBumps.get(player.id) ?? null}
+            handSwap={handSwapEffects.get(player.id) ?? null}
             onReaction={handleReaction}
             onThrowItem={(item) => handleThrowItem(player.id, item)}
           />
@@ -649,7 +765,45 @@ export default function GameTable({ onDraw }: GameTableProps) {
           />
         ))}
       </AnimatePresence>
+
+      {/* Hand swap animations */}
+      <AnimatePresence>
+        {activeHandSwaps.map((swap) => (
+          <HandSwapAnimation
+            key={swap.id}
+            swap={swap}
+            onComplete={() => handleHandSwapComplete(swap.id)}
+          />
+        ))}
+      </AnimatePresence>
     </div>
+  );
+}
+
+function HandSwapAnimation({ swap, onComplete }: { swap: ActiveHandSwap; onComplete: () => void }) {
+  const visibleCards = Math.min(5, swap.count);
+
+  return (
+    <motion.div
+      className="absolute pointer-events-none z-effects flex items-center"
+      style={{ left: 0, top: 0 }}
+      initial={{ x: swap.from.x, y: swap.from.y, opacity: 0, scale: 0.88 }}
+      animate={{ x: swap.to.x, y: swap.to.y, opacity: [0, 1, 1, 0], scale: [0.88, 1, 1, 0.92] }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.82, ease: 'easeInOut' }}
+      onAnimationComplete={onComplete}
+    >
+      <div className="flex -space-x-2 -translate-x-1/2 -translate-y-1/2">
+        {Array.from({ length: visibleCards }).map((_, i) => (
+          <CardBack key={i} small />
+        ))}
+      </div>
+      {swap.count > 5 && (
+        <span className="-translate-y-1/2 ml-1 rounded bg-black/60 px-1.5 py-0.5 text-2xs font-bold text-foreground tabular-nums">
+          ×{swap.count}
+        </span>
+      )}
+    </motion.div>
   );
 }
 
