@@ -75,12 +75,8 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
           }}
         />
       )}
-      <div className="absolute inset-x-0 top-0 h-px bg-primary/15 pointer-events-none" />
       <div
         className="relative rounded-t-2xl px-5 pt-8 pb-hand-pb flex justify-center overflow-x-auto overflow-y-visible scrollbar-hidden pointer-events-auto"
-        style={{
-          background: 'radial-gradient(ellipse at 50% 100%, rgba(251,191,36,0.08) 0%, rgba(0,0,0,0.35) 60%)',
-        }}
       >
         <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-2xs text-muted-foreground whitespace-nowrap">
           我的手牌 · {sorted.length}张
