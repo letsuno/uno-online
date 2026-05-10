@@ -13,6 +13,7 @@ import { setGameStartTime, removePlayerVote } from './game-events';
 import type { SocketData } from './types';
 import { dissolveRoom } from './room-lifecycle';
 import { removeVoicePresence } from './voice-presence';
+import { getAutopilotActionPlayerId } from './autopilot-action-player';
 
 const DRAW_PENALTY_PAUSE_MS = 500;
 const AUTO_AUTOPILOT_THRESHOLD = 2;
@@ -37,11 +38,15 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function getImmediateAutopilotPlayerId(state: GameState): string | null {
+  const playerId = getAutopilotActionPlayerId(state);
+  if (!playerId) return null;
+  return state.players.find(p => p.id === playerId)?.autopilot ? playerId : null;
+}
+
 function canAutopilotActForPlayer(session: GameSession, playerId: string): boolean {
   const state = session.getFullState();
-  if (state.phase === 'round_end' || state.phase === 'game_over') return false;
-  if (state.phase === 'challenging') return state.pendingDrawPlayerId === playerId;
-  return state.players[state.currentPlayerIndex]?.id === playerId;
+  return getAutopilotActionPlayerId(state) === playerId;
 }
 
 function shouldPauseAfterAction(before: GameState, session: GameSession, action: GameAction): boolean {
@@ -337,19 +342,23 @@ export function startTurnTimer(
 ) {
   const state = session.getFullState();
   const phase = state.phase;
-  const currentPlayer = state.players[state.currentPlayerIndex];
+  const immediateAutopilotPlayerId = getImmediateAutopilotPlayerId(state);
 
-  if (currentPlayer?.autopilot) {
+  if (immediateAutopilotPlayerId) {
     turnTimer.start(roomCode, 2, async (code) => {
       const s = sessions.get(code);
       if (!s) return;
-      const pid = s.getCurrentPlayerId();
+      const pid = getImmediateAutopilotPlayerId(s.getFullState());
+      if (!pid) {
+        startTurnTimer(io, redis, code, s, turnTimer, sessions);
+        return;
+      }
       await executeAutopilot(s, pid, async () => {
         await saveGameState(redis, code, s.getFullState());
         await emitGameUpdate(io, code, s, redis);
       });
       await saveGameState(redis, code, s.getFullState());
-      emitGameUpdate(io, code, s, redis);
+      await emitGameUpdate(io, code, s, redis);
       startTurnTimer(io, redis, code, s, turnTimer, sessions);
     });
     return;
@@ -362,13 +371,17 @@ export function startTurnTimer(
     turnTimer.start(roomCode, timeLimit, async (code) => {
       const s = sessions.get(code);
       if (!s) return;
-      const pid = s.getFullState().pendingDrawPlayerId ?? s.getCurrentPlayerId();
+      const pid = getAutopilotActionPlayerId(s.getFullState());
+      if (!pid) {
+        startTurnTimer(io, redis, code, s, turnTimer, sessions);
+        return;
+      }
       await executeAutopilot(s, pid, async () => {
         await saveGameState(redis, code, s.getFullState());
         await emitGameUpdate(io, code, s, redis);
       });
       await saveGameState(redis, code, s.getFullState());
-      emitGameUpdate(io, code, s, redis);
+      await emitGameUpdate(io, code, s, redis);
       io.to(code).emit('player:timeout', { playerId: pid });
       incrementTimeoutAndAutoAutopilot(io, redis, code, s, pid);
       startTurnTimer(io, redis, code, s, turnTimer, sessions);
@@ -386,13 +399,17 @@ export function startTurnTimer(
   turnTimer.start(roomCode, timeLimit, async (code) => {
     const s = sessions.get(code);
     if (!s) return;
-    const pid = s.getCurrentPlayerId();
+    const pid = getAutopilotActionPlayerId(s.getFullState());
+    if (!pid) {
+      startTurnTimer(io, redis, code, s, turnTimer, sessions);
+      return;
+    }
     await executeAutopilot(s, pid, async () => {
       await saveGameState(redis, code, s.getFullState());
       await emitGameUpdate(io, code, s, redis);
     });
     await saveGameState(redis, code, s.getFullState());
-    emitGameUpdate(io, code, s, redis);
+    await emitGameUpdate(io, code, s, redis);
     io.to(code).emit('player:timeout', { playerId: pid });
     incrementTimeoutAndAutoAutopilot(io, redis, code, s, pid);
     startTurnTimer(io, redis, code, s, turnTimer, sessions);
