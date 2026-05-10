@@ -577,6 +577,75 @@ describe('drawUntilPlayable', () => {
     expect(next.players[0]!.hand[0]!.id).toBe('red7');
   });
 
+  it('rejects drawing when the player already has a playable card', () => {
+    const deck = [
+      makeCard('number', 'blue', { value: 1, id: 'blue1' }),
+    ];
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'red', { value: 9, id: 'red9' })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+      deckLeft: deck,
+      deckRight: [],
+      deckLeftInitialCount: deck.length,
+      deckRightInitialCount: 0,
+      currentColor: 'red',
+      discardPile: [makeCard('number', 'red', { value: 5, id: 'discard_top' })],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, drawUntilPlayable: true },
+      },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
+
+    expect(next).toStrictEqual(state);
+  });
+
+  it('keeps +2 penalty draws active until both cards are drawn', () => {
+    const state = makeState({
+      currentPlayerIndex: 1,
+      pendingPenaltyDraws: 2,
+      pendingPenaltyNextPlayerIndex: 2,
+      pendingPenaltySourcePlayerId: 'p1',
+      deckLeft: [
+        makeCard('number', 'red', { value: 7, id: 'drawn_red' }),
+        makeCard('number', 'blue', { value: 1, id: 'drawn_blue' }),
+      ],
+      deckRight: [],
+      deckLeftInitialCount: 2,
+      deckRightInitialCount: 0,
+      currentColor: 'red',
+      discardPile: [makeCard('draw_two', 'red', { id: 'discard_d2' })],
+      players: [
+        { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, drawUntilPlayable: true },
+      },
+    });
+
+    const afterFirstDraw = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
+    expect(afterFirstDraw.players[1]!.hand.map(c => c.id)).toEqual(['drawn_red']);
+    expect(afterFirstDraw.pendingPenaltyDraws).toBe(1);
+    expect(afterFirstDraw.currentPlayerIndex).toBe(1);
+
+    const passAttempt = applyActionWithHouseRules(afterFirstDraw, { type: 'PASS', playerId: 'p2' });
+    expect(passAttempt).toStrictEqual(afterFirstDraw);
+
+    const afterSecondDraw = applyActionWithHouseRules(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
+    expect(afterSecondDraw.players[1]!.hand.map(c => c.id)).toEqual(['drawn_red', 'drawn_blue']);
+    expect(afterSecondDraw.pendingPenaltyDraws).toBe(0);
+    expect(afterSecondDraw.currentPlayerIndex).toBe(2);
+  });
+
   it('standard DRAW_CARD draws only 1 card without drawUntilPlayable', () => {
     const deck = [
       makeCard('number', 'blue', { value: 1, id: 'blue1' }),

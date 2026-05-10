@@ -14,6 +14,13 @@ export const drawUntilPlayable: HouseRulePlugin = {
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     if (action.type === 'DRAW_CARD') {
       if (hasPendingDrawObligation(state)) return { handled: false };
+      if (state.phase !== 'playing') return { handled: false };
+      const player = state.players[state.currentPlayerIndex];
+      if (player?.id !== action.playerId) return { handled: false };
+      const topCard = state.discardPile[state.discardPile.length - 1];
+      if (topCard && state.currentColor && hasPlayableCard(player.hand, topCard, state.currentColor, ctx.canPlayCard)) {
+        return { handled: true, state };
+      }
       return { handled: true, state: ctx.handleDrawUntilPlayable(state, action) };
     }
     if (action.type !== 'PASS') return { handled: false };
