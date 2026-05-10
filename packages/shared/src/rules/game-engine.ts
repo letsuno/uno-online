@@ -85,6 +85,40 @@ function currentPlayerId(state: GameState): string {
   return state.players[state.currentPlayerIndex]!.id;
 }
 
+function canRespondToDrawStack(state: GameState, cardId: string): boolean {
+  if (state.drawStack <= 0) return false;
+
+  const player = state.players[state.currentPlayerIndex];
+  const card = player?.hand.find(c => c.id === cardId);
+  const topCard = state.discardPile[state.discardPile.length - 1];
+  if (!card || !topCard) return false;
+
+  const hr = state.settings.houseRules;
+  if (!hr) return false;
+  return (
+    (hr.stackDrawTwo && card.type === 'draw_two' && topCard.type === 'draw_two') ||
+    (hr.stackDrawFour && card.type === 'wild_draw_four' && topCard.type === 'wild_draw_four') ||
+    (hr.crossStack && (
+      (card.type === 'draw_two' && topCard.type === 'wild_draw_four') ||
+      (card.type === 'wild_draw_four' && topCard.type === 'draw_two')
+    )) ||
+    (hr.reverseDeflectDrawTwo && card.type === 'reverse' && topCard.type === 'draw_two') ||
+    (hr.reverseDeflectDrawFour && card.type === 'reverse' && topCard.type === 'wild_draw_four') ||
+    (hr.skipDeflect && card.type === 'skip')
+  );
+}
+
+function hasPlayableCardForUnoCall(state: GameState, player: GameState['players'][number]): boolean {
+  const topCard = state.discardPile[state.discardPile.length - 1];
+  if (!topCard || !state.currentColor) return false;
+
+  if (state.drawStack > 0) {
+    return player.hand.some(card => canRespondToDrawStack(state, card.id));
+  }
+
+  return player.hand.some(card => canPlayCard(card, topCard, state.currentColor!));
+}
+
 function startPenaltyDraw(
   state: GameState,
   playerId: string,
@@ -478,7 +512,12 @@ function handleCallUno(
 
   const strictUnoCall = state.settings.houseRules?.strictUnoCall ?? false;
   const canCallUno = player.hand.length === 1
-    || (!strictUnoCall && player.hand.length === 2 && currentPlayerId(state) === action.playerId);
+    || (
+      !strictUnoCall &&
+      player.hand.length === 2 &&
+      currentPlayerId(state) === action.playerId &&
+      hasPlayableCardForUnoCall(state, player)
+    );
   if (!canCallUno) return state;
 
   const players = state.players.map((p, i) =>

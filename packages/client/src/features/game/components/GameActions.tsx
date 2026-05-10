@@ -28,12 +28,15 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   const me = players.find((p) => p.id === userId);
   const isMyTurn = useIsMyTurn();
   const strictUnoCall = settings?.houseRules?.strictUnoCall ?? false;
+  const playableIds = usePlayableCardIds();
+  const ownHandCount = me?.handCount ?? me?.hand.length ?? 0;
+  const knownHandCount = me?.hand.length ?? 0;
   const canCallUno = me && !me.calledUno && !me.unoCaught && pendingPenaltyDraws === 0 && (
-    me.hand.length === 1 || (!strictUnoCall && me.hand.length === 2 && isMyTurn)
+    (ownHandCount === 1 && knownHandCount === 1) ||
+    (!strictUnoCall && ownHandCount === 2 && knownHandCount === 2 && isMyTurn && playableIds.size > 0)
   );
   const catchTargets = players.filter((p) => p.id !== userId && p.handCount === 1 && !p.calledUno && !p.unoCaught);
   const noChallengeWD4 = settings?.houseRules?.noChallengeWildFour ?? false;
-  const playableIds = usePlayableCardIds();
   const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
   const canPassAfterDraw = pendingPenaltyDraws === 0 && drawStack === 0 && hasDrawnThisTurn && (!mustDrawUntilPlayable || playableIds.size > 0);
 
