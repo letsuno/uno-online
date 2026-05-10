@@ -34,7 +34,7 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   const noChallengeWD4 = settings?.houseRules?.noChallengeWildFour ?? false;
   const playableIds = usePlayableCardIds();
   const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
-  const canPassAfterDraw = pendingPenaltyDraws <= 0 && hasDrawnThisTurn && (!mustDrawUntilPlayable || playableIds.size > 0);
+  const canPassAfterDraw = pendingPenaltyDraws === 0 && hasDrawnThisTurn && (!mustDrawUntilPlayable || playableIds.size > 0);
 
   const withCooldown = (fn: () => void) => () => {
     if (cooldown) return;
