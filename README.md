@@ -1,5 +1,7 @@
 # UNO Online
 
+[![GitHub](https://img.shields.io/github/license/letsuno/uno-online)](https://github.com/letsuno/uno-online)
+
 [中文文档](README.zh-CN.md)
 
 Web-based multiplayer UNO card game with voice chat, 32 configurable house rules, server selector, and a cartoon visual style.
@@ -18,6 +20,8 @@ Web-based multiplayer UNO card game with voice chat, 32 configurable house rules
 - **Color-blind mode** — pattern overlays + symbol markers on cards
 - **Mobile responsive** — touch-optimized hand scrolling, adaptive layout
 - **Admin panel** — user management, room monitoring, dashboard stats
+- **Spectator mode** — watch games in real-time, hidden or visible card view
+- **Game history** — replay past games, browse records in admin panel
 - **GitHub OAuth** + password login
 
 ## Tech Stack
@@ -61,7 +65,7 @@ uno-online/
 
 ```bash
 # Clone and install
-git clone <repo-url> && cd uno-online
+git clone https://github.com/letsuno/uno-online.git && cd uno-online
 corepack enable && corepack prepare pnpm@10.11.0 --activate
 pnpm install
 
@@ -145,6 +149,7 @@ docker push djkcyl/uno-online-caddy:latest
 | `ROOM_IDLE_TIMEOUT_MS` | Auto-dissolve rooms after this many ms without activity | `7200000` |
 | `SERVER_NAME` | Server display name (shown in server selector) | `UNO Online` |
 | `SERVER_MOTD` | Server welcome message | `欢迎来到 UNO Online！` |
+| `GITHUB_PROXY` | HTTP proxy for GitHub OAuth requests (optional) | (none) |
 
 ## API Endpoints
 
@@ -155,7 +160,21 @@ docker push djkcyl/uno-online-caddy:latest
 | `GET` | `/api/auth/config` | No | Auth configuration (dev mode, GitHub client ID) |
 | `POST` | `/api/auth/login` | No | Password login |
 | `POST` | `/api/auth/register` | No | Register new account |
+| `POST` | `/api/auth/set-password` | Yes | Set/change password |
 | `GET` | `/api/auth/me` | Yes | Current user info |
+| `GET` | `/api/auth/github` | No | Initiate GitHub OAuth flow |
+| `GET` | `/api/auth/callback` | No | GitHub OAuth callback |
+| `POST` | `/api/auth/bind-github` | Yes | Bind GitHub account |
+| `GET` | `/api/profile` | Yes | Get user profile |
+| `PUT` | `/api/profile` | Yes | Update profile |
+| `POST` | `/api/profile/avatar` | Yes | Upload avatar |
+| `GET` | `/api/rooms/active` | Yes | List active rooms |
+| `GET` | `/api/games` | Yes | List game history |
+| `GET` | `/api/games/:id` | Yes | Get game record detail |
+| `GET` | `/api/admin/dashboard` | Admin | Admin dashboard stats |
+| `GET` | `/api/admin/rooms` | Admin | List all rooms |
+| `DELETE` | `/api/admin/rooms/:code` | Admin | Force dissolve a room |
+| `DELETE` | `/api/admin/games/:id` | Admin | Delete game record |
 
 ## Testing
 
@@ -213,6 +232,10 @@ House rules wrap the core engine: `applyActionWithHouseRules(state, action) => n
 | Social | Silent UNO, team mode (2v2/3v3) |
 | End rules | No wild finish, no function card finish, double score |
 | Fun | No challenge +4, blind draw, bomb card |
+
+## Contributing
+
+This project is maintained under [github.com/letsuno](https://github.com/letsuno). Pull requests are welcome — please branch off `main` and follow the existing code style.
 
 ## License
 

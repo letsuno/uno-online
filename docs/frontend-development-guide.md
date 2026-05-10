@@ -27,12 +27,13 @@ packages/client/src/
       routes.tsx          # 路由定义（导出 RouteObject[]）
     game/
       pages/
-      stores/             # game-store, game-log-store
+      stores/             # game-store, game-log-store, chat-store
       components/
       hooks/              # 功能专属 hook
       routes.tsx
     lobby/
     profile/
+    replay/               # 游戏回放
   shared/                 # 跨功能共享模块
     components/ui/        # 通用 UI 组件（Button, Input, GoogleRing）
     components/           # 共享布局组件（Toast, ProtectedRoute, ServerButton, ServerSelectModal, ChangelogModal）
