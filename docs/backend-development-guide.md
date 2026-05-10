@@ -188,8 +188,15 @@ socket.on('domain:action', async (payload, callback) => {
 interface SocketData {
   user: TokenPayload;
   roomCode: string | null;
+  isSpectator?: boolean;
 }
 ```
+
+### 游戏状态持久化
+游戏状态通过 `GameStatePersister` 持久化到 KV 存储，使用 500ms 去抖减少写入频率：
+- 普通游戏动作调用 `persister.markDirty()` — 标记脏状态，500ms 后自动写入
+- 关键节点（回合结束、游戏结束、玩家掉线）调用 `persister.flushNow()` — 立即写入
+- 房间销毁时调用 `persister.cleanup()` — 清除定时器和脏状态
 
 ## 测试规范
 

@@ -40,12 +40,16 @@ packages/shared/src/rules/
 ## RuleDefinition 接口
 
 ```typescript
-// packages/shared/src/rules/rule-types.ts
+// packages/shared/src/rules/house-rule-types.ts
 
 export interface RuleContext {
   state: GameState;
   action: GameAction;
   houseRules: HouseRules;
+  // ... 以及多个辅助函数：
+  // applyAction, checkRoundEnd, drawCardsFromDeck, startPenaltyDraw,
+  // isWildCard, isFunctionCard, canPlayCard, getNextPlayerIndex 等
+  // 完整定义见 house-rule-types.ts
 }
 
 export interface PreCheckResult {
