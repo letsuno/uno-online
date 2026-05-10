@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type MotionProps } from 'framer-motion';
 import type { Card as CardType } from '@uno-online/shared';
 import Card from './Card';
 import { cn } from '@/shared/lib/utils';
@@ -13,24 +13,52 @@ interface AnimatedCardProps {
   style?: React.CSSProperties;
   layoutId?: string;
   className?: string;
+  cardClassName?: string;
+  animate?: MotionProps['animate'];
+  transition?: MotionProps['transition'];
+  disableHoverLift?: boolean;
+  forceCornerLabel?: boolean;
 }
 
 const AnimatedCard = forwardRef<HTMLDivElement, AnimatedCardProps>(
-  function AnimatedCard({ card, playable, clickable = playable, dimmed, onClick, style, layoutId, className }, ref) {
+  function AnimatedCard({
+    card,
+    playable,
+    clickable = playable,
+    dimmed,
+    onClick,
+    style,
+    layoutId,
+    className,
+    cardClassName,
+    animate,
+    transition,
+    disableHoverLift,
+    forceCornerLabel,
+  }, ref) {
     return (
       <motion.div
         ref={ref}
         layoutId={layoutId}
         className={cn('inline-block', className)}
         initial={{ scale: 0.8, opacity: 0, y: 20 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
+        animate={animate ?? { scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.5, opacity: 0, y: -40, rotate: 15 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-        whileHover={clickable ? { y: -24, scale: 1.1, zIndex: 50, transition: { type: 'tween', duration: 0.15 } } : undefined}
+        transition={transition ?? { type: 'spring', stiffness: 400, damping: 25 }}
+        whileHover={!disableHoverLift && clickable ? { y: -24, scale: 1.1, zIndex: 50, transition: { type: 'tween', duration: 0.15 } } : undefined}
         whileTap={clickable ? { scale: 0.95 } : undefined}
         style={style}
       >
-        <Card card={card} playable={playable} clickable={clickable} dimmed={dimmed} onClick={onClick} />
+        <Card
+          card={card}
+          playable={playable}
+          clickable={clickable}
+          dimmed={dimmed}
+          onClick={onClick}
+          className={cardClassName}
+          forceCornerLabel={forceCornerLabel}
+          disableHoverLift={disableHoverLift}
+        />
       </motion.div>
     );
   },
