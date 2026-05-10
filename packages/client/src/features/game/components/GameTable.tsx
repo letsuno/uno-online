@@ -153,7 +153,16 @@ export default function GameTable({ onDraw }: GameTableProps) {
       }
 
       if (skippedIdx >= 0) {
-        setSkippedPlayerId(ps[skippedIdx]?.id ?? null);
+        const skippedId = ps[skippedIdx]?.id ?? null;
+        setSkippedPlayerId(skippedId);
+        if (skippedId) {
+          setLastPlayedCards((prev) => {
+            if (!prev.has(skippedId)) return prev;
+            const next = new Map(prev);
+            next.delete(skippedId);
+            return next;
+          });
+        }
         const timer = window.setTimeout(() => setSkippedPlayerId(null), 1000);
         return () => window.clearTimeout(timer);
       }
