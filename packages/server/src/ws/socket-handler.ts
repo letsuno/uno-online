@@ -5,7 +5,7 @@ import { RoomManager } from '../plugins/core/room/manager';
 import { TurnTimer } from '../plugins/core/game/turn-timer';
 import { GameSession } from '../plugins/core/game/session';
 import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, resetPlayerTimeout } from './room-events';
-import { registerGameEvents } from './game-events';
+import { registerGameEvents, addAutopilotVote } from './game-events';
 import { getRoom, getRoomPlayers, setRoomOwner } from '../plugins/core/room/store';
 import { saveGameState, loadGameState } from '../plugins/core/game/state-store';
 import { checkRateLimit, clearRateLimit } from './rate-limiter';
@@ -268,6 +268,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
             await saveGameState(redis, roomCode, s.getFullState());
             await emitGameUpdate(io, roomCode, s, redis);
             io.to(roomCode).emit('player:autopilot', { playerId: userId, enabled: true });
+            addAutopilotVote(roomCode, userId, s, io);
             startAutoPlay(userId, roomCode);
           }
         }, RECONNECT_TIMEOUT_MS);
