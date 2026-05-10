@@ -32,6 +32,7 @@ export interface HouseRules {
   noChallengeWildFour: boolean;
   blindDraw: boolean;
   bombCard: boolean;
+  shuffleSeats: boolean;
 }
 
 export const DEFAULT_HOUSE_RULES: HouseRules = {
@@ -68,6 +69,7 @@ export const DEFAULT_HOUSE_RULES: HouseRules = {
   noChallengeWildFour: false,
   blindDraw: false,
   bombCard: false,
+  shuffleSeats: false,
 };
 
 export const HOUSE_RULES_PRESETS: Record<string, Partial<HouseRules>> = {

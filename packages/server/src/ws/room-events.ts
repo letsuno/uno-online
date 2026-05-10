@@ -9,7 +9,7 @@ import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, touchRoomActiv
 import { GameSession } from '../plugins/core/game/session';
 import { saveGameState } from '../plugins/core/game/state-store';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
-import { setGameStartTime } from './game-events';
+import { setGameStartTime, removePlayerVote } from './game-events';
 import type { SocketData } from './types';
 import { dissolveRoom } from './room-lifecycle';
 import { removeVoicePresence } from './voice-presence';
@@ -133,10 +133,31 @@ export function registerRoomEvents(
     removeVoicePresence(io, roomCode, data.user.userId);
     socket.leave(roomCode);
     data.roomCode = null;
+
+    const session = sessions.get(roomCode);
+    if (session && !deleted) {
+      session.removePlayer(data.user.userId);
+      removePlayerVote(roomCode, data.user.userId, session, io);
+
+      if (session.getPlayerCount() < MIN_PLAYERS) {
+        const st = session.getFullState();
+        const lastPlayer = st.players[0];
+        if (lastPlayer) session.forceGameOver(lastPlayer.id);
+        turnTimer.stop(roomCode);
+        io.to(roomCode).emit('game:over', {
+          winnerId: lastPlayer?.id ?? null,
+          scores: Object.fromEntries(st.players.map((p) => [p.id, p.score])),
+        });
+      }
+
+      await saveGameState(redis, roomCode, session.getFullState());
+      await emitGameUpdate(io, roomCode, session, redis);
+    }
+
     if (!deleted) {
-      const room = await getRoom(redis, roomCode);
+      const updatedRoom = await getRoom(redis, roomCode);
       const players = await getRoomPlayers(redis, roomCode);
-      io.to(roomCode).emit('room:updated', { players, room });
+      io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
     } else {
       sessions.delete(roomCode);
       turnTimer.stop(roomCode);
