@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { initializeGame, applyActionWithHouseRules, GameEventType } from '@uno-online/shared';
-import { initializeNextRound, serializeDeck } from '@uno-online/shared';
+import { initializeNextRound, serializeDecks } from '@uno-online/shared';
 import type { GameState, GameAction, RoomSettings, UserRole } from '@uno-online/shared';
 import type { Card } from '@uno-online/shared';
 import type { GameEvent, GameEventPayload, GameEventType as GameEventTypeValue } from '@uno-online/shared';
@@ -31,7 +31,8 @@ export interface PlayerView {
   currentColor: GameState['currentColor'];
   drawStack: number;
   pendingPenaltyDraws?: number;
-  deckCount: number;
+  deckLeftCount: number;
+  deckRightCount: number;
   roundNumber: number;
   winnerId: string | null;
   settings: GameState['settings'];
@@ -55,21 +56,21 @@ export class GameSession {
     this.state = state;
   }
 
-  private static computeDeckHash(deck: Card[]): string {
-    const serialized = serializeDeck(deck);
+  private static computeDeckHash(state: GameState): string {
+    const serialized = serializeDecks(state.deckLeft, state.deckRight);
     return createHash('sha256').update(serialized).digest('hex');
   }
 
   static create(players: { id: string; name: string; avatarUrl?: string | null; role?: UserRole }[], settings?: RoomSettings): GameSession {
     const state = initializeGame(players, settings?.houseRules);
-    const deckHash = GameSession.computeDeckHash(state.deck);
+    const deckHash = GameSession.computeDeckHash(state);
     const stateWithExtras = {
       ...state,
       deckHash,
       ...(settings ? { settings } : {}),
     };
     const session = new GameSession(stateWithExtras);
-    session.initialDeckSerialized = serializeDeck(state.deck);
+    session.initialDeckSerialized = serializeDecks(state.deckLeft, state.deckRight);
     return session;
   }
 
@@ -116,7 +117,8 @@ export class GameSession {
       currentColor: this.state.currentColor,
       drawStack: this.state.drawStack,
       pendingPenaltyDraws: this.state.pendingPenaltyDraws ?? 0,
-      deckCount: this.state.deck.length,
+      deckLeftCount: this.state.deckLeft.length,
+      deckRightCount: this.state.deckRight.length,
       roundNumber: this.state.roundNumber,
       winnerId: this.state.winnerId,
       settings: this.state.settings,
@@ -186,17 +188,17 @@ export class GameSession {
 
   startNextRound(): void {
     this.state = initializeNextRound(this.state);
-    this.state = { ...this.state, deckHash: GameSession.computeDeckHash(this.state.deck) };
-    this.initialDeckSerialized = serializeDeck(this.state.deck);
+    this.state = { ...this.state, deckHash: GameSession.computeDeckHash(this.state) };
+    this.initialDeckSerialized = serializeDecks(this.state.deckLeft, this.state.deckRight);
   }
 
   resetForRematch(): void {
     const players = this.state.players.map(p => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl, role: p.role }));
     const settings = this.state.settings;
     const fresh = initializeGame(players, settings.houseRules);
-    const deckHash = GameSession.computeDeckHash(fresh.deck);
+    const deckHash = GameSession.computeDeckHash(fresh);
     this.state = { ...fresh, settings, deckHash };
-    this.initialDeckSerialized = serializeDeck(fresh.deck);
+    this.initialDeckSerialized = serializeDecks(fresh.deckLeft, fresh.deckRight);
     this.events = [];
     this.chatHistory = [];
   }
@@ -270,7 +272,8 @@ export class GameSession {
       currentColor: this.state.currentColor,
       drawStack: this.state.drawStack,
       pendingPenaltyDraws: this.state.pendingPenaltyDraws ?? 0,
-      deckCount: this.state.deck.length,
+      deckLeftCount: this.state.deckLeft.length,
+      deckRightCount: this.state.deckRight.length,
       roundNumber: this.state.roundNumber,
       winnerId: this.state.winnerId,
       settings: this.state.settings,
