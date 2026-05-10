@@ -75,6 +75,7 @@ export default function GamePage() {
     swapTarget,
     playAgain,
     rematch,
+    kickPlayer,
   } = useGameActions();
 
   useAutoPlay();
@@ -200,7 +201,7 @@ export default function GamePage() {
       {(phase === 'round_end' || phase === 'game_over') && <Confetti />}
       {needsColorPick && <ColorPicker onPick={chooseColor} />}
       {showScoreBoard && (
-        <ScoreBoard onPlayAgain={playAgain} onRematch={rematch} onBackToLobby={backToLobby} />
+        <ScoreBoard onPlayAgain={playAgain} onRematch={rematch} onBackToLobby={backToLobby} onKickPlayer={kickPlayer} />
       )}
     </div>
   );

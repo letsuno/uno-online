@@ -139,6 +139,16 @@ export function getSocket(): Socket {
       window.location.href = '/';
     });
 
+    socket.on('game:kicked', (data: { reason: string }) => {
+      useRoomStore.getState().clearRoom();
+      useGameStore.getState().clearGame();
+      leaveVoiceSession();
+      useToastStore.getState().addToast(data.reason || '你已被移出游戏', 'error');
+      if (window.location.pathname !== '/lobby') {
+        window.location.assign('/lobby');
+      }
+    });
+
     socket.on('room:dissolved', (data?: { reason?: string }) => {
       useRoomStore.getState().clearRoom();
       useGameStore.getState().clearGame();

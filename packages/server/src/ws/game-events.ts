@@ -10,7 +10,7 @@ import { emitGameUpdate, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts }
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { recordGameResult } from '../db/user-repo';
 import { saveGameEvents, saveDeckInfo } from '../plugins/core/game-history/service';
-import { getRoom, setRoomStatus, touchRoomActivity } from '../plugins/core/room/store';
+import { getRoom, setRoomStatus, touchRoomActivity, removePlayerFromRoom } from '../plugins/core/room/store';
 import type { SocketData } from './types';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
@@ -104,6 +104,24 @@ export async function persistGameOnDissolve(roomCode: string, session: GameSessi
   const startTime = gameStartTimes.get(roomCode) ?? Date.now();
   await persistGameResult(roomCode, session, startTime, db);
   gameStartTimes.delete(roomCode);
+}
+
+export function addAutopilotVote(roomCode: string, playerId: string, session: GameSession, io: SocketIOServer): void {
+  if (!session.isRoundEnd()) return;
+  const votes = nextRoundVotes.get(roomCode) ?? new Set<string>();
+  votes.add(playerId);
+  nextRoundVotes.set(roomCode, votes);
+  const voteState = getNextRoundVoteState(roomCode, session);
+  io.to(roomCode).emit('game:next_round_vote', voteState);
+}
+
+export function removePlayerVote(roomCode: string, playerId: string, session: GameSession, io: SocketIOServer): void {
+  const votes = nextRoundVotes.get(roomCode);
+  if (votes) votes.delete(playerId);
+  if (session.isRoundEnd()) {
+    const voteState = getNextRoundVoteState(roomCode, session);
+    io.to(roomCode).emit('game:next_round_vote', voteState);
+  }
 }
 
 function getNextRoundVoteState(roomCode: string, session: GameSession): NextRoundVoteState {
@@ -442,6 +460,60 @@ export function registerGameEvents(
     }
 
     callback?.({ success: true, started: false, vote: voteState });
+  });
+
+  socket.on('game:kick_player', async (payload: { targetId?: string }, callback) => {
+    const targetId = payload?.targetId;
+    if (!targetId) return callback?.({ success: false, error: '缺少目标玩家' });
+
+    const ctx = getSession(socket, sessions);
+    if (!ctx) return callback?.({ success: false, error: 'No active game' });
+    const { session, roomCode } = ctx;
+
+    if (!session.isRoundEnd()) {
+      return callback?.({ success: false, error: '只能在回合结束阶段踢人' });
+    }
+
+    const room = await getRoom(redis, roomCode);
+    if (room?.ownerId !== data.user.userId) {
+      return callback?.({ success: false, error: '只有房主可以踢人' });
+    }
+
+    if (targetId === data.user.userId) {
+      return callback?.({ success: false, error: '不能踢自己' });
+    }
+
+    const voters = nextRoundVotes.get(roomCode) ?? new Set<string>();
+    if (voters.has(targetId)) {
+      return callback?.({ success: false, error: '该玩家已准备，无法踢出' });
+    }
+
+    const state = session.getFullState();
+    if (!state.players.some((p) => p.id === targetId)) {
+      return callback?.({ success: false, error: '玩家不在游戏中' });
+    }
+
+    session.removePlayer(targetId);
+    await removePlayerFromRoom(redis, roomCode, targetId);
+
+    const targetSockets = await io.in(roomCode).fetchSockets();
+    for (const s of targetSockets) {
+      if ((s.data as SocketData).user.userId === targetId) {
+        s.emit('game:kicked', { reason: '你已被房主移出游戏' });
+        s.leave(roomCode);
+        (s.data as SocketData).roomCode = null;
+      }
+    }
+
+    voters.delete(targetId);
+    const voteState = getNextRoundVoteState(roomCode, session);
+    io.to(roomCode).emit('game:next_round_vote', voteState);
+
+    await saveGameState(redis, roomCode, session.getFullState());
+    await emitGameUpdate(io, roomCode, session, redis);
+    io.to(roomCode).emit('room:updated', { players: state.players.filter((p) => p.id !== targetId).map((p) => ({ userId: p.id, name: p.name })) });
+
+    callback?.({ success: true });
   });
 
   socket.on('game:rematch', async (callback) => {

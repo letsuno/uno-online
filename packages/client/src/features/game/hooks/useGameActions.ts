@@ -61,6 +61,14 @@ export function useGameActions() {
     getSocket().emit('game:rematch', () => {});
   }, []);
 
+  const kickPlayer = useCallback((targetId: string) => {
+    getSocket().emit('game:kick_player', { targetId }, (res: { success?: boolean; error?: string }) => {
+      if (!res?.success) {
+        useToastStore.getState().addToast(res?.error || '踢出失败', 'error');
+      }
+    });
+  }, []);
+
   return {
     playCard,
     drawCard,
@@ -73,5 +81,6 @@ export function useGameActions() {
     swapTarget,
     playAgain,
     rematch,
+    kickPlayer,
   };
 }
