@@ -179,7 +179,7 @@ export default function VoicePanel() {
   );
 
   return (
-    <div className="fixed right-3 md:top-1/2 md:-translate-y-1/2 top-16 flex flex-col gap-2 z-fab">
+    <div className="fixed right-3 bottom-4 flex max-w-[9rem] flex-col items-center gap-2 z-fab">
       {!connected ? (
         <button
           onClick={() => joinVoice('default')}
