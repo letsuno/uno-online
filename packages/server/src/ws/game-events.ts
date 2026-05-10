@@ -33,12 +33,10 @@ export function setGamePersistence(enabled: boolean): void {
 async function persistGameResult(roomCode: string, session: GameSession, startTime: number, db: Kysely<Database>): Promise<void> {
   if (!persistEnabled) return;
 
-  const key = `${roomCode}:${session.getFullState().roundNumber}`;
+  const state = session.getFullState();
+  const key = `${roomCode}:${state.roundNumber}`;
   if (persistedGames.has(key)) return;
   persistedGames.set(key, Date.now());
-
-  const state = session.getFullState();
-  if (!state.winnerId) return;
 
   const duration = Math.floor((Date.now() - startTime) / 1000);
   const sorted = [...state.players].sort((a, b) => b.score - a.score);
@@ -49,7 +47,7 @@ async function persistGameResult(roomCode: string, session: GameSession, startTi
   }));
 
   try {
-    const gameId = await recordGameResult(roomCode, state.winnerId, state.roundNumber, duration, playerResults);
+    const gameId = await recordGameResult(roomCode, state.winnerId ?? null, state.roundNumber, duration, playerResults);
     const events = session.getEvents();
     await saveGameEvents(db, gameId, events);
     await saveDeckInfo(db, gameId, state.deckHash, session.getInitialDeckSerialized());
@@ -96,6 +94,16 @@ interface NextRoundVoteState {
 
 export function setGameStartTime(roomCode: string): void {
   gameStartTimes.set(roomCode, Date.now());
+}
+
+export function getGameStartTime(roomCode: string): number | undefined {
+  return gameStartTimes.get(roomCode);
+}
+
+export async function persistGameOnDissolve(roomCode: string, session: GameSession, db: Kysely<Database>): Promise<void> {
+  const startTime = gameStartTimes.get(roomCode) ?? Date.now();
+  await persistGameResult(roomCode, session, startTime, db);
+  gameStartTimes.delete(roomCode);
 }
 
 function getNextRoundVoteState(roomCode: string, session: GameSession): NextRoundVoteState {

@@ -107,7 +107,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       if (!Number.isFinite(lastActivityAt) || now - lastActivityAt < roomIdleTimeoutMs) continue;
 
       stopAutoPlayForRoom(roomCode);
-      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, 'idle_timeout');
+      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, 'idle_timeout', getDb());
     }
   }
 
@@ -183,7 +183,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       }
     });
 
-    registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions);
+    registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions, getDb());
     registerGameEvents(socket, io, redis, turnTimer, sessions, getDb());
     registerInteractionEvents(socket, io);
 
