@@ -17,7 +17,13 @@ type SoundName =
   | 'player_join'
   | 'player_leave'
   | 'your_turn'
-  | 'error';
+  | 'error'
+  | 'click'
+  | 'ready'
+  | 'action'
+  | 'danger';
+
+export type ButtonSound = 'click' | 'ready' | 'action' | 'danger';
 
 const FREQUENCIES: Record<SoundName, { freq: number; duration: number; type: OscillatorType }> = {
   play_card:    { freq: 800, duration: 0.08, type: 'square' },
@@ -37,6 +43,10 @@ const FREQUENCIES: Record<SoundName, { freq: number; duration: number; type: Osc
   player_leave: { freq: 350, duration: 0.15, type: 'sine' },
   your_turn:    { freq: 880, duration: 0.15, type: 'sine' },
   error:        { freq: 200, duration: 0.2, type: 'square' },
+  click:        { freq: 1100, duration: 0.04, type: 'sine' },
+  ready:        { freq: 880, duration: 0.1, type: 'sine' },
+  action:       { freq: 1000, duration: 0.06, type: 'square' },
+  danger:       { freq: 280, duration: 0.1, type: 'sawtooth' },
 };
 
 let audioCtx: AudioContext | null = null;
@@ -78,6 +88,10 @@ export function playSound(name: SoundName): void {
     osc.frequency.linearRampToValueAtTime(90, ctx.currentTime + config.duration);
   } else if (name === 'throw_hit') {
     osc.frequency.exponentialRampToValueAtTime(420, ctx.currentTime + config.duration);
+  } else if (name === 'ready') {
+    osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + config.duration);
+  } else if (name === 'danger') {
+    osc.frequency.linearRampToValueAtTime(180, ctx.currentTime + config.duration);
   }
 
   gain.gain.setValueAtTime(soundVolume * 0.3, ctx.currentTime);

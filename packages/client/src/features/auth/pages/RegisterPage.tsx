@@ -49,7 +49,7 @@ export default function RegisterPage() {
 
         {error && <p className="text-sm text-destructive m-0">{error}</p>}
 
-        <Button type="submit" variant="primary" className="w-full" disabled={submitting}>
+        <Button type="submit" variant="primary" className="w-full" disabled={submitting} sound="click">
           <UserPlus size={18} className="inline-block align-middle mr-1.5" />
           {submitting ? '注册中...' : '注册'}
         </Button>

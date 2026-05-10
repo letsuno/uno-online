@@ -60,7 +60,7 @@ export default function AuthCallback() {
             className="w-full rounded-xl border-2 border-white/15 bg-card px-3.5 py-2.5 text-base text-foreground"
             autoFocus autoComplete="current-password" />
           {error && <p className="text-sm text-destructive m-0">{error}</p>}
-          <Button type="submit" variant="primary" disabled={submitting}>
+          <Button type="submit" variant="primary" disabled={submitting} sound="click">
             <LogIn size={18} className="inline-block align-middle mr-1.5" />
             {submitting ? '绑定中...' : '确认绑定'}
           </Button>

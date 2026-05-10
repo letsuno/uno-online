@@ -93,7 +93,7 @@ export default function LobbyPage() {
       {/* Main card */}
       <div className="w-full max-w-sm rounded-panel-ui bg-card/80 backdrop-blur-sm p-6 shadow-card shadow-tech flex flex-col gap-5">
         {/* Create room */}
-        <Button variant="primary" size="lg" className="w-full" onClick={handleCreate} disabled={loading}>
+        <Button variant="primary" size="lg" className="w-full" onClick={handleCreate} disabled={loading} sound="ready">
           {loading ? '创建中...' : '创建房间'}
         </Button>
 
@@ -122,7 +122,7 @@ export default function LobbyPage() {
           >
             <ClipboardPaste size={18} className="text-muted-foreground" />
           </button>
-          <Button variant="outline" onClick={handleJoin} disabled={loading} className="px-6">
+          <Button variant="outline" onClick={handleJoin} disabled={loading} className="px-6" sound="ready">
             加入
           </Button>
         </div>
@@ -148,6 +148,7 @@ export default function LobbyPage() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    sound="click"
                     onClick={() => {
                       connectSocket();
                       getSocket().emit('room:spectate', room.roomCode, (res: any) => {
@@ -199,11 +200,11 @@ export default function LobbyPage() {
       {/* Bottom actions */}
       <div className="flex items-center gap-3">
         {!user?.id.startsWith('ephemeral_') && (
-          <Button variant="ghost" size="sm" onClick={() => navigate('/profile')}>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/profile')} sound="click">
             <User size={14} className="mr-1 inline-block" /> 个人信息
           </Button>
         )}
-        <Button variant="ghost" size="sm" onClick={() => { logout(); navigate('/'); }}>
+        <Button variant="ghost" size="sm" onClick={() => { logout(); navigate('/'); }} sound="click">
           <LogOut size={14} className="mr-1 inline-block" /> 退出登录
         </Button>
       </div>
