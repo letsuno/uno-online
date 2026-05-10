@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import type { Card as CardType, Color } from '@uno-online/shared';
 import { sortHand } from '@uno-online/shared';
@@ -13,10 +13,31 @@ interface PlayerHandProps {
   onPlayCard: (cardId: string, chosenColor?: Color) => void;
 }
 
+interface HandLayout {
+  cardWidth: number;
+  cardHeight: number;
+  stride: number;
+  baseWidth: number;
+  padX: number;
+  scrollable: boolean;
+}
+
+const CARD_WIDTH = 70;
+const CARD_HEIGHT = 100;
+const CARD_WIDTH_SM = 52;
+const CARD_HEIGHT_SM = 76;
+const HAND_SIDE_PADDING = 20;
+const MIN_VISIBLE_STRIDE = 18;
+const COMFORTABLE_STRIDE = 78;
+const ACTIVE_LIFT = 34;
+const ACTIVE_SCALE = 1.12;
+const NEAR_EXPAND = 16;
+const TOUCH_DRAG_THRESHOLD = 5;
+
 function getSpreadAngle(count: number): number {
-  if (count <= 5) return 6;
-  if (count <= 10) return 4;
-  return 3;
+  if (count <= 5) return 5;
+  if (count <= 10) return 3;
+  return 1.8;
 }
 
 function isColorBoundary(sorted: CardType[], index: number): boolean {
@@ -30,8 +51,49 @@ function isColorBoundary(sorted: CardType[], index: number): boolean {
   return false;
 }
 
+function calculateHandLayout(count: number, containerWidth: number): HandLayout {
+  const compactViewport = containerWidth > 0 && containerWidth < 768;
+  const cardWidth = compactViewport ? CARD_WIDTH_SM : CARD_WIDTH;
+  const cardHeight = compactViewport ? CARD_HEIGHT_SM : CARD_HEIGHT;
+  if (count <= 0 || containerWidth <= 0) {
+    return { cardWidth, cardHeight, stride: cardWidth, baseWidth: cardWidth, padX: HAND_SIDE_PADDING, scrollable: false };
+  }
+
+  const available = Math.max(cardWidth, containerWidth - HAND_SIDE_PADDING * 2);
+  const fitStride = count === 1 ? cardWidth : (available - cardWidth) / (count - 1);
+  const stride = Math.min(COMFORTABLE_STRIDE, Math.max(MIN_VISIBLE_STRIDE, fitStride));
+  const baseWidth = cardWidth + stride * (count - 1);
+  const scrollable = baseWidth > available;
+  const padX = scrollable ? HAND_SIDE_PADDING : Math.max(HAND_SIDE_PADDING, (containerWidth - baseWidth) / 2);
+
+  return { cardWidth, cardHeight, stride, baseWidth, padX, scrollable };
+}
+
+function getNearestCardIndex(
+  clientX: number,
+  rect: DOMRect,
+  scrollLeft: number,
+  layout: HandLayout,
+  count: number,
+  boundaryOffsets: number[],
+): number | null {
+  if (count <= 0) return null;
+  const x = clientX - rect.left + scrollLeft - layout.padX;
+  let nearestIndex = 0;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < count; i++) {
+    const cardX = i * layout.stride + (boundaryOffsets[i] ?? 0);
+    const distance = Math.abs(x - cardX);
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearestIndex = i;
+    }
+  }
+  return nearestIndex;
+}
+
 export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
-  const handScrollRef = useRef<HTMLDivElement>(null);
+  const handViewportRef = useRef<HTMLDivElement>(null);
   const handDragRef = useRef({
     active: false,
     pointerId: -1,
@@ -49,14 +111,36 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
 
   const me = players.find((p) => p.id === userId);
   const isMyTurn = useIsMyTurn();
-
   const playableIds = usePlayableCardIds();
   const hintedIds = settings?.houseRules?.noHints ? new Set<string>() : playableIds;
-
   const sorted = useMemo(() => sortHand(me?.hand ?? []), [me?.hand]);
   const [pendingColorCardId, setPendingColorCardId] = useState<string | null>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [isDraggingHand, setIsDraggingHand] = useState(false);
 
-  if (!me) return null;
+  const layout = useMemo(
+    () => calculateHandLayout(sorted.length, containerWidth),
+    [sorted.length, containerWidth],
+  );
+
+  useEffect(() => {
+    const el = handViewportRef.current;
+    if (!el) return;
+
+    const update = () => setContainerWidth(el.clientWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    setActiveIndex((prev) => {
+      if (prev === null) return null;
+      return sorted.length === 0 ? null : Math.min(prev, sorted.length - 1);
+    });
+  }, [sorted.length]);
 
   const topCard = discardPile[discardPile.length - 1];
   const houseRules = settings?.houseRules;
@@ -71,13 +155,16 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
     );
   };
 
-  const spreadAngle = getSpreadAngle(sorted.length);
-  const center = (sorted.length - 1) / 2;
-  const [isDraggingHand, setIsDraggingHand] = useState(false);
+  const setActiveFromPointer = (clientX: number) => {
+    const el = handViewportRef.current;
+    if (!el) return;
+    const index = getNearestCardIndex(clientX, el.getBoundingClientRect(), el.scrollLeft, layout, sorted.length, boundaryOffsets);
+    setActiveIndex(index);
+  };
 
   const handleHandPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
-    const scrollEl = handScrollRef.current;
+    const scrollEl = handViewportRef.current;
     if (!scrollEl) return;
 
     handDragRef.current = {
@@ -88,15 +175,18 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
       hasDragged: false,
       suppressClick: false,
     };
+    setActiveFromPointer(event.clientX);
   };
 
   const handleHandPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    setActiveFromPointer(event.clientX);
+
     const drag = handDragRef.current;
-    const scrollEl = handScrollRef.current;
+    const scrollEl = handViewportRef.current;
     if (!drag.active || drag.pointerId !== event.pointerId || !scrollEl) return;
 
     const deltaX = event.clientX - drag.startX;
-    if (Math.abs(deltaX) > 3) {
+    if (Math.abs(deltaX) > TOUCH_DRAG_THRESHOLD) {
       drag.hasDragged = true;
       drag.suppressClick = true;
       setIsDraggingHand(true);
@@ -107,12 +197,15 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
     if (!drag.hasDragged) return;
 
     event.preventDefault();
-    scrollEl.scrollLeft = drag.scrollLeft - deltaX;
+    if (layout.scrollable) {
+      scrollEl.scrollLeft = drag.scrollLeft - deltaX;
+      setActiveFromPointer(event.clientX);
+    }
   };
 
   const handleHandPointerEnd = (event: React.PointerEvent<HTMLDivElement>) => {
     const drag = handDragRef.current;
-    const scrollEl = handScrollRef.current;
+    const scrollEl = handViewportRef.current;
     if (!drag.active || drag.pointerId !== event.pointerId) return;
 
     drag.active = false;
@@ -127,11 +220,12 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
 
   const handleHandPointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
     const drag = handDragRef.current;
-    const scrollEl = handScrollRef.current;
+    const scrollEl = handViewportRef.current;
     if (drag.pointerId === event.pointerId) {
       drag.active = false;
       drag.suppressClick = false;
       setIsDraggingHand(false);
+      setActiveIndex(null);
     }
     if (scrollEl?.hasPointerCapture(event.pointerId)) {
       scrollEl.releasePointerCapture(event.pointerId);
@@ -145,8 +239,37 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
     event.stopPropagation();
   };
 
+  const playSelectedCard = () => {
+    if (activeIndex === null || handDragRef.current.suppressClick) return;
+    const card = sorted[activeIndex];
+    if (!card || !playableIds.has(card.id)) return;
+    if (shouldPickColorBeforePlay(card)) {
+      setPendingColorCardId(card.id);
+      return;
+    }
+    onPlayCard(card.id);
+  };
+
+  const handHeight = layout.cardHeight + ACTIVE_LIFT + 28;
+  const spreadAngle = getSpreadAngle(sorted.length);
+  const center = (sorted.length - 1) / 2;
+  const boundaryGap = Math.min(10, Math.max(3, layout.stride * 0.35));
+  const boundaryOffsets = useMemo(() => {
+    let offset = 0;
+    return sorted.map((_, index) => {
+      if (isColorBoundary(sorted, index)) offset += boundaryGap;
+      return offset;
+    });
+  }, [sorted, boundaryGap]);
+  const contentWidth = Math.max(
+    containerWidth,
+    layout.baseWidth + layout.padX * 2 + (boundaryOffsets[boundaryOffsets.length - 1] ?? 0) + NEAR_EXPAND * 2,
+  );
+
+  if (!me) return null;
+
   return (
-    <div className="relative z-actions overflow-visible pt-10 -mt-10 pointer-events-none">
+    <div className="relative z-actions overflow-visible pt-12 -mt-12 pointer-events-none">
       {pendingColorCardId && (
         <ColorPicker
           onPick={(color) => {
@@ -156,49 +279,73 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
         />
       )}
       <div
-        ref={handScrollRef}
-        className={`relative rounded-t-2xl px-5 pt-8 pb-hand-pb flex justify-start overflow-x-auto overflow-y-visible scrollbar-hidden pointer-events-auto touch-pan-x ${
-          isDraggingHand ? 'cursor-grabbing' : 'cursor-grab'
+        ref={handViewportRef}
+        className={`relative rounded-t-2xl px-0 pt-8 pb-hand-pb overflow-x-auto overflow-y-visible scrollbar-hidden pointer-events-auto touch-none ${
+          isDraggingHand ? 'cursor-grabbing' : 'cursor-default'
         }`}
+        style={{ height: handHeight }}
         onPointerDown={handleHandPointerDown}
         onPointerMove={handleHandPointerMove}
         onPointerUp={handleHandPointerEnd}
         onPointerCancel={handleHandPointerCancel}
+        onPointerLeave={() => {
+          if (!handDragRef.current.active) setActiveIndex(null);
+        }}
         onClickCapture={handleHandClickCapture}
+        onClick={playSelectedCard}
       >
-        <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-2xs text-muted-foreground whitespace-nowrap">
+        <span className="absolute top-1 left-1/2 -translate-x-1/2 text-2xs text-muted-foreground whitespace-nowrap pointer-events-none">
           我的手牌 · {sorted.length}张
         </span>
-        <div className="flex min-w-full w-max justify-center items-end overflow-visible">
+        <div
+          className="relative overflow-visible"
+          style={{ width: contentWidth, height: handHeight }}
+        >
           <AnimatePresence mode="popLayout">
             {sorted.map((card, i) => {
-              const angle = (i - center) * spreadAngle;
               const isPlayable = playableIds.has(card.id);
               const isDimmed = isMyTurn && phase === 'playing' && !hintedIds.has(card.id);
-              const boundary = isColorBoundary(sorted, i);
+              const isActive = activeIndex === i;
+              const distance = activeIndex === null ? Number.POSITIVE_INFINITY : Math.abs(i - activeIndex);
+              const side = activeIndex === null ? 0 : Math.sign(i - activeIndex);
+              const localExpand =
+                activeIndex === null
+                  ? 0
+                  : side * (
+                    distance === 1 ? NEAR_EXPAND :
+                      distance === 2 ? NEAR_EXPAND * 0.45 :
+                        distance === 0 ? 0 : 0
+                  );
+              const boundaryOffset = boundaryOffsets[i] ?? 0;
+              const x = layout.padX + i * layout.stride + boundaryOffset + localExpand;
+              const angle = isActive ? 0 : (i - center) * spreadAngle * Math.min(1, layout.stride / 36);
+              const y = isActive ? 0 : (isPlayable ? ACTIVE_LIFT - 10 : ACTIVE_LIFT);
+
               return (
                 <AnimatedCard
                   key={card.id}
                   layoutId={card.id}
                   card={card}
                   playable={hintedIds.has(card.id)}
-                  clickable={isPlayable}
+                  clickable={false}
                   dimmed={isDimmed}
-                  onClick={() => {
-                    if (!isPlayable) return;
-                    if (shouldPickColorBeforePlay(card)) {
-                      setPendingColorCardId(card.id);
-                      return;
-                    }
-                    onPlayCard(card.id);
+                  className="absolute left-0 top-8 pointer-events-none"
+                  cardClassName="!transition-none pointer-events-none"
+                  forceCornerLabel
+                  disableHoverLift
+                  animate={{
+                    x,
+                    y,
+                    rotate: angle,
+                    scale: isActive ? ACTIVE_SCALE : 1,
+                    opacity: 1,
+                    zIndex: isActive ? 300 : isPlayable ? 120 + i : i,
                   }}
-                  className="snap-center"
+                  transition={{ type: 'spring', stiffness: 360, damping: 32, mass: 0.8 }}
                   style={{
-                    transform: `rotate(${angle}deg)`,
+                    width: layout.cardWidth,
+                    height: layout.cardHeight,
                     transformOrigin: 'bottom center',
-                    marginLeft: boundary ? 12 : 4,
-                    marginBottom: isPlayable ? 10 : 0,
-                    zIndex: isPlayable ? 100 + i : i,
                   }}
                 />
               );
