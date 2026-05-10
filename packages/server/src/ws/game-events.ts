@@ -144,6 +144,7 @@ async function emitTerminalStateIfNeeded(
   turnTimer: TurnTimer,
   redis: KvStore,
   db: Kysely<Database>,
+  sessions: Map<string, GameSession>,
 ): Promise<boolean> {
   const state = session.getFullState();
   if (state.phase !== 'round_end' && state.phase !== 'game_over') return false;
@@ -158,8 +159,26 @@ async function emitTerminalStateIfNeeded(
   if (state.phase === 'round_end') {
     const scores = Object.fromEntries(state.players.map((p) => [p.id, p.score]));
     nextRoundVotes.delete(roomCode);
-    io.to(roomCode).emit('game:next_round_vote', getNextRoundVoteState(roomCode, session));
     session.recordEvent(GameEventType.ROUND_END, { winnerId: state.winnerId!, scores }, null);
+
+    const autopilotIds = state.players.filter((p) => p.autopilot).map((p) => p.id);
+    if (autopilotIds.length > 0) {
+      const votes = nextRoundVotes.get(roomCode) ?? new Set<string>();
+      for (const id of autopilotIds) votes.add(id);
+      nextRoundVotes.set(roomCode, votes);
+    }
+
+    const voteState = getNextRoundVoteState(roomCode, session);
+    io.to(roomCode).emit('game:next_round_vote', voteState);
+
+    if (voteState.votes >= voteState.required) {
+      const room = await getRoom(redis, roomCode);
+      const ownerIsAutopilot = state.players.some((p) => p.id === room?.ownerId && p.autopilot);
+      if (ownerIsAutopilot) {
+        await startNextRound(io, redis, roomCode, session, turnTimer, sessions);
+        return true;
+      }
+    }
   }
 
   if (state.phase === 'game_over') {
@@ -215,7 +234,7 @@ export function registerGameEvents(
     await touchRoomActivity(redis, roomCode);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session, redis);
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db))) {
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions))) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
     callback?.({ success: true });
@@ -250,7 +269,7 @@ export function registerGameEvents(
     if (
       (beforeState.pendingPenaltyDraws ?? 0) > 0 &&
       (afterState.pendingPenaltyDraws ?? 0) === 0 &&
-      !(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db))
+      !(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions))
     ) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
@@ -282,7 +301,7 @@ export function registerGameEvents(
     await touchRoomActivity(redis, roomCode);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session, redis);
-    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db)) {
+    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions)) {
       return callback?.({ success: true });
     }
     callback?.({ success: true });
@@ -316,7 +335,7 @@ export function registerGameEvents(
     await touchRoomActivity(redis, roomCode);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session, redis);
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db))) {
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions))) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
     callback?.({ success: true });
@@ -333,7 +352,7 @@ export function registerGameEvents(
     await touchRoomActivity(redis, roomCode);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session, redis);
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db))) {
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions))) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
     callback?.({ success: true });
@@ -354,7 +373,7 @@ export function registerGameEvents(
     await touchRoomActivity(redis, roomCode);
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session, redis);
-    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db)) {
+    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions)) {
       // terminal state already emitted
     } else {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);

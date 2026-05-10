@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Eye, Volume2, VolumeX, Spade, DoorOpen, Bot, HelpCircle } from 'lucide-react';
 import TurnTimer from './TurnTimer';
 import { useSettingsStore } from '@/shared/stores/settings-store';
@@ -7,6 +8,8 @@ import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { getSocket } from '@/shared/socket';
 import { cn } from '@/shared/lib/utils';
 import { BUILD_VERSION } from '@/shared/build-info';
+
+const AUTOPILOT_COOLDOWN_MS = 3000;
 
 interface TopBarProps { roomCode: string; }
 
@@ -18,9 +21,13 @@ export default function TopBar({ roomCode }: TopBarProps) {
   const toggleInfoDrawer = useGameStore((s) => s.toggleInfoDrawer);
   const players = useGameStore((s) => s.players);
   const myAutopilot = players.find(p => p.id === userId)?.autopilot ?? false;
+  const [autopilotCooldown, setAutopilotCooldown] = useState(false);
 
   const handleToggleAutopilot = () => {
+    if (autopilotCooldown) return;
+    setAutopilotCooldown(true);
     getSocket().emit('player:toggle-autopilot', () => {});
+    setTimeout(() => setAutopilotCooldown(false), AUTOPILOT_COOLDOWN_MS);
   };
 
   const handleDissolve = () => {
@@ -45,11 +52,12 @@ export default function TopBar({ roomCode }: TopBarProps) {
         </button>
         <button
           onClick={handleToggleAutopilot}
+          disabled={autopilotCooldown}
           className={cn(
             'bg-transparent border-none text-sm cursor-pointer',
-            myAutopilot ? 'text-accent' : 'text-muted-foreground'
+            autopilotCooldown ? 'opacity-40 cursor-not-allowed' : myAutopilot ? 'text-accent' : 'text-muted-foreground'
           )}
-          title={myAutopilot ? '关闭自动托管' : '开启自动托管'}
+          title={autopilotCooldown ? '操作冷却中...' : myAutopilot ? '关闭自动托管' : '开启自动托管'}
         >
           <Bot size={16} />
         </button>

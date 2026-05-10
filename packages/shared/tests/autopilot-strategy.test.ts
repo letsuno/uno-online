@@ -101,6 +101,8 @@ describe('chooseAutopilotAction after drawing', () => {
         { id: 'p1', name: 'Alice', hand: [drawn], score: 0, connected: true, autopilot: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
       ],
+      deckLeft: [makeCard('number', 'green', { value: 3, id: 'deck1' })],
+      deckLeftInitialCount: 1,
       lastAction: { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const },
       settings: {
         turnTimeLimit: 30,

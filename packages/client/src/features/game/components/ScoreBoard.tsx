@@ -1,4 +1,4 @@
-import { Trophy, BarChart3, Crown } from 'lucide-react';
+import { Trophy, BarChart3, Crown, Check } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useRoomStore } from '@/shared/stores/room-store';
@@ -51,16 +51,27 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby }: Sc
           <thead>
             <tr className="text-muted-foreground text-xs">
               <th className="text-left px-2 py-1">玩家</th>
+              {!isGameOver && <th className="px-2 py-1">状态</th>}
               <th className="text-right px-2 py-1">分数</th>
             </tr>
           </thead>
           <tbody>
-            {sorted.map((p) => (
-              <tr key={p.id} className={cn(p.id === winnerId ? 'text-accent' : 'text-foreground')}>
-                <td className="px-2 py-1.5 text-left">{p.id === winnerId && <Crown size={14} className="inline align-middle mr-1" />}{p.name}</td>
-                <td className="px-2 py-1.5 text-right font-bold">{p.score}</td>
-              </tr>
-            ))}
+            {sorted.map((p) => {
+              const ready = !!vote?.voters.includes(p.id);
+              return (
+                <tr key={p.id} className={cn(p.id === winnerId ? 'text-accent' : 'text-foreground')}>
+                  <td className="px-2 py-1.5 text-left">{p.id === winnerId && <Crown size={14} className="inline align-middle mr-1" />}{p.name}</td>
+                  {!isGameOver && (
+                    <td className="px-2 py-1.5 text-center">
+                      {ready
+                        ? <Check size={14} className="inline text-green-400" />
+                        : <span className="text-xs text-muted-foreground">等待中</span>}
+                    </td>
+                  )}
+                  <td className="px-2 py-1.5 text-right font-bold">{p.score}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {!isGameOver && (
