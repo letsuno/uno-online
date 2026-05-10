@@ -28,7 +28,7 @@ export async function createApp(config: Config) {
   const ctx: PluginContext = { db: getDb(), kv, io, config };
   await loadPlugins(fastify, ctx);
 
-  const wsContext = setupSocketHandlers(io, kv, config.jwtSecret);
+  const wsContext = setupSocketHandlers(io, kv, config.jwtSecret, config.roomIdleTimeoutMs);
 
   return { fastify, io, kv, ...wsContext };
 }

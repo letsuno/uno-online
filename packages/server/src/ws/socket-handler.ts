@@ -12,11 +12,13 @@ import { checkRateLimit, clearRateLimit } from './rate-limiter';
 import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws';
 import { setupSpectateHandlers } from '../plugins/core/spectate/ws';
 import { getDb } from '../db/database';
+import { dissolveRoom } from './room-lifecycle';
 
 const RECONNECT_TIMEOUT_MS = 60_000;
 const AUTOPILOT_THINK_MS = 2_000;
+const ROOM_IDLE_SWEEP_MS = 60_000;
 
-export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecret: string) {
+export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecret: string, roomIdleTimeoutMs: number) {
   const roomManager = new RoomManager(redis);
   const turnTimer = new TurnTimer();
   const sessions = new Map<string, GameSession>();
@@ -93,6 +95,26 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       }
     }
   }
+
+  async function cleanupIdleRooms() {
+    const roomKeys = (await redis.keys('room:*')).filter(k => !k.includes(':players') && !k.includes(':state'));
+    const now = Date.now();
+    for (const key of roomKeys) {
+      const roomCode = key.replace('room:', '');
+      const room = await getRoom(redis, roomCode);
+      if (!room) continue;
+      const lastActivityAt = Date.parse(room.lastActivityAt);
+      if (!Number.isFinite(lastActivityAt) || now - lastActivityAt < roomIdleTimeoutMs) continue;
+
+      stopAutoPlayForRoom(roomCode);
+      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, 'idle_timeout');
+    }
+  }
+
+  const idleCleanupInterval = setInterval(() => {
+    cleanupIdleRooms().catch(() => {});
+  }, ROOM_IDLE_SWEEP_MS);
+  idleCleanupInterval.unref?.();
 
   io.on('connection', async (socket) => {
     const userId = socket.data.user.userId;
@@ -242,6 +264,9 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
             const room = await getRoom(redis, roomCode);
             const players = await getRoomPlayers(redis, roomCode);
             io.to(roomCode).emit('room:updated', { players, room });
+          } else {
+            sessions.delete(roomCode);
+            turnTimer.stop(roomCode);
           }
         }, RECONNECT_TIMEOUT_MS);
         disconnectTimers.set(userId, timer);

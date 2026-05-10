@@ -11,6 +11,8 @@ import { useGameLogTracker } from '../hooks/useGameLogTracker';
 import { useAutoPlay } from '../hooks/useAutoPlay';
 import { useGameActions } from '../hooks/useGameActions';
 import { playSound } from '@/shared/sound/sound-manager';
+import { getSocket } from '@/shared/socket';
+import { useRoomStore } from '@/shared/stores/room-store';
 import TopBar from '../components/TopBar';
 import GameTable from '../components/GameTable';
 import GameActions from '../components/GameActions';
@@ -29,6 +31,8 @@ export default function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
   const phase = useGameStore((s) => s.phase);
+  const clearGame = useGameStore((s) => s.clearGame);
+  const clearRoom = useRoomStore((s) => s.clearRoom);
 
   const isMyTurn = useIsMyTurn();
   const playableIds = usePlayableCardIds();
@@ -87,6 +91,14 @@ export default function GamePage() {
     if (!isSelectionAllowed(event.target)) {
       event.preventDefault();
     }
+  };
+
+  const backToLobby = () => {
+    getSocket().emit('room:leave', () => {
+      clearRoom();
+      clearGame();
+      navigate('/lobby');
+    });
   };
 
   if (!phase) {
@@ -155,7 +167,7 @@ export default function GamePage() {
       {(phase === 'round_end' || phase === 'game_over') && <Confetti />}
       {needsColorPick && <ColorPicker onPick={chooseColor} />}
       {showScoreBoard && (
-        <ScoreBoard onPlayAgain={playAgain} onRematch={rematch} onBackToLobby={() => navigate('/lobby')} />
+        <ScoreBoard onPlayAgain={playAgain} onRematch={rematch} onBackToLobby={backToLobby} />
       )}
     </div>
   );
