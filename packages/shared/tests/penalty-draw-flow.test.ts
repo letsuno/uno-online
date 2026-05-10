@@ -119,7 +119,7 @@ describe('penalty draw flow', () => {
   });
 
   it('requires all 4 wild draw four penalty cards to be drawn after accepting', () => {
-    const deck = Array.from({ length: 6 }, (_, i) => makeCard('number', 'blue', { value: i, id: `wd4_draw_${i}` }));
+    const deckCards = Array.from({ length: 6 }, (_, i) => makeCard('number', 'blue', { value: i, id: `wd4_draw_${i}` }));
     const state = makeState({
       phase: 'challenging',
       players: [
@@ -129,7 +129,10 @@ describe('penalty draw flow', () => {
       ],
       currentPlayerIndex: 0,
       pendingDrawPlayerId: 'p2',
-      deck,
+      deckLeft: deckCards,
+      deckRight: [],
+      deckLeftInitialCount: 6,
+      deckRightInitialCount: 0,
       discardPile: [makeCard('wild_draw_four', null, { id: 'wd4' })],
     });
 
@@ -137,7 +140,7 @@ describe('penalty draw flow', () => {
     expect(next.pendingPenaltyDraws).toBe(4);
 
     for (let expectedRemaining = 3; expectedRemaining >= 0; expectedRemaining--) {
-      next = applyAction(next, { type: 'DRAW_CARD', playerId: 'p2' });
+      next = applyAction(next, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
       expect(next.pendingPenaltyDraws).toBe(expectedRemaining);
     }
 
@@ -165,10 +168,13 @@ describe('penalty draw flow', () => {
         },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
       ],
-      deck: [
+      deckLeft: [
         makeCard('number', 'blue', { value: 1, id: 'catch_draw_1' }),
         makeCard('number', 'green', { value: 2, id: 'catch_draw_2' }),
       ],
+      deckRight: [],
+      deckLeftInitialCount: 2,
+      deckRightInitialCount: 0,
     });
 
     const caught = applyAction(state, { type: 'CATCH_UNO', catcherId: 'p1', targetId: 'p2' });
@@ -178,7 +184,7 @@ describe('penalty draw flow', () => {
     const immediateCall = applyAction(caught, { type: 'CALL_UNO', playerId: 'p2' });
     expect(immediateCall).toStrictEqual(caught);
 
-    const afterFirstDraw = applyAction(caught, { type: 'DRAW_CARD', playerId: 'p2' });
+    const afterFirstDraw = applyAction(caught, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
     expect(afterFirstDraw.pendingPenaltyDraws).toBe(1);
     expect(afterFirstDraw.players[1]!.unoCaught).toBe(false);
 
