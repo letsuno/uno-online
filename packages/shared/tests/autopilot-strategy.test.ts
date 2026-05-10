@@ -113,3 +113,48 @@ describe('chooseAutopilotAction after drawing', () => {
     ]);
   });
 });
+
+describe('chooseAutopilotAction for seven swap', () => {
+  it('chooses the player with the fewest cards as the swap target', () => {
+    const state = makeState({
+      phase: 'choosing_swap_target',
+      players: [
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'red', { value: 1, id: 'p1c1' })],
+          score: 0,
+          connected: true,
+          autopilot: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [
+            makeCard('number', 'blue', { value: 1, id: 'p2c1' }),
+            makeCard('number', 'blue', { value: 2, id: 'p2c2' }),
+            makeCard('number', 'blue', { value: 3, id: 'p2c3' }),
+          ],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 1, id: 'p3c1' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+        },
+      ],
+    });
+
+    expect(chooseAutopilotAction(state, 'p1')).toEqual([
+      { type: 'CHOOSE_SWAP_TARGET', playerId: 'p1', targetId: 'p3' },
+    ]);
+  });
+});
