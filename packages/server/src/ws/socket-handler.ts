@@ -13,6 +13,7 @@ import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/
 import { setupSpectateHandlers } from '../plugins/core/spectate/ws';
 import { getDb } from '../db/database';
 import { dissolveRoom } from './room-lifecycle';
+import { registerVoicePresenceEvents, removeVoicePresence } from './voice-presence';
 
 const RECONNECT_TIMEOUT_MS = 60_000;
 const AUTOPILOT_THINK_MS = 2_000;
@@ -186,6 +187,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
     registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions, getDb());
     registerGameEvents(socket, io, redis, turnTimer, sessions, getDb());
     registerInteractionEvents(socket, io);
+    registerVoicePresenceEvents(socket, io);
 
     socket.on('player:toggle-autopilot', async (callback) => {
       const roomCode = socket.data.roomCode;
@@ -214,6 +216,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       clearThrowTimestamp(userId);
       const roomCode = socket.data.roomCode;
       if (!roomCode) return;
+      removeVoicePresence(io, roomCode, userId);
 
       const session = sessions.get(roomCode);
       if (session) {

@@ -2,6 +2,7 @@ import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import GoogleRing from '@/shared/components/ui/GoogleRing';
+import PlayerVoiceStatus from '@/shared/voice/PlayerVoiceStatus';
 import { cn, getRoleColor } from '@/shared/lib/utils';
 
 export default function PlayerListPanel() {
@@ -59,6 +60,7 @@ export default function PlayerListPanel() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  <PlayerVoiceStatus playerId={p.id} playerName={p.name} isSelf={isMe} />
                   <span className="text-2xs text-muted-foreground">{p.handCount}</span>
                   {!p.connected && <span className="w-1.5 h-1.5 rounded-full bg-destructive" />}
                   {isActive && <span className="text-2xs">◀</span>}

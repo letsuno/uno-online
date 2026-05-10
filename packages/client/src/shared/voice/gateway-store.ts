@@ -95,6 +95,13 @@ type VoiceOpusFrame = {
 
 type VoiceMode = 'vad' | 'ptt'
 
+export type PlayerVoicePresence = {
+  inVoice: boolean
+  micEnabled: boolean
+  speakerMuted: boolean
+  speaking: boolean
+}
+
 type SavedCredentials = {
   serverId: string
   username: string
@@ -114,7 +121,10 @@ type GatewayStore = {
   channelsById: Record<number, ChannelState>
   usersById: Record<number, UserState>
   speakingByUserId: Record<number, boolean>
+  playerVoicePresence: Record<string, PlayerVoicePresence>
   selfSpeaking: boolean
+  micEnabled: boolean
+  speakerMuted: boolean
   rootChannelId: number | null
   selfUserId: number | null
 
@@ -160,6 +170,9 @@ type GatewayStore = {
   setVoiceSink: (sink: ((frame: VoiceOpusFrame) => void) | null) => void
   sendMicOpus: (opus: Uint8Array, params?: { target?: number }) => void
   sendMicEnd: () => void
+  setPlayerVoicePresence: (presence: Record<string, PlayerVoicePresence>) => void
+  upsertPlayerVoicePresence: (userId: string, presence: PlayerVoicePresence) => void
+  clearPlayerVoicePresence: () => void
   selectChannel: (channelId: number) => void
   joinSelectedChannel: () => void
   listenChannel: (channelId: number) => void
@@ -180,6 +193,8 @@ type GatewayStore = {
   setPlaybackStats: (stats: PlaybackStats | null) => void
   setCaptureStats: (stats: CaptureStats | null) => void
   setSelfSpeaking: (speaking: boolean) => void
+  setMicEnabled: (enabled: boolean) => void
+  setSpeakerMuted: (muted: boolean) => void
   setRememberCredentials: (val: boolean) => void
   setSavedCredentials: (creds: SavedCredentials | null) => void
 }
@@ -308,7 +323,10 @@ export const useGatewayStore = create<GatewayStore>()(
       channelsById: {},
       usersById: {},
       speakingByUserId: {},
+      playerVoicePresence: {},
       selfSpeaking: false,
+      micEnabled: false,
+      speakerMuted: false,
       rootChannelId: null,
       selfUserId: null,
 
@@ -998,6 +1016,12 @@ export const useGatewayStore = create<GatewayStore>()(
         } catch {}
       },
 
+      setPlayerVoicePresence: (presence) => set({ playerVoicePresence: presence }),
+      upsertPlayerVoicePresence: (userId, presence) => set((s) => ({
+        playerVoicePresence: { ...s.playerVoicePresence, [userId]: presence },
+      })),
+      clearPlayerVoicePresence: () => set({ playerVoicePresence: {} }),
+
       selectChannel: (channelId) => set({ selectedChannelId: channelId }),
 
       joinSelectedChannel: () => {
@@ -1081,6 +1105,8 @@ export const useGatewayStore = create<GatewayStore>()(
         })
       },
       setSelfSpeaking: (speaking) => set({ selfSpeaking: speaking }),
+      setMicEnabled: (enabled) => set({ micEnabled: enabled }),
+      setSpeakerMuted: (muted) => set({ speakerMuted: muted }),
       setRememberCredentials: (val) => {
         set({ rememberCredentials: val })
         if (!val) set({ savedCredentials: null })

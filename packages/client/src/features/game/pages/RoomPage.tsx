@@ -5,8 +5,10 @@ import { cn, getRoleColor } from '@/shared/lib/utils';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { useGameStore } from '../stores/game-store';
-import { getSocket, connectSocket } from '@/shared/socket';
+import { getSocket, connectSocket, refreshVoicePresence } from '@/shared/socket';
 import VoicePanel from '@/shared/voice/VoicePanel';
+import PlayerVoiceStatus from '@/shared/voice/PlayerVoiceStatus';
+import { leaveVoiceSession } from '@/shared/voice/voice-runtime';
 import { useToastStore } from '@/shared/stores/toast-store';
 import HouseRulesPanel from '../components/HouseRulesPanel';
 import { DEFAULT_HOUSE_RULES } from '@uno-online/shared';
@@ -23,12 +25,14 @@ export default function RoomPage() {
   useEffect(() => {
     connectSocket();
     const socket = getSocket();
+    refreshVoicePresence();
 
     if (useRoomStore.getState().players.length === 0 && roomCode) {
       socket.emit('room:rejoin', roomCode, (res: any) => {
         if (res.success) {
           if (res.players && res.room) {
             setRoom(roomCode, res.players, res.room);
+            refreshVoicePresence();
           }
           if (res.gameState) {
             setGameState(res.gameState);
@@ -42,6 +46,7 @@ export default function RoomPage() {
 
     const onState = (view: any) => {
       setGameState(view);
+      refreshVoicePresence();
       navigate(`/game/${roomCode}`);
     };
     socket.on('game:state', onState);
@@ -75,6 +80,8 @@ export default function RoomPage() {
 
   const leaveRoom = () => {
     if (!window.confirm('确定要离开房间吗？')) return;
+    getSocket().emit('voice:presence', { inVoice: false, micEnabled: false, speakerMuted: false, speaking: false });
+    leaveVoiceSession();
     getSocket().emit('room:leave', () => {
       clearRoom();
       navigate('/lobby');
@@ -103,7 +110,11 @@ export default function RoomPage() {
         </h3>
         {players.map((p) => (
           <div key={p.userId} className="flex items-center justify-between border-b border-white/5 py-2">
-            <span style={getRoleColor(p.role) ? { color: getRoleColor(p.role) } : undefined}>{p.nickname}{room?.ownerId === p.userId && <> <Crown size={14} className="inline-block align-middle" /></>}</span>
+            <span className="flex min-w-0 flex-1 items-center gap-1.5" style={getRoleColor(p.role) ? { color: getRoleColor(p.role) } : undefined}>
+              <span className="truncate">{p.nickname}</span>
+              {room?.ownerId === p.userId && <Crown size={14} className="shrink-0" />}
+              <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={p.userId === user?.id} className="shrink-0" />
+            </span>
             <span className={cn('text-xs', p.ready ? 'text-uno-green' : 'text-muted-foreground')}>
               {p.ready ? <><Check size={12} className="inline-block align-middle" /> 已准备</> : '未准备'}
             </span>

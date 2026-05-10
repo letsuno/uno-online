@@ -7,6 +7,7 @@ import { deleteRoom } from '../plugins/core/room/store';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { persistGameOnDissolve } from './game-events';
 import type { SocketData } from './types';
+import { clearVoicePresence } from './voice-presence';
 
 export async function dissolveRoom(
   io: SocketIOServer,
@@ -30,6 +31,7 @@ export async function dissolveRoom(
   session?.clearChatHistory();
   sessions.delete(roomCode);
   io.to(roomCode).emit('chat:cleared');
+  clearVoicePresence(io, roomCode);
   io.to(roomCode).emit('room:dissolved', { reason });
 
   const sockets = await io.in(roomCode).fetchSockets();
