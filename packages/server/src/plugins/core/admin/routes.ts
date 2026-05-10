@@ -110,6 +110,51 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
     return { success: true };
   });
 
+  // Update user profile (username / nickname)
+  fastify.patch<{
+    Params: { id: string };
+    Body: { username?: string; nickname?: string };
+  }>('/admin/users/:id/profile', { preHandler }, async (request, reply) => {
+    const { id } = request.params;
+    const { username, nickname } = request.body;
+
+    if (!username && !nickname) {
+      return reply.code(400).send({ error: 'Nothing to update' });
+    }
+
+    const updates: Record<string, unknown> = { updatedAt: sql`datetime('now')` };
+
+    if (username) {
+      const trimmed = username.trim();
+      if (trimmed.length < 2 || trimmed.length > 20) {
+        return reply.code(400).send({ error: 'Username must be 2-20 characters' });
+      }
+      const db = getDb();
+      const existing = await db.selectFrom('users').select('id').where('username', '=', trimmed).where('id', '!=', id).executeTakeFirst();
+      if (existing) {
+        return reply.code(409).send({ error: 'Username already taken' });
+      }
+      updates.username = trimmed;
+    }
+
+    if (nickname) {
+      const trimmed = nickname.trim();
+      if (trimmed.length < 1 || trimmed.length > 20) {
+        return reply.code(400).send({ error: 'Nickname must be 1-20 characters' });
+      }
+      updates.nickname = trimmed;
+    }
+
+    const db = getDb();
+    const result = await db.updateTable('users').set(updates).where('id', '=', id).execute();
+
+    if (!result.length || Number(result[0]!.numUpdatedRows) === 0) {
+      return reply.code(404).send({ error: 'User not found' });
+    }
+
+    return { success: true };
+  });
+
   // Active rooms list
   fastify.get('/admin/rooms', { preHandler }, async () => {
     const roomKeys = await kv.keys('room:*');
