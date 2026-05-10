@@ -196,6 +196,8 @@ function handlePlayCard(
   // Must be the current player
   if (action.playerId !== currentPlayerId(state)) return state;
 
+  if ((state.pendingPenaltyDraws ?? 0) > 0) return state;
+
   const actingPlayerIdx = state.currentPlayerIndex;
   const actingPlayer = state.players[actingPlayerIdx]!;
 
@@ -343,6 +345,7 @@ function handlePass(
   if ((state.pendingPenaltyDraws ?? 0) > 0) return state;
 
   if (action.playerId !== currentPlayerId(state)) return state;
+  if ((state.pendingPenaltyDraws ?? 0) > 0) return state;
 
   // Can only pass after drawing
   if (

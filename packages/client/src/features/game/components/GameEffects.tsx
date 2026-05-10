@@ -22,6 +22,7 @@ interface Effect {
   penaltyIndex?: number;
   penaltyAvatarUrl?: string | null;
   penaltyCount?: number;
+  drawCount?: number;
 }
 
 const EFFECT_DURATION = 1000;
@@ -63,6 +64,8 @@ export default function GameEffects() {
   const lastAction = useGameStore((s) => s.lastAction);
   const pendingDrawPlayerId = useGameStore((s) => s.pendingDrawPlayerId);
   const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
+  const drawStack = useGameStore((s) => s.drawStack);
+  const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
   const prevTopCardRef = useRef<string | undefined>();
   const prevActionRef = useRef<typeof lastAction>(null);
   const prevPendingPenaltyRef = useRef(0);
@@ -79,6 +82,10 @@ export default function GameEffects() {
     addEffect({ type, text, targetName, targetIndex, targetAvatarUrl });
   };
 
+  const addDrawEffect = (drawCount: number, targetName?: string, targetIndex?: number, targetAvatarUrl?: string | null) => {
+    addEffect({ type: 'draw', text: `+${drawCount}!`, targetName, targetIndex, targetAvatarUrl, drawCount });
+  };
+
   const findPlayerIndex = (id: string) => players.findIndex((p) => p.id === id);
 
   const getNextPlayerFromActor = () => {
@@ -90,6 +97,11 @@ export default function GameEffects() {
     const targetIdx = ((actorIdx + step) % players.length + players.length) % players.length;
     const target = players[targetIdx];
     return target ? { player: target, index: targetIdx } : null;
+  };
+
+  const getStackDrawTarget = () => {
+    const player = players[currentPlayerIndex];
+    return player ? { player, index: currentPlayerIndex } : null;
   };
 
   useEffect(() => {
@@ -109,19 +121,25 @@ export default function GameEffects() {
       }
       playSound('reverse');
     } else if (topCard.type === 'draw_two') {
-      addTargetEffect('draw', '+2!', affected?.player.name, affected?.index, affected?.player.avatarUrl);
+      const stacked = drawStack > 0 ? getStackDrawTarget() : null;
+      const drawCount = drawStack > 0 ? drawStack : 2;
+      const target = stacked ?? affected;
+      addDrawEffect(drawCount, target?.player.name, target?.index, target?.player.avatarUrl);
       playSound('draw_two');
     } else if (topCard.type === 'wild_draw_four') {
+      const stacked = drawStack > 0 ? getStackDrawTarget() : null;
       const pendingIdx = pendingDrawPlayerId ? findPlayerIndex(pendingDrawPlayerId) : -1;
       const pendingPlayer = pendingIdx >= 0 ? players[pendingIdx] : affected?.player;
-      addTargetEffect('draw', '+4!', pendingPlayer?.name, pendingIdx >= 0 ? pendingIdx : affected?.index, pendingPlayer?.avatarUrl);
+      const target = stacked ?? (pendingPlayer ? { player: pendingPlayer, index: pendingIdx >= 0 ? pendingIdx : affected?.index } : affected);
+      const drawCount = drawStack > 0 ? drawStack : 4;
+      addDrawEffect(drawCount, target?.player.name, target?.index, target?.player.avatarUrl);
       playSound('wild');
     } else if (topCard.type === 'wild') {
       playSound('wild');
     } else {
       playSound('play_card');
     }
-  }, [topCard?.id, lastAction, players, direction, pendingDrawPlayerId]);
+  }, [topCard?.id, lastAction, players, direction, pendingDrawPlayerId, drawStack, currentPlayerIndex]);
 
   useEffect(() => {
     if (pendingPenaltyDraws > 0 && prevPendingPenaltyRef.current <= 0) {
@@ -291,6 +309,28 @@ export default function GameEffects() {
                 >
                   {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} avatarUrl={effect.targetAvatarUrl} name={effect.targetName} />}
                   <span className="text-2xl font-bold text-destructive">→ {effect.targetName}</span>
+                </motion.div>
+              )}
+              {effect.targetName && effect.type === 'draw' && effect.drawCount && effect.drawCount > 0 && (
+                <motion.div
+                  initial={{ y: -8, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.16, duration: 0.3 }}
+                  className="flex items-center gap-2"
+                >
+                  <div className="flex -space-x-2">
+                    {Array.from({ length: Math.min(effect.drawCount, 6) }).map((_, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ x: -16, opacity: 0, rotate: -8 }}
+                        animate={{ x: 0, opacity: 1, rotate: i * 4 - 8 }}
+                        transition={{ delay: 0.05 + i * 0.04, duration: 0.2 }}
+                      >
+                        <CardBack small />
+                      </motion.div>
+                    ))}
+                  </div>
+                  <span className="text-2xl font-black text-destructive text-shadow-bold">x{effect.drawCount}</span>
                 </motion.div>
               )}
               {effect.type === 'challenge' && (

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { initializeGame, applyAction, getPlayableCards } from '../src/rules/index';
-import type { GameState, GameAction } from '../src/types/game';
+import { initializeGame, applyAction, chooseAutopilotAction } from '../src/rules/index';
+import type { GameState } from '../src/types/game';
 
 function playOneRound(state: GameState, maxTurns = 500): GameState {
   let current = state;
@@ -16,35 +16,20 @@ function playOneRound(state: GameState, maxTurns = 500): GameState {
     }
   }
 
-  while (current.phase === 'playing' && turns < maxTurns) {
+  while (
+    current.phase !== 'round_end' &&
+    current.phase !== 'game_over' &&
+    turns < maxTurns
+  ) {
     turns++;
-    const player = current.players[current.currentPlayerIndex]!;
-    const topCard = current.discardPile[current.discardPile.length - 1]!;
-    const playable = getPlayableCards(player.hand, topCard, current.currentColor!);
+    const playerId = current.phase === 'challenging'
+      ? current.pendingDrawPlayerId!
+      : current.players[current.currentPlayerIndex]!.id;
+    const actions = chooseAutopilotAction(current, playerId);
+    if (actions.length === 0) break;
 
-    if (playable.length > 0) {
-      const card = playable[0]!;
-      let chosenColor = undefined;
-      if (card.type === 'wild' || card.type === 'wild_draw_four') {
-        chosenColor = 'red' as const;
-      }
-
-      if (player.hand.length === 2) {
-        current = applyAction(current, { type: 'CALL_UNO', playerId: player.id });
-      }
-
-      const action: GameAction = { type: 'PLAY_CARD', playerId: player.id, cardId: card.id, chosenColor };
+    for (const action of actions) {
       current = applyAction(current, action);
-
-      if (current.phase === 'choosing_color') {
-        current = applyAction(current, { type: 'CHOOSE_COLOR', playerId: player.id, color: 'red' });
-      }
-      if (current.phase === 'challenging') {
-        current = applyAction(current, { type: 'ACCEPT', playerId: current.pendingDrawPlayerId! });
-      }
-    } else {
-      current = applyAction(current, { type: 'DRAW_CARD', playerId: player.id });
-      current = applyAction(current, { type: 'PASS', playerId: player.id });
     }
   }
 
