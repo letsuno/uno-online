@@ -61,6 +61,10 @@ export function drawCardsFromDeck(state: GameState, playerId: string, count: num
   return { ...state, players, deck, discardPile };
 }
 
+export function hasPendingDrawObligation(state: GameState): boolean {
+  return (state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0;
+}
+
 export function isLastCard(state: GameState, playerId: string, cardId: string): boolean {
   const player = state.players.find(p => p.id === playerId);
   if (!player) return false;

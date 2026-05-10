@@ -1,6 +1,7 @@
 import type { HouseRulePlugin } from '../house-rule-types';
 import type { GameState, GameAction } from '../../types/game';
 import type { PreCheckResult } from '../house-rule-types';
+import { hasPendingDrawObligation } from '../house-rule-helpers';
 
 export const handLimit: HouseRulePlugin = {
   meta: {
@@ -12,7 +13,7 @@ export const handLimit: HouseRulePlugin = {
   isEnabled: (hr) => hr.handLimit !== null,
   preCheck: (state: GameState, action: GameAction): PreCheckResult => {
     if (action.type !== 'DRAW_CARD') return { handled: false };
-    if ((state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0) return { handled: false };
+    if (hasPendingDrawObligation(state)) return { handled: false };
     const hr = state.settings.houseRules;
     if (hr.handLimit === null) return { handled: false };
     const player = state.players[state.currentPlayerIndex];

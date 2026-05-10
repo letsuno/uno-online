@@ -58,7 +58,7 @@ export default function GameEffects() {
   const winnerId = useGameStore((s) => s.winnerId);
   const players = useGameStore((s) => s.players);
   const userId = useEffectiveUserId();
-  const discardPile = useGameStore((s) => s.discardPile);
+  const topCard = useGameStore((s) => s.discardPile[s.discardPile.length - 1]);
   const direction = useGameStore((s) => s.direction);
   const lastAction = useGameStore((s) => s.lastAction);
   const pendingDrawPlayerId = useGameStore((s) => s.pendingDrawPlayerId);
@@ -87,8 +87,6 @@ export default function GameEffects() {
     const target = players[targetIdx];
     return target ? { player: target, index: targetIdx } : null;
   };
-
-  const topCard = discardPile[discardPile.length - 1];
 
   useEffect(() => {
     if (!topCard || topCard.id === prevTopCardRef.current) return;
