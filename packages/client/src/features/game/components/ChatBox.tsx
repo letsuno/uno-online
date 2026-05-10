@@ -48,7 +48,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
 
   if (embedded) {
     return (
-      <div className="w-full flex flex-col gap-2">
+      <div className="w-full flex flex-col gap-2 select-text" data-allow-selection>
         <div className="max-h-48 overflow-y-auto text-xs">
           {messages.map((m, i) => (
             <div key={i} className="mb-1">
@@ -97,7 +97,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
   }
 
   return (
-    <div className="hidden md:flex fixed bottom-chat-bottom right-3 w-chat-w h-chat-h bg-card rounded-xl border border-white/15 flex-col z-fab overflow-hidden">
+    <div className="hidden md:flex fixed bottom-chat-bottom right-3 w-chat-w h-chat-h bg-card rounded-xl border border-white/15 flex-col z-fab overflow-hidden select-text" data-allow-selection>
       <div className="px-3 py-2 bg-muted flex justify-between items-center">
         <span className="text-caption font-bold">聊天</span>
         <button onClick={() => setOpen(false)} className="bg-transparent text-muted-foreground text-base cursor-pointer flex items-center border-none">
