@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
+import { useChatStore } from '../stores/chat-store';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { getSocket, connectSocket, onConnectionStatus } from '@/shared/socket';
 
 export function useGameSocket(roomCode: string | undefined) {
   const phase = useGameStore((s) => s.phase);
   const setGameState = useGameStore((s) => s.setGameState);
+  const setChatHistory = useChatStore((s) => s.setHistory);
+  const addChatMessage = useChatStore((s) => s.addMessage);
+  const clearChatMessages = useChatStore((s) => s.clearMessages);
   const setRoom = useRoomStore((s) => s.setRoom);
   const navigate = useNavigate();
   const [connectionStatus, setConnectionStatus] = useState<
@@ -30,6 +34,19 @@ export function useGameSocket(roomCode: string | undefined) {
       });
     }
   }, []);
+
+  useEffect(() => {
+    const socket = getSocket();
+    socket.on('chat:history', setChatHistory);
+    socket.on('chat:message', addChatMessage);
+    socket.on('chat:cleared', clearChatMessages);
+
+    return () => {
+      socket.off('chat:history', setChatHistory);
+      socket.off('chat:message', addChatMessage);
+      socket.off('chat:cleared', clearChatMessages);
+    };
+  }, [setChatHistory, addChatMessage, clearChatMessages]);
 
   // Reconnection status tracking + auto-rejoin on reconnect
   useEffect(() => {

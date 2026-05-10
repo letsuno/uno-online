@@ -1,4 +1,5 @@
 import type { Card, Color } from './card';
+import type { ChatMessage } from './chat';
 import type { HouseRules } from './house-rules';
 import type { UserRole } from './role';
 
@@ -57,6 +58,7 @@ export interface GameState {
   winnerId: string | null;
   deckHash: string;
   settings: RoomSettings;
+  chatHistory?: ChatMessage[];
 }
 
 export interface PendingPenaltyDraw {

@@ -1,4 +1,5 @@
 import type { Card, Color } from './card';
+import type { ChatMessage } from './chat';
 import type { RoomSettings } from './game';
 import type { Direction } from './game';
 
@@ -13,6 +14,7 @@ export const GameEventType = {
   ACCEPT: 'accept',
   CHOOSE_COLOR: 'choose_color',
   CHOOSE_SWAP_TARGET: 'choose_swap_target',
+  CHAT_MESSAGE: 'chat_message',
   ROUND_END: 'round_end',
   GAME_OVER: 'game_over',
 } as const;
@@ -59,6 +61,10 @@ export interface ChooseSwapTargetPayload {
   targetId: string;
 }
 
+export interface ChatMessagePayload {
+  message: ChatMessage;
+}
+
 export interface RoundEndPayload {
   winnerId: string;
   scores: Record<string, number>;
@@ -80,6 +86,7 @@ export type GameEventPayload =
   | AcceptPayload
   | ChooseColorPayload
   | ChooseSwapTargetPayload
+  | ChatMessagePayload
   | RoundEndPayload
   | GameOverPayload;
 

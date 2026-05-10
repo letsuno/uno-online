@@ -43,6 +43,7 @@ export function setupSpectateHandlers(
 
       const view = session.getSpectatorView(room.settings.spectatorMode);
       socket.emit('game:state', view);
+      socket.emit('chat:history', session.getChatHistory());
 
       socket.to(roomCode).emit('room:spectator_joined', {
         nickname: data.user.nickname,
