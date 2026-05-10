@@ -70,7 +70,6 @@ export default function GameTable({ onDraw }: GameTableProps) {
   const pendingDrawPlayerId = useGameStore((s) => s.pendingDrawPlayerId);
   const settings = useGameStore((s) => s.settings);
   const lastAction = useGameStore((s) => s.lastAction);
-  const discardPile = useGameStore((s) => s.discardPile);
   const roundNumber = useGameStore((s) => s.roundNumber);
   const userId = useEffectiveUserId();
   const ownerId = useRoomStore((s) => s.room?.ownerId);
@@ -365,9 +364,15 @@ export default function GameTable({ onDraw }: GameTableProps) {
   }, []);
 
   useEffect(() => {
+    for (const timer of drawAnimationTimersRef.current) {
+      window.clearTimeout(timer);
+    }
+    drawAnimationTimersRef.current = [];
+
     if (players.length === 0 || dimensions.width === 0) return;
     const previous = prevHandCountsRef.current;
-    const topCard = discardPile[discardPile.length - 1];
+    const pile = useGameStore.getState().discardPile;
+    const topCard = pile[pile.length - 1];
     const isZeroRotate =
       lastAction?.type === 'PLAY_CARD' &&
       settings?.houseRules?.zeroRotateHands &&
@@ -450,7 +455,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
       }
     }
     prevHandCountsRef.current = new Map(players.map((p) => [p.id, p.handCount]));
-  }, [players, dimensions.width, computeDrawTarget, lastAction, discardPile, settings, direction, roundNumber, enqueueHandSwapAnimations]);
+  }, [players, dimensions.width, computeDrawTarget, lastAction, settings, direction, roundNumber, enqueueHandSwapAnimations]);
 
   useEffect(() => {
     if (!drawUntilEnabled || phase !== 'playing' || lastAction?.type !== 'DRAW_CARD') {
