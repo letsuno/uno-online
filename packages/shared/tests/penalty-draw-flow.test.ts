@@ -192,7 +192,7 @@ describe('penalty draw flow', () => {
     expect(callDuringPenalty).toStrictEqual(afterFirstDraw);
   });
 
-  it('checks round end only after the queued penalty has been paid', () => {
+  it('ends round immediately when last card is draw_two', () => {
     const drawTwo = makeCard('draw_two', 'red', { id: 'last_d2' });
     const state = makeState({
       players: [
@@ -210,14 +210,7 @@ describe('penalty draw flow', () => {
     });
 
     const afterPlay = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'last_d2' });
-    expect(afterPlay.phase).toBe('playing');
-    expect(afterPlay.pendingPenaltySourcePlayerId).toBe('p1');
-
-    const afterFirstDraw = applyAction(afterPlay, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
-    expect(afterFirstDraw.phase).toBe('playing');
-
-    const afterSecondDraw = applyAction(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
-    expect(afterSecondDraw.phase).toBe('round_end');
-    expect(afterSecondDraw.winnerId).toBe('p1');
+    expect(afterPlay.phase).toBe('round_end');
+    expect(afterPlay.winnerId).toBe('p1');
   });
 });
