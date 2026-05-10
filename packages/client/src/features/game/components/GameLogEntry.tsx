@@ -31,6 +31,7 @@ function getActionDescription(entry: LogEntry): string {
   if (entry.type.startsWith('play_')) return '打出';
   switch (entry.type) {
     case 'draw': return '摸牌';
+    case 'call_uno': return '喊出';
     case 'catch_uno': return '抓到';
     case 'challenge': return '质疑';
     default: return '';
@@ -43,11 +44,13 @@ interface GameLogEntryProps {
 
 export default function GameLogEntry({ entry }: GameLogEntryProps) {
   const isCatchUno = entry.type === 'catch_uno';
+  const isCallUno = entry.type === 'call_uno';
 
   return (
     <div
       className={cn(
         'flex items-center gap-1.5 py-1 px-1',
+        isCallUno && 'bg-accent/10 border border-accent/20 rounded-lg',
         isCatchUno && 'bg-destructive/10 border border-destructive/20 rounded-lg',
       )}
     >

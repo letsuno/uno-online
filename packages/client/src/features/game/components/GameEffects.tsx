@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Ban, RotateCcw, Trophy, ShieldAlert, ShieldX } from 'lucide-react';
+import { Ban, RotateCcw, Trophy, ShieldAlert, ShieldX, Megaphone, Hand } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { playSound } from '@/shared/sound/sound-manager';
@@ -10,11 +10,14 @@ import CardBack from './CardBack';
 
 interface Effect {
   id: string;
-  type: 'uno_call' | 'skip' | 'reverse' | 'draw' | 'victory' | 'catch' | 'challenge';
+  type: 'uno_call' | 'skip' | 'reverse' | 'draw' | 'victory' | 'catch_uno' | 'challenge';
   text: string;
   targetName?: string;
   targetIndex?: number;
   targetAvatarUrl?: string | null;
+  catcherName?: string;
+  catcherIndex?: number;
+  catcherAvatarUrl?: string | null;
   penaltyName?: string;
   penaltyIndex?: number;
   penaltyAvatarUrl?: string | null;
@@ -155,6 +158,47 @@ export default function GameEffects() {
       setTimeout(() => {
         setEffects((prev) => prev.filter((e) => e.id !== id));
       }, EFFECT_DURATION);
+    } else if (lastAction.type === 'CALL_UNO') {
+      const caller = players.find((p) => p.id === lastAction.playerId);
+      const callerIdx = findPlayerIndex(lastAction.playerId);
+
+      const id = `effect_${++effectId}`;
+      const effect: Effect = {
+        id,
+        type: 'uno_call',
+        text: 'UNO!',
+        targetName: caller?.name,
+        targetIndex: callerIdx >= 0 ? callerIdx : undefined,
+        targetAvatarUrl: caller?.avatarUrl,
+      };
+      setEffects((prev) => [...prev, effect]);
+      setTimeout(() => {
+        setEffects((prev) => prev.filter((e) => e.id !== id));
+      }, EFFECT_DURATION);
+      playSound('uno_call');
+    } else if (lastAction.type === 'CATCH_UNO') {
+      const catcher = players.find((p) => p.id === lastAction.catcherId);
+      const target = players.find((p) => p.id === lastAction.targetId);
+      const catcherIdx = findPlayerIndex(lastAction.catcherId);
+      const targetIdx = findPlayerIndex(lastAction.targetId);
+
+      const id = `effect_${++effectId}`;
+      const effect: Effect = {
+        id,
+        type: 'catch_uno',
+        text: '抓 UNO!',
+        catcherName: catcher?.name,
+        catcherIndex: catcherIdx >= 0 ? catcherIdx : undefined,
+        catcherAvatarUrl: catcher?.avatarUrl,
+        targetName: target?.name,
+        targetIndex: targetIdx >= 0 ? targetIdx : undefined,
+        targetAvatarUrl: target?.avatarUrl,
+      };
+      setEffects((prev) => [...prev, effect]);
+      setTimeout(() => {
+        setEffects((prev) => prev.filter((e) => e.id !== id));
+      }, EFFECT_DURATION);
+      playSound('uno_catch');
     }
   }, [lastAction, players]);
 
@@ -191,10 +235,45 @@ export default function GameEffects() {
                 {effect.type === 'skip' && <Ban size={120} />}
                 {effect.type === 'reverse' && <RotateCcw size={120} />}
                 {effect.type === 'victory' && <Trophy size={140} />}
+                {effect.type === 'uno_call' && <Megaphone size={120} />}
+                {effect.type === 'catch_uno' && <Hand size={120} />}
                 {effect.type === 'challenge' && effect.text.includes('成功') && <ShieldAlert size={120} />}
                 {effect.type === 'challenge' && effect.text.includes('失败') && <ShieldX size={120} />}
                 {effect.text}
               </span>
+              {effect.type === 'uno_call' && effect.targetName && (
+                <motion.div
+                  initial={{ y: -10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="flex items-center gap-2"
+                >
+                  {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} avatarUrl={effect.targetAvatarUrl} name={effect.targetName} />}
+                  <span className="text-2xl font-bold text-accent text-shadow-bold">{effect.targetName}</span>
+                </motion.div>
+              )}
+              {effect.type === 'catch_uno' && (
+                <motion.div
+                  initial={{ y: -10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="flex items-center gap-3"
+                >
+                  {effect.catcherName && (
+                    <div className="flex items-center gap-2">
+                      {effect.catcherIndex !== undefined && <EffectAvatar index={effect.catcherIndex} avatarUrl={effect.catcherAvatarUrl} name={effect.catcherName} />}
+                      <span className="text-2xl font-bold text-accent text-shadow-bold">{effect.catcherName}</span>
+                    </div>
+                  )}
+                  <span className="text-2xl font-bold text-destructive text-shadow-bold">抓到</span>
+                  {effect.targetName && (
+                    <div className="flex items-center gap-2">
+                      {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} avatarUrl={effect.targetAvatarUrl} name={effect.targetName} />}
+                      <span className="text-2xl font-bold text-destructive text-shadow-bold">{effect.targetName}</span>
+                    </div>
+                  )}
+                </motion.div>
+              )}
               {effect.targetName && effect.type === 'skip' && (
                 <motion.div
                   initial={{ y: -10, opacity: 0 }}

@@ -21,7 +21,6 @@ import ColorPicker from '../components/ColorPicker';
 import ScoreBoard from '../components/ScoreBoard';
 import VoicePanel from '@/shared/voice/VoicePanel';
 import GameEffects from '../components/GameEffects';
-import UnoCallEffect from '../components/UnoCallEffect';
 import Confetti from '../components/Confetti';
 import MobileFAB from '../components/MobileFAB';
 import InfoDrawer from '../components/InfoDrawer';
@@ -163,7 +162,6 @@ export default function GamePage() {
       <InfoDrawer />
       <MobileFAB />
       <GameEffects />
-      <UnoCallEffect />
       {(phase === 'round_end' || phase === 'game_over') && <Confetti />}
       {needsColorPick && <ColorPicker onPick={chooseColor} />}
       {showScoreBoard && (
