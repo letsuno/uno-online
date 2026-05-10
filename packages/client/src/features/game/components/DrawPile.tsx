@@ -31,9 +31,10 @@ export default function DrawPile({ side, isPortrait, onDraw, drawTargetX, drawTa
   const playableIds = usePlayableCardIds();
   const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
   const isDrawUntilTurn = mustDrawUntilPlayable && !isPenaltyDrawing;
+  const canStartDrawUntilPlayable = !mustDrawUntilPlayable || playableIds.size === 0;
   const canContinueDrawUntilPlayable = !isPenaltyDrawing && mustDrawUntilPlayable && hasDrawnThisTurn && playableIds.size === 0;
   const hasCardsAvailable = deckCount > 0 || discardPileLength > 1;
-  const canDraw = isMyTurn && phase === 'playing' && hasCardsAvailable && (isPenaltyDrawing || !hasDrawnThisTurn || canContinueDrawUntilPlayable);
+  const canDraw = isMyTurn && phase === 'playing' && hasCardsAvailable && (isPenaltyDrawing || (!hasDrawnThisTurn && canStartDrawUntilPlayable) || canContinueDrawUntilPlayable);
 
   const showNoPlayableHint = canDraw && !isDrawUntilTurn && !isPenaltyDrawing && drawStack === 0 && playableIds.size === 0 && !settings?.houseRules?.noHints;
   const emphasizeDraw = canDraw && !settings?.houseRules?.noHints;
