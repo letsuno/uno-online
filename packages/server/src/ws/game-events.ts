@@ -99,11 +99,11 @@ export function setGameStartTime(roomCode: string): void {
 }
 
 function getNextRoundVoteState(roomCode: string, session: GameSession): NextRoundVoteState {
-  const voters = [...(nextRoundVotes.get(roomCode) ?? new Set<string>())];
-  const playerCount = session.getFullState().players.length;
+  const playerIds = new Set(session.getFullState().players.map((p) => p.id));
+  const voters = [...(nextRoundVotes.get(roomCode) ?? new Set<string>())].filter((id) => playerIds.has(id));
   return {
     votes: voters.length,
-    required: Math.floor(playerCount / 2) + 1,
+    required: playerIds.size,
     voters,
   };
 }
@@ -120,7 +120,7 @@ async function startNextRound(
   session.startNextRound();
   await touchRoomActivity(redis, roomCode);
   await saveGameState(redis, roomCode, session.getFullState());
-  io.to(roomCode).emit('game:next_round_vote', { votes: 0, required: Math.floor(session.getFullState().players.length / 2) + 1, voters: [] });
+  io.to(roomCode).emit('game:next_round_vote', { votes: 0, required: session.getFullState().players.length, voters: [] });
   const sockets = await io.in(roomCode).fetchSockets();
   for (const s of sockets) {
     const userId = (s.data as SocketData).user.userId;
@@ -390,17 +390,13 @@ export function registerGameEvents(
       return callback?.({ success: false, error: 'Round is not over' });
     }
 
-    const room = await getRoom(redis, roomCode);
-    if (room?.ownerId === data.user.userId) {
-      await startNextRound(io, redis, roomCode, session, turnTimer, sessions);
-      return callback?.({ success: true, started: true });
-    }
-
     const playerIds = new Set(session.getFullState().players.map((p) => p.id));
     if (!playerIds.has(data.user.userId)) {
       return callback?.({ success: false, error: 'Player not in game' });
     }
 
+    const room = await getRoom(redis, roomCode);
+    const isOwner = room?.ownerId === data.user.userId;
     const votes = nextRoundVotes.get(roomCode) ?? new Set<string>();
     votes.add(data.user.userId);
     nextRoundVotes.set(roomCode, votes);
@@ -408,7 +404,7 @@ export function registerGameEvents(
     const voteState = getNextRoundVoteState(roomCode, session);
     io.to(roomCode).emit('game:next_round_vote', voteState);
 
-    if (voteState.votes >= voteState.required) {
+    if (isOwner && voteState.votes >= voteState.required) {
       await startNextRound(io, redis, roomCode, session, turnTimer, sessions);
       return callback?.({ success: true, started: true, vote: voteState });
     }
