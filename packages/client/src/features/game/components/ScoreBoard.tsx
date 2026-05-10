@@ -1,21 +1,32 @@
-import { Trophy, BarChart3, Crown, Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Trophy, BarChart3, Crown, Check, UserX } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/Button';
 
+const KICK_DELAY_MS = 30_000;
+
 interface ScoreBoardProps {
   onPlayAgain: () => void;
   onRematch: () => void;
   onBackToLobby: () => void;
+  onKickPlayer: (targetId: string) => void;
 }
 
-export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby }: ScoreBoardProps) {
+export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby, onKickPlayer }: ScoreBoardProps) {
   const players = useGameStore((s) => s.players);
   const winnerId = useGameStore((s) => s.winnerId);
   const phase = useGameStore((s) => s.phase);
   const vote = useGameStore((s) => s.nextRoundVote);
+  const [canKick, setCanKick] = useState(false);
+
+  useEffect(() => {
+    if (phase !== 'round_end') { setCanKick(false); return; }
+    const timer = setTimeout(() => setCanKick(true), KICK_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [phase]);
   const ownerId = useRoomStore((s) => s.room?.ownerId);
   const userId = useEffectiveUserId();
   const sorted = [...players].sort((a, b) => b.score - a.score);
@@ -62,10 +73,12 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby }: Sc
                 <tr key={p.id} className={cn(p.id === winnerId ? 'text-accent' : 'text-foreground')}>
                   <td className="px-2 py-1.5 text-left">{p.id === winnerId && <Crown size={14} className="inline align-middle mr-1" />}{p.name}</td>
                   {!isGameOver && (
-                    <td className="px-2 py-1.5 text-center">
+                    <td className="px-2 py-1.5 text-center whitespace-nowrap">
                       {ready
                         ? <Check size={14} className="inline text-green-400" />
-                        : <span className="text-xs text-muted-foreground">等待中</span>}
+                        : isHost && canKick && p.id !== userId
+                          ? <button onClick={() => onKickPlayer(p.id)} className="text-xs text-destructive hover:text-destructive/80 cursor-pointer bg-transparent border-none" title="踢出游戏"><UserX size={14} className="inline" /></button>
+                          : <span className="text-xs text-muted-foreground">等待中</span>}
                     </td>
                   )}
                   <td className="px-2 py-1.5 text-right font-bold">{p.score}</td>

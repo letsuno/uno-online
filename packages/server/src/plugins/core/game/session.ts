@@ -166,6 +166,17 @@ export class GameSession {
     };
   }
 
+  removePlayer(playerId: string): void {
+    this.state = {
+      ...this.state,
+      players: this.state.players.filter((p) => p.id !== playerId),
+    };
+  }
+
+  getPlayerCount(): number {
+    return this.state.players.length;
+  }
+
   getCurrentPlayerId(): string {
     return this.state.players[this.state.currentPlayerIndex]!.id;
   }
