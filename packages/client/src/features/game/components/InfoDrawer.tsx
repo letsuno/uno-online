@@ -22,6 +22,8 @@ export default function InfoDrawer() {
   const toggleInfoDrawer = useGameStore((s) => s.toggleInfoDrawer);
   const setInfoDrawerTab = useGameStore((s) => s.setInfoDrawerTab);
 
+  const openInfoDrawer = useGameStore((s) => s.openInfoDrawer);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -30,10 +32,14 @@ export default function InfoDrawer() {
         e.preventDefault();
         toggleInfoDrawer();
       }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        openInfoDrawer('chat');
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleInfoDrawer]);
+  }, [toggleInfoDrawer, openInfoDrawer]);
 
   return (
     <AnimatePresence>
