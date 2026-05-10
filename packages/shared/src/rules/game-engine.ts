@@ -1,4 +1,4 @@
-import type { GameState, GameAction, PendingPenaltyDraw, DrawSide } from '../types/game';
+import type { GameState, GameAction, DrawSide } from '../types/game';
 import type { Color } from '../types/card';
 import { reshuffleSideFromDiscard } from './deck';
 import { canPlayCard, isValidWildDrawFour } from './validation';
@@ -129,15 +129,19 @@ function startPenaltyDraw(
   if (count <= 0) return state;
   const playerIdx = playerIndex(state, playerId);
   if (playerIdx === -1) return state;
-  const queue: PendingPenaltyDraw[] = state.pendingPenaltyDraws && state.pendingPenaltyDraws > 0
-    ? [
+
+  const shouldQueue =
+    (state.pendingPenaltyDraws && state.pendingPenaltyDraws > 0) ||
+    (state.phase !== 'playing');
+
+  if (shouldQueue) {
+    return {
+      ...state,
+      pendingPenaltyQueue: [
         ...(state.pendingPenaltyQueue ?? []),
         { playerId, count, nextPlayerIndex, sourcePlayerId },
-      ]
-    : (state.pendingPenaltyQueue ?? []);
-
-  if (state.pendingPenaltyDraws && state.pendingPenaltyDraws > 0) {
-    return { ...state, pendingPenaltyQueue: queue };
+      ],
+    };
   }
 
   return {
@@ -147,7 +151,7 @@ function startPenaltyDraw(
     pendingPenaltyDraws: count,
     pendingPenaltyNextPlayerIndex: nextPlayerIndex,
     pendingPenaltySourcePlayerId: sourcePlayerId,
-    pendingPenaltyQueue: queue,
+    pendingPenaltyQueue: state.pendingPenaltyQueue ?? [],
   };
 }
 
@@ -194,6 +198,19 @@ function finishPenaltyDrawIfNeeded(state: GameState, lastAction: GameAction): Ga
   }
 
   return finished;
+}
+
+export function drainPenaltyQueue(state: GameState): GameState {
+  const queue = state.pendingPenaltyQueue ?? [];
+  if (queue.length === 0 || state.phase !== 'playing') return state;
+  const [next, ...rest] = queue;
+  return startPenaltyDraw(
+    { ...state, pendingPenaltyQueue: rest },
+    next!.playerId,
+    next!.count,
+    next!.nextPlayerIndex,
+    next!.sourcePlayerId ?? null,
+  );
 }
 
 function withChosenColorOnTopDiscard(state: GameState, color: Color): GameState {
@@ -438,13 +455,13 @@ function handleChooseColor(
       colorState.players.length,
       colorState.direction,
     );
-    return {
+    return drainPenaltyQueue({
       ...colorState,
       currentColor: action.color,
       phase: 'playing',
       currentPlayerIndex: newIndex,
       lastAction: action,
-    };
+    });
   }
 }
 
