@@ -40,6 +40,7 @@ export function useGameLogTracker(): void {
   const clearLog = useGameLogStore((s) => s.clear);
 
   const prevActionKeyRef = useRef<string | null>(null);
+  const prevRoundNumberRef = useRef<number | null>(null);
 
   // Map lastAction to game log entries
   useEffect(() => {
@@ -113,12 +114,20 @@ export function useGameLogTracker(): void {
 
   // Round separator / clear logic
   useEffect(() => {
-    if (phase === 'dealing') {
-      if (roundNumber <= 1) {
-        clearLog();
-      } else {
-        addRoundSeparator(roundNumber);
-      }
+    if (!phase || roundNumber <= 0) return;
+
+    const previousRound = prevRoundNumberRef.current;
+    if (previousRound === roundNumber) return;
+    prevRoundNumberRef.current = roundNumber;
+    prevActionKeyRef.current = null;
+
+    if (previousRound === null || roundNumber <= 1) {
+      clearLog();
+      return;
+    }
+
+    if (roundNumber > previousRound) {
+      addRoundSeparator(roundNumber);
     }
   }, [phase, roundNumber, clearLog, addRoundSeparator]);
 }
