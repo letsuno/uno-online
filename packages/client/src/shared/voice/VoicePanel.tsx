@@ -116,11 +116,12 @@ export default function VoicePanel() {
   const otherUsers = Object.values(usersById).filter((u) => u.id !== selfUserId);
   const speakingCount = Object.values(speakingByUserId).filter(Boolean).length;
 
-  const voiceBtn = (active: boolean) => cn(
-    'w-9 h-9 rounded-full border-2 flex items-center justify-center text-sm cursor-pointer text-foreground',
+  const voiceBtn = (active: boolean, speaking = false) => cn(
+    'w-9 h-9 rounded-full border-2 flex items-center justify-center text-sm cursor-pointer text-foreground transition-all duration-150',
     active
       ? 'bg-voice-active border-voice-active-border'
-      : 'bg-voice-inactive border-voice-inactive-border'
+      : 'bg-voice-inactive border-voice-inactive-border',
+    speaking && 'scale-105 ring-2 ring-green-300/90 shadow-[0_0_0_6px_rgba(34,197,94,0.18),0_0_28px_rgba(34,197,94,0.85)]'
   );
 
   return (
@@ -139,7 +140,7 @@ export default function VoicePanel() {
         </button>
       ) : (
         <>
-          <button onClick={toggleMic} className={voiceBtn(micEnabled)} title={micEnabled ? '关闭麦克风' : '开启麦克风'}>
+          <button onClick={toggleMic} className={voiceBtn(micEnabled, micEnabled && selfSpeaking)} title={micEnabled ? '关闭麦克风' : '开启麦克风'}>
             {micEnabled ? <Mic size={16} /> : <MicOff size={16} />}
           </button>
           <button onClick={toggleMute} className={voiceBtn(!speakerMuted)} title={speakerMuted ? '打开扬声器' : '关闭扬声器'}>
