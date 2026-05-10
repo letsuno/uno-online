@@ -315,10 +315,16 @@ describe('stackDrawFour', () => {
       },
     });
 
-    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4play' });
+    const next = applyActionWithHouseRules(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: 'wd4play',
+      chosenColor: 'yellow',
+    });
 
     expect(next.drawStack).toBe(8);
     expect(next.discardPile[next.discardPile.length - 1]!.id).toBe('wd4play');
+    expect(next.discardPile[next.discardPile.length - 1]).toMatchObject({ chosenColor: 'yellow' });
     expect(next.currentPlayerIndex).toBe(1);
   });
 
@@ -504,12 +510,42 @@ describe('crossStack', () => {
       },
     });
 
-    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4play' });
+    const next = applyActionWithHouseRules(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: 'wd4play',
+      chosenColor: 'yellow',
+    });
 
     // cross: +2 stack + +4 = 6
     expect(next.drawStack).toBe(6);
     expect(next.discardPile[next.discardPile.length - 1]!.id).toBe('wd4play');
+    expect(next.discardPile[next.discardPile.length - 1]).toMatchObject({ chosenColor: 'yellow' });
     expect(next.currentPlayerIndex).toBe(1);
+  });
+
+  it('rejects stacked +4 without a chosen color', () => {
+    const d2Top = makeCard('draw_two', 'red', { id: 'd2top_no_color' });
+    const wd4Play = makeCard('wild_draw_four', null, { id: 'wd4play_no_color' });
+    const state = makeState({
+      discardPile: [makeCard('number', 'red', { value: 1, id: 'base_no_color' }), d2Top],
+      currentColor: 'red',
+      drawStack: 2,
+      players: [
+        { id: 'p1', name: 'Alice', hand: [wd4Play, makeCard('number', 'blue', { value: 1, id: 'extra_no_color' })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c_no_color' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c_no_color' })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, crossStack: true },
+      },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4play_no_color' });
+
+    expect(next).toStrictEqual(state);
   });
 
   it('lets the third player draw 6 after +2 then +4 are stacked', () => {

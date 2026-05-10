@@ -40,6 +40,7 @@ export default function DiscardPile() {
   const discardPile = useGameStore((s) => s.discardPile);
   const drawStack = useGameStore((s) => s.drawStack);
   const phase = useGameStore((s) => s.phase);
+  const currentColor = useGameStore((s) => s.currentColor);
   const lastAction = useGameStore((s) => s.lastAction);
   const players = useGameStore((s) => s.players);
   const selfId = useEffectiveUserId();
@@ -52,8 +53,8 @@ export default function DiscardPile() {
   const isSelf = playedBy === selfId;
 
   const isWild = topCard.type === 'wild' || topCard.type === 'wild_draw_four';
-  const chosenColor = isWild ? (topCard.chosenColor ?? null) : null;
-  const isWaitingForColor = isWild && !chosenColor && phase === 'choosing_color';
+  const isWaitingForColor = isWild && !topCard.chosenColor && phase === 'choosing_color';
+  const chosenColor = isWild && !isWaitingForColor ? (topCard.chosenColor ?? currentColor ?? null) : null;
   const colorGlowMap: Record<string, string> = {
     red: 'rgba(255, 51, 102, 0.6)',
     blue: 'rgba(68, 136, 255, 0.6)',
