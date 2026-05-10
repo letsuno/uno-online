@@ -72,6 +72,12 @@ export function checkRoundEnd(state: GameState, playerId: string): GameState {
     players,
     phase,
     winnerId: playerId,
+    pendingPenaltyDraws: 0,
+    pendingPenaltyNextPlayerIndex: null,
+    pendingPenaltySourcePlayerId: null,
+    pendingPenaltyQueue: [],
+    pendingDrawPlayerId: null,
+    drawStack: 0,
   };
 }
 
@@ -374,9 +380,7 @@ function handlePlayCard(
     }
   }
 
-  if (card.type !== 'wild' && card.type !== 'wild_draw_four' && card.type !== 'draw_two') {
-    newState = checkRoundEnd(newState, actingPlayer.id);
-  }
+  newState = checkRoundEnd(newState, actingPlayer.id);
 
   return newState;
 }
