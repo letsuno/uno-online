@@ -22,12 +22,24 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby }: Sc
   const isGameOver = phase === 'game_over';
   const isHost = ownerId === userId;
   const hasVoted = !!userId && !!vote?.voters.includes(userId);
-  const fallbackRequired = Math.floor(players.length / 2) + 1;
+  const fallbackRequired = players.length;
+  const votes = vote?.votes ?? 0;
+  const required = vote?.required ?? fallbackRequired;
+  const allAgreed = votes >= required;
   const nextRoundButtonText = isHost
-    ? '继续下一轮'
+    ? allAgreed
+      ? '开始下一轮'
+      : hasVoted
+        ? `等待同意 (${votes}/${required})`
+        : `同意继续 (${votes}/${required})`
     : hasVoted
-      ? `已投票 (${vote?.votes ?? 0}/${vote?.required ?? fallbackRequired})`
-      : `投票继续${vote ? ` (${vote.votes}/${vote.required})` : ''}`;
+      ? allAgreed
+        ? '等待房主开始'
+        : `已同意 (${votes}/${required})`
+      : `同意继续 (${votes}/${required})`;
+  const isNextRoundDisabled = !isGameOver && (
+    isHost ? hasVoted && !allAgreed : hasVoted
+  );
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-modal">
@@ -51,11 +63,13 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby }: Sc
             ))}
           </tbody>
         </table>
-        {!isGameOver && !isHost && vote && (
-          <p className="mb-3 text-xs text-muted-foreground">已有 {vote.votes}/{vote.required} 人同意继续下一轮</p>
+        {!isGameOver && (
+          <p className="mb-3 text-xs text-muted-foreground">
+            {allAgreed ? '所有玩家已同意，等待房主开始下一轮' : `已有 ${votes}/${required} 人同意继续下一轮`}
+          </p>
         )}
         <div className="flex gap-3 justify-center">
-          {!isGameOver && <Button variant="primary" onClick={onPlayAgain} disabled={hasVoted}>{nextRoundButtonText}</Button>}
+          {!isGameOver && <Button variant="primary" onClick={onPlayAgain} disabled={isNextRoundDisabled}>{nextRoundButtonText}</Button>}
           {isGameOver && <Button variant="primary" onClick={onRematch}>再来一局</Button>}
           <Button variant="secondary" onClick={onBackToLobby}>返回大厅</Button>
         </div>
