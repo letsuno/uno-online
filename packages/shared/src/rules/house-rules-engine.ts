@@ -1,5 +1,5 @@
 import type { GameState, GameAction } from '../types/game';
-import { applyAction } from './game-engine';
+import { applyAction, drainPenaltyQueue } from './game-engine';
 import { buildRuleContext } from './house-rule-helpers';
 import { PRE_CHECK_PLUGINS, POST_PROCESS_PLUGINS } from './rules/index';
 
@@ -12,7 +12,7 @@ export function applyActionWithHouseRules(state: GameState, action: GameAction):
     if (!plugin.isEnabled(hr)) continue;
     if (!plugin.preCheck) continue;
     const result = plugin.preCheck(state, action, ctx);
-    if (result.handled) return result.state;
+    if (result.handled) return drainPenaltyQueue(result.state);
   }
 
   let next = applyAction(state, action);
