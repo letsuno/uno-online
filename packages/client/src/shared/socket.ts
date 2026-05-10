@@ -4,6 +4,8 @@ import { useGameStore } from '@/features/game/stores/game-store';
 import { useRoomStore } from './stores/room-store';
 import { useToastStore } from './stores/toast-store';
 import { playSound } from './sound/sound-manager';
+import { useGatewayStore } from './voice/gateway-store';
+import { leaveVoiceSession } from './voice/voice-runtime';
 
 let socket: Socket | null = null;
 let connectionStatusCallback: ((status: 'connected' | 'disconnected' | 'reconnecting') => void) | null = null;
@@ -26,6 +28,10 @@ export function getSocket(): Socket {
 
     socket.on('room:updated', (data) => {
       useRoomStore.getState().updateRoom(data);
+    });
+
+    socket.on('voice:presence', (presence) => {
+      useGatewayStore.getState().setPlayerVoicePresence(presence ?? {});
     });
 
     const handleGameView = (view: { settings?: { turnTimeLimit: number } }) => {
@@ -112,6 +118,7 @@ export function getSocket(): Socket {
       if (err.message === 'Authentication failed') {
         useRoomStore.getState().clearRoom();
         useGameStore.getState().clearGame();
+        leaveVoiceSession();
         localStorage.removeItem('token');
         socket?.disconnect();
         socket = null;
@@ -122,6 +129,7 @@ export function getSocket(): Socket {
     socket.on('auth:kicked', (_data: { reason: string }) => {
       useRoomStore.getState().clearRoom();
       useGameStore.getState().clearGame();
+      leaveVoiceSession();
       localStorage.removeItem('token');
       window.location.href = '/';
     });
@@ -129,6 +137,7 @@ export function getSocket(): Socket {
     socket.on('room:dissolved', (data?: { reason?: string }) => {
       useRoomStore.getState().clearRoom();
       useGameStore.getState().clearGame();
+      leaveVoiceSession();
       const message = data?.reason === 'idle_timeout'
         ? '房间长时间没有活动，已自动解散'
         : '房间已被房主解散';
@@ -139,6 +148,13 @@ export function getSocket(): Socket {
     });
   }
   return socket;
+}
+
+export function refreshVoicePresence(): void {
+  const s = getSocket();
+  s.emit('voice:presence:get', (presence: Record<string, unknown>) => {
+    useGatewayStore.getState().setPlayerVoicePresence((presence as any) ?? {});
+  });
 }
 
 export function connectSocket(): void {

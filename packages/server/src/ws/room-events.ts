@@ -12,6 +12,7 @@ import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { setGameStartTime } from './game-events';
 import type { SocketData } from './types';
 import { dissolveRoom } from './room-lifecycle';
+import { removeVoicePresence } from './voice-presence';
 
 const DRAW_PENALTY_PAUSE_MS = 500;
 
@@ -98,6 +99,7 @@ export function registerRoomEvents(
       return callback?.({ success: true, dissolved: true });
     }
     const { deleted } = await roomManager.leaveRoom(roomCode, data.user.userId);
+    removeVoicePresence(io, roomCode, data.user.userId);
     socket.leave(roomCode);
     data.roomCode = null;
     if (!deleted) {

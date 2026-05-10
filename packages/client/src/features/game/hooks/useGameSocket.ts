@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
 import { useChatStore } from '../stores/chat-store';
 import { useRoomStore } from '@/shared/stores/room-store';
-import { getSocket, connectSocket, onConnectionStatus } from '@/shared/socket';
+import { getSocket, connectSocket, onConnectionStatus, refreshVoicePresence } from '@/shared/socket';
 
 export function useGameSocket(roomCode: string | undefined) {
   const phase = useGameStore((s) => s.phase);
@@ -28,6 +28,7 @@ export function useGameSocket(roomCode: string | undefined) {
             setRoom(roomCode, res.players, res.room);
           }
           setGameState(res.gameState);
+          refreshVoicePresence();
         } else {
           navigate(`/room/${roomCode}`);
         }
@@ -60,6 +61,7 @@ export function useGameSocket(roomCode: string | undefined) {
               setRoom(roomCode, res.players, res.room);
             }
             setGameState(res.gameState);
+            refreshVoicePresence();
           }
         });
       }
