@@ -4,41 +4,9 @@ import { initializeNextRound, serializeDecks } from '@uno-online/shared';
 import type { GameState, GameAction, RoomSettings, UserRole } from '@uno-online/shared';
 import type { Card } from '@uno-online/shared';
 import type { GameEvent, GameEventPayload, GameEventType as GameEventTypeValue } from '@uno-online/shared';
-import type { ChatMessage } from '@uno-online/shared';
+import type { ChatMessage, PlayerView } from '@uno-online/shared';
 
-export interface PlayerView {
-  viewerId: string;
-  phase: GameState['phase'];
-  players: {
-    id: string;
-    name: string;
-    hand: Card[];
-    handCount: number;
-    score: number;
-    roundWins?: number;
-    connected: boolean;
-    autopilot: boolean;
-    calledUno: boolean;
-    unoCaught?: boolean;
-    eliminated?: boolean;
-    teamId?: number;
-    avatarUrl?: string | null;
-    role?: string;
-  }[];
-  currentPlayerIndex: number;
-  direction: GameState['direction'];
-  discardPile: Card[];
-  currentColor: GameState['currentColor'];
-  drawStack: number;
-  pendingPenaltyDraws?: number;
-  deckLeftCount: number;
-  deckRightCount: number;
-  roundNumber: number;
-  winnerId: string | null;
-  settings: GameState['settings'];
-  pendingDrawPlayerId: string | null;
-  lastAction: GameState['lastAction'];
-}
+export type { PlayerView };
 
 interface ActionResult {
   success: boolean;
@@ -49,8 +17,12 @@ interface ActionResult {
 export class GameSession {
   private state: GameState;
   private events: GameEvent[] = [];
-  private chatHistory: ChatMessage[] = [];
   private initialDeckSerialized: string = '';
+  private _spectatorMode: 'full' | 'hidden' = 'hidden';
+
+  get spectatorMode(): 'full' | 'hidden' {
+    return this._spectatorMode;
+  }
 
   private constructor(state: GameState) {
     this.state = state;
@@ -70,34 +42,34 @@ export class GameSession {
       ...(settings ? { settings } : {}),
     };
     const session = new GameSession(stateWithExtras);
+    session._spectatorMode = settings?.spectatorMode ?? 'hidden';
     session.initialDeckSerialized = serializeDecks(state.deckLeft, state.deckRight);
     return session;
   }
 
   static fromState(state: GameState): GameSession {
-    const { chatHistory, ...restState } = state;
-    const session = new GameSession(restState);
-    session.chatHistory = chatHistory ?? [];
+    const session = new GameSession({ ...state, chatHistory: state.chatHistory ?? [] });
+    session._spectatorMode = state.settings?.spectatorMode ?? 'hidden';
     return session;
   }
 
   getFullState(): GameState {
-    return { ...this.state, chatHistory: this.chatHistory };
+    return this.state;
   }
 
-  getPlayerView(playerId: string): PlayerView {
+  private buildPlayerViews(viewerId: string, shouldReveal: (playerId: string) => boolean): PlayerView {
+    const threshold = this.state.settings.houseRules.handRevealThreshold;
     return {
-      viewerId: playerId,
+      viewerId,
       phase: this.state.phase,
       players: this.state.players.map((p) => {
-        const threshold = this.state.settings.houseRules.handRevealThreshold;
-        const shouldReveal =
-          p.id === playerId ||
+        const reveal =
+          shouldReveal(p.id) ||
           (threshold !== null && p.hand.length > 0 && p.hand.length <= threshold);
         return {
           id: p.id,
           name: p.name,
-          hand: shouldReveal ? p.hand : [],
+          hand: reveal ? p.hand : [],
           handCount: p.hand.length,
           score: p.score,
           roundWins: p.roundWins ?? 0,
@@ -125,6 +97,19 @@ export class GameSession {
       pendingDrawPlayerId: this.state.pendingDrawPlayerId,
       lastAction: this.state.lastAction,
     };
+  }
+
+  getPlayerView(playerId: string): PlayerView {
+    return this.buildPlayerViews(playerId, id => id === playerId);
+  }
+
+  getGameUpdateBatch(): { baseView: PlayerView; hands: Map<string, Card[]> } {
+    const baseView = this.buildPlayerViews('__batch__', () => false);
+    const hands = new Map<string, Card[]>();
+    for (const p of this.state.players) {
+      hands.set(p.id, p.hand);
+    }
+    return { baseView, hands };
   }
 
   applyAction(action: GameAction): ActionResult {
@@ -208,10 +193,9 @@ export class GameSession {
     const settings = this.state.settings;
     const fresh = initializeGame(players, settings.houseRules);
     const deckHash = GameSession.computeDeckHash(fresh);
-    this.state = { ...fresh, settings, deckHash };
+    this.state = { ...fresh, settings, deckHash, chatHistory: [] };
     this.initialDeckSerialized = serializeDecks(fresh.deckLeft, fresh.deckRight);
     this.events = [];
-    this.chatHistory = [];
   }
 
   recordEvent(eventType: GameEventTypeValue, payload: GameEventPayload, playerId: string | null): void {
@@ -233,17 +217,15 @@ export class GameSession {
   }
 
   addChatMessage(message: ChatMessage): void {
-    this.chatHistory = [...this.chatHistory, message].slice(-200);
-    this.state = { ...this.state, chatHistory: this.chatHistory };
+    this.state = { ...this.state, chatHistory: [...(this.state.chatHistory ?? []), message].slice(-200) };
     this.recordEvent(GameEventType.CHAT_MESSAGE, { message }, message.userId);
   }
 
   getChatHistory(): ChatMessage[] {
-    return this.chatHistory;
+    return this.state.chatHistory ?? [];
   }
 
   clearChatHistory(): void {
-    this.chatHistory = [];
     this.state = { ...this.state, chatHistory: [] };
   }
 
@@ -252,44 +234,6 @@ export class GameSession {
   }
 
   getSpectatorView(mode: 'full' | 'hidden'): PlayerView {
-    return {
-      viewerId: '__spectator__',
-      phase: this.state.phase,
-      players: this.state.players.map((p) => {
-        const threshold = this.state.settings.houseRules.handRevealThreshold;
-        const shouldReveal =
-          mode === 'full' ||
-          (threshold !== null && p.hand.length > 0 && p.hand.length <= threshold);
-        return {
-          id: p.id,
-          name: p.name,
-          hand: shouldReveal ? p.hand : [],
-          handCount: p.hand.length,
-          score: p.score,
-          roundWins: p.roundWins ?? 0,
-          connected: p.connected,
-          autopilot: p.autopilot,
-          calledUno: p.calledUno,
-          unoCaught: p.unoCaught,
-          eliminated: p.eliminated,
-          teamId: p.teamId,
-          avatarUrl: p.avatarUrl,
-          role: p.role,
-        };
-      }),
-      currentPlayerIndex: this.state.currentPlayerIndex,
-      direction: this.state.direction,
-      discardPile: this.state.discardPile,
-      currentColor: this.state.currentColor,
-      drawStack: this.state.drawStack,
-      pendingPenaltyDraws: this.state.pendingPenaltyDraws ?? 0,
-      deckLeftCount: this.state.deckLeft.length,
-      deckRightCount: this.state.deckRight.length,
-      roundNumber: this.state.roundNumber,
-      winnerId: this.state.winnerId,
-      settings: this.state.settings,
-      pendingDrawPlayerId: this.state.pendingDrawPlayerId,
-      lastAction: this.state.lastAction,
-    };
+    return this.buildPlayerViews('__spectator__', () => mode === 'full');
   }
 }

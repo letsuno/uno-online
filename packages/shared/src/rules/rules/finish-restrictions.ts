@@ -16,7 +16,7 @@ export const finishRestrictions: HouseRulePlugin = {
     const card = player?.hand.find(c => c.id === action.cardId);
     if (!card) return { handled: false };
     const hr = state.settings.houseRules;
-    if (hr.noWildFinish && ctx.isLastCard(state, action.playerId, action.cardId) && ctx.isWildType(card)) {
+    if (hr.noWildFinish && ctx.isLastCard(state, action.playerId, action.cardId) && ctx.isWildCard(card)) {
       return { handled: true, state };
     }
     if (hr.noFunctionCardFinish && ctx.isLastCard(state, action.playerId, action.cardId) && ctx.isFunctionCard(card)) {

@@ -1,26 +1,5 @@
 import type { Card, Color, HouseRules } from '@uno-online/shared';
-import { getPlayableCards } from '@uno-online/shared';
-
-function canRespondToDrawStack(card: Card, topCard: Card, houseRules?: HouseRules): boolean {
-  if (!houseRules) return false;
-
-  const canStack =
-    (houseRules.stackDrawTwo && card.type === 'draw_two' && topCard.type === 'draw_two') ||
-    (houseRules.stackDrawFour && card.type === 'wild_draw_four' && topCard.type === 'wild_draw_four') ||
-    (
-      houseRules.crossStack &&
-      (
-        (card.type === 'draw_two' && topCard.type === 'wild_draw_four') ||
-        (card.type === 'wild_draw_four' && topCard.type === 'draw_two')
-      )
-    );
-  const canDeflect =
-    (houseRules.reverseDeflectDrawTwo && card.type === 'reverse' && topCard.type === 'draw_two') ||
-    (houseRules.reverseDeflectDrawFour && card.type === 'reverse' && topCard.type === 'wild_draw_four') ||
-    (houseRules.skipDeflect && card.type === 'skip');
-
-  return canStack || canDeflect;
-}
+import { getPlayableCards, canRespondToDrawStack, isExactJumpInMatch } from '@uno-online/shared';
 
 export function getPlayableCardIds(params: {
   hand: Card[];
@@ -41,10 +20,6 @@ export function getPlayableCardIds(params: {
 
 export function getJumpInCardIds(hand: Card[], topCard?: Card): Set<string> {
   if (!topCard) return new Set();
-  const ids = hand.filter((card) =>
-    card.type === topCard.type &&
-    card.color === topCard.color &&
-    (card.type !== 'number' || (topCard.type === 'number' && card.value === topCard.value)),
-  ).map((card) => card.id);
+  const ids = hand.filter((card) => isExactJumpInMatch(card, topCard)).map((card) => card.id);
   return new Set(ids);
 }

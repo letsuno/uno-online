@@ -1,4 +1,5 @@
 import type { Card as CardType } from '@uno-online/shared';
+import { isWildCard } from '@uno-online/shared';
 import { useSettingsStore } from '@/shared/stores/settings-store';
 import { getCardImageUrl, isPackLoaded } from '@/shared/utils/card-images';
 import ColorBlindOverlay from './ColorBlindOverlay';
@@ -48,7 +49,7 @@ export default function Card({ card, playable = false, clickable = playable, dim
   const colorBlindMode = useSettingsStore((s) => s.colorBlindMode);
   const cardImagePack = useSettingsStore((s) => s.cardImagePack);
 
-  const isWild = card.type === 'wild' || card.type === 'wild_draw_four';
+  const isWild = isWildCard(card);
   const bgClass = isWild
     ? 'bg-wild-gradient'
     : colorClasses[card.color!] ?? '';

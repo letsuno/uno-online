@@ -22,6 +22,7 @@ export default function PlayerListPanel() {
           {players.map((p, i) => {
             const isActive = i === currentPlayerIndex;
             const isMe = p.id === userId;
+            const roleColor = getRoleColor(p.role);
             return (
               <div
                 key={p.id}
@@ -55,7 +56,7 @@ export default function PlayerListPanel() {
                     isActive && 'text-primary font-bold',
                     isMe && !isActive && 'text-primary',
                     !isActive && !isMe && 'text-foreground',
-                  )} style={(!isActive && !isMe && getRoleColor(p.role)) ? { color: getRoleColor(p.role) } : undefined}>
+                  )} style={(!isActive && !isMe && roleColor) ? { color: roleColor } : undefined}>
                     {p.name}{isMe ? ' (你)' : ''}
                   </div>
                 </div>

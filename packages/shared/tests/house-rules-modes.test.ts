@@ -1,39 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { applyActionWithHouseRules } from '../src/rules/house-rules-engine';
-import type { GameState } from '../src/types/game';
-import type { Card, Color } from '../src/types/card';
 import { DEFAULT_HOUSE_RULES } from '../src/types/house-rules';
-
-function makeCard(type: Card['type'], color: Color | null, extra?: { value?: number; id?: string }): Card {
-  const id = extra?.id ?? `card_${Math.random().toString(36).slice(2, 8)}`;
-  switch (type) {
-    case 'number': return { id, type, color: color as Color, value: extra?.value ?? 0 };
-    case 'skip': return { id, type, color: color as Color };
-    case 'reverse': return { id, type, color: color as Color };
-    case 'draw_two': return { id, type, color: color as Color };
-    case 'wild': return { id, type, color: null };
-    case 'wild_draw_four': return { id, type, color: null };
-  }
-}
-
-function makeState(overrides: Partial<GameState> = {}): GameState {
-  return {
-    phase: 'playing', players: [
-      { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
-      { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
-    ],
-    currentPlayerIndex: 0, direction: 'clockwise',
-    deckLeft: Array.from({ length: 20 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `deck_${i}` })),
-    deckRight: [],
-    deckLeftInitialCount: 20,
-    deckRightInitialCount: 0,
-    discardPile: [makeCard('number', 'red', { value: 5, id: 'discard_top' })],
-    currentColor: 'red', drawStack: 0, pendingDrawPlayerId: null, lastAction: null,
-    roundNumber: 1, winnerId: null,
-    settings: { turnTimeLimit: 30, targetScore: 500, houseRules: DEFAULT_HOUSE_RULES },
-    ...overrides,
-  };
-}
+import { makeCard, makeState } from './helpers/test-utils';
 
 describe('mode rules: no regression', () => {
   it('deathDraw enabled does not break standard play', () => {

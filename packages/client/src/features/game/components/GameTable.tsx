@@ -1,13 +1,12 @@
-import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
-import { useCountdown } from '../hooks/useCountdown';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Card as CardType } from '@uno-online/shared';
 import DrawPile from './DrawPile';
 import DiscardPile from './DiscardPile';
 import PlayerNode from './PlayerNode';
-import CardBack from './CardBack';
-import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
-import GoogleRing from '@/shared/components/ui/GoogleRing';
+import TurnIndicator from './TurnIndicator';
+import HandSwapAnimation from './HandSwapAnimation';
+import DirectionIndicator from './DirectionIndicator';
 import ThrowAnimation from './ThrowAnimation';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
@@ -15,16 +14,11 @@ import { useRoomStore } from '@/shared/stores/room-store';
 import { getSocket } from '@/shared/socket';
 import { useToastStore } from '@/shared/stores/toast-store';
 import { useGatewayStore } from '@/shared/voice/gateway-store';
-import { useChatStore } from '../stores/chat-store';
+import { useMemo } from 'react';
 import { playThrowHitSound } from '@/shared/sound/sound-manager';
-import { cn } from '@/shared/lib/utils';
-
-interface ThrowEvent {
-  id: string;
-  fromId: string;
-  targetId: string;
-  item: string;
-}
+import { usePlayerLayout } from '../hooks/usePlayerLayout';
+import { useDrawAnimation } from '../hooks/useDrawAnimation';
+import { useChatBubbles } from '../hooks/useChatBubbles';
 
 interface ActiveThrow {
   id: string;
@@ -33,30 +27,11 @@ interface ActiveThrow {
   item: string;
 }
 
-interface HandGainBump {
-  id: number;
-  count: number;
-}
-
-interface ActiveHandSwap {
-  id: string;
-  from: { x: number; y: number };
-  to: { x: number; y: number };
-  count: number;
-}
-
-interface HandSwapEffect {
-  id: number;
-  fromX: number;
-}
-
 interface GameTableProps {
   onDraw: (side: 'left' | 'right') => void;
 }
 
 let throwIdCounter = 0;
-let handGainBumpId = 0;
-let handSwapId = 0;
 
 export default function GameTable({ onDraw }: GameTableProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -74,7 +49,6 @@ export default function GameTable({ onDraw }: GameTableProps) {
   const roundNumber = useGameStore((s) => s.roundNumber);
   const userId = useEffectiveUserId();
   const ownerId = useRoomStore((s) => s.room?.ownerId);
-  const drawUntilEnabled = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
 
   // Mumble speaking state
   const mumbleUsersById = useGatewayStore((s) => s.usersById);
@@ -91,14 +65,10 @@ export default function GameTable({ onDraw }: GameTableProps) {
   }, [mumbleUsersById, mumbleSpeakingByUserId]);
 
   // Chat messages per player
-  const [chatMessages, setChatMessages] = useState<Map<string, string>>(new Map());
-  const chatTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  const latestChatMessage = useChatStore((s) => s.latestLiveMessage);
+  const chatMessages = useChatBubbles();
 
   // Active throw animations
   const [activeThrows, setActiveThrows] = useState<ActiveThrow[]>([]);
-  const [activeHandSwaps, setActiveHandSwaps] = useState<ActiveHandSwap[]>([]);
-  const [handSwapEffects, setHandSwapEffects] = useState<Map<string, HandSwapEffect>>(new Map());
 
   // Track container dimensions with ResizeObserver
   useEffect(() => {
@@ -151,7 +121,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
     }
   }, [lastAction]);
 
-  // Track skipped player: show ban overlay until the next action, with a fallback timeout
+  // Track skipped player
   const [skippedPlayerId, setSkippedPlayerId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -192,40 +162,30 @@ export default function GameTable({ onDraw }: GameTableProps) {
     setSkippedPlayerId(null);
   }, [lastAction]);
 
-  useEffect(() => {
-    if (!latestChatMessage) {
-      setChatMessages(new Map());
-      chatTimers.current.forEach((t) => clearTimeout(t));
-      chatTimers.current.clear();
-      return;
-    }
+  // Player layout
+  const { playerPositions, getPlayerPosition } = usePlayerLayout(dimensions, players, userId);
 
-    setChatMessages((prev) => {
-      const next = new Map(prev);
-      next.set(latestChatMessage.userId, latestChatMessage.text);
-      return next;
-    });
-
-    const existing = chatTimers.current.get(latestChatMessage.userId);
-    if (existing) clearTimeout(existing);
-
-    const timer = setTimeout(() => {
-      setChatMessages((prev) => {
-        const next = new Map(prev);
-        next.delete(latestChatMessage.userId);
-        return next;
-      });
-      chatTimers.current.delete(latestChatMessage.userId);
-    }, 3000);
-    chatTimers.current.set(latestChatMessage.userId, timer);
-  }, [latestChatMessage]);
-
-  useEffect(() => {
-    return () => {
-      chatTimers.current.forEach((t) => clearTimeout(t));
-      chatTimers.current.clear();
-    };
-  }, []);
+  // Draw animation and hand swap animation
+  const {
+    drawAnimLeft,
+    drawAnimRight,
+    drawUntilCount,
+    handGainBumps,
+    activeHandSwaps,
+    handSwapEffects,
+    handleHandSwapComplete,
+  } = useDrawAnimation(
+    players,
+    dimensions,
+    userId,
+    lastAction,
+    settings,
+    direction,
+    roundNumber,
+    getPlayerPosition,
+    phase,
+    currentPlayerIndex,
+  );
 
   // Listen for throw:item events from socket
   useEffect(() => {
@@ -256,250 +216,6 @@ export default function GameTable({ onDraw }: GameTableProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [players, dimensions]);
 
-  // Calculate player positions on ellipse
-  const playerPositions = useMemo(() => {
-    const { width, height } = dimensions;
-    if (width === 0 || height === 0 || players.length === 0) return [];
-
-    const cx = width / 2;
-    const cy = height / 2;
-    const rx = width * 0.38;
-    const ry = height * 0.38;
-    const n = players.length;
-
-    // Find my index
-    const myIndex = players.findIndex((p) => p.id === userId);
-    const safeMyIndex = myIndex >= 0 ? myIndex : 0;
-
-    const positions: { x: number; y: number }[] = [];
-
-    for (let i = 0; i < n; i++) {
-      // My position is at bottom (angle = PI/2)
-      // Other players distributed clockwise from there
-      const offset = i - safeMyIndex;
-      const angle = Math.PI / 2 + (offset * 2 * Math.PI) / n;
-      positions.push({
-        x: cx + rx * Math.cos(angle),
-        y: cy + ry * Math.sin(angle),
-      });
-    }
-
-    return positions;
-  }, [dimensions, players, userId]);
-
-  // Helper: get position for a player by ID
-  const getPlayerPosition = useCallback((playerId: string) => {
-    const idx = players.findIndex((p) => p.id === playerId);
-    if (idx < 0 || idx >= playerPositions.length) return null;
-    return playerPositions[idx];
-  }, [players, playerPositions]);
-
-  // Draw animation: track hand count increases and compute target direction
-  const [drawAnimLeft, setDrawAnimLeft] = useState<{ trigger: number; targetX: number; targetY: number }>({ trigger: 0, targetX: 0, targetY: 220 });
-  const [drawAnimRight, setDrawAnimRight] = useState<{ trigger: number; targetX: number; targetY: number }>({ trigger: 0, targetX: 0, targetY: 220 });
-  const [handGainBumps, setHandGainBumps] = useState<Map<string, HandGainBump>>(new Map());
-  const [drawUntilCount, setDrawUntilCount] = useState(0);
-  const prevHandCountsRef = useRef<Map<string, number>>(new Map());
-  const drawUntilRef = useRef<{ playerId: string | null; count: number; handCount: number | null }>({ playerId: null, count: 0, handCount: null });
-  const handGainTimersRef = useRef<Map<string, number>>(new Map());
-  const drawAnimationTimersRef = useRef<number[]>([]);
-  const handSwapEffectTimersRef = useRef<number[]>([]);
-  const lastHandSwapActionKeyRef = useRef<string | null>(null);
-
-  const computeDrawTarget = useCallback((playerId: string) => {
-    const pos = getPlayerPosition(playerId);
-    if (!pos || dimensions.width === 0) return { x: 0, y: 220 };
-    const cx = dimensions.width / 2;
-    const cy = dimensions.height / 2;
-    const isMe = playerId === userId;
-    return { x: pos.x - cx, y: pos.y - cy + (isMe ? 92 : 58) };
-  }, [getPlayerPosition, dimensions, userId]);
-
-  const enqueueHandSwapAnimations = useCallback((routes: Array<{ fromId: string; toId: string; count: number }>) => {
-    const swaps: ActiveHandSwap[] = [];
-    const effects = new Map<string, HandSwapEffect>();
-
-    for (const route of routes) {
-      const from = getPlayerPosition(route.fromId);
-      const to = getPlayerPosition(route.toId);
-      if (!from || !to) continue;
-
-      const id = ++handSwapId;
-      effects.set(route.toId, {
-        id,
-        fromX: Math.max(-48, Math.min(48, from.x - to.x)),
-      });
-
-      if (route.count > 0) {
-        swaps.push({
-          id: `hand_swap_${id}`,
-          from: { x: from.x, y: from.y + 54 },
-          to: { x: to.x, y: to.y + 54 },
-          count: route.count,
-        });
-      }
-    }
-
-    if (swaps.length > 0) {
-      setActiveHandSwaps((prev) => [...prev, ...swaps]);
-    }
-
-    if (effects.size > 0) {
-      setHandSwapEffects(effects);
-      const timer = window.setTimeout(() => {
-        setHandSwapEffects((prev) => {
-          const next = new Map(prev);
-          for (const [playerId, effect] of effects) {
-            if (next.get(playerId)?.id === effect.id) {
-              next.delete(playerId);
-            }
-          }
-          return next;
-        });
-      }, 900);
-      handSwapEffectTimersRef.current.push(timer);
-    }
-  }, [getPlayerPosition]);
-
-  const handleHandSwapComplete = useCallback((id: string) => {
-    setActiveHandSwaps((prev) => prev.filter((swap) => swap.id !== id));
-  }, []);
-
-  useEffect(() => {
-    for (const timer of drawAnimationTimersRef.current) {
-      window.clearTimeout(timer);
-    }
-    drawAnimationTimersRef.current = [];
-
-    if (players.length === 0 || dimensions.width === 0) return;
-    const previous = prevHandCountsRef.current;
-    const pile = useGameStore.getState().discardPile;
-    const topCard = pile[pile.length - 1];
-    const isZeroRotate =
-      lastAction?.type === 'PLAY_CARD' &&
-      settings?.houseRules?.zeroRotateHands &&
-      topCard?.type === 'number' &&
-      topCard.value === 0;
-    const isSevenSwap = lastAction?.type === 'CHOOSE_SWAP_TARGET';
-    const swapActionKey = isSevenSwap
-      ? `${roundNumber}:seven:${lastAction.playerId}:${lastAction.targetId}`
-      : isZeroRotate
-        ? `${roundNumber}:zero:${lastAction.playerId}:${lastAction.cardId}`
-        : null;
-
-    if (previous.size > 0 && swapActionKey && lastHandSwapActionKeyRef.current !== swapActionKey) {
-      lastHandSwapActionKeyRef.current = swapActionKey;
-
-      if (isSevenSwap) {
-        const actorCount = previous.get(lastAction.playerId) ?? 0;
-        const targetCount = previous.get(lastAction.targetId) ?? 0;
-        enqueueHandSwapAnimations([
-          { fromId: lastAction.playerId, toId: lastAction.targetId, count: actorCount },
-          { fromId: lastAction.targetId, toId: lastAction.playerId, count: targetCount },
-        ]);
-      } else if (isZeroRotate) {
-        const routes = players.map((player, index) => {
-          const sourceIndex = direction === 'clockwise'
-            ? (index - 1 + players.length) % players.length
-            : (index + 1) % players.length;
-          const source = players[sourceIndex]!;
-          const playedCardAdjustment = source.id === lastAction.playerId ? 1 : 0;
-          return {
-            fromId: source.id,
-            toId: player.id,
-            count: Math.max(0, (previous.get(source.id) ?? 0) - playedCardAdjustment),
-          };
-        });
-        enqueueHandSwapAnimations(routes);
-      }
-    }
-
-    const shouldAnimateDraw = lastAction?.type === 'DRAW_CARD';
-    for (const player of players) {
-      const before = previous.get(player.id);
-      const after = player.handCount;
-      if (shouldAnimateDraw && player.id === lastAction.playerId && before !== undefined && after > before) {
-        const added = after - before;
-        const bumpId = ++handGainBumpId;
-        setHandGainBumps((prev) => {
-          const next = new Map(prev);
-          const current = next.get(player.id);
-          next.set(player.id, { id: bumpId, count: (current?.count ?? 0) + added });
-          return next;
-        });
-        const existingTimer = handGainTimersRef.current.get(player.id);
-        if (existingTimer) {
-          window.clearTimeout(existingTimer);
-        }
-        const removeTimer = window.setTimeout(() => {
-          setHandGainBumps((prev) => {
-            const current = prev.get(player.id);
-            if (!current || current.id !== bumpId) return prev;
-            const next = new Map(prev);
-            next.delete(player.id);
-            return next;
-          });
-          handGainTimersRef.current.delete(player.id);
-        }, 3000);
-        handGainTimersRef.current.set(player.id, removeTimer);
-
-        const drawSide = (lastAction as { side?: string }).side;
-        const setAnim = drawSide === 'right' ? setDrawAnimRight : setDrawAnimLeft;
-        for (let i = 0; i < added; i++) {
-          const target = computeDrawTarget(player.id);
-          const timer = window.setTimeout(() => {
-            setAnim((prev) => ({
-              trigger: prev.trigger + 1,
-              targetX: target.x,
-              targetY: target.y,
-            }));
-          }, i * 300);
-          drawAnimationTimersRef.current.push(timer);
-        }
-      }
-    }
-    prevHandCountsRef.current = new Map(players.map((p) => [p.id, p.handCount]));
-  }, [players, dimensions.width, computeDrawTarget, lastAction, settings, direction, roundNumber, enqueueHandSwapAnimations]);
-
-  useEffect(() => {
-    if (!drawUntilEnabled || phase !== 'playing' || lastAction?.type !== 'DRAW_CARD') {
-      drawUntilRef.current = { playerId: null, count: 0, handCount: null };
-      setDrawUntilCount(0);
-      return;
-    }
-
-    const currentPlayer = players[currentPlayerIndex];
-    if (!currentPlayer || lastAction.playerId !== currentPlayer.id) {
-      drawUntilRef.current = { playerId: null, count: 0, handCount: null };
-      setDrawUntilCount(0);
-      return;
-    }
-
-    const previous = drawUntilRef.current;
-    if (previous.playerId === lastAction.playerId && previous.handCount === currentPlayer.handCount) return;
-
-    const nextCount = previous.playerId === lastAction.playerId ? previous.count + 1 : 1;
-    drawUntilRef.current = { playerId: lastAction.playerId, count: nextCount, handCount: currentPlayer.handCount };
-    setDrawUntilCount(nextCount);
-  }, [drawUntilEnabled, phase, lastAction, players, currentPlayerIndex]);
-
-  useEffect(() => {
-    return () => {
-      for (const timer of drawAnimationTimersRef.current) {
-        window.clearTimeout(timer);
-      }
-      for (const timer of handGainTimersRef.current.values()) {
-        window.clearTimeout(timer);
-      }
-      for (const timer of handSwapEffectTimersRef.current) {
-        window.clearTimeout(timer);
-      }
-      drawAnimationTimersRef.current = [];
-      handGainTimersRef.current.clear();
-      handSwapEffectTimersRef.current = [];
-    };
-  }, []);
-
   // Handle reaction from quick reaction menu
   const handleReaction = useCallback((emoji: string) => {
     getSocket().emit('chat:message', { text: emoji });
@@ -519,159 +235,19 @@ export default function GameTable({ onDraw }: GameTableProps) {
     setActiveThrows((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Direction arc path for SVG overlay
-  const directionArc = useMemo(() => {
-    if (playerPositions.length < 2) return null;
-    const { width, height } = dimensions;
-    if (width === 0 || height === 0) return null;
-
-    const cx = width / 2;
-    const cy = height / 2;
-    const rx = width * 0.38;
-    const ry = height * 0.38;
-    const n = players.length;
-
-    const isClockwise = direction === 'clockwise';
-    const leftX = cx - rx;
-    const rightX = cx + rx;
-
-    const fullPath = `M ${rightX} ${cy} A ${rx} ${ry} 0 1 1 ${leftX} ${cy} A ${rx} ${ry} 0 1 1 ${rightX} ${cy}`;
-
-    const myIndex = players.findIndex((p) => p.id === userId);
-    const safeMyIndex = myIndex >= 0 ? myIndex : 0;
-
-    const currentOffset = currentPlayerIndex - safeMyIndex;
-    const step = isClockwise ? 1 : -1;
-    const nextIdx = ((currentPlayerIndex + step) % n + n) % n;
-    const nextOffset = nextIdx - safeMyIndex;
-
-    const startAngle = Math.PI / 2 + (currentOffset * 2 * Math.PI) / n;
-    const endAngle = Math.PI / 2 + (nextOffset * 2 * Math.PI) / n;
-
-    const sx = cx + rx * Math.cos(startAngle);
-    const sy = cy + ry * Math.sin(startAngle);
-    const ex = cx + rx * Math.cos(endAngle);
-    const ey = cy + ry * Math.sin(endAngle);
-
-    let angleDiff = endAngle - startAngle;
-    if (isClockwise) {
-      if (angleDiff <= 0) angleDiff += 2 * Math.PI;
-    } else {
-      if (angleDiff >= 0) angleDiff -= 2 * Math.PI;
-    }
-    const largeArc = Math.abs(angleDiff) > Math.PI ? 1 : 0;
-    const sweep = isClockwise ? 1 : 0;
-
-    const highlightPath = `M ${sx} ${sy} A ${rx} ${ry} 0 ${largeArc} ${sweep} ${ex} ${ey}`;
-
-    // Tangent direction at the end point for arrowhead
-    // Derivative of ellipse: dx/dθ = -rx·sin(θ), dy/dθ = ry·cos(θ)
-    const tangentX = -rx * Math.sin(endAngle);
-    const tangentY = ry * Math.cos(endAngle);
-    const tangentLen = Math.sqrt(tangentX * tangentX + tangentY * tangentY);
-    const dir = isClockwise ? 1 : -1;
-    const tx = (tangentX / tangentLen) * dir;
-    const ty = (tangentY / tangentLen) * dir;
-
-    return { fullPath, highlightPath, isClockwise, arrowTip: { x: ex, y: ey, tx, ty }, cx, cy, rx, ry };
-  }, [playerPositions, dimensions, direction, players, userId, currentPlayerIndex]);
-
   const isClockwise = direction === 'clockwise';
 
   return (
     <div ref={containerRef} className="relative flex-1 overflow-hidden">
       {/* Direction arc SVG overlay */}
-      {directionArc && dimensions.width > 0 && (
-        <svg
-          className="absolute inset-0 pointer-events-none"
-          width={dimensions.width}
-          height={dimensions.height}
-        >
-          <motion.path
-            d={directionArc.fullPath}
-            fill="none"
-            stroke="rgba(251, 191, 36, 0.15)"
-            strokeWidth={2}
-            strokeDasharray="8 6"
-            animate={{
-              strokeDashoffset: isClockwise
-                ? [0, -28]
-                : [0, 28],
-            }}
-            transition={{
-              duration: 1.5,
-              repeat: Infinity,
-              ease: 'linear',
-            }}
-          />
-          <motion.path
-            key={currentPlayerIndex}
-            d={directionArc.highlightPath}
-            fill="none"
-            stroke="rgba(251, 191, 36, 0.5)"
-            strokeWidth={2}
-            strokeDasharray="8 6"
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: 1,
-              strokeDashoffset: [0, -28],
-            }}
-            transition={{
-              opacity: { duration: 0.3 },
-              strokeDashoffset: { duration: 1.5, repeat: Infinity, ease: 'linear' },
-            }}
-          />
-          {/* Arrowhead at end of highlight arc */}
-          {(() => {
-            const { x, y, tx, ty } = directionArc.arrowTip;
-            const length = 12;
-            const halfWidth = 11;
-            const nx = -ty, ny = tx;
-            const p1x = x - tx * length + nx * halfWidth;
-            const p1y = y - ty * length + ny * halfWidth;
-            const p2x = x - tx * length - nx * halfWidth;
-            const p2y = y - ty * length - ny * halfWidth;
-            return (
-              <motion.polygon
-                key={`arrow-${currentPlayerIndex}`}
-                points={`${x},${y} ${p1x},${p1y} ${p2x},${p2y}`}
-                fill="rgba(251, 191, 36, 0.6)"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-              />
-            );
-          })()}
-          {/* Direction arrows on full ellipse */}
-          {(() => {
-            const { cx, cy, rx, ry } = directionArc;
-            const count = Math.min(players.length * 2, 8);
-            const dir = isClockwise ? 1 : -1;
-            const arrows = [];
-            for (let i = 0; i < count; i++) {
-              const angle = (i * 2 * Math.PI) / count;
-              const ax = cx + rx * Math.cos(angle);
-              const ay = cy + ry * Math.sin(angle);
-              const tangentX = -rx * Math.sin(angle);
-              const tangentY = ry * Math.cos(angle);
-              const len = Math.sqrt(tangentX * tangentX + tangentY * tangentY);
-              const atx = (tangentX / len) * dir;
-              const aty = (tangentY / len) * dir;
-              const anx = -aty, any_ = atx;
-              const length = 8;
-              const halfWidth = 8;
-              arrows.push(
-                <polygon
-                  key={`dir-arrow-${i}`}
-                  points={`${ax + atx * length},${ay + aty * length} ${ax - atx * length + anx * halfWidth},${ay - aty * length + any_ * halfWidth} ${ax - atx * length - anx * halfWidth},${ay - aty * length - any_ * halfWidth}`}
-                  fill="rgba(251, 191, 36, 0.15)"
-                />
-              );
-            }
-            return arrows;
-          })()}
-        </svg>
-      )}
+      <DirectionIndicator
+        dimensions={dimensions}
+        playerPositions={playerPositions}
+        direction={direction}
+        currentPlayerIndex={currentPlayerIndex}
+        players={players}
+        userId={userId}
+      />
 
       {/* Center area: DrawPile + DiscardPile */}
       {dimensions.width > 0 && (
@@ -801,103 +377,5 @@ export default function GameTable({ onDraw }: GameTableProps) {
         ))}
       </AnimatePresence>
     </div>
-  );
-}
-
-function HandSwapAnimation({ swap, onComplete }: { swap: ActiveHandSwap; onComplete: () => void }) {
-  const visibleCards = Math.min(5, swap.count);
-
-  return (
-    <motion.div
-      className="absolute pointer-events-none z-effects flex items-center"
-      style={{ left: 0, top: 0 }}
-      initial={{ x: swap.from.x, y: swap.from.y, opacity: 0, scale: 0.88 }}
-      animate={{ x: swap.to.x, y: swap.to.y, opacity: [0, 1, 1, 0], scale: [0.88, 1, 1, 0.92] }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.82, ease: 'easeInOut' }}
-      onAnimationComplete={onComplete}
-    >
-      <div className="flex -space-x-2 -translate-x-1/2 -translate-y-1/2">
-        {Array.from({ length: visibleCards }).map((_, i) => (
-          <CardBack key={i} small />
-        ))}
-      </div>
-      {swap.count > 5 && (
-        <span className="-translate-y-1/2 ml-1 rounded bg-black/60 px-1.5 py-0.5 text-2xs font-bold text-foreground tabular-nums">
-          ×{swap.count}
-        </span>
-      )}
-    </motion.div>
-  );
-}
-
-function TurnIndicator({ playerName, avatarUrl, playerIndex, isMe, turnEndTime, phase, cy }: {
-  playerName: string;
-  avatarUrl?: string | null;
-  playerIndex: number;
-  isMe: boolean;
-  turnEndTime: number | null;
-  phase: string | null;
-  cy: number;
-}) {
-  const secondsLeft = useCountdown(turnEndTime);
-
-  let label: string;
-  if (phase === 'challenging') {
-    label = isMe ? '选择质疑或接受' : `${playerName} 正在考虑质疑`;
-  } else if (phase === 'choosing_color') {
-    label = isMe ? '选择颜色' : `${playerName} 正在选色`;
-  } else if (phase === 'choosing_swap_target') {
-    label = isMe ? '选择交换对象' : `${playerName} 正在选择交换`;
-  } else {
-    label = isMe ? '你的回合' : playerName;
-  }
-
-  const urgent = secondsLeft !== null && secondsLeft <= 5;
-
-  return (
-    <motion.div
-      key={playerName}
-      className="absolute left-1/2 -translate-x-1/2 pointer-events-none flex flex-col items-center gap-1 whitespace-nowrap"
-      style={{ top: cy + 110 }}
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-    >
-      <div className="flex items-center gap-2">
-        <div
-          className="relative w-7 h-7 rounded-full flex items-center justify-center text-xs overflow-hidden"
-          style={{ background: AVATAR_COLORS[playerIndex % AVATAR_COLORS.length] }}
-        >
-          <span>{AVATAR_EMOJIS[playerIndex % AVATAR_EMOJIS.length]}</span>
-          {avatarUrl && (
-            <img
-              src={avatarUrl}
-              alt={playerName}
-              className="absolute inset-0 w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          )}
-          <GoogleRing size={0} className="w-full h-full" />
-        </div>
-        <span className={cn(
-          'font-game text-lg',
-          isMe ? 'text-primary font-bold' : 'text-foreground',
-        )}>
-          {label}
-        </span>
-      </div>
-      {secondsLeft !== null && (
-        <span className={cn(
-          'font-game text-base tabular-nums',
-          urgent ? 'text-destructive font-bold animate-timer-flash' : 'text-muted-foreground',
-        )}>
-          {secondsLeft}s
-        </span>
-      )}
-    </motion.div>
   );
 }

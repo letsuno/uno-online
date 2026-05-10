@@ -3,19 +3,16 @@ import type { PluginContext } from '../../../plugin-context';
 import type { UserRole } from '@uno-online/shared';
 import type { AuthenticatedRequest } from '../auth/service';
 import { adminOnly } from './middleware';
-import { getDb } from '../../../db/database';
 import { getRoom, getRoomPlayers, deleteRoom } from '../room/store';
 import { getGamesList, getGameDetail } from '../game-history/service';
 import { sql } from 'kysely';
 
 export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext) {
-  const { config, kv } = ctx;
+  const { config, kv, db } = ctx;
   const preHandler = adminOnly(config.jwtSecret);
 
   // Dashboard stats
   fastify.get('/admin/dashboard', { preHandler }, async () => {
-    const db = getDb();
-
     const userStats = await db
       .selectFrom('users')
       .select([
@@ -42,7 +39,6 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
   fastify.get<{
     Querystring: { search?: string; page?: string; limit?: string };
   }>('/admin/users', { preHandler }, async (request) => {
-    const db = getDb();
     const search = request.query.search?.trim() ?? '';
     const page = Math.max(1, parseInt(request.query.page ?? '1', 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(request.query.limit ?? '20', 10) || 20));
@@ -96,7 +92,6 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
       return reply.code(400).send({ error: 'Invalid role' });
     }
 
-    const db = getDb();
     const result = await db
       .updateTable('users')
       .set({ role, updatedAt: sql`datetime('now')` })
@@ -129,7 +124,6 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
       if (trimmed.length < 2 || trimmed.length > 20) {
         return reply.code(400).send({ error: 'Username must be 2-20 characters' });
       }
-      const db = getDb();
       const existing = await db.selectFrom('users').select('id').where('username', '=', trimmed).where('id', '!=', id).executeTakeFirst();
       if (existing) {
         return reply.code(409).send({ error: 'Username already taken' });
@@ -145,7 +139,6 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
       updates.nickname = trimmed;
     }
 
-    const db = getDb();
     const result = await db.updateTable('users').set(updates).where('id', '=', id).execute();
 
     if (!result.length || Number(result[0]!.numUpdatedRows) === 0) {
@@ -200,7 +193,6 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
   fastify.get<{
     Querystring: { page?: string; limit?: string };
   }>('/admin/games', { preHandler }, async (request) => {
-    const db = getDb();
     const page = Math.max(1, parseInt(request.query.page ?? '1', 10) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(request.query.limit ?? '20', 10) || 20));
     return getGamesList(db, page, limit);
@@ -208,7 +200,6 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
 
   // Game detail
   fastify.get<{ Params: { id: string } }>('/admin/games/:id', { preHandler }, async (request, reply) => {
-    const db = getDb();
     const detail = await getGameDetail(db, request.params.id);
     if (!detail) return reply.code(404).send({ error: 'Game not found' });
     return detail;

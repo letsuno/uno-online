@@ -1,73 +1,15 @@
-import type { GameState, GameAction, DrawSide } from '../types/game';
+import type { GameState, GameAction } from '../types/game';
 import type { Card } from '../types/card';
 import type { Color } from '../types/card';
-import type { PendingPenaltyDraw } from '../types/game';
 import { isWildCard } from '../types/card';
-import { reshuffleSideFromDiscard } from './deck';
 import { canPlayCard } from './validation';
 import { getNextPlayerIndex } from './turn';
-import { applyAction, checkRoundEnd } from './game-engine';
+import { applyAction, checkRoundEnd, startPenaltyDraw, drawCards } from './game-engine';
 import type { RuleContext } from './house-rule-types';
 
-export function startPenaltyDraw(
-  state: GameState,
-  playerId: string,
-  count: number,
-  nextPlayerIndex: number,
-  sourcePlayerId: string | null = null,
-): GameState {
-  if (count <= 0) return state;
-  const playerIndex = state.players.findIndex(p => p.id === playerId);
-  if (playerIndex === -1) return state;
-  const queue: PendingPenaltyDraw[] = state.pendingPenaltyDraws && state.pendingPenaltyDraws > 0
-    ? [
-        ...(state.pendingPenaltyQueue ?? []),
-        { playerId, count, nextPlayerIndex, sourcePlayerId },
-      ]
-    : (state.pendingPenaltyQueue ?? []);
-
-  if (state.pendingPenaltyDraws && state.pendingPenaltyDraws > 0) {
-    return { ...state, pendingPenaltyQueue: queue };
-  }
-
-  return {
-    ...state,
-    phase: 'playing',
-    currentPlayerIndex: playerIndex,
-    pendingPenaltyDraws: count,
-    pendingPenaltyNextPlayerIndex: nextPlayerIndex,
-    pendingPenaltySourcePlayerId: sourcePlayerId,
-    pendingPenaltyQueue: queue,
-  };
-}
-
 export function drawCardsFromDeck(state: GameState, playerId: string, count: number): GameState {
-  const playerIndex = state.players.findIndex(p => p.id === playerId);
-  if (playerIndex === -1) return state;
-  const side: DrawSide = state.deckLeft.length >= state.deckRight.length ? 'left' : 'right';
-  let sideDeck = side === 'left' ? [...state.deckLeft] : [...state.deckRight];
-  let discardPile = [...state.discardPile];
-  const initialCount = side === 'left' ? state.deckLeftInitialCount : state.deckRightInitialCount;
-  const drawn: Card[] = [];
-  for (let i = 0; i < count; i++) {
-    if (sideDeck.length === 0) {
-      const r = reshuffleSideFromDiscard(sideDeck, discardPile, initialCount);
-      sideDeck = r.sideDeck;
-      discardPile = r.discardPile;
-    }
-    if (sideDeck.length === 0) break;
-    drawn.push(sideDeck.shift()!);
-  }
-  const players = state.players.map((p, idx) =>
-    idx === playerIndex ? { ...p, hand: [...p.hand, ...drawn], calledUno: false, unoCaught: false } : p,
-  );
-  return {
-    ...state,
-    players,
-    deckLeft: side === 'left' ? sideDeck : state.deckLeft,
-    deckRight: side === 'right' ? sideDeck : state.deckRight,
-    discardPile,
-  };
+  const side = state.deckLeft.length >= state.deckRight.length ? 'left' : 'right';
+  return drawCards(state, playerId, count, side);
 }
 
 export function hasPendingDrawObligation(state: GameState): boolean {
@@ -88,10 +30,6 @@ export function isLastCard(state: GameState, playerId: string, cardId: string): 
   const player = state.players.find(p => p.id === playerId);
   if (!player) return false;
   return player.hand.length === 1 && player.hand[0]!.id === cardId;
-}
-
-export function isWildType(card: Card): boolean {
-  return isWildCard(card);
 }
 
 export function isFunctionCard(card: Card): boolean {
@@ -199,7 +137,7 @@ export function buildRuleContext(): RuleContext {
     getCardDrawPenalty,
     canStartDrawStack,
     isLastCard,
-    isWildType,
+    isWildCard,
     isFunctionCard,
     handleDrawUntilPlayable,
     handleForcedPlayAfterDraw,

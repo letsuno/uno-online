@@ -1,6 +1,6 @@
 export { createDeck, shuffleDeck, reshuffleDiscardIntoDeck, reshuffleSideFromDiscard, serializeDeck, serializeDecks, cardToIdentity } from './deck';
 export type { CardIdentity } from './deck';
-export { canPlayCard, getPlayableCards, isValidWildDrawFour } from './validation';
+export { canPlayCard, getPlayableCards, isValidWildDrawFour, canRespondToDrawStack, isExactJumpInMatch } from './validation';
 export { getNextPlayerIndex, reverseDirection } from './turn';
 export { dealCards, handleFirstDiscard, initializeGame, initializeNextRound } from './setup';
 export type { DealResult, FirstCardEffect, FirstDiscardResult } from './setup';

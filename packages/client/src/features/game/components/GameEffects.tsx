@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Ban, RotateCcw, Trophy, ShieldAlert, ShieldX, Megaphone, Hand } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
@@ -70,76 +70,67 @@ export default function GameEffects() {
   const prevActionRef = useRef<typeof lastAction>(null);
   const prevPendingPenaltyRef = useRef(0);
 
-  const addEffect = (effect: Omit<Effect, 'id'>) => {
+  const addEffect = useCallback((effect: Omit<Effect, 'id'>) => {
     const id = `effect_${++effectId}`;
     setEffects((prev) => [...prev, { id, ...effect }]);
     setTimeout(() => {
       setEffects((prev) => prev.filter((e) => e.id !== id));
     }, EFFECT_DURATION);
-  };
-
-  const addTargetEffect = (type: Effect['type'], text: string, targetName?: string, targetIndex?: number, targetAvatarUrl?: string | null) => {
-    addEffect({ type, text, targetName, targetIndex, targetAvatarUrl });
-  };
-
-  const addDrawEffect = (drawCount: number, targetName?: string, targetIndex?: number, targetAvatarUrl?: string | null) => {
-    addEffect({ type: 'draw', text: `+${drawCount}!`, targetName, targetIndex, targetAvatarUrl, drawCount });
-  };
-
-  const findPlayerIndex = (id: string) => players.findIndex((p) => p.id === id);
-
-  const getNextPlayerFromActor = () => {
-    if (lastAction?.type !== 'PLAY_CARD') return null;
-    const actorIdx = findPlayerIndex(lastAction.playerId);
-    if (actorIdx < 0 || players.length === 0) return null;
-
-    const step = direction === 'clockwise' ? 1 : -1;
-    const targetIdx = ((actorIdx + step) % players.length + players.length) % players.length;
-    const target = players[targetIdx];
-    return target ? { player: target, index: targetIdx } : null;
-  };
-
-  const getStackDrawTarget = () => {
-    const player = players[currentPlayerIndex];
-    return player ? { player, index: currentPlayerIndex } : null;
-  };
+  }, []);
 
   useEffect(() => {
     if (!topCard || topCard.id === prevTopCardRef.current) return;
     prevTopCardRef.current = topCard.id;
 
-    const affected = getNextPlayerFromActor();
+    const findIdx = (id: string) => players.findIndex((p) => p.id === id);
+
+    const getNextFromActor = () => {
+      if (lastAction?.type !== 'PLAY_CARD') return null;
+      const actorIdx = findIdx(lastAction.playerId);
+      if (actorIdx < 0 || players.length === 0) return null;
+      const step = direction === 'clockwise' ? 1 : -1;
+      const targetIdx = ((actorIdx + step) % players.length + players.length) % players.length;
+      const t = players[targetIdx];
+      return t ? { player: t, index: targetIdx } : null;
+    };
+
+    const getStackTarget = () => {
+      const p = players[currentPlayerIndex];
+      return p ? { player: p, index: currentPlayerIndex } : null;
+    };
+
+    const affected = getNextFromActor();
 
     if (topCard.type === 'skip') {
-      addTargetEffect('skip', '跳过!', affected?.player.name, affected?.index, affected?.player.avatarUrl);
+      addEffect({ type: 'skip', text: '跳过!', targetName: affected?.player.name, targetIndex: affected?.index, targetAvatarUrl: affected?.player.avatarUrl });
       playSound('skip');
     } else if (topCard.type === 'reverse') {
       if (players.length === 2) {
-        addTargetEffect('skip', '跳过!', affected?.player.name, affected?.index, affected?.player.avatarUrl);
+        addEffect({ type: 'skip', text: '跳过!', targetName: affected?.player.name, targetIndex: affected?.index, targetAvatarUrl: affected?.player.avatarUrl });
       } else {
-        addTargetEffect('reverse', '反转!');
+        addEffect({ type: 'reverse', text: '反转!' });
       }
       playSound('reverse');
     } else if (topCard.type === 'draw_two') {
-      const stacked = drawStack > 0 ? getStackDrawTarget() : null;
-      const drawCount = drawStack > 0 ? drawStack : 2;
+      const stacked = drawStack > 0 ? getStackTarget() : null;
+      const dc = drawStack > 0 ? drawStack : 2;
       const target = stacked ?? affected;
-      addDrawEffect(drawCount, target?.player.name, target?.index, target?.player.avatarUrl);
+      addEffect({ type: 'draw', text: `+${dc}!`, targetName: target?.player.name, targetIndex: target?.index, targetAvatarUrl: target?.player.avatarUrl, drawCount: dc });
       playSound('draw_two');
     } else if (topCard.type === 'wild_draw_four') {
-      const stacked = drawStack > 0 ? getStackDrawTarget() : null;
-      const pendingIdx = pendingDrawPlayerId ? findPlayerIndex(pendingDrawPlayerId) : -1;
+      const stacked = drawStack > 0 ? getStackTarget() : null;
+      const pendingIdx = pendingDrawPlayerId ? findIdx(pendingDrawPlayerId) : -1;
       const pendingPlayer = pendingIdx >= 0 ? players[pendingIdx] : affected?.player;
       const target = stacked ?? (pendingPlayer ? { player: pendingPlayer, index: pendingIdx >= 0 ? pendingIdx : affected?.index } : affected);
-      const drawCount = drawStack > 0 ? drawStack : 4;
-      addDrawEffect(drawCount, target?.player.name, target?.index, target?.player.avatarUrl);
+      const dc = drawStack > 0 ? drawStack : 4;
+      addEffect({ type: 'draw', text: `+${dc}!`, targetName: target?.player.name, targetIndex: target?.index, targetAvatarUrl: target?.player.avatarUrl, drawCount: dc });
       playSound('wild');
     } else if (topCard.type === 'wild') {
       playSound('wild');
     } else {
       playSound('play_card');
     }
-  }, [topCard?.id, lastAction, players, direction, pendingDrawPlayerId, drawStack, currentPlayerIndex]);
+  }, [topCard?.id, lastAction, players, direction, pendingDrawPlayerId, drawStack, currentPlayerIndex, addEffect]);
 
   useEffect(() => {
     if (pendingPenaltyDraws > 0 && prevPendingPenaltyRef.current <= 0) {
@@ -152,25 +143,27 @@ export default function GameEffects() {
     if (phase === 'round_end' || phase === 'game_over') {
       const winner = players.find((p) => p.id === winnerId);
       if (winner) {
-        const winnerIdx = findPlayerIndex(winner.id);
-        addTargetEffect('victory', winner.id === userId ? '你赢了!' : `${winner.name} 获胜!`, winner.name, winnerIdx >= 0 ? winnerIdx : undefined, winner.avatarUrl);
+        const winnerIdx = players.findIndex((p) => p.id === winner.id);
+        addEffect({ type: 'victory', text: winner.id === userId ? '你赢了!' : `${winner.name} 获胜!`, targetName: winner.name, targetIndex: winnerIdx >= 0 ? winnerIdx : undefined, targetAvatarUrl: winner.avatarUrl });
         playSound(winner.id === userId ? 'win' : 'lose');
       }
     }
-  }, [phase]);
+  }, [phase, players, winnerId, userId, addEffect]);
 
   useEffect(() => {
     if (!lastAction || lastAction === prevActionRef.current) return;
     prevActionRef.current = lastAction;
 
+    const findIdx = (id: string) => players.findIndex((p) => p.id === id);
+
     if (lastAction.type === 'CHALLENGE' && lastAction.succeeded !== undefined) {
       const challenger = players.find((p) => p.id === lastAction.playerId);
-      const challengerIdx = findPlayerIndex(lastAction.playerId);
+      const challengerIdx = findIdx(lastAction.playerId);
 
       const penaltyId = lastAction.penaltyPlayerId ?? (lastAction.succeeded ? undefined : lastAction.playerId);
       const penaltyCount = lastAction.penaltyCount ?? (lastAction.succeeded ? 4 : 6);
       const penaltyPlayer = penaltyId ? players.find((p) => p.id === penaltyId) : undefined;
-      const penaltyIdx = penaltyId ? findPlayerIndex(penaltyId) : -1;
+      const penaltyIdx = penaltyId ? findIdx(penaltyId) : -1;
 
       addEffect({
         type: 'challenge',
@@ -185,7 +178,7 @@ export default function GameEffects() {
       });
     } else if (lastAction.type === 'CALL_UNO') {
       const caller = players.find((p) => p.id === lastAction.playerId);
-      const callerIdx = findPlayerIndex(lastAction.playerId);
+      const callerIdx = findIdx(lastAction.playerId);
 
       addEffect({
         type: 'uno_call',
@@ -198,8 +191,8 @@ export default function GameEffects() {
     } else if (lastAction.type === 'CATCH_UNO') {
       const catcher = players.find((p) => p.id === lastAction.catcherId);
       const target = players.find((p) => p.id === lastAction.targetId);
-      const catcherIdx = findPlayerIndex(lastAction.catcherId);
-      const targetIdx = findPlayerIndex(lastAction.targetId);
+      const catcherIdx = findIdx(lastAction.catcherId);
+      const targetIdx = findIdx(lastAction.targetId);
 
       addEffect({
         type: 'catch_uno',
@@ -213,7 +206,7 @@ export default function GameEffects() {
       });
       playSound('uno_catch');
     }
-  }, [lastAction, players]);
+  }, [lastAction, players, addEffect]);
 
   const hasEffects = effects.length > 0;
 

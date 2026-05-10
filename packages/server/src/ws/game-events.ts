@@ -5,7 +5,7 @@ import { chooseAutopilotJumpInAction, GameEventType } from '@uno-online/shared';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/database';
 import { GameSession } from '../plugins/core/game/session';
-import { saveGameState } from '../plugins/core/game/state-store';
+import type { GameStatePersister } from '../plugins/core/game/state-store';
 import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts } from './room-events';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { recordGameResult } from '../db/user-repo';
@@ -61,6 +61,10 @@ async function persistGameResult(roomCode: string, session: GameSession, startTi
 const chatTimestamps = new Map<string, number[]>();
 const CHAT_LIMIT = 10;
 const CHAT_WINDOW_MS = 5000;
+
+export function clearChatTimestamps(userId: string): void {
+  chatTimestamps.delete(userId);
+}
 
 function checkChatRateLimit(userId: string): boolean {
   const now = Date.now();
@@ -156,10 +160,11 @@ function handleAutopilotAction(
   db: Kysely<Database>,
   sessions: Map<string, GameSession>,
   action: GameAction,
+  persister: GameStatePersister,
 ): void {
   recordAutopilotAction(session, action);
   if (action.type === 'PLAY_CARD') {
-    scheduleAutopilotJumpIn(io, redis, roomCode, session, turnTimer, db, sessions);
+    scheduleAutopilotJumpIn(io, redis, roomCode, session, turnTimer, db, sessions, persister);
   }
 }
 
@@ -171,6 +176,7 @@ function scheduleAutopilotJumpIn(
   turnTimer: TurnTimer,
   db: Kysely<Database>,
   sessions: Map<string, GameSession>,
+  persister: GameStatePersister,
 ): void {
   clearAutopilotJumpIn(roomCode);
 
@@ -187,15 +193,20 @@ function scheduleAutopilotJumpIn(
     const state = currentSession.getFullState();
     if (state.phase !== 'playing' || state.discardPile.at(-1)?.id !== topCardId) return;
 
-    const jumper = state.players.find((player) =>
-      player.autopilot &&
-      !player.eliminated &&
-      chooseAutopilotJumpInAction(state, player.id).length > 0
-    );
-    if (!jumper) return;
+    let jumpInActions: GameAction[] | null = null;
+    const jumper = state.players.find((player) => {
+      if (!player.autopilot || player.eliminated) return false;
+      const actions = chooseAutopilotJumpInAction(state, player.id);
+      if (actions.length > 0) {
+        jumpInActions = actions;
+        return true;
+      }
+      return false;
+    });
+    if (!jumper || !jumpInActions) return;
 
     let acted = false;
-    for (const action of chooseAutopilotJumpInAction(state, jumper.id)) {
+    for (const action of jumpInActions as GameAction[]) {
       const result = currentSession.applyAction(action);
       if (result.success) {
         acted = true;
@@ -204,13 +215,15 @@ function scheduleAutopilotJumpIn(
     }
     if (!acted) return;
 
-    await touchRoomActivity(redis, roomCode);
-    await saveGameState(redis, roomCode, currentSession.getFullState());
-    await emitGameUpdate(io, roomCode, currentSession, redis);
+    persister.markDirty(roomCode, currentSession.getFullState());
+    await Promise.all([
+      touchRoomActivity(redis, roomCode),
+      emitGameUpdate(io, roomCode, currentSession, redis),
+    ]);
 
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, currentSession, turnTimer, redis, db, sessions))) {
-      scheduleAutopilotJumpIn(io, redis, roomCode, currentSession, turnTimer, db, sessions);
-      startTurnTimer(io, redis, roomCode, currentSession, turnTimer, sessions);
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, currentSession, turnTimer, redis, db, sessions, persister))) {
+      scheduleAutopilotJumpIn(io, redis, roomCode, currentSession, turnTimer, db, sessions, persister);
+      startTurnTimer(io, redis, roomCode, currentSession, turnTimer, sessions, persister);
     }
   }, AUTOPILOT_JUMP_IN_DELAY_MS);
 
@@ -235,18 +248,22 @@ async function startNextRound(
   session: GameSession,
   turnTimer: TurnTimer,
   sessions: Map<string, GameSession>,
+  persister: GameStatePersister,
 ): Promise<void> {
   nextRoundVotes.delete(roomCode);
   session.startNextRound();
-  await touchRoomActivity(redis, roomCode);
-  await saveGameState(redis, roomCode, session.getFullState());
+  persister.markDirty(roomCode, session.getFullState());
+  await Promise.all([
+    touchRoomActivity(redis, roomCode),
+    persister.flushNow(roomCode),
+  ]);
   io.to(roomCode).emit('game:next_round_vote', { votes: 0, required: session.getFullState().players.length, voters: [] });
   const sockets = await io.in(roomCode).fetchSockets();
   for (const s of sockets) {
     const userId = (s.data as SocketData).user.userId;
     s.emit('game:state', session.getPlayerView(userId));
   }
-  startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+  startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
 }
 
 async function emitTerminalStateIfNeeded(
@@ -257,9 +274,12 @@ async function emitTerminalStateIfNeeded(
   redis: KvStore,
   db: Kysely<Database>,
   sessions: Map<string, GameSession>,
+  persister: GameStatePersister,
 ): Promise<boolean> {
   const state = session.getFullState();
   if (state.phase !== 'round_end' && state.phase !== 'game_over') return false;
+
+  await persister.flushNow(roomCode);
 
   turnTimer.stop(roomCode);
   clearRoomTimeouts(roomCode);
@@ -288,17 +308,22 @@ async function emitTerminalStateIfNeeded(
   if (state.phase === 'game_over') {
     const finalScores = Object.fromEntries(state.players.map((p) => [p.id, p.score]));
     session.recordEvent(GameEventType.GAME_OVER, { winnerId: state.winnerId!, finalScores }, null);
-    await setRoomStatus(redis, roomCode, 'finished');
-    await touchRoomActivity(redis, roomCode);
-    await persistGameResult(roomCode, session, gameStartTimes.get(roomCode) ?? Date.now(), db);
+    const startTime = gameStartTimes.get(roomCode) ?? Date.now();
+    await Promise.all([
+      setRoomStatus(redis, roomCode, 'finished'),
+      touchRoomActivity(redis, roomCode),
+      persistGameResult(roomCode, session, startTime, db),
+    ]);
     session.clearChatHistory();
-    await saveGameState(redis, roomCode, session.getFullState());
+    await persister.flushNow(roomCode);
     io.to(roomCode).emit('chat:cleared');
     gameStartTimes.delete(roomCode);
   }
 
   return true;
 }
+
+let autopilotHandlerSet = false;
 
 export function registerGameEvents(
   socket: Socket,
@@ -307,10 +332,14 @@ export function registerGameEvents(
   turnTimer: TurnTimer,
   sessions: Map<string, GameSession>,
   db: Kysely<Database>,
+  persister: GameStatePersister,
 ) {
-  setAutopilotActionHandler((roomCode, session, action) => {
-    handleAutopilotAction(io, redis, roomCode, session, turnTimer, db, sessions, action);
-  });
+  if (!autopilotHandlerSet) {
+    autopilotHandlerSet = true;
+    setAutopilotActionHandler((roomCode, session, action) => {
+      handleAutopilotAction(io, redis, roomCode, session, turnTimer, db, sessions, action, persister);
+    });
+  }
 
   const data = socket.data as SocketData;
   const initialSession = data.roomCode ? sessions.get(data.roomCode) : null;
@@ -339,12 +368,14 @@ export function registerGameEvents(
       card: playedCard!,
       chosenColor: payload.chosenColor,
     }, data.user.userId);
-    await touchRoomActivity(redis, roomCode);
-    await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session, redis);
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions))) {
-      scheduleAutopilotJumpIn(io, redis, roomCode, session, turnTimer, db, sessions);
-      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+    persister.markDirty(roomCode, session.getFullState());
+    await Promise.all([
+      touchRoomActivity(redis, roomCode),
+      emitGameUpdate(io, roomCode, session, redis),
+    ]);
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions, persister))) {
+      scheduleAutopilotJumpIn(io, redis, roomCode, session, turnTimer, db, sessions, persister);
+      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
     }
     callback?.({ success: true });
   });
@@ -367,20 +398,22 @@ export function registerGameEvents(
     if (result.drawnCard) {
       session.recordEvent(GameEventType.DRAW_CARD, { card: result.drawnCard }, data.user.userId);
     }
-    await touchRoomActivity(redis, roomCode);
     const gameState = session.getFullState();
     if (result.drawnCard && !gameState.settings.houseRules.blindDraw) {
       socket.emit('game:card_drawn', { card: result.drawnCard });
     }
-    await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session, redis);
+    persister.markDirty(roomCode, session.getFullState());
+    await Promise.all([
+      touchRoomActivity(redis, roomCode),
+      emitGameUpdate(io, roomCode, session, redis),
+    ]);
     const afterState = session.getFullState();
     if (
       (beforeState.pendingPenaltyDraws ?? 0) > 0 &&
       (afterState.pendingPenaltyDraws ?? 0) === 0 &&
-      !(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions))
+      !(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions, persister))
     ) {
-      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
     }
     callback?.({ success: true });
   });
@@ -393,10 +426,12 @@ export function registerGameEvents(
     if (!result.success) return callback?.({ success: false, error: result.error });
     resetPlayerTimeout(roomCode, data.user.userId);
     session.recordEvent(GameEventType.PASS, {}, data.user.userId);
-    await touchRoomActivity(redis, roomCode);
-    await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session, redis);
-    startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+    persister.markDirty(roomCode, session.getFullState());
+    await Promise.all([
+      touchRoomActivity(redis, roomCode),
+      emitGameUpdate(io, roomCode, session, redis),
+    ]);
+    startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
     callback?.({ success: true });
   });
 
@@ -407,10 +442,12 @@ export function registerGameEvents(
     const result = session.applyAction({ type: 'CALL_UNO', playerId: data.user.userId });
     if (!result.success) return callback?.({ success: false, error: result.error });
     session.recordEvent(GameEventType.CALL_UNO, {}, data.user.userId);
-    await touchRoomActivity(redis, roomCode);
-    await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session, redis);
-    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions)) {
+    persister.markDirty(roomCode, session.getFullState());
+    await Promise.all([
+      touchRoomActivity(redis, roomCode),
+      emitGameUpdate(io, roomCode, session, redis),
+    ]);
+    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions, persister)) {
       return callback?.({ success: true });
     }
     callback?.({ success: true });
@@ -423,9 +460,11 @@ export function registerGameEvents(
     const result = session.applyAction({ type: 'CATCH_UNO', catcherId: data.user.userId, targetId: payload.targetPlayerId });
     if (!result.success) return callback?.({ success: false, error: result.error });
     session.recordEvent(GameEventType.CATCH_UNO, { targetPlayerId: payload.targetPlayerId }, data.user.userId);
-    await touchRoomActivity(redis, roomCode);
-    await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session, redis);
+    persister.markDirty(roomCode, session.getFullState());
+    await Promise.all([
+      touchRoomActivity(redis, roomCode),
+      emitGameUpdate(io, roomCode, session, redis),
+    ]);
     callback?.({ success: true });
   });
 
@@ -441,11 +480,13 @@ export function registerGameEvents(
       success: challengeState.lastAction?.type === 'CHALLENGE' ? challengeState.lastAction.succeeded ?? false : false,
       penaltyCards: [],
     }, data.user.userId);
-    await touchRoomActivity(redis, roomCode);
-    await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session, redis);
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions))) {
-      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+    persister.markDirty(roomCode, session.getFullState());
+    await Promise.all([
+      touchRoomActivity(redis, roomCode),
+      emitGameUpdate(io, roomCode, session, redis),
+    ]);
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions, persister))) {
+      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
     }
     callback?.({ success: true });
   });
@@ -458,11 +499,13 @@ export function registerGameEvents(
     if (!result.success) return callback?.({ success: false, error: result.error });
     resetPlayerTimeout(roomCode, data.user.userId);
     session.recordEvent(GameEventType.ACCEPT, { drawnCards: [] }, data.user.userId);
-    await touchRoomActivity(redis, roomCode);
-    await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session, redis);
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions))) {
-      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+    persister.markDirty(roomCode, session.getFullState());
+    await Promise.all([
+      touchRoomActivity(redis, roomCode),
+      emitGameUpdate(io, roomCode, session, redis),
+    ]);
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions, persister))) {
+      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
     }
     callback?.({ success: true });
   });
@@ -479,14 +522,16 @@ export function registerGameEvents(
     if (!result.success) return callback?.({ success: false, error: result.error });
     resetPlayerTimeout(roomCode, data.user.userId);
     session.recordEvent(GameEventType.CHOOSE_COLOR, { color: payload.color }, data.user.userId);
-    await touchRoomActivity(redis, roomCode);
-    await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session, redis);
-    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions)) {
+    persister.markDirty(roomCode, session.getFullState());
+    await Promise.all([
+      touchRoomActivity(redis, roomCode),
+      emitGameUpdate(io, roomCode, session, redis),
+    ]);
+    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions, persister)) {
       // terminal state already emitted
     } else {
-      scheduleAutopilotJumpIn(io, redis, roomCode, session, turnTimer, db, sessions);
-      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+      scheduleAutopilotJumpIn(io, redis, roomCode, session, turnTimer, db, sessions, persister);
+      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
     }
     callback?.({ success: true });
   });
@@ -503,10 +548,12 @@ export function registerGameEvents(
     if (!result.success) return callback?.({ success: false, error: result.error });
     resetPlayerTimeout(roomCode, data.user.userId);
     session.recordEvent(GameEventType.CHOOSE_SWAP_TARGET, { targetId: payload.targetId }, data.user.userId);
-    await touchRoomActivity(redis, roomCode);
-    await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session, redis);
-    startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+    persister.markDirty(roomCode, session.getFullState());
+    await Promise.all([
+      touchRoomActivity(redis, roomCode),
+      emitGameUpdate(io, roomCode, session, redis),
+    ]);
+    startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
     callback?.({ success: true });
   });
 
@@ -527,7 +574,7 @@ export function registerGameEvents(
     const message = buildChatMessage(data.user, text);
     session.addChatMessage(message);
     touchRoomActivity(redis, roomCode).catch(() => {});
-    void saveGameState(redis, roomCode, session.getFullState());
+    persister.markDirty(roomCode, session.getFullState());
     io.to(roomCode).emit('chat:message', message);
   });
 
@@ -555,7 +602,7 @@ export function registerGameEvents(
     io.to(roomCode).emit('game:next_round_vote', voteState);
 
     if (isOwner && hadAlreadyVoted && voteState.votes >= voteState.required) {
-      await startNextRound(io, redis, roomCode, session, turnTimer, sessions);
+      await startNextRound(io, redis, roomCode, session, turnTimer, sessions, persister);
       return callback?.({ success: true, started: true, vote: voteState });
     }
 
@@ -609,8 +656,11 @@ export function registerGameEvents(
     const voteState = getNextRoundVoteState(roomCode, session);
     io.to(roomCode).emit('game:next_round_vote', voteState);
 
-    await saveGameState(redis, roomCode, session.getFullState());
-    await emitGameUpdate(io, roomCode, session, redis);
+    persister.markDirty(roomCode, session.getFullState());
+    await Promise.all([
+      persister.flushNow(roomCode),
+      emitGameUpdate(io, roomCode, session, redis),
+    ]);
     io.to(roomCode).emit('room:updated', { players: state.players.filter((p) => p.id !== targetId).map((p) => ({ userId: p.id, name: p.name })) });
 
     callback?.({ success: true });
@@ -626,16 +676,20 @@ export function registerGameEvents(
     nextRoundVotes.delete(roomCode);
     session.resetForRematch();
     sessions.set(roomCode, session);
-    await setRoomStatus(redis, roomCode, 'playing');
-    await touchRoomActivity(redis, roomCode);
-    await saveGameState(redis, roomCode, session.getFullState());
+    persister.cleanup(roomCode);
+    persister.markDirty(roomCode, session.getFullState());
+    await Promise.all([
+      setRoomStatus(redis, roomCode, 'playing'),
+      touchRoomActivity(redis, roomCode),
+      persister.flushNow(roomCode),
+    ]);
     io.to(roomCode).emit('chat:cleared');
     const sockets = await io.in(roomCode).fetchSockets();
     for (const s of sockets) {
       const userId = (s.data as SocketData).user.userId;
       s.emit('game:state', session.getPlayerView(userId));
     }
-    startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+    startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
     callback?.({ success: true });
   });
 }

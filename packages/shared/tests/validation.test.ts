@@ -1,30 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { canPlayCard, getPlayableCards, isValidWildDrawFour } from '../src/rules/validation';
-import type { Card, Color } from '../src/types/card';
-
-function numberCard(color: Color, value: number, id = 'c1'): Card {
-  return { id, type: 'number', color, value };
-}
-
-function skipCard(color: Color, id = 'c1'): Card {
-  return { id, type: 'skip', color };
-}
-
-function reverseCard(color: Color, id = 'c1'): Card {
-  return { id, type: 'reverse', color };
-}
-
-function drawTwoCard(color: Color, id = 'c1'): Card {
-  return { id, type: 'draw_two', color };
-}
-
-function wildCard(id = 'c1'): Card {
-  return { id, type: 'wild', color: null };
-}
-
-function wildDrawFour(id = 'c1'): Card {
-  return { id, type: 'wild_draw_four', color: null };
-}
+import type { Card } from '../src/types/card';
+import { numberCard, skipCard, reverseCard, drawTwoCard, wildCard, wildDrawFour } from './helpers/test-utils';
 
 describe('canPlayCard', () => {
   it('allows matching color', () => {
