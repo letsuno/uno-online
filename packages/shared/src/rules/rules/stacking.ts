@@ -50,6 +50,7 @@ export const stacking: HouseRulePlugin = {
 
     // Case (c): DRAW_CARD when drawStack > 0 — resolve stack
     if (action.type === 'DRAW_CARD' && state.drawStack > 0) {
+      if ((state.pendingPenaltyDraws ?? 0) > 0) return { handled: false };
       const player = state.players[state.currentPlayerIndex];
       if (!player || player.id !== action.playerId) return { handled: true, state };
       const nextIdx = ctx.getNextPlayerIndex(state.currentPlayerIndex, state.players.length, state.direction);

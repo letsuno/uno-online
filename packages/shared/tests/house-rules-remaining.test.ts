@@ -268,6 +268,45 @@ describe('stackDrawFour', () => {
     expect(next.discardPile[next.discardPile.length - 1]!.id).toBe('wd4play');
     expect(next.currentPlayerIndex).toBe(1);
   });
+
+  it('allows normal play after a +4 stack penalty is paid one card at a time', () => {
+    const wd4Top = makeCard('wild_draw_four', null, { id: 'wd4top' });
+    const deck = Array.from({ length: 12 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `wd4deck_${i}` }));
+    const state = makeState({
+      discardPile: [makeCard('number', 'red', { value: 1, id: 'base' }), wd4Top],
+      currentColor: 'green',
+      currentPlayerIndex: 0,
+      drawStack: 4,
+      deck,
+      lastAction: { type: 'PLAY_CARD', playerId: 'p3', cardId: 'wd4top' },
+      players: [
+        { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 3, id: 'p2green3' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 4, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, stackDrawFour: true },
+      },
+    });
+
+    let next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1' });
+    expect(next.pendingPenaltyDraws).toBe(3);
+    expect(next.drawStack).toBe(0);
+
+    next = applyActionWithHouseRules(next, { type: 'DRAW_CARD', playerId: 'p1' });
+    expect(next.pendingPenaltyDraws).toBe(2);
+    next = applyActionWithHouseRules(next, { type: 'DRAW_CARD', playerId: 'p1' });
+    expect(next.pendingPenaltyDraws).toBe(1);
+    next = applyActionWithHouseRules(next, { type: 'DRAW_CARD', playerId: 'p1' });
+    expect(next.pendingPenaltyDraws).toBe(0);
+    expect(next.currentPlayerIndex).toBe(1);
+
+    next = applyActionWithHouseRules(next, { type: 'PLAY_CARD', playerId: 'p2', cardId: 'p2green3' });
+    expect(next.discardPile[next.discardPile.length - 1]!.id).toBe('p2green3');
+    expect(next.currentPlayerIndex).toBe(2);
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
