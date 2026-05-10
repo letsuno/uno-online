@@ -1,6 +1,12 @@
-# UNO Online
+<p align="center">
+  <img src="packages/client/public/favicon.svg" width="120" alt="UNO Online Logo" />
+</p>
 
-[![GitHub](https://img.shields.io/github/license/letsuno/uno-online)](https://github.com/letsuno/uno-online)
+<h1 align="center">UNO Online</h1>
+
+<p align="center">
+  <a href="https://github.com/letsuno/uno-online"><img src="https://img.shields.io/github/license/letsuno/uno-online" alt="License" /></a>
+</p>
 
 基于 Web 技术栈的在线多人 UNO 卡牌对战游戏，支持语音通话、32 条可配置村规、多服务器切换、卡通趣味视觉风格。
 
