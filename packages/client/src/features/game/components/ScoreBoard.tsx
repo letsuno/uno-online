@@ -69,9 +69,9 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby }: Sc
           </p>
         )}
         <div className="flex gap-3 justify-center">
-          {!isGameOver && <Button variant="primary" onClick={onPlayAgain} disabled={isNextRoundDisabled}>{nextRoundButtonText}</Button>}
-          {isGameOver && <Button variant="primary" onClick={onRematch}>再来一局</Button>}
-          <Button variant="secondary" onClick={onBackToLobby}>返回大厅</Button>
+          {!isGameOver && <Button variant="primary" onClick={onPlayAgain} disabled={isNextRoundDisabled} sound="ready">{nextRoundButtonText}</Button>}
+          {isGameOver && <Button variant="primary" onClick={onRematch} sound="ready">再来一局</Button>}
+          <Button variant="secondary" onClick={onBackToLobby} sound="click">返回大厅</Button>
         </div>
       </div>
     </div>

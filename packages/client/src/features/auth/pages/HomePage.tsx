@@ -105,7 +105,7 @@ export default function HomePage() {
                 inputSize="lg"
                 className="w-dev-input text-center"
               />
-              <Button variant="primary" className="px-6 py-3 text-lg" onClick={handleDevLogin}>
+              <Button variant="primary" className="px-6 py-3 text-lg" onClick={handleDevLogin} sound="click">
                 <LogIn size={20} className="mr-1.5 inline-block align-middle" />登录
               </Button>
             </div>
@@ -128,7 +128,7 @@ export default function HomePage() {
                 autoComplete="current-password"
               />
               {error && <p className="text-sm text-destructive m-0">{error}</p>}
-              <Button type="submit" variant="primary" disabled={loggingIn}>
+              <Button type="submit" variant="primary" disabled={loggingIn} sound="click">
                 <LogIn size={18} className="inline-block align-middle mr-1.5" />
                 {loggingIn ? '登录中...' : '登录'}
               </Button>

@@ -66,7 +66,7 @@ export default function ProfileSetupPage() {
 
         {error && <p className="text-sm text-destructive m-0">{error}</p>}
 
-        <Button variant="primary" className="w-full" onClick={handleSave} disabled={submitting}>
+        <Button variant="primary" className="w-full" onClick={handleSave} disabled={submitting} sound="click">
           <Check size={18} className="inline-block align-middle mr-1.5" />
           {submitting ? '保存中...' : '确认'}
         </Button>

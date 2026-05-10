@@ -81,7 +81,7 @@ export default function ProfilePage() {
               <div className="flex items-center gap-2">
                 <input value={nickname} onChange={(e) => setNickname(e.target.value)}
                   className="w-40 rounded-lg border border-white/15 bg-card px-3 py-2 text-sm text-foreground" />
-                <Button variant="primary" size="sm" onClick={handleSaveNickname} disabled={saving}>
+                <Button variant="primary" size="sm" onClick={handleSaveNickname} disabled={saving} sound="click">
                   <Save size={14} />
                 </Button>
               </div>
@@ -111,7 +111,7 @@ export default function ProfilePage() {
               {passwordMsg && (
                 <p className={`text-xs m-0 ${passwordMsg.includes('成功') ? 'text-uno-green' : 'text-destructive'}`}>{passwordMsg}</p>
               )}
-              <Button variant="primary" size="sm" onClick={handleSetPassword}>保存密码</Button>
+              <Button variant="primary" size="sm" onClick={handleSetPassword} sound="click">保存密码</Button>
             </div>
           </div>
 
@@ -128,7 +128,7 @@ export default function ProfilePage() {
           )}
         </>
       )}
-      <Button variant="secondary" onClick={() => navigate('/lobby')}>返回大厅</Button>
+      <Button variant="secondary" onClick={() => navigate('/lobby')} sound="click">返回大厅</Button>
     </div>
   );
 }
