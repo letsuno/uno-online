@@ -97,6 +97,11 @@ export default function PlayerNode({
   const displayName =
     player.name.length > 8 ? player.name.slice(0, 8) + '...' : player.name;
   const avatarInnerSize = avatarSize - 4;
+  const revealedHand =
+    player.hand.length > 0 && player.hand.length === player.handCount
+      ? player.hand
+      : [];
+  const shouldShowRevealedHand = !isMe && revealedHand.length > 0 && player.handCount <= 5;
 
   return (
     <div
@@ -257,9 +262,18 @@ export default function PlayerNode({
         <div className="relative flex items-center gap-1">
           {player.handCount <= 5 ? (
             <div className="flex -space-x-2">
-              {Array.from({ length: player.handCount }).map((_, i) => (
-                <CardBack key={i} small />
-              ))}
+              {shouldShowRevealedHand
+                ? revealedHand.map((card) => (
+                    <Card
+                      key={card.id}
+                      card={card}
+                      mini
+                      className="!w-card-mini-w !h-card-mini-h !text-2xs !border !rounded-sm !shadow-none"
+                    />
+                  ))
+                : Array.from({ length: player.handCount }).map((_, i) => (
+                    <CardBack key={i} small />
+                  ))}
             </div>
           ) : (
             <>

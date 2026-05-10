@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { DEFAULT_HOUSE_RULES, GameEventType } from '@uno-online/shared';
 import { GameSession } from '../../src/plugins/core/game/session';
-import { GameEventType } from '@uno-online/shared';
+import { makeCard, makeGameState, makePlayer } from '../helpers/test-utils';
 
 const players = [
   { id: 'p1', name: 'Alice' },
@@ -66,6 +67,29 @@ describe('GameSession spectator view', () => {
       expect(p.hand).toEqual([]);
       expect(p.handCount).toBeGreaterThan(0);
     }
+  });
+
+  it('reveals threshold hands in hidden mode when hand reveal is enabled', () => {
+    const p1Hand = [makeCard('number', 'red', { value: 1, id: 'p1c' })];
+    const p2Hand = [
+      makeCard('number', 'blue', { value: 1, id: 'p2c1' }),
+      makeCard('number', 'blue', { value: 2, id: 'p2c2' }),
+      makeCard('number', 'blue', { value: 3, id: 'p2c3' }),
+    ];
+    const state = makeGameState({
+      players: [makePlayer('p1', p1Hand), makePlayer('p2', p2Hand)],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, handRevealThreshold: 2 },
+      },
+    });
+
+    const view = GameSession.fromState(state).getSpectatorView('hidden');
+
+    expect(view.players[0]!.hand.map((c) => c.id)).toEqual(['p1c']);
+    expect(view.players[1]!.hand).toEqual([]);
+    expect(view.players[1]!.handCount).toBe(3);
   });
 });
 

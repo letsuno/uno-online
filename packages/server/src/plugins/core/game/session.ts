@@ -221,22 +221,28 @@ export class GameSession {
     return {
       viewerId: '__spectator__',
       phase: this.state.phase,
-      players: this.state.players.map((p) => ({
-        id: p.id,
-        name: p.name,
-        hand: mode === 'full' ? p.hand : [],
-        handCount: p.hand.length,
-        score: p.score,
-        roundWins: p.roundWins ?? 0,
-        connected: p.connected,
-        autopilot: p.autopilot,
-        calledUno: p.calledUno,
-        unoCaught: p.unoCaught,
-        eliminated: p.eliminated,
-        teamId: p.teamId,
-        avatarUrl: p.avatarUrl,
-        role: p.role,
-      })),
+      players: this.state.players.map((p) => {
+        const threshold = this.state.settings.houseRules.handRevealThreshold;
+        const shouldReveal =
+          mode === 'full' ||
+          (threshold !== null && p.hand.length > 0 && p.hand.length <= threshold);
+        return {
+          id: p.id,
+          name: p.name,
+          hand: shouldReveal ? p.hand : [],
+          handCount: p.hand.length,
+          score: p.score,
+          roundWins: p.roundWins ?? 0,
+          connected: p.connected,
+          autopilot: p.autopilot,
+          calledUno: p.calledUno,
+          unoCaught: p.unoCaught,
+          eliminated: p.eliminated,
+          teamId: p.teamId,
+          avatarUrl: p.avatarUrl,
+          role: p.role,
+        };
+      }),
       currentPlayerIndex: this.state.currentPlayerIndex,
       direction: this.state.direction,
       discardPile: this.state.discardPile,
