@@ -217,7 +217,7 @@ function handlePlayCard(
 
   const players = state.players.map((p, idx) =>
     idx === actingPlayerIdx
-      ? { ...p, hand: newHand, calledUno: false, unoCaught: false }
+      ? { ...p, hand: newHand, calledUno: newHand.length === 1 ? p.calledUno : false, unoCaught: false }
       : { ...p }
   );
 
@@ -455,7 +455,7 @@ function handleCallUno(
   if (idx === -1) return state;
 
   const player = state.players[idx]!;
-  if (player.hand.length !== 1) return state;
+  if (player.hand.length < 1 || player.hand.length > 2) return state;
 
   const players = state.players.map((p, i) =>
     i === idx ? { ...p, calledUno: true, unoCaught: false } : p
