@@ -51,7 +51,7 @@ interface HandSwapEffect {
 }
 
 interface GameTableProps {
-  onDraw: () => void;
+  onDraw: (side: 'left' | 'right') => void;
 }
 
 let throwIdCounter = 0;
@@ -61,6 +61,7 @@ let handSwapId = 0;
 export default function GameTable({ onDraw }: GameTableProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const isPortrait = dimensions.height > dimensions.width;
 
   const players = useGameStore((s) => s.players);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
@@ -294,7 +295,8 @@ export default function GameTable({ onDraw }: GameTableProps) {
   }, [players, playerPositions]);
 
   // Draw animation: track hand count increases and compute target direction
-  const [drawAnim, setDrawAnim] = useState<{ trigger: number; targetX: number; targetY: number }>({ trigger: 0, targetX: 0, targetY: 220 });
+  const [drawAnimLeft, setDrawAnimLeft] = useState<{ trigger: number; targetX: number; targetY: number }>({ trigger: 0, targetX: 0, targetY: 220 });
+  const [drawAnimRight, setDrawAnimRight] = useState<{ trigger: number; targetX: number; targetY: number }>({ trigger: 0, targetX: 0, targetY: 220 });
   const [handGainBumps, setHandGainBumps] = useState<Map<string, HandGainBump>>(new Map());
   const [drawUntilCount, setDrawUntilCount] = useState(0);
   const prevHandCountsRef = useRef<Map<string, number>>(new Map());
@@ -441,10 +443,12 @@ export default function GameTable({ onDraw }: GameTableProps) {
         }, 3000);
         handGainTimersRef.current.set(player.id, removeTimer);
 
+        const drawSide = (lastAction as { side?: string }).side;
+        const setAnim = drawSide === 'right' ? setDrawAnimRight : setDrawAnimLeft;
         for (let i = 0; i < added; i++) {
           const target = computeDrawTarget(player.id);
           const timer = window.setTimeout(() => {
-            setDrawAnim((prev) => ({
+            setAnim((prev) => ({
               trigger: prev.trigger + 1,
               targetX: target.x,
               targetY: target.y,
@@ -672,11 +676,12 @@ export default function GameTable({ onDraw }: GameTableProps) {
       {/* Center area: DrawPile + DiscardPile */}
       {dimensions.width > 0 && (
         <div
-          className="absolute flex items-center justify-center gap-6 md:gap-10"
+          className="absolute flex items-center justify-center gap-3 md:gap-6"
           style={{
             left: dimensions.width / 2,
             top: dimensions.height / 2,
             transform: 'translate(-50%, -50%)',
+            flexDirection: isPortrait ? 'column' : 'row',
           }}
         >
           {/* Direction indicator */}
@@ -701,13 +706,23 @@ export default function GameTable({ onDraw }: GameTableProps) {
           </motion.div>
 
           <DrawPile
+            side="left"
+            isPortrait={isPortrait}
             onDraw={onDraw}
-            drawAnimTrigger={drawAnim.trigger}
-            drawTargetX={drawAnim.targetX}
-            drawTargetY={drawAnim.targetY}
+            drawAnimTrigger={drawAnimLeft.trigger}
+            drawTargetX={drawAnimLeft.targetX}
+            drawTargetY={drawAnimLeft.targetY}
             drawUntilCount={drawUntilCount}
           />
           <DiscardPile />
+          <DrawPile
+            side="right"
+            isPortrait={isPortrait}
+            onDraw={onDraw}
+            drawAnimTrigger={drawAnimRight.trigger}
+            drawTargetX={drawAnimRight.targetX}
+            drawTargetY={drawAnimRight.targetY}
+          />
         </div>
       )}
 

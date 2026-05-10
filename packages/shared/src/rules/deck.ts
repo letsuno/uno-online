@@ -72,6 +72,25 @@ export function reshuffleDiscardIntoDeck(
   return { deck: newDeck, discardPile: [topCard] };
 }
 
+export function reshuffleSideFromDiscard(
+  currentSideDeck: readonly Card[],
+  discardPile: readonly Card[],
+  targetCount: number,
+): { sideDeck: Card[]; discardPile: Card[] } {
+  if (discardPile.length <= 1) {
+    return { sideDeck: [...currentSideDeck], discardPile: [...discardPile] };
+  }
+
+  const topCard = discardPile[discardPile.length - 1]!;
+  const available = discardPile.slice(0, -1);
+  const takeCount = Math.min(targetCount, available.length);
+  const cardsToReshuffle = available.slice(0, takeCount).map(clearWildColor);
+  const remainingDiscard = available.slice(takeCount);
+
+  const newSideDeck = shuffleDeck([...currentSideDeck, ...cardsToReshuffle]);
+  return { sideDeck: newSideDeck, discardPile: [...remainingDiscard, topCard] };
+}
+
 export interface CardIdentity {
   color: Card['color'];
   type: Card['type'];
@@ -88,4 +107,8 @@ export function cardToIdentity(card: Card): CardIdentity {
 
 export function serializeDeck(deck: readonly Card[]): string {
   return JSON.stringify(deck.map(cardToIdentity));
+}
+
+export function serializeDecks(deckLeft: readonly Card[], deckRight: readonly Card[]): string {
+  return JSON.stringify([...deckLeft, ...deckRight].map(cardToIdentity));
 }

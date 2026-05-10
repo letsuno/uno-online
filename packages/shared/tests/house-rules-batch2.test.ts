@@ -27,7 +27,10 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     ],
     currentPlayerIndex: 0,
     direction: 'clockwise',
-    deck: Array.from({ length: 20 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `deck_${i}` })),
+    deckLeft: Array.from({ length: 20 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `deck_${i}` })),
+    deckRight: [],
+    deckLeftInitialCount: 20,
+    deckRightInitialCount: 0,
     discardPile: [makeCard('number', 'red', { value: 5, id: 'discard_top' })],
     currentColor: 'red',
     drawStack: 0,
@@ -44,7 +47,7 @@ function drawPendingPenalty(state: GameState): GameState {
   let current = state;
   while ((current.pendingPenaltyDraws ?? 0) > 0) {
     const playerId = current.players[current.currentPlayerIndex]!.id;
-    current = applyActionWithHouseRules(current, { type: 'DRAW_CARD', playerId });
+    current = applyActionWithHouseRules(current, { type: 'DRAW_CARD', playerId, side: 'left' as const });
   }
   return current;
 }

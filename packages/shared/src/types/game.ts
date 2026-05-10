@@ -15,6 +15,8 @@ export type GamePhase =
 
 export type Direction = 'clockwise' | 'counter_clockwise';
 
+export type DrawSide = 'left' | 'right';
+
 export interface Player {
   id: string;
   name: string;
@@ -44,7 +46,10 @@ export interface GameState {
   players: Player[];
   currentPlayerIndex: number;
   direction: Direction;
-  deck: Card[];
+  deckLeft: Card[];
+  deckRight: Card[];
+  deckLeftInitialCount: number;
+  deckRightInitialCount: number;
   discardPile: Card[];
   currentColor: Color | null;
   drawStack: number;
@@ -75,7 +80,7 @@ export interface RoundResult {
 
 export type GameAction =
   | { type: 'PLAY_CARD'; playerId: string; cardId: string; chosenColor?: Color }
-  | { type: 'DRAW_CARD'; playerId: string }
+  | { type: 'DRAW_CARD'; playerId: string; side: DrawSide }
   | { type: 'PASS'; playerId: string }
   | { type: 'CALL_UNO'; playerId: string }
   | { type: 'CATCH_UNO'; catcherId: string; targetId: string }

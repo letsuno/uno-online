@@ -98,7 +98,7 @@ describe('initializeGame', () => {
     expect(state.players[0]!.hand.length).toBeGreaterThanOrEqual(7);
     expect(state.discardPile.length).toBeGreaterThanOrEqual(1);
     expect(state.currentColor).not.toBeUndefined();
-    expect(state.deck.length).toBeGreaterThan(0);
+    expect(state.deckLeft.length + state.deckRight.length).toBeGreaterThan(0);
     expect(state.roundNumber).toBe(1);
   });
 
