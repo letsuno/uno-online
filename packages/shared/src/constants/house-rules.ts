@@ -40,4 +40,5 @@ export const HOUSE_RULE_DEFINITIONS: HouseRuleDefinition[] = [
   { key: 'handLimit', label: '手牌上限', description: '超过数量时不能摸牌' },
   { key: 'handRevealThreshold', label: '手牌透明', description: '手牌低于此数对所有人可见' },
   { key: 'blitzTimeLimit', label: '闪电战', description: '总时间限制（秒），超时手牌最少者赢' },
+  { key: 'shuffleSeats', label: '随机座位', description: '每轮开始时随机打乱玩家座位顺序' },
 ];
