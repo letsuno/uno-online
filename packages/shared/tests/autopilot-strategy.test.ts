@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_HOUSE_RULES, chooseAutopilotAction } from '../src';
+import { DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseAutopilotJumpInAction } from '../src';
 import type { Card, Color, GameState } from '../src';
 
 function makeCard(type: Card['type'], color: Color | null, extra?: { value?: number; id?: string }): Card {
@@ -160,6 +160,82 @@ describe('chooseAutopilotAction for seven swap', () => {
 
     expect(chooseAutopilotAction(state, 'p1')).toEqual([
       { type: 'CHOOSE_SWAP_TARGET', playerId: 'p1', targetId: 'p3' },
+    ]);
+  });
+});
+
+describe('chooseAutopilotJumpInAction', () => {
+  it('plays an exact matching card while another player has the turn', () => {
+    const jumpCard = makeCard('number', 'red', { value: 5, id: 'jump_red_5' });
+    const state = makeState({
+      currentPlayerIndex: 0,
+      players: [
+        { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
+        { id: 'p2', name: 'Bot', hand: [jumpCard], score: 0, connected: true, autopilot: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        allowSpectators: true,
+        spectatorMode: 'hidden',
+        houseRules: { ...DEFAULT_HOUSE_RULES, jumpIn: true },
+      },
+    });
+
+    expect(chooseAutopilotJumpInAction(state, 'p2')).toEqual([
+      { type: 'PLAY_CARD', playerId: 'p2', cardId: 'jump_red_5' },
+    ]);
+  });
+
+  it('does not jump in without an exact match', () => {
+    const state = makeState({
+      currentPlayerIndex: 0,
+      players: [
+        { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bot',
+          hand: [makeCard('number', 'red', { value: 6, id: 'red_6' })],
+          score: 0,
+          connected: true,
+          autopilot: true,
+          calledUno: false,
+        },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        allowSpectators: true,
+        spectatorMode: 'hidden',
+        houseRules: { ...DEFAULT_HOUSE_RULES, jumpIn: true },
+      },
+    });
+
+    expect(chooseAutopilotJumpInAction(state, 'p2')).toEqual([]);
+  });
+
+  it('chooses a color after jumping in with a wild card', () => {
+    const jumpWild = makeCard('wild', null, { id: 'jump_wild' });
+    const blue = makeCard('number', 'blue', { value: 2, id: 'blue_2' });
+    const state = makeState({
+      currentPlayerIndex: 0,
+      discardPile: [makeCard('wild', null, { id: 'top_wild' })],
+      players: [
+        { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
+        { id: 'p2', name: 'Bot', hand: [jumpWild, blue], score: 0, connected: true, autopilot: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        allowSpectators: true,
+        spectatorMode: 'hidden',
+        houseRules: { ...DEFAULT_HOUSE_RULES, jumpIn: true },
+      },
+    });
+
+    expect(chooseAutopilotJumpInAction(state, 'p2')).toEqual([
+      { type: 'PLAY_CARD', playerId: 'p2', cardId: 'jump_wild' },
+      { type: 'CHOOSE_COLOR', playerId: 'p2', color: 'blue' },
     ]);
   });
 });

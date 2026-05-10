@@ -35,16 +35,43 @@ export const jumpIn: HouseRulePlugin = {
         i === jumperIdx ? { ...p, hand: newHand } : p,
       );
       const nextIdx = ctx.getNextPlayerIndex(jumperIdx, players.length, state.direction);
+      const baseState: GameState = {
+        ...state,
+        players,
+        discardPile: [...state.discardPile, card],
+        currentPlayerIndex: nextIdx,
+        lastAction: action,
+      };
+
+      if (card.type === 'wild') {
+        return {
+          handled: true,
+          state: {
+            ...baseState,
+            phase: 'choosing_color',
+            currentPlayerIndex: jumperIdx,
+          },
+        };
+      }
+
+      if (card.type === 'wild_draw_four') {
+        return {
+          handled: true,
+          state: {
+            ...baseState,
+            phase: 'choosing_color',
+            currentPlayerIndex: jumperIdx,
+            pendingDrawPlayerId: players[nextIdx]?.id ?? null,
+          },
+        };
+      }
+
       return {
         handled: true,
-        state: {
-          ...state,
-          players,
-          discardPile: [...state.discardPile, card],
+        state: ctx.checkRoundEnd({
+          ...baseState,
           currentColor: card.color ?? state.currentColor,
-          currentPlayerIndex: nextIdx,
-          lastAction: action,
-        },
+        }, action.playerId),
       };
     }
     return { handled: true, state };

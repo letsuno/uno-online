@@ -11,4 +11,4 @@ export type { HouseRulePlugin, RuleMetadata, RuleContext, PreCheckResult } from 
 export { buildRuleContext } from './house-rule-helpers';
 export { getAllRuleMetadata } from './house-rule-registry';
 export { PRE_CHECK_PLUGINS, POST_PROCESS_PLUGINS } from './rules/index';
-export { chooseAutopilotAction } from './autopilot-strategy';
+export { chooseAutopilotAction, chooseAutopilotJumpInAction } from './autopilot-strategy';
