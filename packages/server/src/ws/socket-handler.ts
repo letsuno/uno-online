@@ -18,6 +18,9 @@ import { registerVoicePresenceEvents, removeVoicePresence } from './voice-presen
 const RECONNECT_TIMEOUT_MS = 60_000;
 const AUTOPILOT_THINK_MS = 2_000;
 const ROOM_IDLE_SWEEP_MS = 60_000;
+const AUTOPILOT_TOGGLE_COOLDOWN_MS = 3_000;
+
+const autopilotToggleTimestamps = new Map<string, number>();
 
 export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecret: string, roomIdleTimeoutMs: number) {
   const roomManager = new RoomManager(redis);
@@ -191,6 +194,13 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
     registerVoicePresenceEvents(socket, io);
 
     socket.on('player:toggle-autopilot', async (callback) => {
+      const now = Date.now();
+      const lastToggle = autopilotToggleTimestamps.get(userId) ?? 0;
+      if (now - lastToggle < AUTOPILOT_TOGGLE_COOLDOWN_MS) {
+        return callback?.({ success: false, error: '操作太频繁，请稍后再试' });
+      }
+      autopilotToggleTimestamps.set(userId, now);
+
       const roomCode = socket.data.roomCode;
       if (!roomCode) return callback?.({ success: false, error: '不在房间中' });
       const session = sessions.get(roomCode);
@@ -216,6 +226,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
     socket.on('disconnect', async () => {
       clearRateLimit(socket.id);
       clearThrowTimestamp(userId);
+      autopilotToggleTimestamps.delete(userId);
       const roomCode = socket.data.roomCode;
       if (!roomCode) return;
       removeVoicePresence(io, roomCode, userId);

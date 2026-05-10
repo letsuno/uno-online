@@ -367,6 +367,8 @@ describe('PASS', () => {
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
+      deckLeft: [makeCard('number', 'blue', { value: 1, id: 'deck1' })],
+      deckLeftInitialCount: 1,
       lastAction: null,
     });
     const next = applyAction(state, { type: 'PASS', playerId: 'p1' });

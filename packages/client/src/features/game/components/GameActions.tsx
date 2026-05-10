@@ -37,8 +37,13 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   );
   const catchTargets = players.filter((p) => p.id !== userId && p.handCount === 1 && !p.calledUno && !p.unoCaught);
   const noChallengeWD4 = settings?.houseRules?.noChallengeWildFour ?? false;
+  const deckLeftCount = useGameStore((s) => s.deckLeftCount);
+  const deckRightCount = useGameStore((s) => s.deckRightCount);
+  const discardPileLength = useGameStore((s) => s.discardPile.length);
+  const noCardsAvailable = deckLeftCount === 0 && deckRightCount === 0 && discardPileLength <= 1;
   const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
   const canPassAfterDraw = pendingPenaltyDraws === 0 && drawStack === 0 && hasDrawnThisTurn && (!mustDrawUntilPlayable || playableIds.size > 0);
+  const canPass = canPassAfterDraw || noCardsAvailable;
 
   const withCooldown = (fn: () => void) => () => {
     if (cooldown) return;
@@ -61,7 +66,7 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
           <Button variant="secondary" onClick={onAccept} sound="action">接受</Button>
         </>
       )}
-      {isMyTurn && canPassAfterDraw && phase === 'playing' && (
+      {isMyTurn && canPass && phase === 'playing' && (
         <Button variant="secondary" onClick={onPass} sound="click">跳过</Button>
       )}
       {phase === 'choosing_swap_target' && isMyTurn && (

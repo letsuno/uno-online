@@ -63,12 +63,18 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   const currentPlayer = state.players[state.currentPlayerIndex];
   if (!currentPlayer || currentPlayer.id !== playerId) return [];
 
+  const noCards = state.deckLeft.length === 0 && state.deckRight.length === 0 && state.discardPile.length <= 1;
+
   if ((state.pendingPenaltyDraws ?? 0) > 0) {
+    if (noCards) return [{ type: 'PASS', playerId }];
     return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
   }
 
   const topCard = state.discardPile[state.discardPile.length - 1];
-  if (!topCard || !state.currentColor) return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
+  if (!topCard || !state.currentColor) {
+    if (noCards) return [{ type: 'PASS', playerId }];
+    return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
+  }
 
   const hasDrawnThisTurn =
     state.lastAction?.type === 'DRAW_CARD' &&
@@ -77,7 +83,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   if (hasDrawnThisTurn && state.drawStack === 0) {
     const playableAfterDraw = getPlayableCards(player.hand, topCard, state.currentColor);
     if (playableAfterDraw.length === 0) {
-      if (state.settings.houseRules.drawUntilPlayable || state.settings.houseRules.deathDraw) {
+      if (!noCards && (state.settings.houseRules.drawUntilPlayable || state.settings.houseRules.deathDraw)) {
         return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
       }
       return [{ type: 'PASS', playerId }];
@@ -117,11 +123,13 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
       }
     }
 
+    if (noCards) return [{ type: 'PASS', playerId }];
     return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
   }
 
   const playable = getPlayableCards(player.hand, topCard, state.currentColor);
   if (playable.length === 0) {
+    if (noCards) return [{ type: 'PASS', playerId }];
     return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
   }
 

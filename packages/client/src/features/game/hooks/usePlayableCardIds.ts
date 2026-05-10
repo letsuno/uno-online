@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from './useEffectiveUserId';
 import { useIsMyTurn } from './useIsMyTurn';
-import { getPlayableCardIds } from '@/shared/utils/playable-cards';
+import { getPlayableCardIds, getJumpInCardIds } from '@/shared/utils/playable-cards';
 
 export function usePlayableCardIds(): Set<string> {
   const userId = useEffectiveUserId();
@@ -19,7 +19,11 @@ export function usePlayableCardIds(): Set<string> {
   const topCard = discardPile[discardPile.length - 1];
 
   return useMemo(() => {
-    if (!isMyTurn || phase !== 'playing') return new Set<string>();
+    if (phase !== 'playing') return new Set<string>();
+    if (!isMyTurn) {
+      if (!settings?.houseRules?.jumpIn) return new Set<string>();
+      return getJumpInCardIds(me?.hand ?? [], topCard);
+    }
     if (pendingPenaltyDraws > 0) return new Set<string>();
     return getPlayableCardIds({
       hand: me?.hand ?? [],
