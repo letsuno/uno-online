@@ -27,7 +27,7 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   const me = players.find((p) => p.id === userId);
   const isMyTurn = useIsMyTurn();
   const strictUnoCall = settings?.houseRules?.strictUnoCall ?? false;
-  const canCallUno = me && !me.calledUno && (
+  const canCallUno = me && !me.calledUno && !me.unoCaught && pendingPenaltyDraws === 0 && (
     me.hand.length === 1 || (!strictUnoCall && me.hand.length === 2 && isMyTurn)
   );
   const catchTargets = players.filter((p) => p.id !== userId && p.handCount === 1 && !p.calledUno && !p.unoCaught);
