@@ -9,6 +9,8 @@ type SoundName =
   | 'wild'
   | 'uno_call'
   | 'uno_catch'
+  | 'penalty'
+  | 'throw_hit'
   | 'timer_tick'
   | 'win'
   | 'lose'
@@ -26,6 +28,8 @@ const FREQUENCIES: Record<SoundName, { freq: number; duration: number; type: Osc
   wild:         { freq: 1000, duration: 0.15, type: 'sine' },
   uno_call:     { freq: 1200, duration: 0.3, type: 'square' },
   uno_catch:    { freq: 200, duration: 0.25, type: 'sawtooth' },
+  penalty:      { freq: 180, duration: 0.28, type: 'sawtooth' },
+  throw_hit:    { freq: 160, duration: 0.12, type: 'square' },
   timer_tick:   { freq: 900, duration: 0.05, type: 'sine' },
   win:          { freq: 1400, duration: 0.5, type: 'sine' },
   lose:         { freq: 250, duration: 0.4, type: 'triangle' },
@@ -36,6 +40,15 @@ const FREQUENCIES: Record<SoundName, { freq: number; duration: number; type: Osc
 };
 
 let audioCtx: AudioContext | null = null;
+
+const THROW_HIT_SOUND_BY_ITEM: Record<string, string> = {
+  '🍅': '/sounds/throw-tomato-squish.mp3',
+  '💩': '/sounds/throw-slime-impact.mp3',
+  '🥚': '/sounds/throw-cartoon-hit.mp3',
+  '🌹': '/sounds/throw-cartoon-hit.mp3',
+  '👍': '/sounds/throw-boing.mp3',
+  '💖': '/sounds/throw-boing.mp3',
+};
 
 function getAudioCtx(): AudioContext {
   if (!audioCtx) {
@@ -61,6 +74,10 @@ export function playSound(name: SoundName): void {
     osc.frequency.linearRampToValueAtTime(1800, ctx.currentTime + config.duration);
   } else if (name === 'lose') {
     osc.frequency.linearRampToValueAtTime(150, ctx.currentTime + config.duration);
+  } else if (name === 'penalty') {
+    osc.frequency.linearRampToValueAtTime(90, ctx.currentTime + config.duration);
+  } else if (name === 'throw_hit') {
+    osc.frequency.exponentialRampToValueAtTime(420, ctx.currentTime + config.duration);
   }
 
   gain.gain.setValueAtTime(soundVolume * 0.3, ctx.currentTime);
@@ -70,4 +87,21 @@ export function playSound(name: SoundName): void {
   gain.connect(ctx.destination);
   osc.start(ctx.currentTime);
   osc.stop(ctx.currentTime + config.duration);
+}
+
+export function playThrowHitSound(item: string): void {
+  const { soundEnabled, soundVolume } = useSettingsStore.getState();
+  if (!soundEnabled || soundVolume <= 0) return;
+
+  const src = THROW_HIT_SOUND_BY_ITEM[item];
+  if (!src) {
+    playSound('throw_hit');
+    return;
+  }
+
+  const audio = new Audio(src);
+  audio.volume = Math.min(1, Math.max(0, soundVolume * 0.9));
+  void audio.play().catch(() => {
+    playSound('throw_hit');
+  });
 }
