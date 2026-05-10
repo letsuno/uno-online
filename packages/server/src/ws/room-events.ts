@@ -1,7 +1,9 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
+import type { Kysely } from 'kysely';
 import type { KvStore } from '../kv/types.js';
 import type { GameAction, GameState, RoomSettings } from '@uno-online/shared';
 import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, GameEventType } from '@uno-online/shared';
+import type { Database } from '../db/database';
 import { RoomManager } from '../plugins/core/room/manager';
 import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, touchRoomActivity } from '../plugins/core/room/store';
 import { GameSession } from '../plugins/core/game/session';
@@ -38,6 +40,7 @@ export function registerRoomEvents(
   roomManager: RoomManager,
   turnTimer: TurnTimer,
   sessions: Map<string, GameSession>,
+  db: Kysely<Database>,
 ) {
   const data = socket.data as SocketData;
 
@@ -91,7 +94,7 @@ export function registerRoomEvents(
     if (!roomCode) return callback?.({ success: false, error: 'Not in a room' });
     const room = await getRoom(redis, roomCode);
     if (room?.ownerId === data.user.userId) {
-      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, 'host_closed');
+      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, 'host_closed', db);
       return callback?.({ success: true, dissolved: true });
     }
     const { deleted } = await roomManager.leaveRoom(roomCode, data.user.userId);
@@ -158,7 +161,7 @@ export function registerRoomEvents(
     if (!room || room.ownerId !== data.user.userId) {
       return callback?.({ success: false, error: 'Only room owner can dissolve' });
     }
-    await dissolveRoom(io, redis, roomCode, sessions, turnTimer, 'host_closed');
+    await dissolveRoom(io, redis, roomCode, sessions, turnTimer, 'host_closed', db);
     callback?.({ success: true });
   });
 

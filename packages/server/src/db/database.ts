@@ -23,7 +23,7 @@ interface GameRecordTable {
   id: Generated<string>;
   roomCode: string;
   playerCount: number;
-  winnerId: string;
+  winnerId: string | null;
   rounds: number;
   duration: number;
   deckHash: string | null;
@@ -143,7 +143,7 @@ export async function migrateDb(): Promise<void> {
     .addColumn('id', 'text', (c) => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
     .addColumn('room_code', 'text', (c) => c.notNull())
     .addColumn('player_count', 'integer', (c) => c.notNull())
-    .addColumn('winner_id', 'text', (c) => c.notNull())
+    .addColumn('winner_id', 'text')
     .addColumn('rounds', 'integer', (c) => c.notNull())
     .addColumn('duration', 'integer', (c) => c.notNull())
     .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
@@ -181,5 +181,30 @@ export async function migrateDb(): Promise<void> {
       .execute();
   } catch {
     // Column already exists
+  }
+
+  // Migration: make winner_id nullable for interrupted games
+  try {
+    const tableInfo = await sql<{ notnull: number; name: string }>`PRAGMA table_info('game_records')`.execute(k);
+    const winnerCol = tableInfo.rows.find(r => r.name === 'winner_id');
+    if (winnerCol && winnerCol.notnull === 1) {
+      await sql`ALTER TABLE game_records RENAME TO game_records_old`.execute(k);
+      await k.schema
+        .createTable('game_records')
+        .addColumn('id', 'text', (c) => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
+        .addColumn('room_code', 'text', (c) => c.notNull())
+        .addColumn('player_count', 'integer', (c) => c.notNull())
+        .addColumn('winner_id', 'text')
+        .addColumn('rounds', 'integer', (c) => c.notNull())
+        .addColumn('duration', 'integer', (c) => c.notNull())
+        .addColumn('deck_hash', 'text')
+        .addColumn('initial_deck', 'text')
+        .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
+        .execute();
+      await sql`INSERT INTO game_records SELECT id, room_code, player_count, winner_id, rounds, duration, deck_hash, initial_deck, created_at FROM game_records_old`.execute(k);
+      await sql`DROP TABLE game_records_old`.execute(k);
+    }
+  } catch {
+    // Migration already applied or table doesn't exist yet
   }
 }
