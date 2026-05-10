@@ -1,1 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🎴</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#dc2626"/>
+    </linearGradient>
+    <linearGradient id="cardGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="cardGrad3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#16a34a"/>
+    </linearGradient>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="248" fill="#1e1b4b" stroke="#6366f1" stroke-width="8"/>
+  <!-- Green card (back) -->
+  <rect x="100" y="140" width="160" height="220" rx="16" fill="url(#cardGrad3)" transform="rotate(-15 180 250)" opacity="0.85"/>
+  <!-- Blue card (middle) -->
+  <rect x="170" y="130" width="160" height="220" rx="16" fill="url(#cardGrad2)" transform="rotate(0 250 240)" opacity="0.9"/>
+  <!-- Red card (front) -->
+  <rect x="240" y="140" width="160" height="220" rx="16" fill="url(#cardGrad)" transform="rotate(12 320 250)"/>
+  <!-- UNO text -->
+  <text x="256" y="420" font-family="Arial Black, Arial, sans-serif" font-size="100" font-weight="900" fill="#fbbf24" text-anchor="middle" letter-spacing="-2">UNO</text>
+  <!-- Highlight on front card -->
+  <ellipse cx="330" cy="248" rx="50" ry="70" fill="rgba(255,255,255,0.15)" transform="rotate(12 330 248)"/>
+</svg>
