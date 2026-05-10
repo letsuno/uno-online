@@ -62,7 +62,7 @@ export async function loadCardPack(file: File): Promise<void> {
 
     const ext = match[2].toLowerCase();
     const mimeMap: Record<string, string> = { webp: 'image/webp', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg' };
-    const blob = new Blob([data.buffer as ArrayBuffer], { type: mimeMap[ext] ?? 'image/webp' });
+    const blob = new Blob([data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer], { type: mimeMap[ext] ?? 'image/webp' });
     imageCache.set(index, URL.createObjectURL(blob));
   }
 

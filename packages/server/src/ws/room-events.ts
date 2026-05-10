@@ -7,7 +7,7 @@ import type { Database } from '../db/database';
 import { RoomManager } from '../plugins/core/room/manager';
 import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, touchRoomActivity } from '../plugins/core/room/store';
 import { GameSession } from '../plugins/core/game/session';
-import { saveGameState } from '../plugins/core/game/state-store';
+import type { GameStatePersister } from '../plugins/core/game/state-store';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { setGameStartTime, removePlayerVote } from './game-events';
 import type { SocketData } from './types';
@@ -21,6 +21,7 @@ type AutopilotActionHandler = (roomCode: string, session: GameSession, action: G
 
 // Track consecutive timeouts per player per room
 const timeoutCounts = new Map<string, Map<string, number>>();
+const blitzTimers = new Map<string, ReturnType<typeof setTimeout>>();
 let autopilotActionHandler: AutopilotActionHandler | null = null;
 
 export function setAutopilotActionHandler(handler: AutopilotActionHandler | null): void {
@@ -42,6 +43,11 @@ export function resetPlayerTimeout(roomCode: string, playerId: string): void {
 
 export function clearRoomTimeouts(roomCode: string): void {
   timeoutCounts.delete(roomCode);
+  const blitzTimer = blitzTimers.get(roomCode);
+  if (blitzTimer) {
+    clearTimeout(blitzTimer);
+    blitzTimers.delete(roomCode);
+  }
 }
 
 function sleep(ms: number): Promise<void> {
@@ -74,6 +80,7 @@ export function registerRoomEvents(
   turnTimer: TurnTimer,
   sessions: Map<string, GameSession>,
   db: Kysely<Database>,
+  persister: GameStatePersister,
 ) {
   const data = socket.data as SocketData;
 
@@ -136,7 +143,7 @@ export function registerRoomEvents(
     }
     const room = await getRoom(redis, roomCode);
     if (room?.ownerId === data.user.userId) {
-      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, 'host_closed', db);
+      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'host_closed', db);
       return callback?.({ success: true, dissolved: true });
     }
     const { deleted } = await roomManager.leaveRoom(roomCode, data.user.userId);
@@ -160,7 +167,8 @@ export function registerRoomEvents(
         });
       }
 
-      await saveGameState(redis, roomCode, session.getFullState());
+      persister.markDirty(roomCode, session.getFullState());
+      await persister.flushNow(roomCode);
       await emitGameUpdate(io, roomCode, session, redis);
     }
 
@@ -225,7 +233,7 @@ export function registerRoomEvents(
     if (!room || room.ownerId !== data.user.userId) {
       return callback?.({ success: false, error: 'Only room owner can dissolve' });
     }
-    await dissolveRoom(io, redis, roomCode, sessions, turnTimer, 'host_closed', db);
+    await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'host_closed', db);
     callback?.({ success: true });
   });
 
@@ -267,7 +275,8 @@ export function registerRoomEvents(
       direction: fullState.direction,
       settings: fullState.settings,
     }, null);
-    await saveGameState(redis, roomCode, session.getFullState());
+    persister.markDirty(roomCode, session.getFullState());
+    await persister.flushNow(roomCode);
 
     const sockets = await io.in(roomCode).fetchSockets();
     for (const s of sockets) {
@@ -275,12 +284,13 @@ export function registerRoomEvents(
       s.emit('game:state', session.getPlayerView(userId));
     }
 
-    startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
+    startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
 
     // Blitz mode: total game time limit
     const blitzLimit = session.getFullState().settings.houseRules.blitzTimeLimit;
     if (blitzLimit) {
-      setTimeout(async () => {
+      const blitzTimer = setTimeout(async () => {
+        blitzTimers.delete(roomCode);
         const s = sessions.get(roomCode);
         if (!s || s.isGameOver() || s.isRoundEnd()) return;
         // Find player with fewest cards
@@ -289,7 +299,8 @@ export function registerRoomEvents(
         const winner = state.players.find(p => p.hand.length === minCards);
         if (winner) {
           s.forceGameOver(winner.id);
-          await saveGameState(redis, roomCode, s.getFullState());
+          persister.markDirty(roomCode, s.getFullState());
+          await persister.flushNow(roomCode);
           await emitGameUpdate(io, roomCode, s, redis);
           io.to(roomCode).emit('game:over', {
             winnerId: winner.id,
@@ -299,6 +310,8 @@ export function registerRoomEvents(
           turnTimer.stop(roomCode);
         }
       }, blitzLimit * 1000);
+      blitzTimer.unref?.();
+      blitzTimers.set(roomCode, blitzTimer);
     }
 
     callback?.({ success: true, gameState: session.getPlayerView(data.user.userId) });
@@ -351,6 +364,7 @@ export function startTurnTimer(
   session: GameSession,
   turnTimer: TurnTimer,
   sessions: Map<string, GameSession>,
+  persister: GameStatePersister,
 ) {
   const state = session.getFullState();
   const phase = state.phase;
@@ -362,16 +376,16 @@ export function startTurnTimer(
       if (!s) return;
       const pid = getImmediateAutopilotPlayerId(s.getFullState());
       if (!pid) {
-        startTurnTimer(io, redis, code, s, turnTimer, sessions);
+        startTurnTimer(io, redis, code, s, turnTimer, sessions, persister);
         return;
       }
       await executeAutopilot(s, pid, async () => {
-        await saveGameState(redis, code, s.getFullState());
+        persister.markDirty(code, s.getFullState());
         await emitGameUpdate(io, code, s, redis);
       }, (action) => notifyAutopilotAction(code, s, action));
-      await saveGameState(redis, code, s.getFullState());
+      persister.markDirty(code, s.getFullState());
       await emitGameUpdate(io, code, s, redis);
-      startTurnTimer(io, redis, code, s, turnTimer, sessions);
+      startTurnTimer(io, redis, code, s, turnTimer, sessions, persister);
     });
     return;
   }
@@ -385,18 +399,18 @@ export function startTurnTimer(
       if (!s) return;
       const pid = getAutopilotActionPlayerId(s.getFullState());
       if (!pid) {
-        startTurnTimer(io, redis, code, s, turnTimer, sessions);
+        startTurnTimer(io, redis, code, s, turnTimer, sessions, persister);
         return;
       }
       await executeAutopilot(s, pid, async () => {
-        await saveGameState(redis, code, s.getFullState());
+        persister.markDirty(code, s.getFullState());
         await emitGameUpdate(io, code, s, redis);
       }, (action) => notifyAutopilotAction(code, s, action));
-      await saveGameState(redis, code, s.getFullState());
+      persister.markDirty(code, s.getFullState());
       await emitGameUpdate(io, code, s, redis);
       io.to(code).emit('player:timeout', { playerId: pid });
-      incrementTimeoutAndAutoAutopilot(io, redis, code, s, pid);
-      startTurnTimer(io, redis, code, s, turnTimer, sessions);
+      incrementTimeoutAndAutoAutopilot(io, redis, code, s, pid, persister);
+      startTurnTimer(io, redis, code, s, turnTimer, sessions, persister);
     });
     return;
   }
@@ -413,18 +427,18 @@ export function startTurnTimer(
     if (!s) return;
     const pid = getAutopilotActionPlayerId(s.getFullState());
     if (!pid) {
-      startTurnTimer(io, redis, code, s, turnTimer, sessions);
+      startTurnTimer(io, redis, code, s, turnTimer, sessions, persister);
       return;
     }
     await executeAutopilot(s, pid, async () => {
-      await saveGameState(redis, code, s.getFullState());
+      persister.markDirty(code, s.getFullState());
       await emitGameUpdate(io, code, s, redis);
     }, (action) => notifyAutopilotAction(code, s, action));
-    await saveGameState(redis, code, s.getFullState());
+    persister.markDirty(code, s.getFullState());
     await emitGameUpdate(io, code, s, redis);
     io.to(code).emit('player:timeout', { playerId: pid });
-    incrementTimeoutAndAutoAutopilot(io, redis, code, s, pid);
-    startTurnTimer(io, redis, code, s, turnTimer, sessions);
+    incrementTimeoutAndAutoAutopilot(io, redis, code, s, pid, persister);
+    startTurnTimer(io, redis, code, s, turnTimer, sessions, persister);
   });
 }
 
@@ -434,6 +448,7 @@ async function incrementTimeoutAndAutoAutopilot(
   roomCode: string,
   session: GameSession,
   playerId: string,
+  persister: GameStatePersister,
 ): Promise<void> {
   if (!timeoutCounts.has(roomCode)) timeoutCounts.set(roomCode, new Map());
   const roomCounts = timeoutCounts.get(roomCode)!;
@@ -443,7 +458,7 @@ async function incrementTimeoutAndAutoAutopilot(
   const player = session.getFullState().players.find(p => p.id === playerId);
   if (count >= AUTO_AUTOPILOT_THRESHOLD && player && !player.autopilot) {
     session.setPlayerAutopilot(playerId, true);
-    await saveGameState(redis, roomCode, session.getFullState());
+    persister.markDirty(roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session, redis);
     io.to(roomCode).emit('player:autopilot', { playerId, enabled: true });
   }
@@ -462,14 +477,41 @@ export async function emitGameUpdate(
       await setRoomStatus(kv, roomCode, 'finished');
     }
     const room = await getRoom(kv, roomCode);
-    if (room) spectatorMode = room.settings.spectatorMode ?? 'hidden';
+    if (room) spectatorMode = (room.settings?.spectatorMode as 'full' | 'hidden') ?? 'hidden';
   }
+
+  const { baseView, hands } = session.getGameUpdateBatch();
+  const threshold = baseView.settings?.houseRules?.handRevealThreshold ?? null;
+
   for (const s of sockets) {
     const sData = s.data as SocketData;
     if (sData.isSpectator) {
-      s.emit('game:update', session.getSpectatorView(spectatorMode));
+      if (spectatorMode === 'full') {
+        const fullView = {
+          ...baseView,
+          viewerId: '__spectator__',
+          players: baseView.players.map(p => ({ ...p, hand: hands.get(p.id) ?? [] })),
+        };
+        s.emit('game:update', fullView);
+      } else {
+        s.emit('game:update', { ...baseView, viewerId: '__spectator__' });
+      }
     } else {
-      s.emit('game:update', session.getPlayerView(sData.user.userId));
+      const userId = sData.user.userId;
+      const playerView = {
+        ...baseView,
+        viewerId: userId,
+        players: baseView.players.map(p => {
+          if (p.id === userId) {
+            return { ...p, hand: hands.get(p.id) ?? [] };
+          }
+          if (threshold !== null && p.handCount > 0 && p.handCount <= threshold) {
+            return { ...p, hand: hands.get(p.id) ?? [] };
+          }
+          return p;
+        }),
+      };
+      s.emit('game:update', playerView);
     }
   }
 }

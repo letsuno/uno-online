@@ -33,7 +33,7 @@ export interface RuleContext {
   getCardDrawPenalty: (card: Card) => number;
   canStartDrawStack: (state: GameState, card: Card) => boolean;
   isLastCard: (state: GameState, playerId: string, cardId: string) => boolean;
-  isWildType: (card: Card) => boolean;
+  isWildCard: (card: Card) => boolean;
   isFunctionCard: (card: Card) => boolean;
   handleDrawUntilPlayable: (state: GameState, action: Extract<GameAction, { type: 'DRAW_CARD' }>) => GameState;
   handleForcedPlayAfterDraw: (state: GameState, action: Extract<GameAction, { type: 'DRAW_CARD' }>) => GameState;

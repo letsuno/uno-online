@@ -1,4 +1,6 @@
+import { memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { isWildCard } from '@uno-online/shared';
 import Card from './Card';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
@@ -36,7 +38,7 @@ function getPlayOrigin(
   return { x: Math.sin(angle) * 200, y: -Math.cos(angle) * 160 };
 }
 
-export default function DiscardPile() {
+function DiscardPile() {
   const discardPile = useGameStore((s) => s.discardPile);
   const drawStack = useGameStore((s) => s.drawStack);
   const phase = useGameStore((s) => s.phase);
@@ -52,9 +54,9 @@ export default function DiscardPile() {
   const origin = getPlayOrigin(playedBy, players, selfId);
   const isSelf = playedBy === selfId;
 
-  const isWild = topCard.type === 'wild' || topCard.type === 'wild_draw_four';
-  const isWaitingForColor = isWild && !topCard.chosenColor && phase === 'choosing_color';
-  const chosenColor = isWild && !isWaitingForColor ? (topCard.chosenColor ?? currentColor ?? null) : null;
+  const wild = isWildCard(topCard);
+  const isWaitingForColor = wild && !topCard.chosenColor && phase === 'choosing_color';
+  const chosenColor = wild && !isWaitingForColor ? (topCard.chosenColor ?? currentColor ?? null) : null;
   const colorGlowMap: Record<string, string> = {
     red: 'rgba(255, 51, 102, 0.6)',
     blue: 'rgba(68, 136, 255, 0.6)',
@@ -161,3 +163,5 @@ export default function DiscardPile() {
     </div>
   );
 }
+
+export default memo(DiscardPile);

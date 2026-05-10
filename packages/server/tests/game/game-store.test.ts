@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import Redis from 'ioredis';
-import { saveGameState, loadGameState, deleteGameState } from '../../src/plugins/core/game/state-store';
+import { saveGameState, loadGameState } from '../../src/plugins/core/game/state-store';
 import { GameSession } from '../../src/plugins/core/game/session';
 
 const redis = new Redis(process.env['REDIS_URL'] ?? 'redis://localhost:6379');
@@ -35,13 +35,13 @@ describe('game-store', () => {
     expect(loaded).toBeNull();
   });
 
-  it('deletes game state', async () => {
+  it('deletes game state via kv.del', async () => {
     const session = GameSession.create([
       { id: 'p1', name: 'Alice' },
       { id: 'p2', name: 'Bob' },
     ]);
     await saveGameState(redis, TEST_CODE, session.getFullState());
-    await deleteGameState(redis, TEST_CODE);
+    await redis.del(`game:${TEST_CODE}:state`);
     const loaded = await loadGameState(redis, TEST_CODE);
     expect(loaded).toBeNull();
   });

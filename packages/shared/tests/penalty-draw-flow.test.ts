@@ -1,55 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_HOUSE_RULES, applyAction } from '../src';
-import type { Card, Color, GameState } from '../src';
-
-function makeCard(type: Card['type'], color: Color | null, extra?: { value?: number; id?: string }): Card {
-  const id = extra?.id ?? `card_${Math.random().toString(36).slice(2, 8)}`;
-  switch (type) {
-    case 'number': return { id, type, color: color as Color, value: extra?.value ?? 0 };
-    case 'skip': return { id, type, color: color as Color };
-    case 'reverse': return { id, type, color: color as Color };
-    case 'draw_two': return { id, type, color: color as Color };
-    case 'wild': return { id, type, color: null };
-    case 'wild_draw_four': return { id, type, color: null };
-  }
-}
-
-function makeState(overrides: Partial<GameState> = {}): GameState {
-  const defaults: GameState = {
-    phase: 'playing',
-    players: [
-      { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
-      { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
-      { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
-    ],
-    currentPlayerIndex: 0,
-    direction: 'clockwise',
-    deckLeft: [],
-    deckRight: [],
-    deckLeftInitialCount: 0,
-    deckRightInitialCount: 0,
-    discardPile: [makeCard('number', 'red', { value: 5, id: 'top' })],
-    currentColor: 'red',
-    drawStack: 0,
-    pendingDrawPlayerId: null,
-    pendingPenaltyDraws: 0,
-    pendingPenaltyNextPlayerIndex: null,
-    pendingPenaltySourcePlayerId: null,
-    pendingPenaltyQueue: [],
-    lastAction: null,
-    roundNumber: 1,
-    winnerId: null,
-    deckHash: '',
-    settings: {
-      turnTimeLimit: 30,
-      targetScore: 500,
-      allowSpectators: true,
-      spectatorMode: 'hidden',
-      houseRules: DEFAULT_HOUSE_RULES,
-    },
-  };
-  return { ...defaults, ...overrides };
-}
+import { applyAction } from '../src';
+import { makeCard, makeState } from './helpers/test-utils';
 
 describe('penalty draw flow', () => {
   it('queues draw_two penalty and resolves it one drawn card at a time', () => {

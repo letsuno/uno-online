@@ -50,22 +50,35 @@ export async function getGamesList(
     .offset(offset)
     .execute();
 
-  const games: GameListItem[] = [];
-  for (const rec of records) {
-    const players = await db.selectFrom('gamePlayers')
-      .innerJoin('users', 'users.id', 'gamePlayers.userId')
-      .select([
-        'gamePlayers.userId',
-        'users.nickname',
-        'gamePlayers.placement',
-        'gamePlayers.finalScore',
-      ])
-      .where('gamePlayers.gameId', '=', rec.id)
-      .orderBy('gamePlayers.placement', 'asc')
-      .execute();
+  if (records.length === 0) {
+    return { games: [], total: totalResult.count };
+  }
 
+  const gameIds = records.map(r => r.id);
+  const allPlayers = await db.selectFrom('gamePlayers')
+    .innerJoin('users', 'users.id', 'gamePlayers.userId')
+    .select([
+      'gamePlayers.gameId',
+      'gamePlayers.userId',
+      'users.nickname',
+      'gamePlayers.placement',
+      'gamePlayers.finalScore',
+    ])
+    .where('gamePlayers.gameId', 'in', gameIds)
+    .orderBy('gamePlayers.placement', 'asc')
+    .execute();
+
+  const playersByGame = new Map<string, typeof allPlayers>();
+  for (const p of allPlayers) {
+    const list = playersByGame.get(p.gameId) ?? [];
+    list.push(p);
+    playersByGame.set(p.gameId, list);
+  }
+
+  const games: GameListItem[] = records.map(rec => {
+    const players = playersByGame.get(rec.id) ?? [];
     const winner = players.find(p => p.userId === rec.winnerId);
-    games.push({
+    return {
       id: rec.id,
       roomCode: rec.roomCode,
       players: players.map(p => ({
@@ -81,8 +94,8 @@ export async function getGamesList(
       duration: rec.duration,
       deckHash: rec.deckHash ?? '',
       createdAt: rec.createdAt,
-    });
-  }
+    };
+  });
 
   return { games, total: totalResult.count };
 }

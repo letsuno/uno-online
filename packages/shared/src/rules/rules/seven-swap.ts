@@ -15,7 +15,7 @@ export const sevenSwapPost: HouseRulePlugin = {
     if (after === before) return after;
     const playedCard = before.players[before.currentPlayerIndex]?.hand.find(c => c.id === action.cardId);
     if (playedCard?.type !== 'number' || playedCard.value !== 7) return after;
-    return { ...after, phase: 'choosing_swap_target' as any, currentPlayerIndex: before.currentPlayerIndex };
+    return { ...after, phase: 'choosing_swap_target', currentPlayerIndex: before.currentPlayerIndex };
   },
 };
 

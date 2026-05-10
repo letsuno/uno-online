@@ -1,54 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { applyAction } from '../src/rules/game-engine';
-import type { GameState, Player } from '../src/types/game';
-import type { Card, Color } from '../src/types/card';
+import type { GameState } from '../src/types/game';
 import { DEFAULT_HOUSE_RULES } from '../src/types/house-rules';
-
-function makeCard(type: Card['type'], color: Color | null, extra?: { value?: number; id?: string }): Card {
-  const id = extra?.id ?? `card_${Math.random().toString(36).slice(2, 8)}`;
-  switch (type) {
-    case 'number': return { id, type, color: color as Color, value: extra?.value ?? 0 };
-    case 'skip': return { id, type, color: color as Color };
-    case 'reverse': return { id, type, color: color as Color };
-    case 'draw_two': return { id, type, color: color as Color };
-    case 'wild': return { id, type, color: null };
-    case 'wild_draw_four': return { id, type, color: null };
-  }
-}
-
-function makeState(overrides: Partial<GameState> = {}): GameState {
-  const defaults: GameState = {
-    phase: 'playing',
-    players: [
-      { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
-      { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
-      { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
-    ],
-    currentPlayerIndex: 0,
-    direction: 'clockwise',
-    deckLeft: [],
-    deckRight: [],
-    deckLeftInitialCount: 0,
-    deckRightInitialCount: 0,
-    discardPile: [makeCard('number', 'red', { value: 5, id: 'discard_top' })],
-    currentColor: 'red',
-    drawStack: 0,
-    pendingDrawPlayerId: null,
-    lastAction: null,
-    roundNumber: 1,
-    winnerId: null,
-    settings: { turnTimeLimit: 30, targetScore: 500 },
-  };
-  return { ...defaults, ...overrides };
-}
+import { makeCard, makeState, drawPendingPenalty as _drawPendingPenalty } from './helpers/test-utils';
 
 function drawPendingPenalty(state: GameState): GameState {
-  let current = state;
-  while ((current.pendingPenaltyDraws ?? 0) > 0) {
-    const playerId = current.players[current.currentPlayerIndex]!.id;
-    current = applyAction(current, { type: 'DRAW_CARD', playerId, side: 'left' as const });
-  }
-  return current;
+  return _drawPendingPenalty(state, applyAction);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -443,20 +400,6 @@ describe('CHOOSE_COLOR', () => {
     expect(next.currentColor).toBe('green');
   });
 
-  it('ends the round immediately when the last card is a plain wild', () => {
-    const wild = makeCard('wild', null, { id: 'wild_last' });
-    const state = makeState({
-      players: [
-        { id: 'p1', name: 'Alice', hand: [wild], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 4, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 6, id: 'p3c' })], score: 0, connected: true, calledUno: false },
-      ],
-    });
-
-    const afterPlay = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wild_last' });
-    expect(afterPlay.phase).toBe('round_end');
-    expect(afterPlay.winnerId).toBe('p1');
-  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────

@@ -28,8 +28,10 @@ packages/client/src/
     game/
       pages/
       stores/             # game-store, game-log-store, chat-store
-      components/
-      hooks/              # 功能专属 hook
+      components/         # GameTable, PlayerNode, DrawPile, DiscardPile,
+                          # DirectionIndicator, TurnIndicator, HandSwapAnimation 等
+      hooks/              # usePlayableCardIds, usePlayerLayout, useDrawAnimation,
+                          # useChatBubbles 等
       routes.tsx
     lobby/
     profile/
@@ -118,6 +120,7 @@ import type { PlayerInfo } from '../stores/game-store';
 - 组件级事件（仅影响单个组件状态）在组件内通过 `useEffect` 监听
 - 必须在 `useEffect` 的 cleanup 中 `socket.off()`
 - 玩家状态事件: `player:disconnected`, `player:reconnected`, `player:autopilot`（托管状态变更）
+- Socket 实例使用泛型参数绑定类型：`Socket<ServerToClientEvents, ClientToServerEvents>`，事件类型定义在 `@uno-online/shared` 的 `socket-events.ts`
 
 ## 样式主题
 

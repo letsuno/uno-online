@@ -149,8 +149,8 @@ const preHandler = adminOnly(ctx.config.jwtSecret);
 ```typescript
 const { db, kv, io, config } = ctx;
 
-// 数据库查询
-const users = await db.selectFrom('users').selectAll().execute();
+// 数据库查询（显式选择字段，避免泄露敏感信息）
+const users = await db.selectFrom('users').select(['id', 'username', 'nickname', 'role']).execute();
 
 // KV 操作
 await kv.set('key', 'value');

@@ -1,5 +1,5 @@
 import type { Card, Color } from '../types/card';
-import type { GameState, Player } from '../types/game';
+import type { GameState, Direction, Player } from '../types/game';
 import type { HouseRules } from '../types/house-rules';
 import type { UserRole } from '../types/role';
 import { isColoredCard } from '../types/card';
@@ -8,6 +8,7 @@ import { getNextPlayerIndex, reverseDirection } from './turn';
 import { INITIAL_HAND_SIZE } from '../constants/deck';
 import { DEFAULT_TARGET_SCORE, DEFAULT_TURN_TIME_LIMIT } from '../constants/scoring';
 import { DEFAULT_HOUSE_RULES } from '../types/house-rules';
+import { PENALTY_STATE_DEFAULTS } from './game-engine';
 
 export interface DealResult {
   hands: Record<string, Card[]>;
@@ -79,6 +80,50 @@ export function handleFirstDiscard(deck: readonly Card[], skipWild?: boolean): F
   throw new Error('Deck is empty — cannot draw first discard');
 }
 
+function splitDeck(deck: Card[]): { deckLeft: Card[]; deckRight: Card[]; deckLeftInitialCount: number; deckRightInitialCount: number } {
+  const half = Math.ceil(deck.length / 2);
+  return {
+    deckLeft: deck.slice(0, half),
+    deckRight: deck.slice(half),
+    deckLeftInitialCount: half,
+    deckRightInitialCount: deck.length - half,
+  };
+}
+
+function applyFirstDiscardEffect(
+  effect: FirstCardEffect,
+  players: Player[],
+  currentPlayerIndex: number,
+  direction: Direction,
+  deckAfterDiscard: Card[],
+): { currentPlayerIndex: number; direction: Direction; phase: GameState['phase'] } {
+  let phase: GameState['phase'] = 'playing';
+  if (!effect) return { currentPlayerIndex, direction, phase };
+
+  switch (effect.type) {
+    case 'skip':
+      currentPlayerIndex = getNextPlayerIndex(currentPlayerIndex, players.length, direction);
+      break;
+    case 'reverse':
+      direction = reverseDirection(direction);
+      break;
+    case 'draw_two': {
+      const targetPlayer = players[currentPlayerIndex];
+      if (targetPlayer) {
+        const drawn = deckAfterDiscard.splice(0, 2);
+        targetPlayer.hand.push(...drawn);
+      }
+      currentPlayerIndex = getNextPlayerIndex(currentPlayerIndex, players.length, direction);
+      break;
+    }
+    case 'choose_color':
+      phase = 'choosing_color';
+      break;
+  }
+
+  return { currentPlayerIndex, direction, phase };
+}
+
 export function initializeGame(
   playerData: readonly { id: string; name: string; avatarUrl?: string | null; role?: UserRole }[],
   houseRules?: HouseRules,
@@ -106,49 +151,18 @@ export function initializeGame(
     role: p.role,
   }));
 
-  let direction: GameState['direction'] = 'clockwise';
-  let currentPlayerIndex = 0;
-  let currentColor: Color | null = isColoredCard(topCard) ? topCard.color : null;
-  let phase: GameState['phase'] = 'playing';
-
-  if (effect) {
-    switch (effect.type) {
-      case 'skip':
-        currentPlayerIndex = getNextPlayerIndex(0, players.length, direction);
-        break;
-      case 'reverse':
-        direction = reverseDirection(direction);
-        break;
-      case 'draw_two': {
-        const targetPlayer = players[0]!;
-        const drawCards = deckAfterDiscard.splice(0, 2);
-        targetPlayer.hand.push(...drawCards);
-        currentPlayerIndex = getNextPlayerIndex(0, players.length, direction);
-        break;
-      }
-      case 'choose_color':
-        phase = 'choosing_color';
-        break;
-    }
-  }
+  const currentColor: Color | null = isColoredCard(topCard) ? topCard.color : null;
+  const applied = applyFirstDiscardEffect(effect, players, 0, 'clockwise', deckAfterDiscard);
 
   return {
-    phase,
+    phase: applied.phase,
     players,
-    currentPlayerIndex,
-    direction,
-    deckLeft: deckAfterDiscard.slice(0, Math.ceil(deckAfterDiscard.length / 2)),
-    deckRight: deckAfterDiscard.slice(Math.ceil(deckAfterDiscard.length / 2)),
-    deckLeftInitialCount: Math.ceil(deckAfterDiscard.length / 2),
-    deckRightInitialCount: deckAfterDiscard.length - Math.ceil(deckAfterDiscard.length / 2),
+    currentPlayerIndex: applied.currentPlayerIndex,
+    direction: applied.direction,
+    ...splitDeck(deckAfterDiscard),
     discardPile: [topCard],
     currentColor,
-    drawStack: 0,
-    pendingDrawPlayerId: null,
-    pendingPenaltyDraws: 0,
-    pendingPenaltyNextPlayerIndex: null,
-    pendingPenaltySourcePlayerId: null,
-    pendingPenaltyQueue: [],
+    ...PENALTY_STATE_DEFAULTS,
     lastAction: null,
     roundNumber: 1,
     winnerId: null,
@@ -188,51 +202,18 @@ export function initializeNextRound(prevState: GameState): GameState {
     }
   }
 
-  let direction: GameState['direction'] = 'clockwise';
-  let currentPlayerIndex = prevState.currentPlayerIndex;
-  let currentColor: Color | null = isColoredCard(topCard) ? topCard.color : null;
-  let phase: GameState['phase'] = 'playing';
-
-  if (effect) {
-    switch (effect.type) {
-      case 'skip':
-        currentPlayerIndex = getNextPlayerIndex(currentPlayerIndex, players.length, direction);
-        break;
-      case 'reverse':
-        direction = reverseDirection(direction);
-        break;
-      case 'draw_two': {
-        const targetPlayer = players[currentPlayerIndex];
-        if (targetPlayer) {
-          const drawCards = deckAfterDiscard.splice(0, 2);
-          targetPlayer.hand.push(...drawCards);
-        }
-        currentPlayerIndex = getNextPlayerIndex(currentPlayerIndex, players.length, direction);
-        break;
-      }
-      case 'choose_color':
-        phase = 'choosing_color';
-        break;
-    }
-  }
+  const currentColor: Color | null = isColoredCard(topCard) ? topCard.color : null;
+  const applied = applyFirstDiscardEffect(effect, players, prevState.currentPlayerIndex, 'clockwise', deckAfterDiscard);
 
   return {
-    phase,
+    phase: applied.phase,
     players,
-    currentPlayerIndex,
-    direction,
-    deckLeft: deckAfterDiscard.slice(0, Math.ceil(deckAfterDiscard.length / 2)),
-    deckRight: deckAfterDiscard.slice(Math.ceil(deckAfterDiscard.length / 2)),
-    deckLeftInitialCount: Math.ceil(deckAfterDiscard.length / 2),
-    deckRightInitialCount: deckAfterDiscard.length - Math.ceil(deckAfterDiscard.length / 2),
+    currentPlayerIndex: applied.currentPlayerIndex,
+    direction: applied.direction,
+    ...splitDeck(deckAfterDiscard),
     discardPile: [topCard],
     currentColor,
-    drawStack: 0,
-    pendingDrawPlayerId: null,
-    pendingPenaltyDraws: 0,
-    pendingPenaltyNextPlayerIndex: null,
-    pendingPenaltySourcePlayerId: null,
-    pendingPenaltyQueue: [],
+    ...PENALTY_STATE_DEFAULTS,
     lastAction: null,
     roundNumber: prevState.roundNumber + 1,
     winnerId: null,

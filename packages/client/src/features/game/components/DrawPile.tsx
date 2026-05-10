@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CardBack from './CardBack';
 import DrawCardAnimation from './DrawCardAnimation';
@@ -16,7 +17,7 @@ interface DrawPileProps {
   drawUntilCount?: number;
 }
 
-export default function DrawPile({ side, isPortrait, onDraw, drawTargetX, drawTargetY, drawAnimTrigger = 0, drawUntilCount = 0 }: DrawPileProps) {
+function DrawPile({ side, isPortrait, onDraw, drawTargetX, drawTargetY, drawAnimTrigger = 0, drawUntilCount = 0 }: DrawPileProps) {
   const deckCount = useGameStore((s) => side === 'left' ? s.deckLeftCount : s.deckRightCount);
   const discardPileLength = useGameStore((s) => s.discardPile.length);
   const phase = useGameStore((s) => s.phase);
@@ -108,3 +109,5 @@ export default function DrawPile({ side, isPortrait, onDraw, drawTargetX, drawTa
     </div>
   );
 }
+
+export default memo(DrawPile);

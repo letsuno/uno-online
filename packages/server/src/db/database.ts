@@ -174,13 +174,18 @@ export async function migrateDb(): Promise<void> {
     .column('user_id')
     .execute();
 
+  await sql`CREATE INDEX IF NOT EXISTS idx_game_records_created_at ON game_records(created_at DESC)`.execute(k);
+
   try {
     await k.schema
       .alterTable('users')
       .addColumn('role', 'text', (c) => c.defaultTo('normal').notNull())
       .execute();
-  } catch {
-    // Column already exists
+  } catch (err) {
+    const msg = (err as Error).message ?? '';
+    if (!msg.includes('duplicate column name')) {
+      throw err;
+    }
   }
 
   // Migration: make winner_id nullable for interrupted games
@@ -204,7 +209,10 @@ export async function migrateDb(): Promise<void> {
       await sql`INSERT INTO game_records SELECT id, room_code, player_count, winner_id, rounds, duration, deck_hash, initial_deck, created_at FROM game_records_old`.execute(k);
       await sql`DROP TABLE game_records_old`.execute(k);
     }
-  } catch {
-    // Migration already applied or table doesn't exist yet
+  } catch (err) {
+    const msg = (err as Error).message ?? '';
+    if (!msg.includes('duplicate column name') && !msg.includes('no such table')) {
+      throw err;
+    }
   }
 }

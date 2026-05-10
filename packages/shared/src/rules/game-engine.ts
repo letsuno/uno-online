@@ -1,10 +1,19 @@
 import type { GameState, GameAction, DrawSide } from '../types/game';
 import type { Color } from '../types/card';
 import { reshuffleSideFromDiscard } from './deck';
-import { canPlayCard, isValidWildDrawFour } from './validation';
+import { canPlayCard, isValidWildDrawFour, canRespondToDrawStack as canRespondToDrawStackPure } from './validation';
 import { getNextPlayerIndex, reverseDirection } from './turn';
 import { calculateRoundScores } from './scoring';
 import { UNO_PENALTY_CARDS } from '../constants/scoring';
+
+export const PENALTY_STATE_DEFAULTS = {
+  pendingPenaltyDraws: 0,
+  pendingPenaltyNextPlayerIndex: null,
+  pendingPenaltySourcePlayerId: null,
+  pendingPenaltyQueue: [] as { playerId: string; count: number; nextPlayerIndex: number; sourcePlayerId: string | null }[],
+  pendingDrawPlayerId: null,
+  drawStack: 0,
+} as const;
 
 // -----------------------------------------------------------------------------
 // Helpers
@@ -18,7 +27,7 @@ function hasCardsAvailable(state: GameState): boolean {
  * Draw `count` cards from the specified side deck into the given player's hand.
  * Reshuffles from the discard pile into the side deck if it runs out mid-draw.
  */
-function drawCards(state: GameState, playerId: string, count: number, side: DrawSide): GameState {
+export function drawCards(state: GameState, playerId: string, count: number, side: DrawSide): GameState {
   let sideDeck = side === 'left' ? [...state.deckLeft] : [...state.deckRight];
   let discardPile = [...state.discardPile];
   const initialCount = side === 'left' ? state.deckLeftInitialCount : state.deckRightInitialCount;
@@ -72,12 +81,7 @@ export function checkRoundEnd(state: GameState, playerId: string): GameState {
     players,
     phase,
     winnerId: playerId,
-    pendingPenaltyDraws: 0,
-    pendingPenaltyNextPlayerIndex: null,
-    pendingPenaltySourcePlayerId: null,
-    pendingPenaltyQueue: [],
-    pendingDrawPlayerId: null,
-    drawStack: 0,
+    ...PENALTY_STATE_DEFAULTS,
   };
 }
 
@@ -103,19 +107,7 @@ function canRespondToDrawStack(state: GameState, cardId: string): boolean {
   const topCard = state.discardPile[state.discardPile.length - 1];
   if (!card || !topCard) return false;
 
-  const hr = state.settings.houseRules;
-  if (!hr) return false;
-  return (
-    (hr.stackDrawTwo && card.type === 'draw_two' && topCard.type === 'draw_two') ||
-    (hr.stackDrawFour && card.type === 'wild_draw_four' && topCard.type === 'wild_draw_four') ||
-    (hr.crossStack && (
-      (card.type === 'draw_two' && topCard.type === 'wild_draw_four') ||
-      (card.type === 'wild_draw_four' && topCard.type === 'draw_two')
-    )) ||
-    (hr.reverseDeflectDrawTwo && card.type === 'reverse' && topCard.type === 'draw_two') ||
-    (hr.reverseDeflectDrawFour && card.type === 'reverse' && topCard.type === 'wild_draw_four') ||
-    (hr.skipDeflect && card.type === 'skip')
-  );
+  return canRespondToDrawStackPure(card, topCard, state.settings.houseRules);
 }
 
 function hasPlayableCardForUnoCall(state: GameState, player: GameState['players'][number]): boolean {
@@ -129,7 +121,7 @@ function hasPlayableCardForUnoCall(state: GameState, player: GameState['players'
   return player.hand.some(card => canPlayCard(card, topCard, state.currentColor!));
 }
 
-function startPenaltyDraw(
+export function startPenaltyDraw(
   state: GameState,
   playerId: string,
   count: number,
@@ -430,13 +422,7 @@ function handlePass(
     ...state,
     currentPlayerIndex: newIndex,
     lastAction: action,
-    ...(noCards ? {
-      pendingPenaltyDraws: 0,
-      drawStack: 0,
-      pendingPenaltyNextPlayerIndex: null,
-      pendingPenaltySourcePlayerId: null,
-      pendingPenaltyQueue: [],
-    } : {}),
+    ...(noCards ? PENALTY_STATE_DEFAULTS : {}),
   };
 }
 
@@ -458,18 +444,6 @@ function handleChooseColor(
       lastAction: action,
     };
   } else {
-    const actingPlayerId = currentPlayerId(colorState);
-    if (colorState.lastAction?.type === 'PLAY_CARD') {
-      const endedState = checkRoundEnd(
-        { ...colorState, currentColor: action.color, lastAction: action },
-        actingPlayerId,
-      );
-      if (endedState.phase === 'round_end' || endedState.phase === 'game_over') {
-        return endedState;
-      }
-    }
-
-    // plain wild: advance to next player and return to playing
     const newIndex = getNextPlayerIndex(
       colorState.currentPlayerIndex,
       colorState.players.length,

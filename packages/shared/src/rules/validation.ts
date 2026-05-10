@@ -1,4 +1,5 @@
 import type { Card, Color } from '../types/card';
+import type { HouseRules } from '../types/house-rules';
 import { isWildCard, isColoredCard } from '../types/card';
 
 function getCardSymbol(card: Card): string | null {
@@ -44,4 +45,28 @@ export function isValidWildDrawFour(
   currentColor: Color,
 ): boolean {
   return !hand.some(card => isColoredCard(card) && card.color === currentColor);
+}
+
+export function canRespondToDrawStack(card: Card, topCard: Card, houseRules?: HouseRules): boolean {
+  if (!houseRules) return false;
+
+  return (
+    (houseRules.stackDrawTwo && card.type === 'draw_two' && topCard.type === 'draw_two') ||
+    (houseRules.stackDrawFour && card.type === 'wild_draw_four' && topCard.type === 'wild_draw_four') ||
+    (houseRules.crossStack && (
+      (card.type === 'draw_two' && topCard.type === 'wild_draw_four') ||
+      (card.type === 'wild_draw_four' && topCard.type === 'draw_two')
+    )) ||
+    (houseRules.reverseDeflectDrawTwo && card.type === 'reverse' && topCard.type === 'draw_two') ||
+    (houseRules.reverseDeflectDrawFour && card.type === 'reverse' && topCard.type === 'wild_draw_four') ||
+    (houseRules.skipDeflect && card.type === 'skip')
+  );
+}
+
+export function isExactJumpInMatch(card: Card, topCard: Card): boolean {
+  return (
+    card.type === topCard.type &&
+    card.color === topCard.color &&
+    (card.type !== 'number' || (topCard.type === 'number' && card.value === topCard.value))
+  );
 }

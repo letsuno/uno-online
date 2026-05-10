@@ -69,6 +69,8 @@ export default function ProfilePage() {
     }
   };
 
+  const profileRoleColor = getRoleColor(profile?.user.role);
+
   return (
     <div className="flex flex-1 flex-col items-center gap-6 p-10">
       <h2 className="font-game text-primary">个人信息</h2>
@@ -87,7 +89,7 @@ export default function ProfilePage() {
               </div>
             ) : (
               <p className="text-xl font-bold cursor-pointer" onClick={() => setEditingNickname(true)}
-                style={getRoleColor(profile.user.role) ? { color: getRoleColor(profile.user.role) } : undefined}>
+                style={profileRoleColor ? { color: profileRoleColor } : undefined}>
                 {profile.user.nickname} <Edit3 size={14} className="inline-block align-middle text-muted-foreground" />
               </p>
             )}
