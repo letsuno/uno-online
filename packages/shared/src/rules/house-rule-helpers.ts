@@ -1,5 +1,6 @@
 import type { GameState, GameAction } from '../types/game';
 import type { Card } from '../types/card';
+import type { Color } from '../types/card';
 import type { PendingPenaltyDraw } from '../types/game';
 import { isWildCard } from '../types/card';
 import { reshuffleDiscardIntoDeck } from './deck';
@@ -63,6 +64,16 @@ export function drawCardsFromDeck(state: GameState, playerId: string, count: num
 
 export function hasPendingDrawObligation(state: GameState): boolean {
   return (state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0;
+}
+
+export function hasPlayableCard(
+  hand: Card[],
+  topCard: Card | undefined,
+  currentColor: Color | null,
+  canPlay: (card: Card, topCard: Card, currentColor: Color) => boolean = canPlayCard,
+): boolean {
+  if (!topCard || !currentColor) return false;
+  return hand.some(card => canPlay(card, topCard, currentColor));
 }
 
 export function isLastCard(state: GameState, playerId: string, cardId: string): boolean {

@@ -88,7 +88,6 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
       hasDragged: false,
       suppressClick: false,
     };
-    scrollEl.setPointerCapture(event.pointerId);
   };
 
   const handleHandPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -101,6 +100,9 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
       drag.hasDragged = true;
       drag.suppressClick = true;
       setIsDraggingHand(true);
+      if (!scrollEl.hasPointerCapture(event.pointerId)) {
+        scrollEl.setPointerCapture(event.pointerId);
+      }
     }
     if (!drag.hasDragged) return;
 

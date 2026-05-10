@@ -67,12 +67,16 @@ export default function GameEffects() {
   const prevActionRef = useRef<typeof lastAction>(null);
   const prevPendingPenaltyRef = useRef(0);
 
-  const addEffect = (type: Effect['type'], text: string, targetName?: string, targetIndex?: number, targetAvatarUrl?: string | null) => {
+  const addEffect = (effect: Omit<Effect, 'id'>) => {
     const id = `effect_${++effectId}`;
-    setEffects((prev) => [...prev, { id, type, text, targetName, targetIndex, targetAvatarUrl }]);
+    setEffects((prev) => [...prev, { id, ...effect }]);
     setTimeout(() => {
       setEffects((prev) => prev.filter((e) => e.id !== id));
     }, EFFECT_DURATION);
+  };
+
+  const addTargetEffect = (type: Effect['type'], text: string, targetName?: string, targetIndex?: number, targetAvatarUrl?: string | null) => {
+    addEffect({ type, text, targetName, targetIndex, targetAvatarUrl });
   };
 
   const findPlayerIndex = (id: string) => players.findIndex((p) => p.id === id);
@@ -95,22 +99,22 @@ export default function GameEffects() {
     const affected = getNextPlayerFromActor();
 
     if (topCard.type === 'skip') {
-      addEffect('skip', '跳过!', affected?.player.name, affected?.index, affected?.player.avatarUrl);
+      addTargetEffect('skip', '跳过!', affected?.player.name, affected?.index, affected?.player.avatarUrl);
       playSound('skip');
     } else if (topCard.type === 'reverse') {
       if (players.length === 2) {
-        addEffect('skip', '跳过!', affected?.player.name, affected?.index, affected?.player.avatarUrl);
+        addTargetEffect('skip', '跳过!', affected?.player.name, affected?.index, affected?.player.avatarUrl);
       } else {
-        addEffect('reverse', '反转!');
+        addTargetEffect('reverse', '反转!');
       }
       playSound('reverse');
     } else if (topCard.type === 'draw_two') {
-      addEffect('draw', '+2!', affected?.player.name, affected?.index, affected?.player.avatarUrl);
+      addTargetEffect('draw', '+2!', affected?.player.name, affected?.index, affected?.player.avatarUrl);
       playSound('draw_two');
     } else if (topCard.type === 'wild_draw_four') {
       const pendingIdx = pendingDrawPlayerId ? findPlayerIndex(pendingDrawPlayerId) : -1;
       const pendingPlayer = pendingIdx >= 0 ? players[pendingIdx] : affected?.player;
-      addEffect('draw', '+4!', pendingPlayer?.name, pendingIdx >= 0 ? pendingIdx : affected?.index, pendingPlayer?.avatarUrl);
+      addTargetEffect('draw', '+4!', pendingPlayer?.name, pendingIdx >= 0 ? pendingIdx : affected?.index, pendingPlayer?.avatarUrl);
       playSound('wild');
     } else if (topCard.type === 'wild') {
       playSound('wild');
@@ -131,7 +135,7 @@ export default function GameEffects() {
       const winner = players.find((p) => p.id === winnerId);
       if (winner) {
         const winnerIdx = findPlayerIndex(winner.id);
-        addEffect('victory', winner.id === userId ? '你赢了!' : `${winner.name} 获胜!`, winner.name, winnerIdx >= 0 ? winnerIdx : undefined, winner.avatarUrl);
+        addTargetEffect('victory', winner.id === userId ? '你赢了!' : `${winner.name} 获胜!`, winner.name, winnerIdx >= 0 ? winnerIdx : undefined, winner.avatarUrl);
         playSound(winner.id === userId ? 'win' : 'lose');
       }
     }
@@ -150,9 +154,7 @@ export default function GameEffects() {
       const penaltyPlayer = penaltyId ? players.find((p) => p.id === penaltyId) : undefined;
       const penaltyIdx = penaltyId ? findPlayerIndex(penaltyId) : -1;
 
-      const id = `effect_${++effectId}`;
-      const effect: Effect = {
-        id,
+      addEffect({
         type: 'challenge',
         text: lastAction.succeeded ? '质疑成功!' : '质疑失败!',
         targetName: challenger?.name,
@@ -162,28 +164,18 @@ export default function GameEffects() {
         penaltyIndex: penaltyIdx >= 0 ? penaltyIdx : undefined,
         penaltyAvatarUrl: penaltyPlayer?.avatarUrl,
         penaltyCount,
-      };
-      setEffects((prev) => [...prev, effect]);
-      setTimeout(() => {
-        setEffects((prev) => prev.filter((e) => e.id !== id));
-      }, EFFECT_DURATION);
+      });
     } else if (lastAction.type === 'CALL_UNO') {
       const caller = players.find((p) => p.id === lastAction.playerId);
       const callerIdx = findPlayerIndex(lastAction.playerId);
 
-      const id = `effect_${++effectId}`;
-      const effect: Effect = {
-        id,
+      addEffect({
         type: 'uno_call',
         text: 'UNO!',
         targetName: caller?.name,
         targetIndex: callerIdx >= 0 ? callerIdx : undefined,
         targetAvatarUrl: caller?.avatarUrl,
-      };
-      setEffects((prev) => [...prev, effect]);
-      setTimeout(() => {
-        setEffects((prev) => prev.filter((e) => e.id !== id));
-      }, EFFECT_DURATION);
+      });
       playSound('uno_call');
     } else if (lastAction.type === 'CATCH_UNO') {
       const catcher = players.find((p) => p.id === lastAction.catcherId);
@@ -191,9 +183,7 @@ export default function GameEffects() {
       const catcherIdx = findPlayerIndex(lastAction.catcherId);
       const targetIdx = findPlayerIndex(lastAction.targetId);
 
-      const id = `effect_${++effectId}`;
-      const effect: Effect = {
-        id,
+      addEffect({
         type: 'catch_uno',
         text: '抓 UNO!',
         catcherName: catcher?.name,
@@ -202,11 +192,7 @@ export default function GameEffects() {
         targetName: target?.name,
         targetIndex: targetIdx >= 0 ? targetIdx : undefined,
         targetAvatarUrl: target?.avatarUrl,
-      };
-      setEffects((prev) => [...prev, effect]);
-      setTimeout(() => {
-        setEffects((prev) => prev.filter((e) => e.id !== id));
-      }, EFFECT_DURATION);
+      });
       playSound('uno_catch');
     }
   }, [lastAction, players]);
