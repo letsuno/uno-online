@@ -1,12 +1,12 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
-import type { ChatMessage, Color } from '@uno-online/shared';
-import { GameEventType } from '@uno-online/shared';
+import type { ChatMessage, Color, GameAction } from '@uno-online/shared';
+import { chooseAutopilotJumpInAction, GameEventType } from '@uno-online/shared';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/database';
 import { GameSession } from '../plugins/core/game/session';
 import { saveGameState } from '../plugins/core/game/state-store';
-import { emitGameUpdate, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts } from './room-events';
+import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts } from './room-events';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { recordGameResult } from '../db/user-repo';
 import { saveGameEvents, saveDeckInfo } from '../plugins/core/game-history/service';
@@ -85,6 +85,8 @@ function buildChatMessage(user: SocketData['user'], text: string): ChatMessage {
 
 const gameStartTimes = new Map<string, number>();
 const nextRoundVotes = new Map<string, Set<string>>();
+const AUTOPILOT_JUMP_IN_DELAY_MS = 2_000;
+const autopilotJumpInTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 interface NextRoundVoteState {
   votes: number;
@@ -122,6 +124,98 @@ export function removePlayerVote(roomCode: string, playerId: string, session: Ga
     const voteState = getNextRoundVoteState(roomCode, session);
     io.to(roomCode).emit('game:next_round_vote', voteState);
   }
+}
+
+function clearAutopilotJumpIn(roomCode: string): void {
+  const timer = autopilotJumpInTimers.get(roomCode);
+  if (!timer) return;
+  clearTimeout(timer);
+  autopilotJumpInTimers.delete(roomCode);
+}
+
+function recordAutopilotAction(session: GameSession, action: GameAction): void {
+  if (action.type === 'PLAY_CARD') {
+    const playedCard = session.getFullState().discardPile.at(-1);
+    if (playedCard) {
+      session.recordEvent(GameEventType.PLAY_CARD, { cardId: action.cardId, card: playedCard, chosenColor: action.chosenColor }, action.playerId);
+    }
+    return;
+  }
+
+  if (action.type === 'CHOOSE_COLOR') {
+    session.recordEvent(GameEventType.CHOOSE_COLOR, { color: action.color }, action.playerId);
+  }
+}
+
+function handleAutopilotAction(
+  io: SocketIOServer,
+  redis: KvStore,
+  roomCode: string,
+  session: GameSession,
+  turnTimer: TurnTimer,
+  db: Kysely<Database>,
+  sessions: Map<string, GameSession>,
+  action: GameAction,
+): void {
+  recordAutopilotAction(session, action);
+  if (action.type === 'PLAY_CARD') {
+    scheduleAutopilotJumpIn(io, redis, roomCode, session, turnTimer, db, sessions);
+  }
+}
+
+function scheduleAutopilotJumpIn(
+  io: SocketIOServer,
+  redis: KvStore,
+  roomCode: string,
+  session: GameSession,
+  turnTimer: TurnTimer,
+  db: Kysely<Database>,
+  sessions: Map<string, GameSession>,
+): void {
+  clearAutopilotJumpIn(roomCode);
+
+  const snapshot = session.getFullState();
+  if (!snapshot.settings.houseRules.jumpIn || snapshot.phase !== 'playing') return;
+  const topCardId = snapshot.discardPile.at(-1)?.id;
+  if (!topCardId) return;
+
+  const timer = setTimeout(async () => {
+    autopilotJumpInTimers.delete(roomCode);
+    const currentSession = sessions.get(roomCode);
+    if (!currentSession) return;
+
+    const state = currentSession.getFullState();
+    if (state.phase !== 'playing' || state.discardPile.at(-1)?.id !== topCardId) return;
+
+    const jumper = state.players.find((player) =>
+      player.autopilot &&
+      !player.eliminated &&
+      chooseAutopilotJumpInAction(state, player.id).length > 0
+    );
+    if (!jumper) return;
+
+    let acted = false;
+    for (const action of chooseAutopilotJumpInAction(state, jumper.id)) {
+      const result = currentSession.applyAction(action);
+      if (result.success) {
+        acted = true;
+        recordAutopilotAction(currentSession, action);
+      }
+    }
+    if (!acted) return;
+
+    await touchRoomActivity(redis, roomCode);
+    await saveGameState(redis, roomCode, currentSession.getFullState());
+    await emitGameUpdate(io, roomCode, currentSession, redis);
+
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, currentSession, turnTimer, redis, db, sessions))) {
+      scheduleAutopilotJumpIn(io, redis, roomCode, currentSession, turnTimer, db, sessions);
+      startTurnTimer(io, redis, roomCode, currentSession, turnTimer, sessions);
+    }
+  }, AUTOPILOT_JUMP_IN_DELAY_MS);
+
+  timer.unref?.();
+  autopilotJumpInTimers.set(roomCode, timer);
 }
 
 function getNextRoundVoteState(roomCode: string, session: GameSession): NextRoundVoteState {
@@ -214,6 +308,10 @@ export function registerGameEvents(
   sessions: Map<string, GameSession>,
   db: Kysely<Database>,
 ) {
+  setAutopilotActionHandler((roomCode, session, action) => {
+    handleAutopilotAction(io, redis, roomCode, session, turnTimer, db, sessions, action);
+  });
+
   const data = socket.data as SocketData;
   const initialSession = data.roomCode ? sessions.get(data.roomCode) : null;
   if (initialSession) {
@@ -245,6 +343,7 @@ export function registerGameEvents(
     await saveGameState(redis, roomCode, session.getFullState());
     await emitGameUpdate(io, roomCode, session, redis);
     if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions))) {
+      scheduleAutopilotJumpIn(io, redis, roomCode, session, turnTimer, db, sessions);
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
     callback?.({ success: true });
@@ -386,6 +485,7 @@ export function registerGameEvents(
     if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions)) {
       // terminal state already emitted
     } else {
+      scheduleAutopilotJumpIn(io, redis, roomCode, session, turnTimer, db, sessions);
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions);
     }
     callback?.({ success: true });

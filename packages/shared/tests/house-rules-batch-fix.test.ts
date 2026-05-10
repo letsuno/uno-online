@@ -151,6 +151,45 @@ describe('jumpIn', () => {
     expect(next.players[1]!.hand).toHaveLength(1);
   });
 
+  it('enters color choosing when jumping in with a wild card', () => {
+    const topWild = makeCard('wild', null, { id: 'top_wild' });
+    const jumpWild = makeCard('wild', null, { id: 'jump_wild' });
+    const state = makeState({
+      currentPlayerIndex: 0,
+      currentColor: 'red',
+      discardPile: [topWild],
+      players: [
+        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'red', { value: 1 })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [jumpWild, makeCard('number', 'blue', { value: 3 })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 1 })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, jumpIn: true } },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p2', cardId: 'jump_wild' });
+
+    expect(next.phase).toBe('choosing_color');
+    expect(next.currentPlayerIndex).toBe(1);
+    expect(next.discardPile.at(-1)?.id).toBe('jump_wild');
+  });
+
+  it('ends the round immediately when jump-in empties a hand', () => {
+    const matchCard = makeCard('number', 'red', { value: 5, id: 'last_jump' });
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'blue', { value: 1 })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [matchCard], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 1 })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, jumpIn: true } },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p2', cardId: 'last_jump' });
+
+    expect(next.phase).toBe('round_end');
+    expect(next.winnerId).toBe('p2');
+  });
+
   it('rejects out-of-turn play without exact match', () => {
     const noMatch = makeCard('number', 'red', { value: 3, id: 'nope' });
     const state = makeState({

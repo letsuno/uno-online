@@ -34,6 +34,30 @@ function pickPlayableCard(playable: Card[], currentColor: Color): Card {
   );
 }
 
+function isExactJumpInMatch(card: Card, topCard: Card): boolean {
+  return (
+    card.type === topCard.type &&
+    card.color === topCard.color &&
+    (card.type !== 'number' || (topCard.type === 'number' && card.value === topCard.value))
+  );
+}
+
+export function chooseAutopilotJumpInAction(state: GameState, playerId: string): GameAction[] {
+  if (!state.settings.houseRules.jumpIn || state.phase !== 'playing') return [];
+
+  const currentPlayer = state.players[state.currentPlayerIndex];
+  if (!currentPlayer || currentPlayer.id === playerId) return [];
+
+  const player = state.players.find(p => p.id === playerId);
+  const topCard = state.discardPile[state.discardPile.length - 1];
+  if (!player?.autopilot || !topCard) return [];
+
+  const card = player.hand.find(c => isExactJumpInMatch(c, topCard));
+  if (!card) return [];
+
+  return playCardActions(playerId, card, player.hand);
+}
+
 export function chooseAutopilotAction(state: GameState, playerId: string): GameAction[] {
   const player = state.players.find(p => p.id === playerId);
   if (!player) return [];
