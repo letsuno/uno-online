@@ -19,6 +19,7 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   const players = useGameStore((s) => s.players);
   const phase = useGameStore((s) => s.phase);
   const pendingDrawPlayerId = useGameStore((s) => s.pendingDrawPlayerId);
+  const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
   const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
   const settings = useGameStore((s) => s.settings);
   const [cooldown, setCooldown] = useState(false);
@@ -33,7 +34,7 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   const noChallengeWD4 = settings?.houseRules?.noChallengeWildFour ?? false;
   const playableIds = usePlayableCardIds();
   const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
-  const canPassAfterDraw = hasDrawnThisTurn && (!mustDrawUntilPlayable || playableIds.size > 0);
+  const canPassAfterDraw = pendingPenaltyDraws === 0 && hasDrawnThisTurn && (!mustDrawUntilPlayable || playableIds.size > 0);
 
   const withCooldown = (fn: () => void) => () => {
     if (cooldown) return;

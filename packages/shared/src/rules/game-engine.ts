@@ -190,6 +190,9 @@ function handlePlayCard(
   // Must be in playing phase
   if (state.phase !== 'playing') return state;
 
+  // Penalty draws from +2/+4 must be fully paid before the player can act.
+  if ((state.pendingPenaltyDraws ?? 0) > 0) return state;
+
   // Must be the current player
   if (action.playerId !== currentPlayerId(state)) return state;
 
@@ -335,6 +338,10 @@ function handlePass(
   action: Extract<GameAction, { type: 'PASS' }>,
 ): GameState {
   if (state.phase !== 'playing') return state;
+
+  // Penalty draws from +2/+4 are not a normal draw-then-pass turn.
+  if ((state.pendingPenaltyDraws ?? 0) > 0) return state;
+
   if (action.playerId !== currentPlayerId(state)) return state;
 
   // Can only pass after drawing

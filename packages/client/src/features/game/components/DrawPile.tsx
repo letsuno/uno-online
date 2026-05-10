@@ -26,7 +26,7 @@ export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTri
   const playableIds = usePlayableCardIds();
   const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
   const isDrawUntilTurn = mustDrawUntilPlayable && !isPenaltyDrawing;
-  const canContinueDrawUntilPlayable = mustDrawUntilPlayable && hasDrawnThisTurn && playableIds.size === 0;
+  const canContinueDrawUntilPlayable = !isPenaltyDrawing && mustDrawUntilPlayable && hasDrawnThisTurn && playableIds.size === 0;
   const canDraw = isMyTurn && phase === 'playing' && (isPenaltyDrawing || !hasDrawnThisTurn || canContinueDrawUntilPlayable);
 
   const showNoPlayableHint = canDraw && !isDrawUntilTurn && playableIds.size === 0 && !settings?.houseRules?.noHints;
