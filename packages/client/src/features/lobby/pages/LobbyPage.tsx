@@ -152,7 +152,10 @@ export default function LobbyPage() {
                       connectSocket();
                       getSocket().emit('room:spectate', room.roomCode, (res: any) => {
                         if (res.success) navigate(`/game/${room.roomCode}?spectate=true`);
-                        else setError(res.error || '无法观战');
+                        else {
+                          setError(res.error || '无法观战');
+                          fetchActiveRooms();
+                        }
                       });
                     }}
                   >
