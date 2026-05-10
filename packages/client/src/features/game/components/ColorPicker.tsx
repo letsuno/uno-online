@@ -24,7 +24,7 @@ export default function ColorPicker({ onPick }: ColorPickerProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-modal pointer-events-auto">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-modal pointer-events-none">
       <AnimatePresence>
         {picked && (
           <motion.div
@@ -42,7 +42,7 @@ export default function ColorPicker({ onPick }: ColorPickerProps) {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-          className="bg-card rounded-panel px-8 py-6 flex flex-col items-center gap-4"
+          className="bg-card rounded-panel px-8 py-6 flex flex-col items-center gap-4 pointer-events-auto"
         >
           <h3 className="font-game text-accent">选择颜色</h3>
           <div className="flex gap-3">

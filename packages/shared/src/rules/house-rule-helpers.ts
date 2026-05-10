@@ -105,7 +105,7 @@ export function putAttackCardOnStack(
       ? { ...card, chosenColor: action.chosenColor }
       : card;
   const players = state.players.map((p, i) =>
-    i === state.currentPlayerIndex ? { ...p, hand: newHand, calledUno: false, unoCaught: false } : p,
+    i === state.currentPlayerIndex ? { ...p, hand: newHand, calledUno: newHand.length === 1 ? p.calledUno : false, unoCaught: false } : p,
   );
   const nextIdx = getNextPlayerIndex(state.currentPlayerIndex, players.length, state.direction);
   const newColor = card.type === 'draw_two' ? card.color : (action.chosenColor ?? state.currentColor);

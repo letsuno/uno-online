@@ -609,6 +609,7 @@ describe('CALL_UNO', () => {
           id: 'p1', name: 'Alice',
           hand: [
             makeCard('number', 'red', { value: 1, id: 'c1' }),
+            makeCard('number', 'blue', { value: 2, id: 'c2' }),
           ],
           score: 0, connected: true, calledUno: false
         },
@@ -620,7 +621,7 @@ describe('CALL_UNO', () => {
     expect(next.players[0]!.calledUno).toBe(true);
   });
 
-  it('does not set flag for player with 2 or more cards', () => {
+  it('does not set flag for player with more than 2 cards', () => {
     const state = makeState({
       players: [
         {
@@ -628,6 +629,7 @@ describe('CALL_UNO', () => {
           hand: [
             makeCard('number', 'red', { value: 1, id: 'c1' }),
             makeCard('number', 'blue', { value: 2, id: 'c2' }),
+            makeCard('number', 'green', { value: 3, id: 'c3' }),
           ],
           score: 0, connected: true, calledUno: false
         },
@@ -780,8 +782,8 @@ describe('DRAW_CARD - reshuffles when deck is empty', () => {
   });
 });
 
-describe('PLAY_CARD - resets calledUno when playing', () => {
-  it('resets calledUno when playing down to 1 card', () => {
+describe('PLAY_CARD - keeps or resets calledUno when playing', () => {
+  it('keeps pre-called UNO when playing down to 1 card', () => {
     const card = makeCard('number', 'red', { value: 7, id: 'c1' });
     const extraCard = makeCard('number', 'red', { value: 3, id: 'c2' });
     const state = makeState({
@@ -796,7 +798,29 @@ describe('PLAY_CARD - resets calledUno when playing', () => {
       ],
     });
     const next = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'c1' });
-    expect(next.players[0]!.calledUno).toBe(false);
+    expect(next.players[0]!.calledUno).toBe(true);
+  });
+
+  it('keeps pre-called UNO when playing a wild card down to 1 card', () => {
+    const wild = makeCard('wild', null, { id: 'wild' });
+    const extraCard = makeCard('number', 'red', { value: 3, id: 'c2' });
+    const state = makeState({
+      players: [
+        {
+          id: 'p1', name: 'Alice',
+          hand: [wild, extraCard],
+          score: 0, connected: true, calledUno: true
+        },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+    });
+
+    const afterPlay = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wild' });
+
+    expect(afterPlay.phase).toBe('choosing_color');
+    expect(afterPlay.players[0]!.hand).toHaveLength(1);
+    expect(afterPlay.players[0]!.calledUno).toBe(true);
   });
 
   it('resets calledUno when playing down to more than 1 card', () => {

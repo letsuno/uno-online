@@ -26,6 +26,7 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
 
   const me = players.find((p) => p.id === userId);
   const isMyTurn = useIsMyTurn();
+  const canCallUno = me && me.hand.length >= 1 && me.hand.length <= 2 && !me.calledUno;
   const catchTargets = players.filter((p) => p.id !== userId && p.handCount === 1 && !p.calledUno && !p.unoCaught);
   const noChallengeWD4 = settings?.houseRules?.noChallengeWildFour ?? false;
   const playableIds = usePlayableCardIds();
@@ -41,7 +42,7 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
 
   return (
     <div className="relative z-actions flex justify-center gap-2.5 py-2 pointer-events-auto">
-      {me && me.hand.length === 1 && !me.calledUno && (
+      {canCallUno && (
         <Button variant="primary" onClick={withCooldown(onCallUno)} disabled={cooldown}>喊 UNO!</Button>
       )}
       {catchTargets.map((t) => (
