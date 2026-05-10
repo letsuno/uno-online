@@ -3,6 +3,8 @@ import Card from './Card';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 
+const VISIBLE_DISCARD_STACK = 8;
+
 /**
  * Compute the initial animation offset based on the seat position
  * of the player who played the card.
@@ -35,6 +37,7 @@ export default function DiscardPile() {
   const selfId = useEffectiveUserId();
   const topCard = discardPile[discardPile.length - 1];
   if (!topCard) return null;
+  const visibleStack = discardPile.slice(-VISIBLE_DISCARD_STACK);
 
   const playedBy = lastAction?.type === 'PLAY_CARD' ? lastAction.playerId : undefined;
   const origin = getPlayOrigin(playedBy, players, selfId);
@@ -63,36 +66,59 @@ export default function DiscardPile() {
 
   return (
     <div className="flex flex-col items-center gap-1.5 z-card relative">
-      <div className="relative w-[70px] h-[100px]">
-      <AnimatePresence>
-        <motion.div
-          key={topCard.id}
-          layoutId={isSelf ? topCard.id : undefined}
-          initial={{ opacity: 0, x: origin.x, y: origin.y, scale: 0.6 }}
-          animate={{ scale: 1, rotate: 3, opacity: 1, x: 0, y: 0 }}
-          exit={{ opacity: 0, transition: { duration: 0.3, delay: 0.15 } }}
-          transition={{ duration: 0.35, ease: 'easeOut' }}
-          style={{
-            position: 'absolute', top: 0, left: 0,
-            borderRadius: '18px',
-            ...(chosenColor ? {
-              boxShadow: `0 0 18px 4px ${colorGlowMap[chosenColor] ?? 'transparent'}`,
-              outline: `2.5px solid ${colorBorderMap[chosenColor] ?? 'transparent'}`,
-              outlineOffset: '1px',
-            } : {}),
-          }}
-        >
-          <Card card={topCard} />
-          {chosenColor && (
-            <span
-              className="absolute -bottom-1 -right-1 text-xs font-game font-black px-1 py-0.5 rounded bg-black/60 leading-none whitespace-nowrap"
-              style={{ color: colorBorderMap[chosenColor] }}
+      <div className="relative w-[82px] h-[112px]">
+        {visibleStack.slice(0, -1).map((card, stackIndex) => {
+          const depth = visibleStack.length - stackIndex - 1;
+          const rotate = ((stackIndex % 5) - 2) * 2.2;
+          const x = Math.min(depth * 1.6, 10);
+          const y = Math.min(depth * 1.2, 8);
+
+          return (
+            <div
+              key={`${card.id}-stack-${stackIndex}`}
+              className="absolute top-0 left-0 pointer-events-none"
+              style={{
+                transform: `translate(${x}px, ${y}px) rotate(${rotate}deg)`,
+                zIndex: stackIndex,
+                opacity: Math.max(0.35, 0.9 - depth * 0.06),
+              }}
             >
-              打{colorLabelMap[chosenColor]}！
-            </span>
-          )}
-        </motion.div>
-      </AnimatePresence>
+              <Card card={card} />
+            </div>
+          );
+        })}
+        <AnimatePresence mode="popLayout">
+          <motion.div
+            key={topCard.id}
+            layoutId={isSelf ? topCard.id : undefined}
+            initial={{ opacity: 0, x: origin.x, y: origin.y, scale: 0.6 }}
+            animate={{ scale: 1, rotate: 3, opacity: 1, x: 0, y: 0 }}
+            exit={{ opacity: 0, transition: { duration: 0.3, delay: 0.15 } }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              zIndex: visibleStack.length,
+              borderRadius: '18px',
+              ...(chosenColor ? {
+                boxShadow: `0 0 18px 4px ${colorGlowMap[chosenColor] ?? 'transparent'}`,
+                outline: `2.5px solid ${colorBorderMap[chosenColor] ?? 'transparent'}`,
+                outlineOffset: '1px',
+              } : {}),
+            }}
+          >
+            <Card card={topCard} />
+            {chosenColor && (
+              <span
+                className="absolute -bottom-1 -right-1 text-xs font-game font-black px-1 py-0.5 rounded bg-black/60 leading-none whitespace-nowrap"
+                style={{ color: colorBorderMap[chosenColor] }}
+              >
+                打{colorLabelMap[chosenColor]}！
+              </span>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
       {drawStack > 0 && (
         <motion.div
@@ -105,7 +131,7 @@ export default function DiscardPile() {
           +{drawStack}
         </motion.div>
       )}
-      <span className="text-xs text-muted-foreground">弃牌堆</span>
+      <span className="text-xs text-muted-foreground">弃牌堆 ({discardPile.length})</span>
     </div>
   );
 }
