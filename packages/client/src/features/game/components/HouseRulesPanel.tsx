@@ -50,7 +50,7 @@ export default function HouseRulesPanel({ houseRules, onChange, disabled = false
       </h3>
       <div className="flex gap-2 mb-3 flex-wrap">
         {['classic', 'party', 'crazy'].map((p) => (
-          <Button key={p} variant="secondary" size="sm" onClick={() => applyPreset(p)} disabled={disabled}>
+          <Button key={p} variant="secondary" size="sm" onClick={() => applyPreset(p)} disabled={disabled} sound="click">
             {p === 'classic' ? '经典' : p === 'party' ? '派对' : '疯狂'}
           </Button>
         ))}

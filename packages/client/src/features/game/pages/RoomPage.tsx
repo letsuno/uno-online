@@ -147,15 +147,15 @@ export default function RoomPage() {
         disabled={!isOwner}
       />
       <div className="flex gap-3">
-        <Button variant="primary" onClick={toggleReady}>
+        <Button variant="primary" onClick={toggleReady} sound="ready">
           {myPlayer?.ready ? '取消准备' : '准备'}
         </Button>
         {isOwner && (
-          <Button variant="primary" className={cn(!allReady && 'opacity-50')} onClick={startGame} disabled={!allReady}>
+          <Button variant="primary" className={cn(!allReady && 'opacity-50')} onClick={startGame} disabled={!allReady} sound="ready">
             开始游戏
           </Button>
         )}
-        <Button variant="danger" onClick={leaveRoom}>离开房间</Button>
+        <Button variant="danger" onClick={leaveRoom} sound="danger">离开房间</Button>
       </div>
       <VoicePanel />
     </div>

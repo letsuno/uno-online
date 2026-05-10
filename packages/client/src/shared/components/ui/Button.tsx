@@ -1,6 +1,8 @@
 import { forwardRef } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/shared/lib/utils';
+import { playSound } from '@/shared/sound/sound-manager';
+import type { ButtonSound } from '@/shared/sound/sound-manager';
 
 const buttonVariants = cva(
   'font-bold transition-all duration-150 cursor-pointer rounded-btn shadow-tech',
@@ -33,14 +35,22 @@ const buttonVariants = cva(
 
 interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {}
+    VariantProps<typeof buttonVariants> {
+  sound?: ButtonSound;
+}
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
+  ({ className, variant, size, sound, onClick, ...props }, ref) => {
+    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (sound) playSound(sound);
+      onClick?.(e);
+    };
+
     return (
       <button
         ref={ref}
         className={cn(buttonVariants({ variant, size }), className)}
+        onClick={handleClick}
         {...props}
       />
     );

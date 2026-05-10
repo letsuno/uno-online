@@ -42,25 +42,25 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   return (
     <div className="relative z-actions flex justify-center gap-2.5 py-2 pointer-events-auto">
       {canCallUno && (
-        <Button variant="primary" onClick={withCooldown(onCallUno)} disabled={cooldown}>喊 UNO!</Button>
+        <Button variant="primary" onClick={withCooldown(onCallUno)} disabled={cooldown} sound="action">喊 UNO!</Button>
       )}
       {catchTargets.map((t) => (
-        <Button key={t.id} variant="danger" onClick={withCooldown(() => onCatchUno(t.id))} disabled={cooldown}>抓 {t.name}!</Button>
+        <Button key={t.id} variant="danger" onClick={withCooldown(() => onCatchUno(t.id))} disabled={cooldown} sound="danger">抓 {t.name}!</Button>
       ))}
       {phase === 'challenging' && pendingDrawPlayerId === userId && (
         <>
-          {!noChallengeWD4 && <Button variant="danger" onClick={onChallenge}>质疑!</Button>}
-          <Button variant="secondary" onClick={onAccept}>接受</Button>
+          {!noChallengeWD4 && <Button variant="danger" onClick={onChallenge} sound="action">质疑!</Button>}
+          <Button variant="secondary" onClick={onAccept} sound="action">接受</Button>
         </>
       )}
       {isMyTurn && canPassAfterDraw && phase === 'playing' && (
-        <Button variant="secondary" onClick={onPass}>跳过</Button>
+        <Button variant="secondary" onClick={onPass} sound="click">跳过</Button>
       )}
       {phase === 'choosing_swap_target' && isMyTurn && (
         <>
           <span className="text-accent text-caption font-game">选择交换对象:</span>
           {players.filter(p => p.id !== userId).map(p => (
-            <Button key={p.id} variant="primary" className="!text-caption" onClick={() => onSwapTarget(p.id)}>
+            <Button key={p.id} variant="primary" className="!text-caption" onClick={() => onSwapTarget(p.id)} sound="action">
               {p.name}
             </Button>
           ))}
