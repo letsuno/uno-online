@@ -35,6 +35,7 @@ export default function VoicePanel() {
 
   const [expanded, setExpanded] = useState(false);
   const [peerVolumes, setPeerVolumes] = useState<Map<number, number>>(new Map());
+  const [micBusy, setMicBusy] = useState(false);
   const voiceName = useAuthStore((s) => s.user?.nickname || s.user?.username);
 
   const connected = status === 'connected';
@@ -79,18 +80,24 @@ export default function VoicePanel() {
   }, [emitPresence]);
 
   const toggleMic = useCallback(async () => {
+    if (micBusy) return;
+    setMicBusy(true);
     const engine = getVoiceEngine(sendMicOpus, sendMicEnd);
-    if (micEnabled) {
-      engine.disableMic();
-      setMicEnabled(false);
-      useGatewayStore.getState().setSelfSpeaking(false);
-      emitPresence({ inVoice: connected, micEnabled: false, speakerMuted, speaking: false });
-    } else {
-      await engine.enableMic();
-      setMicEnabled(true);
-      emitPresence({ inVoice: connected, micEnabled: true, speakerMuted, speaking: selfSpeaking });
+    try {
+      if (micEnabled) {
+        engine.disableMic();
+        setMicEnabled(false);
+        useGatewayStore.getState().setSelfSpeaking(false);
+        emitPresence({ inVoice: connected, micEnabled: false, speakerMuted, speaking: false });
+      } else {
+        await engine.enableMic();
+        setMicEnabled(engine.micEnabled);
+        emitPresence({ inVoice: connected, micEnabled: engine.micEnabled, speakerMuted, speaking: engine.micEnabled ? selfSpeaking : false });
+      }
+    } finally {
+      setMicBusy(false);
     }
-  }, [micEnabled, sendMicOpus, sendMicEnd, setMicEnabled, emitPresence, connected, speakerMuted, selfSpeaking]);
+  }, [micBusy, micEnabled, sendMicOpus, sendMicEnd, setMicEnabled, emitPresence, connected, speakerMuted, selfSpeaking]);
 
   const toggleMute = useCallback(() => {
     const engine = getVoiceEngine(sendMicOpus, sendMicEnd);
@@ -140,7 +147,7 @@ export default function VoicePanel() {
         </button>
       ) : (
         <>
-          <button onClick={toggleMic} className={voiceBtn(micEnabled, micEnabled && selfSpeaking)} title={micEnabled ? '关闭麦克风' : '开启麦克风'}>
+          <button onClick={toggleMic} disabled={micBusy} className={cn(voiceBtn(micEnabled, micEnabled && selfSpeaking), micBusy && 'opacity-70 cursor-wait')} title={micEnabled ? '关闭麦克风' : '开启麦克风'}>
             {micEnabled ? <Mic size={16} /> : <MicOff size={16} />}
           </button>
           <button onClick={toggleMute} className={voiceBtn(!speakerMuted)} title={speakerMuted ? '打开扬声器' : '关闭扬声器'}>

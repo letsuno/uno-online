@@ -342,10 +342,10 @@ function handlePass(
   if (state.phase !== 'playing') return state;
 
   // Penalty draws from +2/+4 are not a normal draw-then-pass turn.
-  if ((state.pendingPenaltyDraws ?? 0) > 0) return state;
+  if ((state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0) return state;
 
   if (action.playerId !== currentPlayerId(state)) return state;
-  if ((state.pendingPenaltyDraws ?? 0) > 0) return state;
+  if ((state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0) return state;
 
   // Can only pass after drawing
   if (
