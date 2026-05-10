@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { applyAction } from '../src/rules/game-engine';
 import type { GameState, Player } from '../src/types/game';
 import type { Card, Color } from '../src/types/card';
+import { DEFAULT_HOUSE_RULES } from '../src/types/house-rules';
 
 function makeCard(type: Card['type'], color: Color | null, extra?: { value?: number; id?: string }): Card {
   const id = extra?.id ?? `card_${Math.random().toString(36).slice(2, 8)}`;
@@ -602,7 +603,7 @@ describe('CALL_UNO', () => {
     expect(next.players[0]!.calledUno).toBe(true);
   });
 
-  it('sets calledUno flag for player with 2 cards', () => {
+  it('sets calledUno flag for player with 2 cards by default', () => {
     const state = makeState({
       players: [
         {
@@ -619,6 +620,32 @@ describe('CALL_UNO', () => {
     });
     const next = applyAction(state, { type: 'CALL_UNO', playerId: 'p1' });
     expect(next.players[0]!.calledUno).toBe(true);
+  });
+
+  it('does not set calledUno flag for player with 2 cards in strict UNO mode', () => {
+    const state = makeState({
+      players: [
+        {
+          id: 'p1', name: 'Alice',
+          hand: [
+            makeCard('number', 'red', { value: 1, id: 'c1' }),
+            makeCard('number', 'blue', { value: 2, id: 'c2' }),
+          ],
+          score: 0, connected: true, calledUno: false
+        },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, strictUnoCall: true },
+      },
+    });
+
+    const next = applyAction(state, { type: 'CALL_UNO', playerId: 'p1' });
+
+    expect(next.players[0]!.calledUno).toBe(false);
   });
 
   it('does not set flag for player with more than 2 cards', () => {
