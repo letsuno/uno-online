@@ -3,12 +3,13 @@ import type { KvStore } from '../kv/types.js';
 import type { GameAction, GameState, RoomSettings } from '@uno-online/shared';
 import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, GameEventType } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager';
-import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, deleteRoom } from '../plugins/core/room/store';
+import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, touchRoomActivity } from '../plugins/core/room/store';
 import { GameSession } from '../plugins/core/game/session';
 import { saveGameState } from '../plugins/core/game/state-store';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { setGameStartTime } from './game-events';
 import type { SocketData } from './types';
+import { dissolveRoom } from './room-lifecycle';
 
 const DRAW_PENALTY_PAUSE_MS = 500;
 
@@ -74,6 +75,7 @@ export function registerRoomEvents(
       }
 
       await roomManager.joinRoom(roomCode, data.user.userId, data.user.nickname, data.user.avatarUrl, data.user.role);
+      await touchRoomActivity(redis, roomCode);
       data.roomCode = roomCode;
       await socket.join(roomCode);
       const updatedPlayers = await getRoomPlayers(redis, roomCode);
@@ -87,6 +89,11 @@ export function registerRoomEvents(
   socket.on('room:leave', async (callback) => {
     const roomCode = data.roomCode;
     if (!roomCode) return callback?.({ success: false, error: 'Not in a room' });
+    const room = await getRoom(redis, roomCode);
+    if (room?.ownerId === data.user.userId) {
+      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, 'host_closed');
+      return callback?.({ success: true, dissolved: true });
+    }
     const { deleted } = await roomManager.leaveRoom(roomCode, data.user.userId);
     socket.leave(roomCode);
     data.roomCode = null;
@@ -94,6 +101,9 @@ export function registerRoomEvents(
       const room = await getRoom(redis, roomCode);
       const players = await getRoomPlayers(redis, roomCode);
       io.to(roomCode).emit('room:updated', { players, room });
+    } else {
+      sessions.delete(roomCode);
+      turnTimer.stop(roomCode);
     }
     callback?.({ success: true });
   });
@@ -102,6 +112,7 @@ export function registerRoomEvents(
     const roomCode = data.roomCode;
     if (!roomCode) return callback?.({ success: false });
     await roomManager.setReady(roomCode, data.user.userId, ready);
+    await touchRoomActivity(redis, roomCode);
     const players = await getRoomPlayers(redis, roomCode);
     io.to(roomCode).emit('room:updated', { players });
     callback?.({ success: true });
@@ -133,6 +144,7 @@ export function registerRoomEvents(
     };
 
     await setRoomSettings(redis, roomCode, nextSettings);
+    await touchRoomActivity(redis, roomCode);
     const players = await getRoomPlayers(redis, roomCode);
     const updatedRoom = await getRoom(redis, roomCode);
     io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
@@ -146,15 +158,7 @@ export function registerRoomEvents(
     if (!room || room.ownerId !== data.user.userId) {
       return callback?.({ success: false, error: 'Only room owner can dissolve' });
     }
-    turnTimer.stop(roomCode);
-    sessions.delete(roomCode);
-    io.to(roomCode).emit('room:dissolved');
-    const sockets = await io.in(roomCode).fetchSockets();
-    for (const s of sockets) {
-      (s.data as SocketData).roomCode = null;
-      s.leave(roomCode);
-    }
-    await deleteRoom(redis, roomCode);
+    await dissolveRoom(io, redis, roomCode, sessions, turnTimer, 'host_closed');
     callback?.({ success: true });
   });
 
@@ -180,6 +184,7 @@ export function registerRoomEvents(
       return callback?.({ success: false, error: 'Not all players are ready' });
     }
     await setRoomStatus(redis, roomCode, 'playing');
+    await touchRoomActivity(redis, roomCode);
     const session = GameSession.create(
       players.map((p) => ({ id: p.userId, name: p.nickname, avatarUrl: p.avatarUrl ?? null, role: p.role as import('@uno-online/shared').UserRole | undefined })),
       { turnTimeLimit: room.settings?.turnTimeLimit ?? 30, targetScore: room.settings?.targetScore ?? 500, houseRules: room.settings?.houseRules ?? DEFAULT_HOUSE_RULES, allowSpectators: room.settings?.allowSpectators ?? true, spectatorMode: room.settings?.spectatorMode ?? 'hidden' } as RoomSettings,

@@ -142,6 +142,7 @@ docker push djkcyl/uno-online-caddy:latest
 | `CLIENT_URL` | Frontend URL for CORS | `http://localhost:5173` |
 | `DOMAIN` | Production domain for Caddy auto-SSL | `localhost` |
 | `PORT` | Server port | `3001` |
+| `ROOM_IDLE_TIMEOUT_MS` | Auto-dissolve rooms after this many ms without activity | `7200000` |
 | `SERVER_NAME` | Server display name (shown in server selector) | `UNO Online` |
 | `SERVER_MOTD` | Server welcome message | `欢迎来到 UNO Online！` |
 

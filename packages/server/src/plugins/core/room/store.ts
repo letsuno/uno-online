@@ -6,6 +6,7 @@ export interface RoomData {
   status: 'waiting' | 'playing' | 'finished';
   settings: RoomSettings;
   createdAt: string;
+  lastActivityAt: string;
 }
 
 export interface RoomPlayer {
@@ -17,11 +18,13 @@ export interface RoomPlayer {
 }
 
 export async function createRoom(kv: KvStore, roomCode: string, ownerId: string, settings: RoomSettings): Promise<void> {
+  const now = new Date().toISOString();
   await kv.hset(`room:${roomCode}`, {
     ownerId,
     status: 'waiting',
     settings: JSON.stringify(settings),
-    createdAt: new Date().toISOString(),
+    createdAt: now,
+    lastActivityAt: now,
   });
 }
 
@@ -33,11 +36,16 @@ export async function getRoom(kv: KvStore, roomCode: string): Promise<RoomData |
     status: data['status'] as RoomData['status'],
     settings: JSON.parse(data['settings']!) as RoomSettings,
     createdAt: data['createdAt']!,
+    lastActivityAt: data['lastActivityAt'] ?? data['createdAt']!,
   };
 }
 
 export async function setRoomStatus(kv: KvStore, roomCode: string, status: RoomData['status']): Promise<void> {
   await kv.hset(`room:${roomCode}`, { status });
+}
+
+export async function touchRoomActivity(kv: KvStore, roomCode: string): Promise<void> {
+  await kv.hset(`room:${roomCode}`, { lastActivityAt: new Date().toISOString() });
 }
 
 export async function setRoomSettings(kv: KvStore, roomCode: string, settings: RoomSettings): Promise<void> {

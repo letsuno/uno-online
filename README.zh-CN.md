@@ -136,6 +136,7 @@ docker push djkcyl/uno-online-caddy:latest
 | `CLIENT_URL` | 前端地址（CORS 用） | `http://localhost:5173` |
 | `DOMAIN` | 生产域名（Caddy 自动 SSL） | `localhost` |
 | `PORT` | 服务端端口 | `3001` |
+| `ROOM_IDLE_TIMEOUT_MS` | 房间无活动后自动解散的毫秒数 | `7200000` |
 | `SERVER_NAME` | 服务器显示名称（服务器选择器中展示） | `UNO Online` |
 | `SERVER_MOTD` | 服务器欢迎信息 | `欢迎来到 UNO Online！` |
 

@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { PluginContext } from '../../../plugin-context';
 import { authPreHandler } from '../auth/service';
-import { getRoom, getRoomPlayers } from '../room/store';
+import { deleteRoom, getRoom, getRoomPlayers } from '../room/store';
+import { loadGameState } from '../game/state-store';
 
 export async function registerRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const preHandler = authPreHandler(ctx.config.jwtSecret);
@@ -15,6 +16,12 @@ export async function registerRoutes(fastify: FastifyInstance, ctx: PluginContex
       const roomCode = key.replace('room:', '');
       const room = await getRoom(ctx.kv, roomCode);
       if (!room || room.status !== 'playing') continue;
+
+      const state = await loadGameState(ctx.kv, roomCode);
+      if (!state) {
+        await deleteRoom(ctx.kv, roomCode);
+        continue;
+      }
 
       const settings = room.settings;
       if (!settings.allowSpectators) continue;

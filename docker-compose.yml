@@ -26,6 +26,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-uno-online-dev-secret-at-least-32-chars}
       DOMAIN: ${DOMAIN:-localhost}
       DEV_MODE: ${DEV_MODE:-true}
+      ROOM_IDLE_TIMEOUT_MS: ${ROOM_IDLE_TIMEOUT_MS:-7200000}
       PORT: "3001"
     volumes:
       - ./data/sqlite:/data

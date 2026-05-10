@@ -126,11 +126,16 @@ export function getSocket(): Socket {
       window.location.href = '/';
     });
 
-    socket.on('room:dissolved', () => {
+    socket.on('room:dissolved', (data?: { reason?: string }) => {
       useRoomStore.getState().clearRoom();
       useGameStore.getState().clearGame();
-      useToastStore.getState().addToast('房间已被房主解散', 'info');
-      window.location.href = '/lobby';
+      const message = data?.reason === 'idle_timeout'
+        ? '房间长时间没有活动，已自动解散'
+        : '房间已被房主解散';
+      useToastStore.getState().addToast(message, 'info');
+      if (window.location.pathname !== '/lobby') {
+        window.location.assign('/lobby');
+      }
     });
   }
   return socket;

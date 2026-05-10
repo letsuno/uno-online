@@ -20,6 +20,7 @@ export interface Config {
   devMode: boolean;
   serverName: string;
   serverMotd: string;
+  roomIdleTimeoutMs: number;
 }
 
 function resolveClientUrl(): string {
@@ -42,5 +43,6 @@ export function loadConfig(): Config {
     devMode,
     serverName: process.env['SERVER_NAME'] ?? 'UNO Online',
     serverMotd: process.env['SERVER_MOTD'] ?? '欢迎来到 UNO Online！',
+    roomIdleTimeoutMs: parseInt(process.env['ROOM_IDLE_TIMEOUT_MS'] ?? '7200000', 10),
   };
 }
