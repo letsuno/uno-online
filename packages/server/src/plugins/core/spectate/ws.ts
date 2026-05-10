@@ -2,7 +2,7 @@ import type { Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../../../kv/types';
 import type { SocketData } from '../../../ws/types';
 import { deleteRoom, getRoom } from '../room/store';
-import type { GameSession } from '../game/session';
+import { GameSession } from '../game/session';
 import { loadGameState } from '../game/state-store';
 
 export function setupSpectateHandlers(

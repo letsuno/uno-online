@@ -52,7 +52,11 @@ export function useGameActions() {
       }
       if (res.started) return;
       if (res.vote) {
-        useToastStore.getState().addToast(`已投票 (${res.vote.votes}/${res.vote.required})`, 'info');
+        const ready = res.vote.votes >= res.vote.required;
+        useToastStore.getState().addToast(
+          ready ? '所有玩家已同意，等待房主开始' : `已同意 (${res.vote.votes}/${res.vote.required})`,
+          'info',
+        );
       }
     });
   }, []);
