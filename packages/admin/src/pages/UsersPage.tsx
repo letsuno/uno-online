@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -17,6 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 interface UserRow {
   id: string;
@@ -44,6 +53,12 @@ export default function UsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const limit = 20;
+
+  const [editUser, setEditUser] = useState<UserRow | null>(null);
+  const [editUsername, setEditUsername] = useState('');
+  const [editNickname, setEditNickname] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -73,6 +88,42 @@ export default function UsersPage() {
       setError(err instanceof Error ? err.message : 'Failed to update role');
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const openEditDialog = (user: UserRow) => {
+    setEditUser(user);
+    setEditUsername(user.username);
+    setEditNickname(user.nickname);
+    setEditError(null);
+  };
+
+  const handleEditSave = async () => {
+    if (!editUser) return;
+    setEditError(null);
+    setEditSaving(true);
+
+    const body: Record<string, string> = {};
+    if (editUsername.trim() !== editUser.username) body.username = editUsername.trim();
+    if (editNickname.trim() !== editUser.nickname) body.nickname = editNickname.trim();
+
+    if (Object.keys(body).length === 0) {
+      setEditUser(null);
+      setEditSaving(false);
+      return;
+    }
+
+    try {
+      await apiFetch(`/admin/users/${editUser.id}/profile`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      });
+      setEditUser(null);
+      await fetchUsers();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Failed to update');
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -113,6 +164,7 @@ export default function UsersPage() {
                 <TableHead>Role</TableHead>
                 <TableHead>Games</TableHead>
                 <TableHead>Wins</TableHead>
+                <TableHead className="w-[80px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -140,11 +192,16 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell className="text-slate-300">{user.totalGames}</TableCell>
                   <TableCell className="text-slate-300">{user.totalWins}</TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" onClick={() => openEditDialog(user)}>
+                      Edit
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
               {data.users.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-slate-400 py-8">
+                  <TableCell colSpan={6} className="text-center text-slate-400 py-8">
                     No users found
                   </TableCell>
                 </TableRow>
@@ -179,6 +236,44 @@ export default function UsersPage() {
           )}
         </>
       )}
+
+      <Dialog open={!!editUser} onOpenChange={(open) => { if (!open) setEditUser(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑用户</DialogTitle>
+            <DialogDescription>修改用户名和昵称</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-username" className="text-slate-300">用户名</Label>
+              <Input
+                id="edit-username"
+                value={editUsername}
+                onChange={(e) => setEditUsername(e.target.value)}
+                maxLength={20}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-nickname" className="text-slate-300">昵称</Label>
+              <Input
+                id="edit-nickname"
+                value={editNickname}
+                onChange={(e) => setEditNickname(e.target.value)}
+                maxLength={20}
+              />
+            </div>
+            {editError && (
+              <div className="text-sm text-red-400">{editError}</div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setEditUser(null)}>取消</Button>
+            <Button onClick={handleEditSave} disabled={editSaving}>
+              {editSaving ? '保存中...' : '保存'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
