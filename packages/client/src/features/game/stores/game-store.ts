@@ -116,6 +116,7 @@ export const useGameStore = create<GameState>((set) => ({
         pendingDrawPlayerId: view.pendingDrawPlayerId as string | null,
         settings: view.settings as { turnTimeLimit: number; targetScore: number; houseRules?: HouseRules },
         lastAction,
+        turnEndTime: phase === 'round_end' || phase === 'game_over' ? null : state.turnEndTime,
         hasDrawnThisTurn,
         lastDrawnCard: hasDrawnThisTurn ? state.lastDrawnCard : null,
         deckHash: (view.deckHash as string | undefined) ?? state.deckHash,
