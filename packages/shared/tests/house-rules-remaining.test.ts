@@ -519,6 +519,87 @@ describe('crossStack', () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Penalty draws with forced draw/play rules
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('penalty draws with forced draw/play rules', () => {
+  const forcedDrawRules = {
+    ...DEFAULT_HOUSE_RULES,
+    drawUntilPlayable: true,
+    forcedPlayAfterDraw: true,
+    forcedPlay: true,
+  };
+
+  it('does not allow playing a playable card drawn while paying a +2 penalty', () => {
+    const drawnPlayable = makeCard('number', 'red', { value: 7, id: 'drawn_playable' });
+    const state = makeState({
+      currentPlayerIndex: 1,
+      currentColor: 'red',
+      discardPile: [makeCard('draw_two', 'red', { id: 'd2top' })],
+      pendingPenaltyDraws: 2,
+      pendingPenaltyNextPlayerIndex: 2,
+      pendingPenaltySourcePlayerId: 'p1',
+      deck: [drawnPlayable, makeCard('number', 'blue', { value: 1, id: 'second_penalty' })],
+      players: [
+        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'green', { value: 1, id: 'p1extra' })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 9, id: 'p2old' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: forcedDrawRules },
+    });
+
+    const afterFirstDraw = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p2' });
+    expect(afterFirstDraw.players[1]!.hand.map(c => c.id)).toEqual(['p2old', 'drawn_playable']);
+    expect(afterFirstDraw.pendingPenaltyDraws).toBe(1);
+    expect(afterFirstDraw.currentPlayerIndex).toBe(1);
+    expect(afterFirstDraw.discardPile[afterFirstDraw.discardPile.length - 1]!.id).toBe('d2top');
+
+    const playAttempt = applyActionWithHouseRules(afterFirstDraw, {
+      type: 'PLAY_CARD',
+      playerId: 'p2',
+      cardId: 'drawn_playable',
+    });
+    expect(playAttempt).toBe(afterFirstDraw);
+
+    const passAttempt = applyActionWithHouseRules(afterFirstDraw, { type: 'PASS', playerId: 'p2' });
+    expect(passAttempt).toBe(afterFirstDraw);
+
+    const afterSecondDraw = applyActionWithHouseRules(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p2' });
+    expect(afterSecondDraw.pendingPenaltyDraws).toBe(0);
+    expect(afterSecondDraw.currentPlayerIndex).toBe(2);
+    expect(afterSecondDraw.players[1]!.hand.map(c => c.id)).toEqual(['p2old', 'drawn_playable', 'second_penalty']);
+    expect(afterSecondDraw.discardPile[afterSecondDraw.discardPile.length - 1]!.id).toBe('d2top');
+  });
+
+  it('ends the round after paying a +4 penalty without forcing the drawn playable card', () => {
+    const drawnPlayable = makeCard('number', 'green', { value: 4, id: 'drawn_green' });
+    const state = makeState({
+      currentPlayerIndex: 1,
+      currentColor: 'green',
+      discardPile: [makeCard('wild_draw_four', null, { id: 'wd4top' })],
+      pendingPenaltyDraws: 1,
+      pendingPenaltyNextPlayerIndex: 2,
+      pendingPenaltySourcePlayerId: 'p1',
+      deck: [drawnPlayable],
+      players: [
+        { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 9, id: 'p2old' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+      ],
+      lastAction: { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4top' },
+      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: forcedDrawRules },
+    });
+
+    const afterPenalty = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p2' });
+
+    expect(afterPenalty.phase).toBe('round_end');
+    expect(afterPenalty.winnerId).toBe('p1');
+    expect(afterPenalty.players[1]!.hand.map(c => c.id)).toEqual(['p2old', 'drawn_green']);
+    expect(afterPenalty.discardPile[afterPenalty.discardPile.length - 1]!.id).toBe('wd4top');
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // zeroRotateHands
 // ──────────────────────────────────────────────────────────────────────────────
 
