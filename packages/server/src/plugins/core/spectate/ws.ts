@@ -1,8 +1,9 @@
 import type { Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../../../kv/types';
 import type { SocketData } from '../../../ws/types';
-import { getRoom } from '../room/store';
+import { deleteRoom, getRoom } from '../room/store';
 import type { GameSession } from '../game/session';
+import { loadGameState } from '../game/state-store';
 
 export function setupSpectateHandlers(
   io: SocketIOServer,
@@ -31,10 +32,16 @@ export function setupSpectateHandlers(
         return;
       }
 
-      const session = sessions.get(roomCode);
+      let session = sessions.get(roomCode);
       if (!session) {
-        callback?.({ success: false, error: '游戏会话不存在' });
-        return;
+        const savedState = await loadGameState(kv, roomCode);
+        if (!savedState) {
+          await deleteRoom(kv, roomCode);
+          callback?.({ success: false, error: '游戏会话不存在' });
+          return;
+        }
+        session = GameSession.fromState(savedState);
+        sessions.set(roomCode, session);
       }
 
       data.roomCode = roomCode;
