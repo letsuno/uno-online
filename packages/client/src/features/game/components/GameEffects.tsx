@@ -62,8 +62,10 @@ export default function GameEffects() {
   const direction = useGameStore((s) => s.direction);
   const lastAction = useGameStore((s) => s.lastAction);
   const pendingDrawPlayerId = useGameStore((s) => s.pendingDrawPlayerId);
+  const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
   const prevTopCardRef = useRef<string | undefined>();
   const prevActionRef = useRef<typeof lastAction>(null);
+  const prevPendingPenaltyRef = useRef(0);
 
   const addEffect = (type: Effect['type'], text: string, targetName?: string, targetIndex?: number, targetAvatarUrl?: string | null) => {
     const id = `effect_${++effectId}`;
@@ -114,8 +116,17 @@ export default function GameEffects() {
       playSound('wild');
     } else if (topCard.type === 'wild') {
       playSound('wild');
+    } else {
+      playSound('play_card');
     }
   }, [topCard?.id, lastAction, players, direction, pendingDrawPlayerId]);
+
+  useEffect(() => {
+    if (pendingPenaltyDraws > 0 && prevPendingPenaltyRef.current <= 0) {
+      playSound('penalty');
+    }
+    prevPendingPenaltyRef.current = pendingPenaltyDraws;
+  }, [pendingPenaltyDraws]);
 
   useEffect(() => {
     if (phase === 'round_end' || phase === 'game_over') {
