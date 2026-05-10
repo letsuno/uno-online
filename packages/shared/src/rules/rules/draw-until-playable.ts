@@ -1,6 +1,7 @@
 import type { HouseRulePlugin } from '../house-rule-types';
 import type { GameState, GameAction } from '../../types/game';
 import type { RuleContext, PreCheckResult } from '../house-rule-types';
+import { hasPendingDrawObligation } from '../house-rule-helpers';
 
 export const drawUntilPlayable: HouseRulePlugin = {
   meta: {
@@ -12,7 +13,7 @@ export const drawUntilPlayable: HouseRulePlugin = {
   isEnabled: (hr) => hr.drawUntilPlayable,
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     if (action.type === 'DRAW_CARD') {
-      if ((state.pendingPenaltyDraws ?? 0) > 0) return { handled: false };
+      if (hasPendingDrawObligation(state)) return { handled: false };
       return { handled: true, state: ctx.handleDrawUntilPlayable(state, action) };
     }
     if (action.type !== 'PASS') return { handled: false };
