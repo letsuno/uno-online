@@ -19,6 +19,7 @@ export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTri
   const phase = useGameStore((s) => s.phase);
   const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
   const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
+  const drawStack = useGameStore((s) => s.drawStack);
   const settings = useGameStore((s) => s.settings);
 
   const isMyTurn = useIsMyTurn();
@@ -29,7 +30,7 @@ export default function DrawPile({ onDraw, drawTargetX, drawTargetY, drawAnimTri
   const canContinueDrawUntilPlayable = !isPenaltyDrawing && mustDrawUntilPlayable && hasDrawnThisTurn && playableIds.size === 0;
   const canDraw = isMyTurn && phase === 'playing' && (isPenaltyDrawing || !hasDrawnThisTurn || canContinueDrawUntilPlayable);
 
-  const showNoPlayableHint = canDraw && !isDrawUntilTurn && playableIds.size === 0 && !settings?.houseRules?.noHints;
+  const showNoPlayableHint = canDraw && !isDrawUntilTurn && !isPenaltyDrawing && drawStack === 0 && playableIds.size === 0 && !settings?.houseRules?.noHints;
   const emphasizeDraw = canDraw && !settings?.houseRules?.noHints;
 
   return (

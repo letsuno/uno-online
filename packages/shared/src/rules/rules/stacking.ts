@@ -13,6 +13,10 @@ export const stacking: HouseRulePlugin = {
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     const hr = state.settings.houseRules;
 
+    if (action.type === 'PASS' && state.drawStack > 0) {
+      return { handled: true, state };
+    }
+
     // Case (a): PLAY_CARD when drawStack > 0 — try to stack
     if (action.type === 'PLAY_CARD' && state.drawStack > 0) {
       const player = state.players[state.currentPlayerIndex];

@@ -346,6 +346,31 @@ describe('stackDrawFour', () => {
     expect(next.currentPlayerIndex).toBe(2);
   });
 
+  it('blocks passing while a +4 stack penalty is waiting to be drawn', () => {
+    const wd4Top = makeCard('wild_draw_four', null, { id: 'wd4top' });
+    const state = makeState({
+      discardPile: [makeCard('number', 'red', { value: 1, id: 'base' }), wd4Top],
+      currentColor: 'green',
+      currentPlayerIndex: 0,
+      drawStack: 4,
+      lastAction: { type: 'DRAW_CARD', playerId: 'p1' },
+      players: [
+        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'green', { value: 3, id: 'p1green3' })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 4, id: 'p2green4' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 5, id: 'p3green5' })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, stackDrawFour: true },
+      },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'PASS', playerId: 'p1' });
+
+    expect(next).toStrictEqual(state);
+  });
+
   it('lets the third player draw 8 after two +4 cards are stacked', () => {
     const firstWd4 = makeCard('wild_draw_four', null, { id: 'first_wd4' });
     const secondWd4 = makeCard('wild_draw_four', null, { id: 'second_wd4' });
