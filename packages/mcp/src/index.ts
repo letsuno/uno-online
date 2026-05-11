@@ -40,7 +40,6 @@ async function main() {
   const unoServer = new McpUnoServer(config);
 
   await unoServer.initialize();
-  console.error(`UNO MCP Server 已连接，用户: ${unoServer.userId}`);
 
   if (config.mode === 'stdio') {
     const transport = new StdioServerTransport();

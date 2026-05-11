@@ -4,12 +4,3 @@ export interface McpConfig {
   mode: 'stdio' | 'http';
   httpPort?: number;
 }
-
-export interface UserIdentity {
-  userId: string;
-  username: string;
-  nickname: string;
-  avatarUrl: string | null;
-  role: string;
-  token: string;
-}

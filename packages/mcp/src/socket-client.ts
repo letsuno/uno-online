@@ -76,13 +76,6 @@ export class UnoSocketClient {
     });
   }
 
-  updateToken(token: string): void {
-    this.token = token;
-    if (this.socket) {
-      this.socket.auth = { token };
-    }
-  }
-
   disconnect(): void {
     this.resetRoomState();
     this.socket?.disconnect();

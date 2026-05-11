@@ -1,6 +1,6 @@
 import type { Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types';
-import { authenticateSocket } from '../auth/middleware';
+import { authenticateSocketAsync } from '../auth/middleware';
 import { RoomManager } from '../plugins/core/room/manager';
 import { TurnTimer } from '../plugins/core/game/turn-timer';
 import { GameSession } from '../plugins/core/game/session';
@@ -34,8 +34,8 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
   const userSocketMap = new Map<string, string>();
   const persister = new GameStatePersister(redis);
 
-  io.use((socket, next) => {
-    const payload = authenticateSocket(socket, jwtSecret);
+  io.use(async (socket, next) => {
+    const payload = await authenticateSocketAsync(socket, jwtSecret);
     if (!payload) {
       return next(new Error('Authentication failed'));
     }
