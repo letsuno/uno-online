@@ -5,6 +5,16 @@ import { deleteRoom, getRoom } from '../room/store';
 import { GameSession } from '../game/session';
 import { loadGameState } from '../game/state-store';
 
+const roomSpectators = new Map<string, Set<string>>();
+
+function getSpectatorNames(roomCode: string): string[] {
+  return [...(roomSpectators.get(roomCode) ?? [])];
+}
+
+export function clearRoomSpectators(roomCode: string): void {
+  roomSpectators.delete(roomCode);
+}
+
 export function setupSpectateHandlers(
   io: SocketIOServer,
   kv: KvStore,
@@ -48,12 +58,17 @@ export function setupSpectateHandlers(
       data.isSpectator = true;
       await socket.join(roomCode);
 
+      if (!roomSpectators.has(roomCode)) roomSpectators.set(roomCode, new Set());
+      roomSpectators.get(roomCode)!.add(data.user.nickname);
+
       const view = session.getSpectatorView(room.settings.spectatorMode);
       socket.emit('game:state', view);
       socket.emit('chat:history', session.getChatHistory());
+      socket.emit('room:spectator_list', { spectators: getSpectatorNames(roomCode) });
 
       socket.to(roomCode).emit('room:spectator_joined', {
         nickname: data.user.nickname,
+        spectators: getSpectatorNames(roomCode),
       });
 
       callback?.({ success: true });
@@ -62,8 +77,13 @@ export function setupSpectateHandlers(
     socket.on('disconnect', () => {
       const data = socket.data as SocketData;
       if (data.isSpectator && data.roomCode) {
+        const nickname = data.user?.nickname;
+        if (nickname) {
+          roomSpectators.get(data.roomCode)?.delete(nickname);
+        }
         socket.to(data.roomCode).emit('room:spectator_left', {
-          nickname: data.user?.nickname,
+          nickname: nickname ?? '',
+          spectators: getSpectatorNames(data.roomCode),
         });
       }
     });
