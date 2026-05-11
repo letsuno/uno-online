@@ -4,9 +4,3 @@ export interface McpConfig {
   mode: 'stdio' | 'http';
   httpPort: number;
 }
-
-export interface McpToolResult {
-  [x: string]: unknown;
-  content: { type: 'text'; text: string }[];
-  isError?: boolean;
-}

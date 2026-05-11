@@ -34,15 +34,6 @@ export async function createApiKey(
     .values({ userId, key: keyHash, keyPreview, name })
     .returningAll()
     .executeTakeFirstOrThrow();
-  const recount = await db
-    .selectFrom('apiKeys')
-    .select(db.fn.countAll().as('count'))
-    .where('userId', '=', userId)
-    .executeTakeFirstOrThrow();
-  if (Number(recount.count) > MAX_KEYS_PER_USER) {
-    await db.deleteFrom('apiKeys').where('id', '=', row.id).execute();
-    throw new Error(`最多创建 ${MAX_KEYS_PER_USER} 个 API Key`);
-  }
   return { id: row.id, key: raw, name: row.name, userId: row.userId, createdAt: row.createdAt };
 }
 
