@@ -34,7 +34,7 @@ export async function createApp(config: Config) {
   const { sessions, turnTimer, persister } = wsContext;
 
   fastify.post<{ Params: { code: string } }>(
-    '/admin/rooms/:code/cheat',
+    '/api/admin/rooms/:code/cheat',
     { preHandler: adminOnly(config.jwtSecret) },
     async (request, reply) => {
       const { code } = request.params;
