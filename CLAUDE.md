@@ -63,6 +63,7 @@ shared/   — 跨 Feature 共享的组件、工具、store
 - 数据库返回值不要展开（`...row`），显式选择字段，防止敏感信息泄露
 - 用户可见文案使用中文
 - 提交信息使用 Conventional Commits 格式
+- main 分支受保护，所有变更必须通过 PR 合并（`gh pr create` + `gh pr merge --squash --delete-branch`）
 
 ## 常用命令
 
