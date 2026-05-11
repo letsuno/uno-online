@@ -4,12 +4,13 @@
 
 ## 项目结构
 
-pnpm monorepo，四个包：
+pnpm monorepo，五个包：
 
 - `packages/shared` — 游戏类型、规则引擎、常量（纯逻辑，无 IO 依赖）
 - `packages/server` — Fastify + Socket.IO 后端，SQLite 持久化，插件架构
 - `packages/client` — React + Vite 前端，Tailwind CSS v4，Feature 模块架构
 - `packages/admin` — 管理后台（独立 React 应用）
+- `packages/mcp` — MCP 服务端，让 AI 客户端通过 MCP 工具玩游戏（Socket.IO 客户端桥接层）
 
 ## 快速开始
 
@@ -36,7 +37,7 @@ pnpm --filter admin dev                                         # 管理后台 :
 所有功能以 Fastify 插件形式组织在 `packages/server/src/plugins/` 下，通过 `PluginContext`（db, kv, io, config）注入共享依赖。
 
 ```
-plugins/core/     — auth, profile, admin, room, game, game-history, server-info, interaction, spectate
+plugins/core/     — auth, profile, admin, room, game, game-history, server-info, interaction, spectate, api-key
 plugins/features/ — 扩展功能（签到、积分、商店等）
 ```
 
@@ -64,6 +65,23 @@ shared/   — 跨 Feature 共享的组件、工具、store
 - 用户可见文案使用中文
 - 提交信息使用 Conventional Commits 格式
 - main 分支受保护，所有变更必须通过 PR 合并（`gh pr create` + `gh pr merge --squash --delete-branch`）
+
+### MCP 服务端 (`packages/mcp`)
+
+独立的 Socket.IO 客户端，桥接 MCP 协议与 game server。用户通过 API Key 直连 Socket.IO（不经过 JWT）。
+
+```
+src/
+├── index.ts              # CLI 入口，支持 stdio/HTTP 两种传输
+├── server.ts             # McpUnoServer 主类
+├── socket-client.ts      # Socket.IO 客户端封装
+├── notifications.ts      # Socket.IO 事件 → MCP 通知
+├── tools/
+│   ├── room.ts           # 8 个房间管理工具
+│   ├── game.ts           # 11 个游戏操作工具
+│   └── query.ts          # 4 个查询工具
+└── types.ts
+```
 
 ## 常用命令
 

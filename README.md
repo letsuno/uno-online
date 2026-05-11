@@ -29,6 +29,7 @@ Web-based multiplayer UNO card game with voice chat, 33 configurable house rules
 - **Spectator mode** — watch games in real-time, hidden or visible card view
 - **Game history** — replay past games, browse records in admin panel
 - **GitHub OAuth** + password login
+- **MCP support** — AI clients (Claude Code, Cursor, etc.) can play the game via Model Context Protocol
 
 ## Tech Stack
 
@@ -54,7 +55,8 @@ uno-online/
 │   ├── shared/          # Rules engine, types, constants (pure logic, no I/O)
 │   ├── server/          # Fastify + Socket.IO + SQLite
 │   ├── client/          # React SPA (Vite + Tailwind CSS v4)
-│   └── admin/           # Admin panel (React + Vite)
+│   ├── admin/           # Admin panel (React + Vite)
+│   └── mcp/             # MCP server — lets AI clients play via tools
 ├── Dockerfile
 ├── docker-compose.yml
 ├── Caddyfile
@@ -180,6 +182,10 @@ docker push djkcyl/uno-online-caddy:latest
 | `GET` | `/api/games` | Yes | List game history |
 | `GET` | `/api/games/:id` | Yes | Get game record detail |
 | `GET` | `/api/games/:id/verify` | Yes | Verify game deck integrity |
+| `POST` | `/api/api-keys` | Yes | Create a new API key |
+| `GET` | `/api/api-keys` | Yes | List user's API keys (masked) |
+| `DELETE` | `/api/api-keys/:id` | Yes | Delete an API key |
+| `POST` | `/api/api-keys/verify` | No | Verify an API key, returns user info |
 | `GET` | `/api/admin/dashboard` | Admin | Admin dashboard stats |
 | `GET` | `/api/admin/users` | Admin | Paginated user list |
 | `PATCH` | `/api/admin/users/:id/role` | Admin | Change user role |
@@ -188,6 +194,86 @@ docker push djkcyl/uno-online-caddy:latest
 | `DELETE` | `/api/admin/rooms/:code` | Admin | Force dissolve a room |
 | `GET` | `/api/admin/games` | Admin | Paginated game history |
 | `GET` | `/api/admin/games/:id` | Admin | Game record detail |
+
+## MCP (AI Play)
+
+The game exposes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server so AI clients can play UNO via tools.
+
+### Setup
+
+1. **Generate an API Key** — go to your profile page and create an API Key in the "API Keys" section
+2. **Configure your MCP client** with one of the methods below
+
+### Option A: From git clone (recommended)
+
+If you've already cloned the repo:
+
+```json
+{
+  "mcpServers": {
+    "uno": {
+      "command": "npx",
+      "args": [
+        "tsx",
+        "/path/to/uno-online/packages/mcp/src/index.ts",
+        "--api-key", "uno_ak_your_key_here",
+        "--server", "https://your-server.com"
+      ]
+    }
+  }
+}
+```
+
+### Option B: Via npx + git (no clone needed)
+
+```bash
+npx -y tsx "$(git clone --depth 1 https://github.com/letsuno/uno-online.git /tmp/uno-online 2>/dev/null; echo /tmp/uno-online/packages/mcp/src/index.ts)" \
+  --api-key uno_ak_your_key_here \
+  --server https://your-server.com
+```
+
+Or clone once and reference:
+
+```bash
+git clone https://github.com/letsuno/uno-online.git ~/uno-online
+cd ~/uno-online && pnpm install
+```
+
+Then configure your MCP client:
+
+```json
+{
+  "mcpServers": {
+    "uno": {
+      "command": "npx",
+      "args": [
+        "tsx",
+        "~/uno-online/packages/mcp/src/index.ts",
+        "--api-key", "uno_ak_your_key_here",
+        "--server", "https://your-server.com"
+      ]
+    }
+  }
+}
+```
+
+### Option C: Environment variables
+
+```bash
+export UNO_API_KEY=uno_ak_your_key_here
+export UNO_SERVER_URL=https://your-server.com
+npx tsx /path/to/uno-online/packages/mcp/src/index.ts
+```
+
+### Available Tools (23)
+
+| Category | Tools |
+|----------|-------|
+| Room (8) | `create_room`, `join_room`, `leave_room`, `ready`, `start_game`, `update_room_settings`, `dissolve_room`, `kick_player` |
+| Game (11) | `play_card`, `draw_card`, `pass`, `call_uno`, `catch_uno`, `challenge`, `accept`, `choose_color`, `choose_swap_target`, `vote_next_round`, `rematch` |
+| Query (4) | `get_game_state`, `get_hand`, `get_room_info`, `get_rules` |
+
+The MCP server also sends real-time notifications (your turn, game events, etc.) via the MCP logging channel.
 
 ## Testing
 
