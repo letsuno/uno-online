@@ -7,6 +7,22 @@ function send(server: Server, level: 'info' | 'warning', data: Record<string, un
   server.sendLoggingMessage({ level, data: JSON.stringify(data) }).catch(() => {});
 }
 
+const forwardMap: Record<string, { type: string; level: 'info' | 'warning' }> = {
+  'game:card_drawn': { type: 'card_drawn', level: 'info' },
+  'game:action_rejected': { type: 'action_rejected', level: 'warning' },
+  'game:round_end': { type: 'round_ended', level: 'info' },
+  'game:next_round_vote': { type: 'next_round_vote', level: 'info' },
+  'game:over': { type: 'game_over', level: 'info' },
+  'room:updated': { type: 'room_updated', level: 'info' },
+  'room:dissolved': { type: 'room_dissolved', level: 'warning' },
+  'player:disconnected': { type: 'player_left', level: 'info' },
+  'player:reconnected': { type: 'player_joined', level: 'info' },
+  'player:timeout': { type: 'player_timeout', level: 'warning' },
+  'player:autopilot': { type: 'player_autopilot', level: 'info' },
+  'game:kicked': { type: 'game_kicked', level: 'warning' },
+  'auth:kicked': { type: 'auth_kicked', level: 'warning' },
+};
+
 export function setupNotifications(
   socketClient: UnoSocketClient,
   server: Server,
@@ -68,68 +84,11 @@ export function setupNotifications(
         break;
       }
 
-      case 'game:card_drawn': {
-        send(server, 'info', { type: 'card_drawn', ...(data as Record<string, unknown>) });
-        break;
-      }
-
-      case 'game:action_rejected': {
-        send(server, 'warning', { type: 'action_rejected', ...(data as Record<string, unknown>) });
-        break;
-      }
-
-      case 'game:round_end': {
-        send(server, 'info', { type: 'round_ended', ...(data as Record<string, unknown>) });
-        break;
-      }
-
-      case 'game:next_round_vote': {
-        send(server, 'info', { type: 'next_round_vote', ...(data as Record<string, unknown>) });
-        break;
-      }
-
-      case 'game:over': {
-        send(server, 'info', { type: 'game_over', ...(data as Record<string, unknown>) });
-        break;
-      }
-
-      case 'room:updated': {
-        send(server, 'info', { type: 'room_updated', ...(data as Record<string, unknown>) });
-        break;
-      }
-
-      case 'room:dissolved': {
-        send(server, 'warning', { type: 'room_dissolved', ...(data as Record<string, unknown>) });
-        break;
-      }
-
-      case 'player:disconnected': {
-        send(server, 'info', { type: 'player_left', ...(data as Record<string, unknown>) });
-        break;
-      }
-
-      case 'player:reconnected': {
-        send(server, 'info', { type: 'player_joined', ...(data as Record<string, unknown>) });
-        break;
-      }
-
-      case 'player:timeout': {
-        send(server, 'warning', { type: 'player_timeout', ...(data as Record<string, unknown>) });
-        break;
-      }
-
-      case 'player:autopilot': {
-        send(server, 'info', { type: 'player_autopilot', ...(data as Record<string, unknown>) });
-        break;
-      }
-
-      case 'game:kicked': {
-        send(server, 'warning', { type: 'game_kicked', ...(data as Record<string, unknown>) });
-        break;
-      }
-
-      case 'auth:kicked': {
-        send(server, 'warning', { type: 'auth_kicked', ...(data as Record<string, unknown>) });
+      default: {
+        const mapping = forwardMap[event];
+        if (mapping) {
+          send(server, mapping.level, { type: mapping.type, ...(data as Record<string, unknown>) });
+        }
         break;
       }
     }
