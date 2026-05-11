@@ -13,7 +13,9 @@ export const misplayPenalty: HouseRulePlugin = {
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     if (action.type !== 'PLAY_CARD') return { handled: false };
     const currentPlayer = state.players[state.currentPlayerIndex];
-    if (state.phase !== 'playing' || currentPlayer?.id !== action.playerId) {
+    if (state.phase !== 'playing') return { handled: true, state };
+    if (currentPlayer?.id !== action.playerId) {
+      if (state.settings.houseRules.jumpIn) return { handled: false };
       return { handled: true, state };
     }
     const standardResult = ctx.applyAction(state, action);

@@ -121,9 +121,11 @@ describe('chooseAutopilotAction for seven swap', () => {
 });
 
 describe('chooseAutopilotAction with wild_draw_four and stacking', () => {
-  it('includes chosenColor when stacking is enabled so the stacking plugin accepts the card', () => {
+  it('includes chosenColor when stacking on existing drawStack', () => {
     const wd4 = makeCard('wild_draw_four', null, { id: 'wd4' });
     const state = makeState({
+      drawStack: 4,
+      discardPile: [makeCard('number', 'red', { value: 1, id: 'base' }), makeCard('wild_draw_four', null, { id: 'top_wd4' })],
       players: [
         { id: 'p1', name: 'Alice', hand: [wd4], score: 0, connected: true, autopilot: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'red', { value: 1, id: 'r1' })], score: 0, connected: true, autopilot: false, calledUno: false },
@@ -145,6 +147,30 @@ describe('chooseAutopilotAction with wild_draw_four and stacking', () => {
       cardId: 'wd4',
       chosenColor: expect.any(String),
     });
+  });
+
+  it('uses two-step flow for first +4 even when stacking is enabled', () => {
+    const wd4 = makeCard('wild_draw_four', null, { id: 'wd4' });
+    const state = makeState({
+      drawStack: 0,
+      players: [
+        { id: 'p1', name: 'Alice', hand: [wd4], score: 0, connected: true, autopilot: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'red', { value: 1, id: 'r1' })], score: 0, connected: true, autopilot: false, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        allowSpectators: true,
+        spectatorMode: 'hidden',
+        houseRules: { ...DEFAULT_HOUSE_RULES, stackDrawFour: true },
+      },
+    });
+
+    const actions = chooseAutopilotAction(state, 'p1');
+    expect(actions).toHaveLength(2);
+    expect(actions[0]).toMatchObject({ type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4' });
+    expect(actions[0]).not.toHaveProperty('chosenColor');
+    expect(actions[1]).toMatchObject({ type: 'CHOOSE_COLOR', playerId: 'p1' });
   });
 
   it('uses two-step PLAY_CARD + CHOOSE_COLOR when stacking is disabled', () => {
