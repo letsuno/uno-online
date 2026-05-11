@@ -26,6 +26,7 @@ export default function ProfilePage() {
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyFull, setNewKeyFull] = useState('');
   const [creatingKey, setCreatingKey] = useState(false);
+  const [keyError, setKeyError] = useState('');
 
   useEffect(() => {
     apiGet<ProfileData>('/profile').then((p) => {
@@ -77,24 +78,35 @@ export default function ProfilePage() {
   const handleCreateKey = async () => {
     if (!newKeyName.trim()) return;
     setCreatingKey(true);
+    setKeyError('');
     try {
       const result = await apiPost<{ id: string; key: string; name: string; createdAt: string }>('/api-keys', { name: newKeyName.trim() });
       setNewKeyFull(result.key);
       setApiKeys((prev) => [{ id: result.id, name: result.name, keyPreview: `${result.key.slice(0, 11)}...`, createdAt: result.createdAt }, ...prev]);
       setNewKeyName('');
-    } catch {
-      // ignore
+    } catch (err) {
+      setKeyError((err as Error).message || '创建失败');
     } finally {
       setCreatingKey(false);
     }
   };
 
+  const handleCopyKey = async () => {
+    try {
+      await navigator.clipboard.writeText(newKeyFull);
+      setNewKeyFull('');
+    } catch {
+      setKeyError('复制失败，请手动选择文本复制');
+    }
+  };
+
   const handleDeleteKey = async (id: string) => {
+    if (!confirm('确定要删除这个 API Key 吗？删除后使用该 Key 的 MCP 客户端将无法连接。')) return;
     try {
       await apiDelete(`/api-keys/${id}`);
       setApiKeys((prev) => prev.filter((k) => k.id !== id));
-    } catch {
-      // ignore
+    } catch (err) {
+      setKeyError((err as Error).message || '删除失败');
     }
   };
 
@@ -158,11 +170,15 @@ export default function ProfilePage() {
                 <p className="text-xs text-uno-green mb-2">Key 已生成，请立即复制（仅显示一次）：</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 break-all rounded bg-black/30 px-2 py-1 text-xs">{newKeyFull}</code>
-                  <Button size="sm" variant="secondary" onClick={() => { navigator.clipboard.writeText(newKeyFull); setNewKeyFull(''); }} sound="click">
+                  <Button size="sm" variant="secondary" onClick={handleCopyKey} sound="click">
                     <Copy size={12} />
                   </Button>
                 </div>
               </div>
+            )}
+
+            {keyError && (
+              <p className="text-xs text-destructive mb-2">{keyError}</p>
             )}
 
             <div className="flex gap-2 mb-3">
@@ -171,6 +187,7 @@ export default function ProfilePage() {
                 placeholder="Key 名称（如：我的 Claude）"
                 value={newKeyName}
                 onChange={(e) => setNewKeyName(e.target.value)}
+                maxLength={50}
                 className="flex-1 rounded-lg border border-white/15 bg-card px-3 py-2 text-sm text-foreground"
               />
               <Button variant="primary" size="sm" onClick={handleCreateKey} disabled={creatingKey || !newKeyName.trim()} sound="click">
@@ -186,7 +203,7 @@ export default function ProfilePage() {
                       <span className="text-sm">{k.name}</span>
                       <code className="ml-2 text-xs text-muted-foreground">{k.keyPreview}</code>
                     </div>
-                    <button onClick={() => handleDeleteKey(k.id)} className="text-muted-foreground hover:text-destructive transition-colors">
+                    <button onClick={() => handleDeleteKey(k.id)} className="text-muted-foreground hover:text-destructive transition-colors" aria-label="删除 Key">
                       <Trash2 size={14} />
                     </button>
                   </div>
