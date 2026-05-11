@@ -48,6 +48,10 @@ packages/server/src/
       index.ts            # 插件入口
       routes.ts           # 观战 HTTP 路由
       ws.ts               # 观战 WS 事件
+    api-key/
+      index.ts            # 插件入口
+      routes.ts           # API Key CRUD + verify 路由
+      repo.ts             # 数据库操作（SHA-256 哈希存储）
   ws/                     # WebSocket 核心
     socket-handler.ts     # 连接管理、中间件、事件分发
     room-events.ts        # 房间 WS 事件
