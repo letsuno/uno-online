@@ -20,6 +20,7 @@ const RECONNECT_TIMEOUT_MS = 60_000;
 const AUTOPILOT_THINK_MS = 2_000;
 const ROOM_IDLE_SWEEP_MS = 60_000;
 const AUTOPILOT_TOGGLE_COOLDOWN_MS = 3_000;
+const ALL_DISCONNECT_TIMEOUT_MS = 5 * 60_000;
 
 const autopilotToggleTimestamps = new Map<string, number>();
 
@@ -28,6 +29,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
   const turnTimer = new TurnTimer();
   const sessions = new Map<string, GameSession>();
   const disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  const allDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const autoPlayIntervals = new Map<string, ReturnType<typeof setInterval>>();
   const userSocketMap = new Map<string, string>();
   const persister = new GameStatePersister(redis);
@@ -86,6 +88,14 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
     autoPlayIntervals.set(userId, interval);
   }
 
+  function cancelDissolutionTimer(roomCode: string) {
+    const timer = allDisconnectTimers.get(roomCode);
+    if (timer) {
+      clearTimeout(timer);
+      allDisconnectTimers.delete(roomCode);
+    }
+  }
+
   function stopAutoPlayForRoom(roomCode: string) {
     const session = sessions.get(roomCode);
     if (!session) return;
@@ -97,6 +107,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
         disconnectTimers.delete(player.id);
       }
     }
+    cancelDissolutionTimer(roomCode);
   }
 
   async function cleanupIdleRooms() {
@@ -158,6 +169,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       }
 
       if (session) {
+        cancelDissolutionTimer(roomCode);
         session.setPlayerConnected(userId, true);
         session.setPlayerAutopilot(userId, false);
         resetPlayerTimeout(roomCode, userId);
@@ -214,6 +226,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       const nextAutopilot = !player.autopilot;
       session.setPlayerAutopilot(userId, nextAutopilot);
       if (nextAutopilot) {
+        addAutopilotVote(roomCode, userId, session, io);
         startAutoPlay(userId, roomCode);
       } else {
         stopAutoPlay(userId);
@@ -250,6 +263,20 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
         if (connectedCount < 2) {
           turnTimer.stop(roomCode);
         }
+        if (connectedCount === 0 && !allDisconnectTimers.has(roomCode)) {
+          const dissolutionTimer = setTimeout(async () => {
+            allDisconnectTimers.delete(roomCode);
+            if (!sessions.has(roomCode)) return;
+            try {
+              stopAutoPlayForRoom(roomCode);
+              await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'idle_timeout', getDb());
+            } catch (err) {
+              console.error(`[allDisconnect] Failed to dissolve room ${roomCode}:`, err);
+            }
+          }, ALL_DISCONNECT_TIMEOUT_MS);
+          dissolutionTimer.unref?.();
+          allDisconnectTimers.set(roomCode, dissolutionTimer);
+        }
 
         // Host transfer: if disconnected player is room owner, transfer
         const room = await getRoom(redis, roomCode);
@@ -275,7 +302,6 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
             persister.markDirty(roomCode, s.getFullState());
             await emitGameUpdate(io, roomCode, s, redis);
             io.to(roomCode).emit('player:autopilot', { playerId: userId, enabled: true });
-            addAutopilotVote(roomCode, userId, s, io);
             startAutoPlay(userId, roomCode);
           }
         }, RECONNECT_TIMEOUT_MS);

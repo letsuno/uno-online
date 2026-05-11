@@ -53,7 +53,8 @@ async function persistGameResult(roomCode: string, session: GameSession, startTi
     await saveDeckInfo(db, gameId, state.deckHash, session.getInitialDeckSerialized());
     session.clearEvents();
     setTimeout(() => persistedGames.delete(key), 60_000);
-  } catch {
+  } catch (err) {
+    console.error(`[persistGameResult] Failed to persist game ${key}:`, err);
     persistedGames.delete(key);
   }
 }
@@ -293,10 +294,10 @@ async function emitTerminalStateIfNeeded(
     nextRoundVotes.delete(roomCode);
     session.recordEvent(GameEventType.ROUND_END, { winnerId: state.winnerId!, scores }, null);
 
-    const autopilotIds = state.players.filter((p) => p.autopilot).map((p) => p.id);
-    if (autopilotIds.length > 0) {
+    const connectedAutopilotIds = state.players.filter((p) => p.autopilot && p.connected).map((p) => p.id);
+    if (connectedAutopilotIds.length > 0) {
       const votes = nextRoundVotes.get(roomCode) ?? new Set<string>();
-      for (const id of autopilotIds) votes.add(id);
+      for (const id of connectedAutopilotIds) votes.add(id);
       nextRoundVotes.set(roomCode, votes);
     }
 
@@ -672,6 +673,10 @@ export function registerGameEvents(
     const { session, roomCode } = ctx;
     if (!session.isGameOver()) {
       return callback?.({ success: false, error: 'Game is not over' });
+    }
+    const room = await getRoom(redis, roomCode);
+    if (room?.ownerId !== data.user.userId) {
+      return callback?.({ success: false, error: '只有房主可以发起再来一局' });
     }
     nextRoundVotes.delete(roomCode);
     session.resetForRematch();

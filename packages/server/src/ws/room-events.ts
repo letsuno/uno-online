@@ -9,7 +9,7 @@ import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, touchRoomActiv
 import { GameSession } from '../plugins/core/game/session';
 import type { GameStatePersister } from '../plugins/core/game/state-store';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
-import { setGameStartTime, removePlayerVote } from './game-events';
+import { setGameStartTime, removePlayerVote, persistGameOnDissolve } from './game-events';
 import type { SocketData } from './types';
 import { dissolveRoom } from './room-lifecycle';
 import { removeVoicePresence } from './voice-presence';
@@ -153,18 +153,28 @@ export function registerRoomEvents(
 
     const session = sessions.get(roomCode);
     if (session && !deleted) {
-      session.removePlayer(data.user.userId);
-      removePlayerVote(roomCode, data.user.userId, session, io);
+      const willEndGame = session.getPlayerCount() - 1 < MIN_PLAYERS;
 
-      if (session.getPlayerCount() < MIN_PLAYERS) {
+      if (willEndGame) {
         const st = session.getFullState();
-        const lastPlayer = st.players[0];
-        if (lastPlayer) session.forceGameOver(lastPlayer.id);
-        turnTimer.stop(roomCode);
-        io.to(roomCode).emit('game:over', {
-          winnerId: lastPlayer?.id ?? null,
-          scores: Object.fromEntries(st.players.map((p) => [p.id, p.score])),
-        });
+        const lastPlayer = st.players.find(p => p.id !== data.user.userId);
+        if (lastPlayer) {
+          session.forceGameOver(lastPlayer.id);
+          turnTimer.stop(roomCode);
+          // Persist before removing — game history needs the full player list
+          await persistGameOnDissolve(roomCode, session, db);
+          session.removePlayer(data.user.userId);
+          io.to(roomCode).emit('game:over', {
+            winnerId: lastPlayer.id,
+            scores: Object.fromEntries(st.players.map((p) => [p.id, p.score])),
+          });
+        } else {
+          turnTimer.stop(roomCode);
+          session.removePlayer(data.user.userId);
+        }
+      } else {
+        session.removePlayer(data.user.userId);
+        removePlayerVote(roomCode, data.user.userId, session, io);
       }
 
       persister.markDirty(roomCode, session.getFullState());
@@ -299,6 +309,7 @@ export function registerRoomEvents(
         const winner = state.players.find(p => p.hand.length === minCards);
         if (winner) {
           s.forceGameOver(winner.id);
+          await persistGameOnDissolve(roomCode, s, db);
           persister.markDirty(roomCode, s.getFullState());
           await persister.flushNow(roomCode);
           await emitGameUpdate(io, roomCode, s, redis);

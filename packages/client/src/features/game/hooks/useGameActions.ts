@@ -58,7 +58,11 @@ export function useGameActions() {
   }, []);
 
   const rematch = useCallback(() => {
-    getSocket().emit('game:rematch', () => {});
+    getSocket().emit('game:rematch', (res: { success?: boolean; error?: string }) => {
+      if (res && !res.success) {
+        useToastStore.getState().addToast(res.error || '无法发起再来一局', 'error');
+      }
+    });
   }, []);
 
   const kickPlayer = useCallback((targetId: string) => {
