@@ -7,11 +7,14 @@ import { registerQueryTools } from './tools/query.js';
 import { setupNotifications } from './notifications.js';
 import type { McpConfig, UserIdentity } from './types.js';
 
+const TOKEN_REFRESH_MS = 20 * 60 * 60 * 1000;
+
 export class McpUnoServer {
   private mcp: McpServer;
   private socketClient: UnoSocketClient | null = null;
   private config: McpConfig;
   private user: UserIdentity | null = null;
+  private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(config: McpConfig) {
     this.config = config;
@@ -42,10 +45,21 @@ export class McpUnoServer {
     this.socketClient = new UnoSocketClient(this.config.serverUrl, this.user.token);
     setupNotifications(this.socketClient, this.mcp.server, this.user.userId);
     await this.socketClient.connect();
+    this.refreshTimer = setInterval(() => this.refreshToken(), TOKEN_REFRESH_MS);
   }
 
   async shutdown(): Promise<void> {
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
     this.socketClient?.disconnect();
+  }
+
+  private async refreshToken(): Promise<void> {
+    try {
+      this.user = await verifyApiKey(this.config.serverUrl, this.config.apiKey);
+      this.socketClient?.updateToken(this.user.token);
+    } catch {
+      // verify 失败时保持现有连接，下次重试
+    }
   }
 
   private registerTools(): void {

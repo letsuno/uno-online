@@ -59,7 +59,7 @@ export function registerApiKeyRoutes(fastify: FastifyInstance, ctx: PluginContex
         role: user.role as UserRole,
       },
       ctx.config.jwtSecret,
-      '1h',
+      '1d',
     );
     return { ...user, token };
   });
