@@ -16,6 +16,8 @@ type SoundName =
   | 'lose'
   | 'player_join'
   | 'player_leave'
+  | 'voice_join'
+  | 'voice_leave'
   | 'your_turn'
   | 'error'
   | 'click'
@@ -41,6 +43,8 @@ const FREQUENCIES: Record<SoundName, { freq: number; duration: number; type: Osc
   lose:         { freq: 250, duration: 0.4, type: 'triangle' },
   player_join:  { freq: 700, duration: 0.1, type: 'sine' },
   player_leave: { freq: 350, duration: 0.15, type: 'sine' },
+  voice_join:   { freq: 660, duration: 0.12, type: 'sine' },
+  voice_leave:  { freq: 440, duration: 0.15, type: 'sine' },
   your_turn:    { freq: 880, duration: 0.15, type: 'sine' },
   error:        { freq: 200, duration: 0.2, type: 'square' },
   click:        { freq: 1100, duration: 0.04, type: 'sine' },
@@ -92,6 +96,10 @@ export function playSound(name: SoundName): void {
     osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + config.duration);
   } else if (name === 'danger') {
     osc.frequency.linearRampToValueAtTime(180, ctx.currentTime + config.duration);
+  } else if (name === 'voice_join') {
+    osc.frequency.linearRampToValueAtTime(880, ctx.currentTime + config.duration);
+  } else if (name === 'voice_leave') {
+    osc.frequency.linearRampToValueAtTime(330, ctx.currentTime + config.duration);
   }
 
   gain.gain.setValueAtTime(soundVolume * 0.3, ctx.currentTime);
