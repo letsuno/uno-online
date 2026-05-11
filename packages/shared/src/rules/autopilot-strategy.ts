@@ -106,7 +106,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
       return [{ type: 'PASS', playerId }];
     }
     const pick = pickPlayableCard(playableAfterDraw, state.currentColor);
-    const needsColorOnPlay = pick.type === 'wild_draw_four' && (hr.stackDrawFour || hr.crossStack);
+    const needsColorOnPlay = pick.type === 'wild_draw_four' && state.drawStack > 0 && (hr.stackDrawFour || hr.crossStack);
     return playCardActions(playerId, pick, player.hand, needsColorOnPlay);
   }
 
@@ -151,6 +151,6 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   }
 
   const pick = pickPlayableCard(playable, state.currentColor);
-  const needsColorOnPlay = pick.type === 'wild_draw_four' && (hr.stackDrawFour || hr.crossStack);
+  const needsColorOnPlay = pick.type === 'wild_draw_four' && state.drawStack > 0 && (hr.stackDrawFour || hr.crossStack);
   return playCardActions(playerId, pick, player.hand, needsColorOnPlay);
 }

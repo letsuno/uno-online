@@ -152,6 +152,31 @@ export class GameSession {
     };
   }
 
+  addPlayer(data: { id: string; name: string; avatarUrl?: string | null; role?: UserRole; isBot?: boolean }): void {
+    if (this.state.players.some((p) => p.id === data.id)) return;
+    this.state = {
+      ...this.state,
+      players: [
+        ...this.state.players,
+        {
+          id: data.id,
+          name: data.name,
+          hand: [],
+          score: 0,
+          roundWins: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          unoCaught: false,
+          eliminated: false,
+          avatarUrl: data.avatarUrl ?? null,
+          role: data.role,
+          isBot: data.isBot ?? false,
+        },
+      ],
+    };
+  }
+
   removePlayer(playerId: string): void {
     this.state = {
       ...this.state,

@@ -5,4 +5,5 @@ export interface ChatMessage {
   text: string;
   timestamp: number;
   role?: string;
+  isSpectator?: boolean;
 }

@@ -1,4 +1,6 @@
+import { Eye } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
+import { useSpectatorStore } from '../stores/spectator-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import GoogleRing from '@/shared/components/ui/GoogleRing';
@@ -9,6 +11,7 @@ import { AiBadge } from '@/shared/components/ui/AiBadge';
 export default function PlayerListPanel() {
   const players = useGameStore((s) => s.players);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
+  const spectators = useSpectatorStore((s) => s.spectators);
   const userId = useEffectiveUserId();
 
   if (players.length === 0) return null;
@@ -20,7 +23,7 @@ export default function PlayerListPanel() {
           玩家 ({players.length})
         </div>
         <div className="py-1">
-          {players.map((p, i) => {
+          {players.map((p, i: number) => {
             const isActive = i === currentPlayerIndex;
             const isMe = p.id === userId;
             const roleColor = getRoleColor(p.role);
@@ -71,6 +74,21 @@ export default function PlayerListPanel() {
             );
           })}
         </div>
+        {spectators.length > 0 && (
+          <>
+            <div className="px-3 py-2 border-t border-white/10 text-xs text-muted-foreground font-bold">
+              观众 ({spectators.length})
+            </div>
+            <div className="py-1">
+              {spectators.map((name) => (
+                <div key={name} className="flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground">
+                  <Eye size={12} className="shrink-0" />
+                  <span className="truncate">{name}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

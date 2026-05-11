@@ -17,6 +17,7 @@ import { getAutopilotActionPlayerId } from './autopilot-action-player';
 
 const DRAW_PENALTY_PAUSE_MS = 500;
 const AUTO_AUTOPILOT_THRESHOLD = 2;
+const BOT_TURN_TIME_LIMIT = 120;
 type AutopilotActionHandler = (roomCode: string, session: GameSession, action: GameAction) => void;
 
 // Track consecutive timeouts per player per room
@@ -379,6 +380,29 @@ export function startTurnTimer(
 ) {
   const state = session.getFullState();
   const phase = state.phase;
+
+  const actingPlayerId = getAutopilotActionPlayerId(state);
+  const actingPlayer = actingPlayerId ? state.players.find(p => p.id === actingPlayerId) : null;
+  if (actingPlayer?.isBot && !actingPlayer.autopilot) {
+    turnTimer.start(roomCode, BOT_TURN_TIME_LIMIT, async (code) => {
+      const s = sessions.get(code);
+      if (!s) return;
+      const pid = getAutopilotActionPlayerId(s.getFullState());
+      if (!pid) {
+        startTurnTimer(io, redis, code, s, turnTimer, sessions, persister);
+        return;
+      }
+      await executeAutopilot(s, pid, async () => {
+        persister.markDirty(code, s.getFullState());
+        await emitGameUpdate(io, code, s, redis);
+      }, (action) => notifyAutopilotAction(code, s, action));
+      persister.markDirty(code, s.getFullState());
+      await emitGameUpdate(io, code, s, redis);
+      startTurnTimer(io, redis, code, s, turnTimer, sessions, persister);
+    });
+    return;
+  }
+
   const immediateAutopilotPlayerId = getImmediateAutopilotPlayerId(state);
 
   if (immediateAutopilotPlayerId) {

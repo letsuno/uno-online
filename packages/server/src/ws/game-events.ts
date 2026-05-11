@@ -10,7 +10,8 @@ import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerT
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { recordGameResult } from '../db/user-repo';
 import { saveGameEvents, saveDeckInfo } from '../plugins/core/game-history/service';
-import { getRoom, setRoomStatus, touchRoomActivity, removePlayerFromRoom } from '../plugins/core/room/store';
+import { getRoom, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom } from '../plugins/core/room/store';
+import { MAX_PLAYERS } from '@uno-online/shared';
 import type { SocketData } from './types';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
@@ -77,7 +78,7 @@ function checkChatRateLimit(userId: string): boolean {
   return true;
 }
 
-function buildChatMessage(user: SocketData['user'], text: string): ChatMessage {
+function buildChatMessage(user: SocketData['user'], text: string, isSpectator = false): ChatMessage {
   return {
     id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     userId: user.userId,
@@ -85,6 +86,7 @@ function buildChatMessage(user: SocketData['user'], text: string): ChatMessage {
     text,
     timestamp: Date.now(),
     role: user.role ?? 'normal',
+    isSpectator: isSpectator || undefined,
   };
 }
 
@@ -572,7 +574,7 @@ export function registerGameEvents(
     const text = payload.text.trim().slice(0, 500);
     if (!text) return;
 
-    const message = buildChatMessage(data.user, text);
+    const message = buildChatMessage(data.user, text, data.isSpectator);
     session.addChatMessage(message);
     touchRoomActivity(redis, roomCode).catch(() => {});
     persister.markDirty(roomCode, session.getFullState());
@@ -608,6 +610,40 @@ export function registerGameEvents(
     }
 
     callback?.({ success: true, started: false, vote: voteState });
+  });
+
+  socket.on('game:spectator_join', async (callback) => {
+    const roomCode = data.roomCode;
+    if (!roomCode || !data.isSpectator) return callback?.({ success: false, error: '非观众' });
+    const session = sessions.get(roomCode);
+    if (!session) return callback?.({ success: false, error: '游戏会话不存在' });
+    if (!session.isRoundEnd()) return callback?.({ success: false, error: '只能在回合结束时加入' });
+    if (session.getPlayerCount() >= MAX_PLAYERS) return callback?.({ success: false, error: '玩家已满' });
+    if (session.getFullState().players.some((p) => p.id === data.user.userId)) {
+      return callback?.({ success: false, error: '已在游戏中' });
+    }
+
+    data.isSpectator = false;
+    session.addPlayer({
+      id: data.user.userId,
+      name: data.user.nickname,
+      avatarUrl: data.user.avatarUrl,
+      role: data.user.role as any,
+      isBot: data.user.isBot,
+    });
+    await addPlayerToRoom(redis, roomCode, {
+      userId: data.user.userId,
+      nickname: data.user.nickname,
+      avatarUrl: data.user.avatarUrl,
+      role: data.user.role,
+      isBot: data.user.isBot,
+    });
+    persister.markDirty(roomCode, session.getFullState());
+
+    const voteState = getNextRoundVoteState(roomCode, session);
+    io.to(roomCode).emit('game:next_round_vote', voteState);
+    await emitGameUpdate(io, roomCode, session, redis);
+    callback?.({ success: true });
   });
 
   socket.on('game:kick_player', async (payload: { targetId?: string }, callback) => {
