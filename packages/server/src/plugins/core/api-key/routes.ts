@@ -4,6 +4,22 @@ import { authPreHandler } from '../auth/service';
 import type { AuthenticatedRequest } from '../auth/service';
 import { createApiKey, listApiKeys, deleteApiKey, verifyApiKey } from './repo';
 
+// ── Rate limiter for unauthenticated verify endpoint ──
+
+const verifyRateLimits = new Map<string, { count: number; resetAt: number }>();
+const VERIFY_MAX_PER_MINUTE = 10;
+
+function checkVerifyRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = verifyRateLimits.get(ip);
+  if (!entry || now > entry.resetAt) {
+    verifyRateLimits.set(ip, { count: 1, resetAt: now + 60_000 });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= VERIFY_MAX_PER_MINUTE;
+}
+
 export function registerApiKeyRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const preHandler = authPreHandler(ctx.config.jwtSecret);
 
@@ -37,6 +53,10 @@ export function registerApiKeyRoutes(fastify: FastifyInstance, ctx: PluginContex
   });
 
   fastify.post<{ Body: { key: string } }>('/api-keys/verify', async (request, reply) => {
+    const ip = request.ip;
+    if (!checkVerifyRateLimit(ip)) {
+      return reply.code(429).send({ error: '请求过于频繁，请稍后再试' });
+    }
     const { key } = request.body;
     if (!key || typeof key !== 'string') {
       return reply.code(400).send({ error: '缺少 key' });

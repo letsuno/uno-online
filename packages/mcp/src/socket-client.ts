@@ -181,7 +181,7 @@ export class UnoSocketClient {
       const timeout = setTimeout(() => reject(new Error('请求超时')), 10000);
       const callback = (result: Record<string, unknown>) => {
         clearTimeout(timeout);
-        if (result && 'success' in result && !result.success) {
+        if (result && ('error' in result || ('success' in result && !result.success))) {
           reject(new Error((result.error as string) ?? '操作失败'));
         } else {
           resolve(result);

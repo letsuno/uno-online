@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { McpUnoServer } from '../server.js';
+import { ok, fail } from '../utils.js';
 
 export function registerRoomTools(server: McpUnoServer): void {
   const mcp = server.mcpServer;
@@ -19,13 +20,9 @@ export function registerRoomTools(server: McpUnoServer): void {
         if (args.turnTimeLimit !== undefined) settings.turnTimeLimit = args.turnTimeLimit;
         if (args.targetScore !== undefined) settings.targetScore = args.targetScore;
         if (args.allowSpectators !== undefined) settings.allowSpectators = args.allowSpectators;
-        const result = await server.getClient().createRoom(settings);
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        return ok(await server.getClient().createRoom(settings));
       } catch (err) {
-        return {
-          content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }],
-          isError: true,
-        };
+        return fail(err);
       }
     },
   );
@@ -39,13 +36,9 @@ export function registerRoomTools(server: McpUnoServer): void {
     },
     async (args) => {
       try {
-        const result = await server.getClient().joinRoom(args.roomCode);
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        return ok(await server.getClient().joinRoom(args.roomCode));
       } catch (err) {
-        return {
-          content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }],
-          isError: true,
-        };
+        return fail(err);
       }
     },
   );
@@ -56,13 +49,9 @@ export function registerRoomTools(server: McpUnoServer): void {
     '离开当前房间',
     async () => {
       try {
-        const result = await server.getClient().leaveRoom();
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        return ok(await server.getClient().leaveRoom());
       } catch (err) {
-        return {
-          content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }],
-          isError: true,
-        };
+        return fail(err);
       }
     },
   );
@@ -76,13 +65,9 @@ export function registerRoomTools(server: McpUnoServer): void {
     },
     async (args) => {
       try {
-        const result = await server.getClient().setReady(args.ready);
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        return ok(await server.getClient().setReady(args.ready));
       } catch (err) {
-        return {
-          content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }],
-          isError: true,
-        };
+        return fail(err);
       }
     },
   );
@@ -93,13 +78,9 @@ export function registerRoomTools(server: McpUnoServer): void {
     '房主开始游戏（需 2+ 玩家全部准备）',
     async () => {
       try {
-        const result = await server.getClient().startGame();
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        return ok(await server.getClient().startGame());
       } catch (err) {
-        return {
-          content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }],
-          isError: true,
-        };
+        return fail(err);
       }
     },
   );
@@ -109,18 +90,21 @@ export function registerRoomTools(server: McpUnoServer): void {
     'update_room_settings',
     '房主更新房间设置（仅等待阶段）',
     {
-      settings: z.string().describe('JSON 格式的设置项，如 {"turnTimeLimit":30,"targetScore":300}'),
+      turnTimeLimit: z.union([z.literal(15), z.literal(30), z.literal(60)]).optional().describe('每回合时间限制（秒）'),
+      targetScore: z.union([z.literal(200), z.literal(300), z.literal(500)]).optional().describe('目标分数'),
+      allowSpectators: z.boolean().optional().describe('是否允许观战'),
+      houseRules: z.record(z.unknown()).optional().describe('村规设置，如 {"stackDrawTwo":true}'),
     },
     async (args) => {
       try {
-        const parsed = JSON.parse(args.settings) as Record<string, unknown>;
-        const result = await server.getClient().updateSettings(parsed);
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        const settings: Record<string, unknown> = {};
+        if (args.turnTimeLimit !== undefined) settings.turnTimeLimit = args.turnTimeLimit;
+        if (args.targetScore !== undefined) settings.targetScore = args.targetScore;
+        if (args.allowSpectators !== undefined) settings.allowSpectators = args.allowSpectators;
+        if (args.houseRules !== undefined) settings.houseRules = args.houseRules;
+        return ok(await server.getClient().updateSettings(settings));
       } catch (err) {
-        return {
-          content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }],
-          isError: true,
-        };
+        return fail(err);
       }
     },
   );
@@ -131,13 +115,9 @@ export function registerRoomTools(server: McpUnoServer): void {
     '房主关闭房间',
     async () => {
       try {
-        const result = await server.getClient().dissolveRoom();
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        return ok(await server.getClient().dissolveRoom());
       } catch (err) {
-        return {
-          content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }],
-          isError: true,
-        };
+        return fail(err);
       }
     },
   );
@@ -151,13 +131,9 @@ export function registerRoomTools(server: McpUnoServer): void {
     },
     async (args) => {
       try {
-        const result = await server.getClient().kickPlayer({ targetId: args.targetId });
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        return ok(await server.getClient().kickPlayer({ targetId: args.targetId }));
       } catch (err) {
-        return {
-          content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }],
-          isError: true,
-        };
+        return fail(err);
       }
     },
   );

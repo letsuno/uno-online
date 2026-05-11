@@ -54,8 +54,8 @@ async function main() {
     const httpServer = createServer(async (req, res) => {
       await transport.handleRequest(req, res);
     });
-    httpServer.listen(config.httpPort, () => {
-      console.error(`UNO MCP Server (HTTP) 已启动: http://localhost:${config.httpPort}/`);
+    httpServer.listen(config.httpPort, '127.0.0.1', () => {
+      console.error(`UNO MCP Server (HTTP) 已启动: http://127.0.0.1:${config.httpPort}/`);
     });
   }
 

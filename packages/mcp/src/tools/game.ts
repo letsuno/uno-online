@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { McpUnoServer } from '../server.js';
+import { ok, fail } from '../utils.js';
 
 export function registerGameTools(server: McpUnoServer): void {
   const mcp = server.mcpServer;
@@ -13,10 +14,9 @@ export function registerGameTools(server: McpUnoServer): void {
     },
     async (args) => {
       try {
-        const result = await server.getClient().playCard({ cardId: args.cardId, chosenColor: args.chosenColor });
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        return ok(await server.getClient().playCard({ cardId: args.cardId, chosenColor: args.chosenColor }));
       } catch (err) {
-        return { content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }], isError: true };
+        return fail(err);
       }
     },
   );
@@ -29,29 +29,26 @@ export function registerGameTools(server: McpUnoServer): void {
     },
     async (args) => {
       try {
-        const result = await server.getClient().drawCard({ side: args.side ?? 'left' });
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        return ok(await server.getClient().drawCard({ side: args.side ?? 'left' }));
       } catch (err) {
-        return { content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }], isError: true };
+        return fail(err);
       }
     },
   );
 
   mcp.tool('pass', '过牌（无牌可出时）', async () => {
     try {
-      const result = await server.getClient().pass();
-      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+      return ok(await server.getClient().pass());
     } catch (err) {
-      return { content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }], isError: true };
+      return fail(err);
     }
   });
 
   mcp.tool('call_uno', '喊 UNO（手牌剩 1 张时）', async () => {
     try {
-      const result = await server.getClient().callUno();
-      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+      return ok(await server.getClient().callUno());
     } catch (err) {
-      return { content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }], isError: true };
+      return fail(err);
     }
   });
 
@@ -63,29 +60,26 @@ export function registerGameTools(server: McpUnoServer): void {
     },
     async (args) => {
       try {
-        const result = await server.getClient().catchUno({ targetPlayerId: args.targetPlayerId });
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        return ok(await server.getClient().catchUno({ targetPlayerId: args.targetPlayerId }));
       } catch (err) {
-        return { content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }], isError: true };
+        return fail(err);
       }
     },
   );
 
   mcp.tool('challenge', '挑战对手的 Wild Draw Four', async () => {
     try {
-      const result = await server.getClient().challenge();
-      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+      return ok(await server.getClient().challenge());
     } catch (err) {
-      return { content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }], isError: true };
+      return fail(err);
     }
   });
 
   mcp.tool('accept', '接受罚牌', async () => {
     try {
-      const result = await server.getClient().accept();
-      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+      return ok(await server.getClient().accept());
     } catch (err) {
-      return { content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }], isError: true };
+      return fail(err);
     }
   });
 
@@ -97,10 +91,9 @@ export function registerGameTools(server: McpUnoServer): void {
     },
     async (args) => {
       try {
-        const result = await server.getClient().chooseColor({ color: args.color });
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        return ok(await server.getClient().chooseColor({ color: args.color }));
       } catch (err) {
-        return { content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }], isError: true };
+        return fail(err);
       }
     },
   );
@@ -113,29 +106,26 @@ export function registerGameTools(server: McpUnoServer): void {
     },
     async (args) => {
       try {
-        const result = await server.getClient().chooseSwapTarget({ targetId: args.targetPlayerId });
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        return ok(await server.getClient().chooseSwapTarget({ targetId: args.targetPlayerId }));
       } catch (err) {
-        return { content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }], isError: true };
+        return fail(err);
       }
     },
   );
 
   mcp.tool('vote_next_round', '投票开始下一轮', async () => {
     try {
-      const result = await server.getClient().voteNextRound();
-      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+      return ok(await server.getClient().voteNextRound());
     } catch (err) {
-      return { content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }], isError: true };
+      return fail(err);
     }
   });
 
   mcp.tool('rematch', '游戏结束后重新开局（仅房主）', async () => {
     try {
-      const result = await server.getClient().rematch();
-      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+      return ok(await server.getClient().rematch());
     } catch (err) {
-      return { content: [{ type: 'text' as const, text: `错误: ${(err as Error).message}` }], isError: true };
+      return fail(err);
     }
   });
 }

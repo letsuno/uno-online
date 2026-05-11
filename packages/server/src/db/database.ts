@@ -231,7 +231,7 @@ export async function migrateDb(): Promise<void> {
     .createTable('api_keys')
     .ifNotExists()
     .addColumn('id', 'text', (c) => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
-    .addColumn('user_id', 'text', (c) => c.references('users.id').notNull())
+    .addColumn('user_id', 'text', (c) => c.references('users.id').onDelete('cascade').notNull())
     .addColumn('key', 'text', (c) => c.unique().notNull())
     .addColumn('key_preview', 'text', (c) => c.notNull().defaultTo(''))
     .addColumn('name', 'text', (c) => c.notNull())

@@ -1,18 +1,7 @@
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { UnoSocketClient } from './socket-client.js';
 import type { PlayerView } from '@uno-online/shared';
-import { HOUSE_RULE_DESCRIPTIONS } from '@uno-online/shared';
-import type { HouseRules } from '@uno-online/shared';
-
-function formatActiveRules(settings: PlayerView['settings']): { key: string; value: unknown; description: string }[] {
-  const rules: { key: string; value: unknown; description: string }[] = [];
-  if (!settings?.houseRules) return rules;
-  for (const [key, value] of Object.entries(settings.houseRules)) {
-    if (value === false || value === null || value === undefined) continue;
-    rules.push({ key, value, description: HOUSE_RULE_DESCRIPTIONS[key as keyof HouseRules] ?? key });
-  }
-  return rules;
-}
+import { formatActiveRules } from './utils.js';
 
 function send(server: Server, level: 'info' | 'warning', data: Record<string, unknown>): void {
   server.sendLoggingMessage({ level, data: JSON.stringify(data) }).catch(() => {});

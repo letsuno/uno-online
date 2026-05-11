@@ -27,6 +27,7 @@ export default function ProfilePage() {
   const [newKeyFull, setNewKeyFull] = useState('');
   const [creatingKey, setCreatingKey] = useState(false);
   const [keyError, setKeyError] = useState('');
+  const [keyCopied, setKeyCopied] = useState(false);
 
   useEffect(() => {
     apiGet<ProfileData>('/profile').then((p) => {
@@ -82,6 +83,7 @@ export default function ProfilePage() {
     try {
       const result = await apiPost<{ id: string; key: string; name: string; createdAt: string }>('/api-keys', { name: newKeyName.trim() });
       setNewKeyFull(result.key);
+      setKeyCopied(false);
       setApiKeys((prev) => [{ id: result.id, name: result.name, keyPreview: `${result.key.slice(0, 11)}...`, createdAt: result.createdAt }, ...prev]);
       setNewKeyName('');
     } catch (err) {
@@ -94,10 +96,15 @@ export default function ProfilePage() {
   const handleCopyKey = async () => {
     try {
       await navigator.clipboard.writeText(newKeyFull);
-      setNewKeyFull('');
+      setKeyCopied(true);
     } catch {
       setKeyError('复制失败，请手动选择文本复制');
     }
+  };
+
+  const handleDismissKey = () => {
+    setNewKeyFull('');
+    setKeyCopied(false);
   };
 
   const handleDeleteKey = async (id: string) => {
@@ -171,9 +178,14 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-2">
                   <code className="flex-1 break-all rounded bg-black/30 px-2 py-1 text-xs">{newKeyFull}</code>
                   <Button size="sm" variant="secondary" onClick={handleCopyKey} sound="click">
-                    <Copy size={12} />
+                    <Copy size={12} /> {keyCopied ? '已复制' : ''}
                   </Button>
                 </div>
+                {keyCopied && (
+                  <button onClick={handleDismissKey} className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    我已保存，关闭此提示
+                  </button>
+                )}
               </div>
             )}
 
