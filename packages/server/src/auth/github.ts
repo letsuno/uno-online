@@ -1,4 +1,4 @@
-import { ProxyAgent } from 'undici';
+import { request, ProxyAgent } from 'undici';
 import type { Config } from '../config';
 
 interface GitHubTokenResponse {
@@ -18,7 +18,7 @@ function getDispatcher(config: Config): ProxyAgent | undefined {
 }
 
 export async function exchangeCodeForToken(code: string, config: Config): Promise<string> {
-  const response = await fetch('https://github.com/login/oauth/access_token', {
+  const { statusCode, body } = await request('https://github.com/login/oauth/access_token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
@@ -27,21 +27,21 @@ export async function exchangeCodeForToken(code: string, config: Config): Promis
       code,
     }),
     dispatcher: getDispatcher(config),
-  } as RequestInit);
-  const data = (await response.json()) as GitHubTokenResponse;
-  if (!data.access_token) {
+  });
+  const data = (await body.json()) as GitHubTokenResponse;
+  if (statusCode !== 200 || !data.access_token) {
     throw new Error('Failed to exchange code for GitHub token');
   }
   return data.access_token;
 }
 
 export async function fetchGitHubUser(accessToken: string, config: Config): Promise<GitHubUser> {
-  const response = await fetch('https://api.github.com/user', {
+  const { statusCode, body } = await request('https://api.github.com/user', {
     headers: { Authorization: `Bearer ${accessToken}` },
     dispatcher: getDispatcher(config),
-  } as RequestInit);
-  if (!response.ok) {
+  });
+  if (statusCode !== 200) {
     throw new Error('Failed to fetch GitHub user');
   }
-  return response.json() as Promise<GitHubUser>;
+  return body.json() as Promise<GitHubUser>;
 }
