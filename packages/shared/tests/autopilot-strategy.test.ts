@@ -120,6 +120,51 @@ describe('chooseAutopilotAction for seven swap', () => {
   });
 });
 
+describe('chooseAutopilotAction with wild_draw_four and stacking', () => {
+  it('includes chosenColor when stacking is enabled so the stacking plugin accepts the card', () => {
+    const wd4 = makeCard('wild_draw_four', null, { id: 'wd4' });
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [wd4], score: 0, connected: true, autopilot: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'red', { value: 1, id: 'r1' })], score: 0, connected: true, autopilot: false, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        allowSpectators: true,
+        spectatorMode: 'hidden',
+        houseRules: { ...DEFAULT_HOUSE_RULES, stackDrawFour: true },
+      },
+    });
+
+    const actions = chooseAutopilotAction(state, 'p1');
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).toMatchObject({
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: 'wd4',
+      chosenColor: expect.any(String),
+    });
+  });
+
+  it('uses two-step PLAY_CARD + CHOOSE_COLOR when stacking is disabled', () => {
+    const wd4 = makeCard('wild_draw_four', null, { id: 'wd4' });
+    const blue = makeCard('number', 'blue', { value: 3, id: 'blue_3' });
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [wd4, blue], score: 0, connected: true, autopilot: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'red', { value: 1, id: 'r1' })], score: 0, connected: true, autopilot: false, calledUno: false },
+      ],
+    });
+
+    const actions = chooseAutopilotAction(state, 'p1');
+    expect(actions).toHaveLength(2);
+    expect(actions[0]).toMatchObject({ type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4' });
+    expect(actions[0]).not.toHaveProperty('chosenColor');
+    expect(actions[1]).toMatchObject({ type: 'CHOOSE_COLOR', playerId: 'p1', color: 'blue' });
+  });
+});
+
 describe('chooseAutopilotJumpInAction', () => {
   it('plays an exact matching card while another player has the turn', () => {
     const jumpCard = makeCard('number', 'red', { value: 5, id: 'jump_red_5' });
