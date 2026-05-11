@@ -365,3 +365,324 @@
 .danmaku-item {
   animation: danmaku-scroll 8s linear forwards;
 }
+
+/* ---- Anti-Cheat Toast ---- */
+.ace-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 300px;
+  z-index: 9999;
+  animation: ace-slide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes ace-slide-in {
+  from { transform: translateY(30px) translateX(20px); opacity: 0; }
+  to { transform: translateY(0) translateX(0); opacity: 1; }
+}
+
+.ace-loading {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
+  border-radius: 8px;
+  padding: 14px 16px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(239, 68, 68, 0.3);
+}
+.ace-loading-shimmer {
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+  animation: ace-shimmer 2s ease-in-out infinite;
+}
+@keyframes ace-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.ace-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 1;
+}
+.ace-logo-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 900;
+  color: #fff;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(4px);
+  flex-shrink: 0;
+}
+.ace-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ace-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.ace-subtitle {
+  font-size: 10.5px;
+  opacity: 0.75;
+}
+.ace-desc {
+  font-size: 11px;
+  opacity: 0.8;
+  position: relative;
+  z-index: 1;
+  line-height: 1.5;
+}
+
+.ace-progress {
+  height: 2px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 1px;
+  margin-top: 10px;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+.ace-progress-bar {
+  height: 100%;
+  border-radius: 1px;
+  background: linear-gradient(90deg, #fbbf24, #fff);
+  transition: width 0.4s ease-out;
+}
+
+.ace-running {
+  background: linear-gradient(135deg, #18181b 0%, #1f1f26 100%);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  padding: 14px 16px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  animation: ace-slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.ace-running .ace-logo-icon {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.ace-running .ace-desc {
+  color: rgba(255,255,255,0.4);
+  font-size: 10.5px;
+  margin-top: 4px;
+}
+
+.ace-scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.35), transparent);
+  animation: ace-scan 3s ease-in-out infinite;
+}
+@keyframes ace-scan {
+  0% { top: 0; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.ace-running-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+}
+.ace-running-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ace-status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ace-status-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f0f0f0;
+}
+.ace-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+.ace-status-dot {
+  width: 5px;
+  height: 5px;
+  background: #4ade80;
+  border-radius: 50%;
+  animation: ace-pulse 1.5s ease-in-out infinite;
+}
+@keyframes ace-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* ---- Cheat Overlay ---- */
+.cheat-overlay {
+  position: fixed;
+  inset: 0;
+  background: #c0392b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  animation: cheat-bg-flicker 0.35s steps(1) forwards;
+}
+@keyframes cheat-bg-flicker {
+  0%{opacity:0}14%{opacity:1}22%{opacity:0}36%{opacity:1}44%{opacity:0}52%{opacity:1}100%{opacity:1}
+}
+.cheat-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.3) 100%);
+  pointer-events: none;
+  z-index: 3;
+}
+.cheat-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+  pointer-events: none;
+  z-index: 3;
+}
+.cheat-real {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  color: #fff;
+  padding: 0 32px;
+  max-width: 680px;
+}
+.cheat-glitch-canvas {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4;
+  pointer-events: none;
+}
+.cheat-gs {
+  position: absolute;
+  text-align: center;
+  color: #fff;
+  padding: 0 32px;
+  max-width: 680px;
+  width: 100%;
+  will-change: transform, clip-path;
+}
+.cheat-title {
+  font-size: clamp(48px, 9vw, 72px);
+  font-weight: 900;
+  letter-spacing: 8px;
+  line-height: 1.15;
+  text-shadow: 0 6px 24px rgba(0,0,0,0.35);
+  position: relative;
+  animation: cheat-rgb-settle 0.5s ease-out 0.1s both;
+}
+.cheat-real .cheat-title::before,
+.cheat-real .cheat-title::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.cheat-real .cheat-title::before {
+  color: #0ff;
+  mix-blend-mode: screen;
+  animation: cheat-rgb-c 0.5s steps(1) 0.1s both;
+}
+.cheat-real .cheat-title::after {
+  color: #f0f;
+  mix-blend-mode: screen;
+  animation: cheat-rgb-m 0.5s steps(1) 0.1s both;
+}
+@keyframes cheat-rgb-c{0%{transform:translateX(-8px);opacity:.85}20%{transform:translateX(5px);opacity:.6}45%{transform:translateX(-3px);opacity:.35}70%{transform:translateX(1px);opacity:.12}100%{transform:translateX(0);opacity:0}}
+@keyframes cheat-rgb-m{0%{transform:translateX(8px);opacity:.85}20%{transform:translateX(-5px);opacity:.6}45%{transform:translateX(3px);opacity:.35}70%{transform:translateX(-1px);opacity:.12}100%{transform:translateX(0);opacity:0}}
+@keyframes cheat-rgb-settle{0%{text-shadow:-5px 0 #0ff,5px 0 #f0f,0 6px 24px rgba(0,0,0,.35)}35%{text-shadow:2px 0 #0ff,-2px 0 #f0f,0 6px 24px rgba(0,0,0,.35)}70%{text-shadow:-1px 0 #0ff,1px 0 #f0f,0 6px 24px rgba(0,0,0,.35)}100%{text-shadow:0 0 transparent,0 0 transparent,0 6px 24px rgba(0,0,0,.35)}}
+.cheat-subtitle {
+  font-size: clamp(18px, 3vw, 24px);
+  font-weight: 700;
+  margin-top: 28px;
+  color: rgba(255,255,255,0.9);
+  letter-spacing: 6px;
+}
+.cheat-desc {
+  font-size: 15px;
+  color: rgba(255,255,255,0.6);
+  margin-top: 16px;
+  line-height: 1.8;
+  letter-spacing: 1px;
+}
+.cheat-divider {
+  width: 0;
+  height: 1px;
+  background: rgba(255,255,255,0.2);
+  margin: 36px auto 0;
+  animation: cheat-divider-in 0.6s ease-out 0.55s forwards;
+}
+@keyframes cheat-divider-in { to { width: min(70vw, 560px); } }
+.cheat-btn {
+  margin-top: 52px;
+  padding: 16px 72px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: #fff;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transform: translateY(8px);
+}
+.cheat-btn-visible {
+  animation: cheat-btn-in 0.4s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+@keyframes cheat-btn-in { to { opacity: 1; transform: translateY(0); } }
+.cheat-btn:hover {
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.4);
+  letter-spacing: 6px;
+  transform: translateY(-1px);
+}
+.cheat-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  pointer-events: none;
+  animation: cheat-flash 0.25s steps(1) forwards;
+}
+@keyframes cheat-flash{0%{background:#fff;opacity:1}12%{opacity:0}20%{background:#f0f;opacity:.4}28%{opacity:0}36%{background:#0ff;opacity:.3}44%{background:#fff;opacity:.7}52%{background:#f0f;opacity:.2}60%{opacity:0}100%{background:transparent;opacity:0}}

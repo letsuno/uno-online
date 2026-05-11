@@ -152,7 +152,12 @@ export function getSocket(): TypedSocket {
       }
     });
 
+    socket.on('game:cheat_detected', () => {
+      useGameStore.getState().setCheatDetected(true);
+    });
+
     socket.on('room:dissolved', (data) => {
+      if (useGameStore.getState().cheatDetected) return;
       useRoomStore.getState().clearRoom();
       useGameStore.getState().clearGame();
       leaveVoiceSession();
