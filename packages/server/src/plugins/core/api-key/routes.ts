@@ -1,0 +1,59 @@
+import type { FastifyInstance } from 'fastify';
+import type { PluginContext } from '../../../plugin-context';
+import { authPreHandler } from '../auth/service';
+import type { AuthenticatedRequest } from '../auth/service';
+import { signToken } from '../../../auth/jwt';
+import type { UserRole } from '@uno-online/shared';
+import { createApiKey, listApiKeys, deleteApiKey, verifyApiKey } from './repo';
+
+export function registerApiKeyRoutes(fastify: FastifyInstance, ctx: PluginContext) {
+  const preHandler = authPreHandler(ctx.config.jwtSecret);
+
+  // Create a new API key (authenticated)
+  fastify.post<{ Body: { name: string } }>('/api-keys', { preHandler }, async (request, reply) => {
+    const { userId } = (request as AuthenticatedRequest).user;
+    const { name } = request.body;
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return reply.code(400).send({ error: '请输入名称' });
+    }
+    const result = await createApiKey(ctx.db, userId, name.trim());
+    return reply.code(201).send(result);
+  });
+
+  // List user's API keys (authenticated, masked)
+  fastify.get('/api-keys', { preHandler }, async (request) => {
+    const { userId } = (request as AuthenticatedRequest).user;
+    return listApiKeys(ctx.db, userId);
+  });
+
+  // Delete an API key (authenticated, ownership checked in repo)
+  fastify.delete<{ Params: { id: string } }>('/api-keys/:id', { preHandler }, async (request, reply) => {
+    const { userId } = (request as AuthenticatedRequest).user;
+    const deleted = await deleteApiKey(ctx.db, request.params.id, userId);
+    if (!deleted) return reply.code(404).send({ error: 'Key 不存在' });
+    return { success: true };
+  });
+
+  // Verify an API key (no auth required — this is how MCP clients authenticate)
+  // Returns user info + a short-lived JWT for Socket.IO connection
+  fastify.post<{ Body: { key: string } }>('/api-keys/verify', async (request, reply) => {
+    const { key } = request.body;
+    if (!key || typeof key !== 'string') {
+      return reply.code(400).send({ error: '缺少 key' });
+    }
+    const user = await verifyApiKey(ctx.db, key);
+    if (!user) return reply.code(401).send({ error: '无效的 API Key' });
+    const token = signToken(
+      {
+        userId: user.userId,
+        username: user.username,
+        nickname: user.nickname,
+        avatarUrl: user.avatarUrl,
+        role: user.role as UserRole,
+      },
+      ctx.config.jwtSecret,
+      '1h',
+    );
+    return { ...user, token };
+  });
+}
