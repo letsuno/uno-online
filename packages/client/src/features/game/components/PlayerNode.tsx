@@ -1,7 +1,8 @@
 import { memo, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Trophy } from 'lucide-react';
+import { Bot, Trophy, Mic, MicOff } from 'lucide-react';
 import type { Card as CardType } from '@uno-online/shared';
+import type { PlayerVoicePresence } from '@/shared/voice/gateway-store';
 import Card from './Card';
 import CardBack from './CardBack';
 import CountdownRing from './CountdownRing';
@@ -23,6 +24,7 @@ interface PlayerNodeProps {
   isHost: boolean;
   isSkipped: boolean;
   isSpeaking?: boolean;
+  voiceState?: PlayerVoicePresence;
   position: { x: number; y: number };
   turnEndTime?: number | null;
   turnTimeLimit?: number;
@@ -42,6 +44,7 @@ function PlayerNode({
   isHost,
   isSkipped,
   isSpeaking = false,
+  voiceState,
   position,
   turnEndTime,
   turnTimeLimit,
@@ -218,6 +221,20 @@ function PlayerNode({
           )}
         </AnimatePresence>
 
+        {/* Voice indicator */}
+        {voiceState?.inVoice && (
+          <div
+            className={cn(
+              'absolute -bottom-0.5 -left-0.5 w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-background',
+              isSpeaking ? 'bg-green-500' : voiceState.micEnabled ? 'bg-slate-600' : 'bg-red-500/80',
+            )}
+          >
+            {voiceState.micEnabled
+              ? <Mic size={10} className="text-white" />
+              : <MicOff size={10} className="text-white" />}
+          </div>
+        )}
+
         {/* Autopilot / Disconnected indicator */}
         {player.autopilot ? (
           <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center border-2 border-background">
@@ -337,6 +354,8 @@ export default memo(PlayerNode, (prev, next) => {
     prev.isHost === next.isHost &&
     prev.isSkipped === next.isSkipped &&
     prev.isSpeaking === next.isSpeaking &&
+    prev.voiceState?.inVoice === next.voiceState?.inVoice &&
+    prev.voiceState?.micEnabled === next.voiceState?.micEnabled &&
     prev.position.x === next.position.x &&
     prev.position.y === next.position.y &&
     prev.turnEndTime === next.turnEndTime &&

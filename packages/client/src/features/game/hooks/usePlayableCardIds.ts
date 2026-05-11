@@ -3,6 +3,7 @@ import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from './useEffectiveUserId';
 import { useIsMyTurn } from './useIsMyTurn';
 import { getPlayableCardIds, getJumpInCardIds } from '@/shared/utils/playable-cards';
+import { canRespondToDrawStack } from '@uno-online/shared';
 
 export function usePlayableCardIds(): Set<string> {
   const userId = useEffectiveUserId();
@@ -11,11 +12,21 @@ export function usePlayableCardIds(): Set<string> {
   const currentColor = useGameStore((s) => s.currentColor);
   const drawStack = useGameStore((s) => s.drawStack);
   const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
+  const pendingDrawPlayerId = useGameStore((s) => s.pendingDrawPlayerId);
   const settings = useGameStore((s) => s.settings);
   const phase = useGameStore((s) => s.phase);
   const isMyTurn = useIsMyTurn();
 
   return useMemo(() => {
+    if (phase === 'challenging' && pendingDrawPlayerId === userId && topCard) {
+      const hr = settings?.houseRules;
+      const canStack = hr?.stackDrawFour || hr?.crossStack;
+      if (canStack) {
+        const ids = (myHand ?? []).filter(c => canRespondToDrawStack(c, topCard, hr)).map(c => c.id);
+        return new Set(ids);
+      }
+      return new Set<string>();
+    }
     if (phase !== 'playing') return new Set<string>();
     if (!isMyTurn) {
       if (!settings?.houseRules?.jumpIn) return new Set<string>();

@@ -17,6 +17,40 @@ export const stacking: HouseRulePlugin = {
       return { handled: true, state };
     }
 
+    // Case (0): PLAY_CARD during challenging phase — stack instead of challenge/accept
+    if (action.type === 'PLAY_CARD' && state.phase === 'challenging' && state.pendingDrawPlayerId) {
+      if (action.playerId !== state.pendingDrawPlayerId) return { handled: false };
+      const playerIdx = state.players.findIndex(p => p.id === action.playerId);
+      if (playerIdx === -1) return { handled: true, state };
+      const player = state.players[playerIdx]!;
+      const card = player.hand.find(c => c.id === action.cardId);
+      if (!card) return { handled: true, state };
+      const canStack =
+        (hr.stackDrawFour && card.type === 'wild_draw_four') ||
+        (hr.crossStack && (card.type === 'draw_two' || card.type === 'wild_draw_four'));
+      if (!canStack) return { handled: false };
+
+      if (card.type === 'wild_draw_four' && !action.chosenColor) {
+        return {
+          handled: true,
+          state: {
+            ...state,
+            phase: 'choosing_color',
+            currentPlayerIndex: playerIdx,
+          },
+        };
+      }
+
+      const baseState: GameState = {
+        ...state,
+        phase: 'playing',
+        pendingDrawPlayerId: null,
+        drawStack: 4,
+        currentPlayerIndex: playerIdx,
+      };
+      return { handled: true, state: ctx.putAttackCardOnStack(baseState, action, card, ctx.getCardDrawPenalty(card)) };
+    }
+
     // Case (a): PLAY_CARD when drawStack > 0 — try to stack
     if (action.type === 'PLAY_CARD' && state.drawStack > 0) {
       const player = state.players[state.currentPlayerIndex];
