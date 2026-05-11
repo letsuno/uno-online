@@ -59,6 +59,17 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
 
   if (state.phase === 'challenging') {
     if (state.pendingDrawPlayerId === playerId) {
+      const topCard = state.discardPile[state.discardPile.length - 1];
+      if (topCard && (hr.stackDrawFour || hr.crossStack)) {
+        const stackable = player.hand.find(c =>
+          (hr.stackDrawFour && c.type === 'wild_draw_four') ||
+          (hr.crossStack && (c.type === 'draw_two' || c.type === 'wild_draw_four')),
+        );
+        if (stackable) {
+          const chosenColor = stackable.type === 'wild_draw_four' ? bestColor(player.hand) : undefined;
+          return [{ type: 'PLAY_CARD', playerId, cardId: stackable.id, ...(chosenColor ? { chosenColor } : {}) }];
+        }
+      }
       return [{ type: 'ACCEPT', playerId }];
     }
     return [];
