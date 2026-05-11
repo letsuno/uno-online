@@ -32,6 +32,7 @@ import AntiCheatToast from '../components/AntiCheatToast';
 import CheatOverlay from '../components/CheatOverlay';
 import { useSpectatorStore } from '../stores/spectator-store';
 import GameStartRulesModal from '../components/GameStartRulesModal';
+import ColorWave from '../components/ColorWave';
 
 export default function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -237,6 +238,7 @@ export default function GamePage() {
         onClose={() => setShowStartRules(false)}
       />
       <GameEffects />
+      <ColorWave />
       {antiCheatKey && <AntiCheatToast key={antiCheatKey} />}
       {(phase === 'round_end' || phase === 'game_over') && <Confetti />}
       {needsColorPick && <ColorPicker onPick={chooseColor} />}
