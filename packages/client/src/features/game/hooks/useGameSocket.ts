@@ -44,9 +44,12 @@ export function useGameSocket(roomCode: string | undefined) {
     socket.on('chat:message', addChatMessage);
     socket.on('chat:cleared', clearChatMessages);
 
-    const onSpectatorList = (data: { spectators: string[] }) => setSpectators(data.spectators);
-    const onSpectatorJoined = (data: { spectators: string[] }) => setSpectators(data.spectators);
-    const onSpectatorLeft = (data: { spectators: string[] }) => setSpectators(data.spectators);
+    const onSpectatorList = (data: { spectators?: string[] }) => { if (data.spectators) setSpectators(data.spectators); };
+    const onSpectatorJoined = (data: { spectators?: string[] }) => { if (data.spectators) setSpectators(data.spectators); };
+    const onSpectatorLeft = (data: { spectators?: string[]; nickname?: string }) => {
+      if (data.spectators) setSpectators(data.spectators);
+      else if (data.nickname) useSpectatorStore.getState().removeSpectator(data.nickname);
+    };
     socket.on('room:spectator_list', onSpectatorList);
     socket.on('room:spectator_joined', onSpectatorJoined);
     socket.on('room:spectator_left', onSpectatorLeft);
