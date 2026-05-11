@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { UnoSocketClient } from './socket-client.js';
 import { verifyApiKey } from './auth.js';
 import { registerRoomTools } from './tools/room.js';
+import { registerGameTools } from './tools/game.js';
 import type { McpConfig, UserIdentity } from './types.js';
 
 export class McpUnoServer {
@@ -43,7 +44,7 @@ export class McpUnoServer {
 
   private registerTools(): void {
     registerRoomTools(this);
-    // registerGameTools(this);  — Task 8
+    registerGameTools(this);
     // registerQueryTools(this); — Task 9
   }
 }
