@@ -198,9 +198,7 @@ docker push djkcyl/uno-online-caddy:latest
 1. **生成 API Key** — 在个人资料页的「API Keys」区域创建
 2. **配置 MCP 客户端**（以下任选一种方式）
 
-### 方式一：从 git 仓库使用（推荐）
-
-如果已经 clone 了项目：
+### 方式一：通过 npm 安装（推荐）
 
 ```json
 {
@@ -208,8 +206,7 @@ docker push djkcyl/uno-online-caddy:latest
     "uno": {
       "command": "npx",
       "args": [
-        "tsx",
-        "/path/to/uno-online/packages/mcp/src/index.ts",
+        "-y", "@uno-online/mcp",
         "--api-key", "uno_ak_你的key",
         "--server", "https://你的服务器地址"
       ]
@@ -218,14 +215,12 @@ docker push djkcyl/uno-online-caddy:latest
 }
 ```
 
-### 方式二：先 clone 再引用（无需提前 clone）
+### 方式二：从 git 仓库使用（开发用）
 
 ```bash
 git clone https://github.com/letsuno/uno-online.git ~/uno-online
 cd ~/uno-online && pnpm install
 ```
-
-然后配置 MCP 客户端：
 
 ```json
 {
@@ -248,7 +243,7 @@ cd ~/uno-online && pnpm install
 ```bash
 export UNO_API_KEY=uno_ak_你的key
 export UNO_SERVER_URL=https://你的服务器地址
-npx tsx /path/to/uno-online/packages/mcp/src/index.ts
+npx -y @uno-online/mcp
 ```
 
 ### 可用工具（23 个）

@@ -204,9 +204,7 @@ The game exposes an [MCP (Model Context Protocol)](https://modelcontextprotocol.
 1. **Generate an API Key** — go to your profile page and create an API Key in the "API Keys" section
 2. **Configure your MCP client** with one of the methods below
 
-### Option A: From git clone (recommended)
-
-If you've already cloned the repo:
+### Option A: Via npm (recommended)
 
 ```json
 {
@@ -214,8 +212,7 @@ If you've already cloned the repo:
     "uno": {
       "command": "npx",
       "args": [
-        "tsx",
-        "/path/to/uno-online/packages/mcp/src/index.ts",
+        "-y", "@uno-online/mcp",
         "--api-key", "uno_ak_your_key_here",
         "--server", "https://your-server.com"
       ]
@@ -224,22 +221,12 @@ If you've already cloned the repo:
 }
 ```
 
-### Option B: Via npx + git (no clone needed)
-
-```bash
-npx -y tsx "$(git clone --depth 1 https://github.com/letsuno/uno-online.git /tmp/uno-online 2>/dev/null; echo /tmp/uno-online/packages/mcp/src/index.ts)" \
-  --api-key uno_ak_your_key_here \
-  --server https://your-server.com
-```
-
-Or clone once and reference:
+### Option B: From git clone (for development)
 
 ```bash
 git clone https://github.com/letsuno/uno-online.git ~/uno-online
 cd ~/uno-online && pnpm install
 ```
-
-Then configure your MCP client:
 
 ```json
 {
@@ -262,7 +249,7 @@ Then configure your MCP client:
 ```bash
 export UNO_API_KEY=uno_ak_your_key_here
 export UNO_SERVER_URL=https://your-server.com
-npx tsx /path/to/uno-online/packages/mcp/src/index.ts
+npx -y @uno-online/mcp
 ```
 
 ### Available Tools (23)

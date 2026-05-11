@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { parseArgs } from 'node:util';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { McpUnoServer } from './server.js';
