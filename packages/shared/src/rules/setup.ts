@@ -125,7 +125,7 @@ function applyFirstDiscardEffect(
 }
 
 export function initializeGame(
-  playerData: readonly { id: string; name: string; avatarUrl?: string | null; role?: UserRole }[],
+  playerData: readonly { id: string; name: string; avatarUrl?: string | null; role?: UserRole; isBot?: boolean }[],
   houseRules?: HouseRules,
 ): GameState {
   const deck = shuffleDeck(createDeck());
@@ -149,6 +149,7 @@ export function initializeGame(
     teamId: (houseRules?.teamMode && playerData.length % 2 === 0) ? (i % 2) : undefined,
     avatarUrl: p.avatarUrl ?? null,
     role: p.role,
+    isBot: p.isBot,
   }));
 
   const currentColor: Color | null = isColoredCard(topCard) ? topCard.color : null;

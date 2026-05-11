@@ -7,6 +7,7 @@ export interface TokenPayload {
   nickname: string;
   avatarUrl?: string | null;
   role: UserRole;
+  isBot?: boolean;
 }
 
 export function signToken(payload: TokenPayload, secret: string, expiresIn = '7d'): string {

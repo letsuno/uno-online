@@ -78,13 +78,13 @@ export function getSocket(): TypedSocket {
 
     socket.on('player:disconnected', (data) => {
       const player = useGameStore.getState().players.find(p => p.id === data.playerId);
-      if (player) useToastStore.getState().addToast(`${player.name} 掉线了`, 'info');
+      if (player) useToastStore.getState().addToast(`${player.name}${player.isBot ? ' (AI)' : ''} 掉线了`, 'info');
       playSound('player_leave');
     });
 
     socket.on('player:reconnected', (data) => {
       const player = useGameStore.getState().players.find(p => p.id === data.playerId);
-      if (player) useToastStore.getState().addToast(`${player.name} 重新连接`, 'success');
+      if (player) useToastStore.getState().addToast(`${player.name}${player.isBot ? ' (AI)' : ''} 重新连接`, 'success');
       playSound('player_join');
     });
 
@@ -92,7 +92,7 @@ export function getSocket(): TypedSocket {
       const player = useGameStore.getState().players.find(p => p.id === data.playerId);
       if (player) {
         useToastStore.getState().addToast(
-          data.enabled ? `${player.name} 进入托管模式` : `${player.name} 退出托管模式`,
+          data.enabled ? `${player.name}${player.isBot ? ' (AI)' : ''} 进入托管模式` : `${player.name}${player.isBot ? ' (AI)' : ''} 退出托管模式`,
           'info',
         );
       }

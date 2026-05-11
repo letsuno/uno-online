@@ -33,7 +33,7 @@ export class GameSession {
     return createHash('sha256').update(serialized).digest('hex');
   }
 
-  static create(players: { id: string; name: string; avatarUrl?: string | null; role?: UserRole }[], settings?: RoomSettings): GameSession {
+  static create(players: { id: string; name: string; avatarUrl?: string | null; role?: UserRole; isBot?: boolean }[], settings?: RoomSettings): GameSession {
     const state = initializeGame(players, settings?.houseRules);
     const deckHash = GameSession.computeDeckHash(state);
     const stateWithExtras = {
@@ -81,6 +81,7 @@ export class GameSession {
           teamId: p.teamId,
           avatarUrl: p.avatarUrl,
           role: p.role,
+          isBot: p.isBot,
         };
       }),
       currentPlayerIndex: this.state.currentPlayerIndex,
@@ -189,7 +190,7 @@ export class GameSession {
   }
 
   resetForRematch(): void {
-    const players = this.state.players.map(p => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl, role: p.role }));
+    const players = this.state.players.map(p => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl, role: p.role, isBot: p.isBot }));
     const settings = this.state.settings;
     const fresh = initializeGame(players, settings.houseRules);
     const deckHash = GameSession.computeDeckHash(fresh);
