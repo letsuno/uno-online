@@ -1,6 +1,7 @@
 import type { HouseRulePlugin } from '../house-rule-types';
 import type { GameState, GameAction } from '../../types/game';
 import type { RuleContext, PreCheckResult } from '../house-rule-types';
+import { checkRoundEnd } from '../game-engine';
 
 export const deflection: HouseRulePlugin = {
   meta: {
@@ -32,7 +33,7 @@ export const deflection: HouseRulePlugin = {
       const nextIdx = ctx.getNextPlayerIndex(state.currentPlayerIndex, players.length, newDirection);
       return {
         handled: true,
-        state: {
+        state: checkRoundEnd({
           ...state,
           players,
           discardPile: [...state.discardPile, card],
@@ -40,7 +41,7 @@ export const deflection: HouseRulePlugin = {
           direction: newDirection,
           currentPlayerIndex: nextIdx,
           lastAction: action,
-        },
+        }, action.playerId),
       };
     }
 
@@ -52,14 +53,14 @@ export const deflection: HouseRulePlugin = {
       const nextIdx = ctx.getNextPlayerIndex(state.currentPlayerIndex, players.length, state.direction);
       return {
         handled: true,
-        state: {
+        state: checkRoundEnd({
           ...state,
           players,
           discardPile: [...state.discardPile, card],
           currentColor: card.color ?? state.currentColor,
           currentPlayerIndex: nextIdx,
           lastAction: action,
-        },
+        }, action.playerId),
       };
     }
 
