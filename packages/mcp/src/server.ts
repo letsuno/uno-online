@@ -4,6 +4,7 @@ import { verifyApiKey } from './auth.js';
 import { registerRoomTools } from './tools/room.js';
 import { registerGameTools } from './tools/game.js';
 import { registerQueryTools } from './tools/query.js';
+import { setupNotifications } from './notifications.js';
 import type { McpConfig, UserIdentity } from './types.js';
 
 export class McpUnoServer {
@@ -14,7 +15,10 @@ export class McpUnoServer {
 
   constructor(config: McpConfig) {
     this.config = config;
-    this.mcp = new McpServer({ name: 'UNO Online', version: '0.1.0' });
+    this.mcp = new McpServer(
+      { name: 'UNO Online', version: '0.1.0' },
+      { capabilities: { logging: {} } },
+    );
     this.registerTools();
   }
 
@@ -36,6 +40,7 @@ export class McpUnoServer {
   async initialize(): Promise<void> {
     this.user = await verifyApiKey(this.config.serverUrl, this.config.apiKey);
     this.socketClient = new UnoSocketClient(this.config.serverUrl, this.user.token);
+    setupNotifications(this.socketClient, this.mcp.server, this.user.userId);
     await this.socketClient.connect();
   }
 
