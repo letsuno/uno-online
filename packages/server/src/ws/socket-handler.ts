@@ -327,5 +327,5 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
 
   setupSpectateHandlers(io, redis, sessions);
 
-  return { roomManager, turnTimer, sessions };
+  return { roomManager, turnTimer, sessions, persister };
 }

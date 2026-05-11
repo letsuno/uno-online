@@ -38,7 +38,9 @@ export default function RoomsPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dissolvingCode, setDissolvingCode] = useState<string | null>(null);
+  const [cheatingCode, setCheatingCode] = useState<string | null>(null);
   const [confirmCode, setConfirmCode] = useState<string | null>(null);
+  const [confirmCheatCode, setConfirmCheatCode] = useState<string | null>(null);
 
   const fetchRooms = useCallback(async () => {
     try {
@@ -66,6 +68,19 @@ export default function RoomsPage() {
       setError(err instanceof Error ? err.message : 'Failed to dissolve room');
     } finally {
       setDissolvingCode(null);
+    }
+  };
+
+  const handleCheat = async (code: string) => {
+    setConfirmCheatCode(null);
+    setCheatingCode(code);
+    try {
+      await apiFetch(`/admin/rooms/${code}/cheat`, { method: 'POST' });
+      await fetchRooms();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to trigger cheat');
+    } finally {
+      setCheatingCode(null);
     }
   };
 
@@ -116,7 +131,17 @@ export default function RoomsPage() {
                 <TableCell className="text-slate-400">
                   {new Date(room.createdAt).toLocaleString()}
                 </TableCell>
-                <TableCell>
+                <TableCell className="space-x-2">
+                  {room.status === 'playing' && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setConfirmCheatCode(room.code)}
+                      disabled={cheatingCode === room.code}
+                    >
+                      {cheatingCode === room.code ? 'Sending...' : 'Cheat'}
+                    </Button>
+                  )}
                   <Button
                     variant="destructive"
                     size="sm"
@@ -156,6 +181,28 @@ export default function RoomsPage() {
               onClick={() => confirmCode && handleDissolve(confirmCode)}
             >
               Dissolve
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmCheatCode !== null} onOpenChange={(open) => !open && setConfirmCheatCode(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Trigger Cheat Detection</DialogTitle>
+            <DialogDescription>
+              This will show a &quot;cheater detected&quot; screen to ALL players in room {confirmCheatCode} and dissolve the game. Are you sure?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmCheatCode(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => confirmCheatCode && handleCheat(confirmCheatCode)}
+            >
+              Confirm Cheat
             </Button>
           </DialogFooter>
         </DialogContent>

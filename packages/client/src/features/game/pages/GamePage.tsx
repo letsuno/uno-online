@@ -28,6 +28,8 @@ import MobileFAB from '../components/MobileFAB';
 import InfoDrawer from '../components/InfoDrawer';
 import PlayerListPanel from '../components/PlayerListPanel';
 import DanmakuLayer from '../components/DanmakuLayer';
+import AntiCheatToast from '../components/AntiCheatToast';
+import CheatOverlay from '../components/CheatOverlay';
 import { useSpectatorStore } from '../stores/spectator-store';
 import GameStartRulesModal from '../components/GameStartRulesModal';
 
@@ -41,6 +43,7 @@ export default function GamePage() {
   const clearGame = useGameStore((s) => s.clearGame);
   const clearRoom = useRoomStore((s) => s.clearRoom);
   const clearSpectators = useSpectatorStore((s) => s.clearSpectators);
+  const cheatDetected = useGameStore((s) => s.cheatDetected);
 
   const isMyTurn = useIsMyTurn();
   const playableIds = usePlayableCardIds();
@@ -51,6 +54,8 @@ export default function GamePage() {
   useGameLogTracker();
   const [showStartRules, setShowStartRules] = useState(false);
   const shownStartRulesRef = useRef<string | null>(null);
+  const [antiCheatKey, setAntiCheatKey] = useState<string | null>(null);
+  const shownAntiCheatRef = useRef<string | null>(null);
 
   useEffect(() => {
     refreshVoicePresence();
@@ -66,6 +71,15 @@ export default function GamePage() {
     openInfoDrawer('rules');
     setShowStartRules(true);
   }, [roomCode, settings, roundNumber, phase, openInfoDrawer]);
+
+  useEffect(() => {
+    if (!roomCode || roundNumber !== 1) return;
+    if (phase !== 'playing' && phase !== 'challenging' && phase !== 'choosing_color' && phase !== 'choosing_swap_target') return;
+    const key = `${roomCode}:ac`;
+    if (shownAntiCheatRef.current === key) return;
+    shownAntiCheatRef.current = key;
+    setAntiCheatKey(key);
+  }, [roomCode, roundNumber, phase]);
 
   const {
     playCard,
@@ -223,11 +237,13 @@ export default function GamePage() {
         onClose={() => setShowStartRules(false)}
       />
       <GameEffects />
+      {antiCheatKey && <AntiCheatToast key={antiCheatKey} />}
       {(phase === 'round_end' || phase === 'game_over') && <Confetti />}
       {needsColorPick && <ColorPicker onPick={chooseColor} />}
       {showScoreBoard && (
         <ScoreBoard onPlayAgain={playAgain} onRematch={rematch} onBackToLobby={backToLobby} onKickPlayer={kickPlayer} />
       )}
+      {cheatDetected && <CheatOverlay />}
     </div>
   );
 }

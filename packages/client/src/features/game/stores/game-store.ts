@@ -34,6 +34,8 @@ interface GameState {
   isSpectator: boolean;
   deckHash: string | null;
   nextRoundVote: NextRoundVoteState | null;
+  cheatDetected: boolean;
+  setCheatDetected: (value: boolean) => void;
   setSpectator: (value: boolean) => void;
   infoDrawerOpen: boolean;
   infoDrawerTab: InfoDrawerTab;
@@ -70,6 +72,8 @@ export const useGameStore = create<GameState>((set) => ({
   isSpectator: false,
   deckHash: null,
   nextRoundVote: null,
+  cheatDetected: false,
+  setCheatDetected: (value) => set({ cheatDetected: value }),
   setSpectator: (value) => set({ isSpectator: value }),
   infoDrawerOpen: false,
   infoDrawerTab: 'rules' as InfoDrawerTab,
