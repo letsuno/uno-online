@@ -123,6 +123,26 @@ export function setupNotifications(
         send(server, 'info', { type: 'player_joined', ...(data as Record<string, unknown>) });
         break;
       }
+
+      case 'player:timeout': {
+        send(server, 'warning', { type: 'player_timeout', ...(data as Record<string, unknown>) });
+        break;
+      }
+
+      case 'player:autopilot': {
+        send(server, 'info', { type: 'player_autopilot', ...(data as Record<string, unknown>) });
+        break;
+      }
+
+      case 'game:kicked': {
+        send(server, 'warning', { type: 'game_kicked', ...(data as Record<string, unknown>) });
+        break;
+      }
+
+      case 'auth:kicked': {
+        send(server, 'warning', { type: 'auth_kicked', ...(data as Record<string, unknown>) });
+        break;
+      }
     }
   });
 }

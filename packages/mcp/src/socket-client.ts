@@ -77,10 +77,16 @@ export class UnoSocketClient {
   }
 
   disconnect(): void {
-    this._currentRoomCode = null;
-    this._hasReceivedInitialState = false;
+    this.resetRoomState();
     this.socket?.disconnect();
     this.socket = null;
+  }
+
+  private resetRoomState(): void {
+    this._currentRoomCode = null;
+    this._gameState = null;
+    this._roomInfo = null;
+    this._hasReceivedInitialState = false;
   }
 
   // Room operations
@@ -98,10 +104,7 @@ export class UnoSocketClient {
 
   async leaveRoom(): Promise<Record<string, unknown>> {
     const result = await this.request('room:leave');
-    this._currentRoomCode = null;
-    this._gameState = null;
-    this._roomInfo = null;
-    this._hasReceivedInitialState = false;
+    this.resetRoomState();
     return result;
   }
 
@@ -119,10 +122,7 @@ export class UnoSocketClient {
 
   async dissolveRoom(): Promise<Record<string, unknown>> {
     const result = await this.request('room:dissolve');
-    this._currentRoomCode = null;
-    this._gameState = null;
-    this._roomInfo = null;
-    this._hasReceivedInitialState = false;
+    this.resetRoomState();
     return result;
   }
 
@@ -194,10 +194,16 @@ export class UnoSocketClient {
   private registerEventListeners(): void {
     if (!this.socket) return;
 
-    // Reconnection: rejoin room if we were in one
     this.socket.io.on('reconnect', () => {
       if (this._currentRoomCode) {
-        (this.socket as Socket).emit('room:rejoin', this._currentRoomCode, () => {});
+        (this.socket as Socket).emit('room:rejoin', this._currentRoomCode, (res: Record<string, unknown>) => {
+          if (res && !res.success) {
+            this._currentRoomCode = null;
+            this._gameState = null;
+            this._roomInfo = null;
+            this._hasReceivedInitialState = false;
+          }
+        });
       }
     });
 
@@ -213,22 +219,42 @@ export class UnoSocketClient {
       this.emit('game:update', view);
     });
 
+    this.socket.on('game:round_end', (data) => {
+      this._hasReceivedInitialState = false;
+      this.emit('game:round_end', data);
+    });
+
+    this.socket.on('game:over', (data) => {
+      this._hasReceivedInitialState = false;
+      this.emit('game:over', data);
+    });
+
     this.socket.on('room:updated', (data) => {
       this._roomInfo = data;
       this.emit('room:updated', data);
     });
 
     this.socket.on('room:dissolved', (data) => {
-      this._currentRoomCode = null;
-      this._gameState = null;
-      this._roomInfo = null;
-      this._hasReceivedInitialState = false;
+      this.resetRoomState();
       this.emit('room:dissolved', data);
+    });
+
+    this.socket.on('game:kicked', (data) => {
+      this.resetRoomState();
+      this.emit('game:kicked', data);
+    });
+
+    this.socket.on('auth:kicked', (data) => {
+      this.resetRoomState();
+      this.emit('auth:kicked', data);
+    });
+
+    this.socket.on('player:timeout', (data) => {
+      this.emit('player:timeout', data);
     });
 
     const forwardEvents: (keyof ServerToClientEvents)[] = [
       'game:card_drawn', 'game:action_rejected', 'game:next_round_vote',
-      'game:over', 'game:round_end', 'game:kicked',
       'player:disconnected', 'player:reconnected', 'player:autopilot',
     ];
     for (const event of forwardEvents) {
