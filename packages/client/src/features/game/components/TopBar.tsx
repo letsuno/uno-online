@@ -12,6 +12,12 @@ import { BUILD_VERSION } from '@/shared/build-info';
 
 const AUTOPILOT_COOLDOWN_MS = 3000;
 
+const PHASE_LABEL: Record<string, string> = {
+  choosing_color: '选色中…',
+  challenging: '质疑中…',
+  choosing_swap_target: '选交换…',
+};
+
 const COLOR_HEX: Record<Color, string> = {
   red: 'var(--color-uno-red)',
   blue: 'var(--color-uno-blue)',
@@ -63,19 +69,9 @@ function GameStatus() {
           叠加 +{drawStack}
         </span>
       )}
-      {phase === 'choosing_color' && (
+      {phase && PHASE_LABEL[phase] && (
         <span className="rounded-full bg-white/10 text-muted-foreground px-2 py-1 font-game">
-          选色中…
-        </span>
-      )}
-      {phase === 'challenging' && (
-        <span className="rounded-full bg-white/10 text-muted-foreground px-2 py-1 font-game">
-          质疑中…
-        </span>
-      )}
-      {phase === 'choosing_swap_target' && (
-        <span className="rounded-full bg-white/10 text-muted-foreground px-2 py-1 font-game">
-          选交换…
+          {PHASE_LABEL[phase]}
         </span>
       )}
     </div>

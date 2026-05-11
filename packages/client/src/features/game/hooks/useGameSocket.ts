@@ -44,22 +44,21 @@ export function useGameSocket(roomCode: string | undefined) {
     socket.on('chat:message', addChatMessage);
     socket.on('chat:cleared', clearChatMessages);
 
-    const onSpectatorList = (data: { spectators?: string[] }) => { if (data.spectators) setSpectators(data.spectators); };
-    const onSpectatorJoined = (data: { spectators?: string[] }) => { if (data.spectators) setSpectators(data.spectators); };
+    const onSpectatorUpdate = (data: { spectators?: string[] }) => { if (data.spectators) setSpectators(data.spectators); };
     const onSpectatorLeft = (data: { spectators?: string[]; nickname?: string }) => {
       if (data.spectators) setSpectators(data.spectators);
       else if (data.nickname) useSpectatorStore.getState().removeSpectator(data.nickname);
     };
-    socket.on('room:spectator_list', onSpectatorList);
-    socket.on('room:spectator_joined', onSpectatorJoined);
+    socket.on('room:spectator_list', onSpectatorUpdate);
+    socket.on('room:spectator_joined', onSpectatorUpdate);
     socket.on('room:spectator_left', onSpectatorLeft);
 
     return () => {
       socket.off('chat:history', setChatHistory);
       socket.off('chat:message', addChatMessage);
       socket.off('chat:cleared', clearChatMessages);
-      socket.off('room:spectator_list', onSpectatorList);
-      socket.off('room:spectator_joined', onSpectatorJoined);
+      socket.off('room:spectator_list', onSpectatorUpdate);
+      socket.off('room:spectator_joined', onSpectatorUpdate);
       socket.off('room:spectator_left', onSpectatorLeft);
     };
   }, [setChatHistory, addChatMessage, clearChatMessages, setSpectators]);

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Color } from '@uno-online/shared';
+import { UNO_COLOR_HEX } from '../constants/colors';
 
 const COLORS: { color: Color; bgClass: string; label: string }[] = [
   { color: 'red', bgClass: 'bg-uno-red', label: '红' },
@@ -8,10 +9,6 @@ const COLORS: { color: Color; bgClass: string; label: string }[] = [
   { color: 'green', bgClass: 'bg-uno-green', label: '绿' },
   { color: 'yellow', bgClass: 'bg-uno-yellow', label: '黄' },
 ];
-
-const BG_MAP: Record<Color, string> = {
-  red: '#ff3366', blue: '#4488ff', green: '#33cc66', yellow: '#fbbf24',
-};
 
 interface ColorPickerProps { onPick: (color: Color) => void; }
 
@@ -33,7 +30,7 @@ export default function ColorPicker({ onPick }: ColorPickerProps) {
             animate={{ scale: 30, opacity: 0 }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
             className="absolute w-color-burst h-color-burst rounded-full pointer-events-none"
-            style={{ background: BG_MAP[picked] }}
+            style={{ background: UNO_COLOR_HEX[picked] }}
           />
         )}
       </AnimatePresence>
