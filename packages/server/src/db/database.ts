@@ -54,6 +54,7 @@ interface ApiKeyTable {
   id: Generated<string>;
   userId: string;
   key: string;
+  keyPreview: string;
   name: string;
   createdAt: Generated<string>;
   lastUsedAt: string | null;
@@ -230,8 +231,9 @@ export async function migrateDb(): Promise<void> {
     .createTable('api_keys')
     .ifNotExists()
     .addColumn('id', 'text', (c) => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
-    .addColumn('user_id', 'text', (c) => c.notNull())
+    .addColumn('user_id', 'text', (c) => c.references('users.id').notNull())
     .addColumn('key', 'text', (c) => c.unique().notNull())
+    .addColumn('key_preview', 'text', (c) => c.notNull().defaultTo(''))
     .addColumn('name', 'text', (c) => c.notNull())
     .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
     .addColumn('last_used_at', 'text')
@@ -242,12 +244,5 @@ export async function migrateDb(): Promise<void> {
     .ifNotExists()
     .on('api_keys')
     .column('user_id')
-    .execute();
-
-  await k.schema
-    .createIndex('idx_api_keys_key')
-    .ifNotExists()
-    .on('api_keys')
-    .column('key')
     .execute();
 }

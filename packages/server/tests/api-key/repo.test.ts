@@ -42,6 +42,7 @@ beforeAll(async () => {
     .addColumn('id', 'text', (c) => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
     .addColumn('user_id', 'text', (c) => c.notNull())
     .addColumn('key', 'text', (c) => c.unique().notNull())
+    .addColumn('key_preview', 'text', (c) => c.notNull().defaultTo(''))
     .addColumn('name', 'text', (c) => c.notNull())
     .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
     .addColumn('last_used_at', 'text')
@@ -97,5 +98,20 @@ describe('ApiKey repo', () => {
     const created = await createApiKey(db, 'user-1', 'NotYours');
     const deleted = await deleteApiKey(db, created.id, 'user-999');
     expect(deleted).toBe(false);
+  });
+
+  it('stores hashed key, not plaintext', async () => {
+    const created = await createApiKey(db, 'user-2', 'HashCheck');
+    const rows = await db.selectFrom('apiKeys').select('key').where('id', '=', created.id).execute();
+    expect(rows[0]!.key).not.toContain('uno_ak_');
+    expect(rows[0]!.key).toHaveLength(64);
+  });
+
+  it('enforces max keys per user', async () => {
+    await db.insertInto('users').values({ id: 'user-max', username: 'max', nickname: 'Max', role: 'normal' }).execute();
+    for (let i = 0; i < 10; i++) {
+      await createApiKey(db, 'user-max', `key-${i}`);
+    }
+    await expect(createApiKey(db, 'user-max', 'overflow')).rejects.toThrow('最多创建');
   });
 });

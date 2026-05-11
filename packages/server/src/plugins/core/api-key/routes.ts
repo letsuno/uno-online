@@ -16,8 +16,15 @@ export function registerApiKeyRoutes(fastify: FastifyInstance, ctx: PluginContex
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return reply.code(400).send({ error: '请输入名称' });
     }
-    const result = await createApiKey(ctx.db, userId, name.trim());
-    return reply.code(201).send(result);
+    if (name.trim().length > 50) {
+      return reply.code(400).send({ error: '名称最长 50 个字符' });
+    }
+    try {
+      const result = await createApiKey(ctx.db, userId, name.trim());
+      return reply.code(201).send(result);
+    } catch (err) {
+      return reply.code(400).send({ error: (err as Error).message });
+    }
   });
 
   // List user's API keys (authenticated, masked)
