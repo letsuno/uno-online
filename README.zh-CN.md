@@ -27,6 +27,7 @@
 - **观战模式** — 实时观看游戏，支持隐藏/可见手牌视角
 - **游戏回放** — 查看历史对局记录
 - **GitHub OAuth** + 密码登录
+- **MCP 支持** — AI 客户端（Claude Code、Cursor 等）可通过 MCP 协议操控游戏
 
 ## 技术栈
 
@@ -52,7 +53,8 @@ uno-online/
 │   ├── shared/          # 规则引擎、类型定义、常量（纯逻辑，无 I/O）
 │   ├── server/          # Fastify + Socket.IO + SQLite
 │   ├── client/          # React SPA (Vite + Tailwind CSS v4)
-│   └── admin/           # 管理后台 (React + Vite)
+│   ├── admin/           # 管理后台 (React + Vite)
+│   └── mcp/             # MCP 服务端 — 让 AI 客户端通过工具玩游戏
 ├── Dockerfile
 ├── docker-compose.yml
 ├── Caddyfile
@@ -174,6 +176,10 @@ docker push djkcyl/uno-online-caddy:latest
 | `GET` | `/api/games` | 是 | 游戏记录列表 |
 | `GET` | `/api/games/:id` | 是 | 游戏记录详情 |
 | `GET` | `/api/games/:id/verify` | 是 | 验证游戏牌组完整性 |
+| `POST` | `/api/api-keys` | 是 | 创建 API Key |
+| `GET` | `/api/api-keys` | 是 | 列出用户的 API Key（脱敏） |
+| `DELETE` | `/api/api-keys/:id` | 是 | 删除 API Key |
+| `POST` | `/api/api-keys/verify` | 否 | 验证 API Key，返回用户信息 |
 | `GET` | `/api/admin/dashboard` | 管理员 | 管理后台统计 |
 | `GET` | `/api/admin/users` | 管理员 | 分页用户列表 |
 | `PATCH` | `/api/admin/users/:id/role` | 管理员 | 修改用户角色 |
@@ -182,6 +188,78 @@ docker push djkcyl/uno-online-caddy:latest
 | `DELETE` | `/api/admin/rooms/:code` | 管理员 | 强制解散房间 |
 | `GET` | `/api/admin/games` | 管理员 | 分页游戏记录 |
 | `GET` | `/api/admin/games/:id` | 管理员 | 游戏记录详情 |
+
+## MCP（AI 玩游戏）
+
+本项目提供 [MCP (Model Context Protocol)](https://modelcontextprotocol.io) 服务端，让 AI 客户端通过工具调用来玩 UNO。
+
+### 配置步骤
+
+1. **生成 API Key** — 在个人资料页的「API Keys」区域创建
+2. **配置 MCP 客户端**（以下任选一种方式）
+
+### 方式一：从 git 仓库使用（推荐）
+
+如果已经 clone 了项目：
+
+```json
+{
+  "mcpServers": {
+    "uno": {
+      "command": "npx",
+      "args": [
+        "tsx",
+        "/path/to/uno-online/packages/mcp/src/index.ts",
+        "--api-key", "uno_ak_你的key",
+        "--server", "https://你的服务器地址"
+      ]
+    }
+  }
+}
+```
+
+### 方式二：先 clone 再引用（无需提前 clone）
+
+```bash
+git clone https://github.com/letsuno/uno-online.git ~/uno-online
+cd ~/uno-online && pnpm install
+```
+
+然后配置 MCP 客户端：
+
+```json
+{
+  "mcpServers": {
+    "uno": {
+      "command": "npx",
+      "args": [
+        "tsx",
+        "~/uno-online/packages/mcp/src/index.ts",
+        "--api-key", "uno_ak_你的key",
+        "--server", "https://你的服务器地址"
+      ]
+    }
+  }
+}
+```
+
+### 方式三：环境变量
+
+```bash
+export UNO_API_KEY=uno_ak_你的key
+export UNO_SERVER_URL=https://你的服务器地址
+npx tsx /path/to/uno-online/packages/mcp/src/index.ts
+```
+
+### 可用工具（23 个）
+
+| 分类 | 工具 |
+|------|------|
+| 房间管理（8） | `create_room`, `join_room`, `leave_room`, `ready`, `start_game`, `update_room_settings`, `dissolve_room`, `kick_player` |
+| 游戏操作（11） | `play_card`, `draw_card`, `pass`, `call_uno`, `catch_uno`, `challenge`, `accept`, `choose_color`, `choose_swap_target`, `vote_next_round`, `rematch` |
+| 查询（4） | `get_game_state`, `get_hand`, `get_room_info`, `get_rules` |
+
+MCP 服务端还会通过日志通道实时推送通知（轮到你出牌、游戏事件等）。
 
 ## 测试
 

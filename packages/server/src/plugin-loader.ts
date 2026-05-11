@@ -6,6 +6,7 @@ import adminPlugin from './plugins/core/admin/index';
 import serverInfoPlugin from './plugins/core/server-info/index';
 import gameHistoryPlugin from './plugins/core/game-history/index';
 import spectatePlugin from './plugins/core/spectate/index';
+import apiKeyPlugin from './plugins/core/api-key/index';
 
 export async function loadPlugins(fastify: FastifyInstance, ctx: PluginContext): Promise<void> {
   await fastify.register(async (api) => {
@@ -15,6 +16,7 @@ export async function loadPlugins(fastify: FastifyInstance, ctx: PluginContext):
     await api.register(serverInfoPlugin, { ctx });
     await api.register(gameHistoryPlugin, { ctx });
     await api.register(spectatePlugin, { ctx });
+    await api.register(apiKeyPlugin, { ctx });
     api.get('/health', async () => ({ status: 'ok' }));
   }, { prefix: '/api' });
 }

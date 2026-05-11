@@ -1,0 +1,26 @@
+{
+  "name": "@uno-online/mcp",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "uno-mcp": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@uno-online/shared": "workspace:*",
+    "socket.io-client": "^4.8.0",
+    "zod": "^3.25.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

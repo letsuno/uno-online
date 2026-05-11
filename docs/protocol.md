@@ -29,15 +29,26 @@ interface TokenPayload {
 | 前端 (client) | `localStorage.token` | 用户 JWT Token |
 | 管理后台 (admin) | `localStorage.admin_token` | 管理员 JWT Token |
 
+### API Key 认证（MCP 客户端）
+
+- **格式**: `uno_ak_` + 32 字符 base64url 随机串
+- **存储**: 数据库中存 SHA-256 哈希值，明文仅在创建时返回一次
+- **用途**: MCP 客户端使用 API Key 直连 Socket.IO，无需 JWT，永不过期
+- **管理**: 用户在个人资料页创建/删除，每用户最多 10 个
+
 ### Socket.IO 认证
 
-Socket.IO 连接通过 `auth.token` 传递 JWT：
+Socket.IO 连接通过 `auth.token` 传递凭证，支持两种方式：
 
 ```typescript
-io(apiUrl, { auth: { token } })
+// 方式一：JWT Token（Web 客户端）
+io(apiUrl, { auth: { token: jwtToken } })
+
+// 方式二：API Key（MCP 客户端）
+io(apiUrl, { auth: { token: 'uno_ak_...' } })
 ```
 
-服务端中间件 `authenticateSocket` 验证后将 `TokenPayload` 挂载到 `socket.data.user`。
+服务端中间件 `authenticateSocketAsync` 根据前缀自动判断认证方式：`uno_ak_` 前缀走数据库查验，其余走 JWT 解析。验证后将 `TokenPayload` 挂载到 `socket.data.user`。
 
 ---
 
@@ -267,6 +278,43 @@ GitHub OAuth 回调处理。
 {
   rooms: Array<{ code, ownerId, ownerNickname, status, playerCount, maxPlayers, createdAt }>;
 }
+```
+
+### 2.8 API Key 管理
+
+#### POST `/api-keys`
+创建 API Key（需要 JWT）。每用户最多 10 个，名称最长 50 字符。
+
+**请求体**: `{ name: string }`
+
+**响应** (201):
+```typescript
+{ id: string; key: string; name: string; userId: string; createdAt: string }
+```
+
+> `key` 为完整明文，仅在创建时返回一次。数据库中存储 SHA-256 哈希值。
+
+#### GET `/api-keys`
+列出当前用户的 API Key（需要 JWT）。Key 脱敏显示。
+
+**响应**:
+```typescript
+Array<{ id: string; name: string; keyPreview: string; createdAt: string; lastUsedAt: string | null }>
+```
+
+#### DELETE `/api-keys/:id`
+删除 API Key（需要 JWT，仅能删除自己的 Key）。
+
+**响应**: `{ success: true }` 或 404
+
+#### POST `/api-keys/verify`
+验证 API Key（无需认证）。MCP 客户端启动时调用，获取用户身份信息。
+
+**请求体**: `{ key: string }`
+
+**响应**:
+```typescript
+{ userId: string; username: string; nickname: string; avatarUrl: string | null; role: string }
 ```
 
 ---
