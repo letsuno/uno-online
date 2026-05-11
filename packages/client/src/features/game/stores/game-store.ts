@@ -144,6 +144,7 @@ export const useGameStore = create<GameState>((set) => ({
       isSpectator: false,
       deckHash: null,
       nextRoundVote: null,
+      cheatDetected: false,
       infoDrawerOpen: false,
       infoDrawerTab: 'rules' as InfoDrawerTab,
     }),
