@@ -53,6 +53,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
   // Mumble speaking state
   const mumbleUsersById = useGatewayStore((s) => s.usersById);
   const mumbleSpeakingByUserId = useGatewayStore((s) => s.speakingByUserId);
+  const selfSpeaking = useGatewayStore((s) => s.selfSpeaking);
   const voicePresence = useGatewayStore((s) => s.playerVoicePresence);
   const mumbleSpeakingNames = useMemo(() => {
     const names = new Set<string>();
@@ -341,7 +342,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
             isMe={isMe}
             isHost={player.id === ownerId}
             isSkipped={player.id === skippedPlayerId}
-            isSpeaking={mumbleSpeakingNames.has(player.name)}
+            isSpeaking={isMe ? selfSpeaking : mumbleSpeakingNames.has(player.name)}
             voiceState={voicePresence[player.id]}
             position={pos}
             turnEndTime={isActive ? turnEndTime : null}
