@@ -95,6 +95,126 @@ describe('skipDeflect', () => {
   });
 });
 
+describe('stacking last card round end', () => {
+  it('wins immediately when playing last +2 with stacking enabled', () => {
+    const dt = makeCard('draw_two', 'red', { id: 'last_dt' });
+    const state = makeState({
+      currentPlayerIndex: 0,
+      discardPile: [makeCard('number', 'red', { value: 1 })],
+      currentColor: 'red',
+      players: [
+        { id: 'p1', name: 'Alice', hand: [dt], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('draw_two', 'blue', { id: 'bob_dt' }), makeCard('number', 'green', { value: 3 })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, stackDrawTwo: true } },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'last_dt' });
+    expect(next.phase).toBe('round_end');
+    expect(next.winnerId).toBe('p1');
+    expect(next.drawStack).toBe(0);
+  });
+
+  it('wins immediately when playing last +4 with stacking enabled', () => {
+    const wd4 = makeCard('wild_draw_four', null, { id: 'last_wd4' });
+    const state = makeState({
+      currentPlayerIndex: 0,
+      discardPile: [makeCard('number', 'red', { value: 1 })],
+      currentColor: 'red',
+      players: [
+        { id: 'p1', name: 'Alice', hand: [wd4], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 3 }), makeCard('number', 'blue', { value: 5 })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, stackDrawFour: true } },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'last_wd4', chosenColor: 'red' });
+    expect(next.phase).toBe('round_end');
+    expect(next.winnerId).toBe('p1');
+    expect(next.drawStack).toBe(0);
+  });
+});
+
+describe('deflection last card round end', () => {
+  it('wins immediately when deflecting with last reverse card', () => {
+    const rev = makeCard('reverse', 'red', { id: 'last_rev' });
+    const dt = makeCard('draw_two', 'red', { id: 'dt_top' });
+    const state = makeState({
+      drawStack: 2,
+      currentPlayerIndex: 1,
+      discardPile: [makeCard('number', 'blue', { value: 1 }), dt],
+      currentColor: 'red',
+      players: [
+        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'green', { value: 1 })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [rev], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 1 })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, reverseDeflectDrawTwo: true } },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p2', cardId: 'last_rev' });
+    expect(next.phase).toBe('round_end');
+    expect(next.winnerId).toBe('p2');
+  });
+});
+
+describe('jumpIn last card round end', () => {
+  it('wins immediately when jumping in with last wild card', () => {
+    const topWild = makeCard('wild', null, { id: 'top_wild' });
+    const jumpWild = makeCard('wild', null, { id: 'jump_wild' });
+    const state = makeState({
+      currentPlayerIndex: 0,
+      currentColor: 'red',
+      discardPile: [topWild],
+      players: [
+        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'red', { value: 1 })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [jumpWild], score: 0, connected: true, calledUno: false },
+      ],
+      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, jumpIn: true } },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p2', cardId: 'jump_wild' });
+    expect(next.phase).toBe('round_end');
+    expect(next.winnerId).toBe('p2');
+  });
+
+  it('wins immediately when jumping in with last wild_draw_four', () => {
+    const topWd4 = makeCard('wild_draw_four', null, { id: 'top_wd4' });
+    const jumpWd4 = makeCard('wild_draw_four', null, { id: 'jump_wd4' });
+    const state = makeState({
+      currentPlayerIndex: 0,
+      currentColor: 'red',
+      discardPile: [topWd4],
+      players: [
+        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'red', { value: 1 })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [jumpWd4], score: 0, connected: true, calledUno: false },
+      ],
+      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, jumpIn: true } },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p2', cardId: 'jump_wd4' });
+    expect(next.phase).toBe('round_end');
+    expect(next.winnerId).toBe('p2');
+  });
+});
+
+describe('sevenSwap last card round end', () => {
+  it('wins immediately when playing last 7 instead of entering swap phase', () => {
+    const seven = makeCard('number', 'red', { value: 7, id: 'last_seven' });
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [seven], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 2 }), makeCard('number', 'blue', { value: 3 })], score: 0, connected: true, calledUno: false },
+      ],
+      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, sevenSwapHands: true } },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'last_seven' });
+    expect(next.phase).toBe('round_end');
+    expect(next.winnerId).toBe('p1');
+  });
+});
+
 describe('jumpIn', () => {
   it('allows out-of-turn play with exact matching card', () => {
     const matchCard = makeCard('number', 'red', { value: 5, id: 'jump1' });

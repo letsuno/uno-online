@@ -75,7 +75,7 @@ export function putAttackCardOnStack(
   const nextIdx = getNextPlayerIndex(state.currentPlayerIndex, players.length, state.direction);
   const newColor = card.type === 'draw_two' ? card.color : (action.chosenColor ?? state.currentColor);
 
-  return {
+  return checkRoundEnd({
     ...state,
     players,
     discardPile: [...state.discardPile, playedCard],
@@ -83,7 +83,7 @@ export function putAttackCardOnStack(
     drawStack: state.drawStack + stackAdd,
     currentPlayerIndex: nextIdx,
     lastAction: action,
-  };
+  }, action.playerId);
 }
 
 export function applyDoubleScore(before: GameState, after: GameState): GameState {

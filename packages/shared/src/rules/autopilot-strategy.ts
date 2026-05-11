@@ -55,6 +55,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   if (!player) return [];
 
   const autopilotSide: DrawSide = state.deckLeft.length >= state.deckRight.length ? 'left' : 'right';
+  const hr = state.settings.houseRules;
 
   if (state.phase === 'challenging') {
     if (state.pendingDrawPlayerId === playerId) {
@@ -105,11 +106,11 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
       return [{ type: 'PASS', playerId }];
     }
     const pick = pickPlayableCard(playableAfterDraw, state.currentColor);
-    return playCardActions(playerId, pick, player.hand);
+    const needsColorOnPlay = pick.type === 'wild_draw_four' && (hr.stackDrawFour || hr.crossStack);
+    return playCardActions(playerId, pick, player.hand, needsColorOnPlay);
   }
 
   if (state.drawStack > 0) {
-    const hr = state.settings.houseRules;
     const stackingEnabled = hr.stackDrawTwo || hr.stackDrawFour || hr.crossStack;
 
     if (stackingEnabled) {
@@ -149,7 +150,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
     return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
   }
 
-  // Priority: same-color non-wild > any non-wild > wild as last resort
   const pick = pickPlayableCard(playable, state.currentColor);
-  return playCardActions(playerId, pick, player.hand);
+  const needsColorOnPlay = pick.type === 'wild_draw_four' && (hr.stackDrawFour || hr.crossStack);
+  return playCardActions(playerId, pick, player.hand, needsColorOnPlay);
 }

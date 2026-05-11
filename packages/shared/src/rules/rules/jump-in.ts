@@ -42,23 +42,23 @@ export const jumpIn: HouseRulePlugin = {
       if (card.type === 'wild') {
         return {
           handled: true,
-          state: {
+          state: ctx.checkRoundEnd({
             ...baseState,
             phase: 'choosing_color',
             currentPlayerIndex: jumperIdx,
-          },
+          }, action.playerId),
         };
       }
 
       if (card.type === 'wild_draw_four') {
         return {
           handled: true,
-          state: {
+          state: ctx.checkRoundEnd({
             ...baseState,
             phase: 'choosing_color',
             currentPlayerIndex: jumperIdx,
             pendingDrawPlayerId: players[nextIdx]?.id ?? null,
-          },
+          }, action.playerId),
         };
       }
 
