@@ -93,12 +93,14 @@ export class UnoSocketClient {
   async createRoom(settings: Record<string, unknown>): Promise<Record<string, unknown>> {
     const result = await this.request('room:create', settings);
     if (result.roomCode) this._currentRoomCode = result.roomCode as string;
+    this._roomInfo = result;
     return result;
   }
 
   async joinRoom(roomCode: string): Promise<Record<string, unknown>> {
     const result = await this.request('room:join', roomCode);
     this._currentRoomCode = roomCode;
+    this._roomInfo = result;
     return result;
   }
 

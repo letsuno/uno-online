@@ -9,6 +9,13 @@ import { createApiKey, listApiKeys, deleteApiKey, verifyApiKey } from './repo';
 const verifyRateLimits = new Map<string, { count: number; resetAt: number }>();
 const VERIFY_MAX_PER_MINUTE = 10;
 
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of verifyRateLimits) {
+    if (now > entry.resetAt) verifyRateLimits.delete(ip);
+  }
+}, 5 * 60_000).unref?.();
+
 function checkVerifyRateLimit(ip: string): boolean {
   const now = Date.now();
   const entry = verifyRateLimits.get(ip);
@@ -60,6 +67,9 @@ export function registerApiKeyRoutes(fastify: FastifyInstance, ctx: PluginContex
     const { key } = request.body;
     if (!key || typeof key !== 'string') {
       return reply.code(400).send({ error: '缺少 key' });
+    }
+    if (!key.startsWith('uno_ak_')) {
+      return reply.code(401).send({ error: '无效的 API Key' });
     }
     const user = await verifyApiKey(ctx.db, key);
     if (!user) return reply.code(401).send({ error: '无效的 API Key' });
