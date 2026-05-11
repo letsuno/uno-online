@@ -46,3 +46,11 @@ export async function apiGet<T>(path: string): Promise<T> {
   });
   return handleResponse<T>(res);
 }
+
+export async function apiDelete<T>(path: string): Promise<T> {
+  const res = await fetch(`${getApiUrl()}/api${path}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  return handleResponse<T>(res);
+}
