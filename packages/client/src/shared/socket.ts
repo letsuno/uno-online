@@ -36,19 +36,23 @@ export function getSocket(): TypedSocket {
     socket.on('voice:presence', (presence) => {
       const newPresence = (presence ?? {}) as Record<string, PlayerVoicePresence>;
       const oldPresence = useGatewayStore.getState().playerVoicePresence;
-      useGatewayStore.getState().setPlayerVoicePresence(newPresence);
 
       const selfId = useGameStore.getState().viewerId;
+      let changed = false;
       for (const [uid, p] of Object.entries(newPresence)) {
+        const old = oldPresence[uid];
+        if (!old || old.inVoice !== p.inVoice || old.micEnabled !== p.micEnabled) { changed = true; }
         if (uid === selfId) continue;
-        const wasInVoice = oldPresence[uid]?.inVoice;
+        const wasInVoice = old?.inVoice;
         if (p.inVoice && !wasInVoice) playSound('voice_join');
         else if (!p.inVoice && wasInVoice) playSound('voice_leave');
       }
       for (const [uid, p] of Object.entries(oldPresence)) {
+        if (!newPresence[uid]) { changed = true; }
         if (uid === selfId) continue;
         if (p.inVoice && !newPresence[uid]) playSound('voice_leave');
       }
+      if (changed) useGatewayStore.getState().setPlayerVoicePresence(newPresence);
     });
 
     const handleGameView = (view: PlayerView) => {
