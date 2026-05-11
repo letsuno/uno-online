@@ -22,11 +22,20 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby, onKi
   const phase = useGameStore((s) => s.phase);
   const vote = useGameStore((s) => s.nextRoundVote);
   const [canKick, setCanKick] = useState(false);
+  const [leaveCountdown, setLeaveCountdown] = useState(5);
 
   useEffect(() => {
     if (phase !== 'round_end') { setCanKick(false); return; }
     const timer = setTimeout(() => setCanKick(true), KICK_DELAY_MS);
     return () => clearTimeout(timer);
+  }, [phase]);
+
+  useEffect(() => {
+    setLeaveCountdown(5);
+    const interval = setInterval(() => {
+      setLeaveCountdown((c) => { if (c <= 1) { clearInterval(interval); return 0; } return c - 1; });
+    }, 1000);
+    return () => clearInterval(interval);
   }, [phase]);
   const ownerId = useRoomStore((s) => s.room?.ownerId);
   const userId = useEffectiveUserId();
@@ -93,13 +102,11 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby, onKi
             {allAgreed ? '所有玩家已同意，等待房主开始下一轮' : `已有 ${votes}/${required} 人同意继续下一轮`}
           </p>
         )}
-        {isGameOver && !isHost && (
-          <p className="mb-3 text-xs text-muted-foreground">等待房主发起再来一局</p>
-        )}
         <div className="flex gap-3 justify-center">
           {!isGameOver && <Button variant="primary" onClick={onPlayAgain} disabled={isNextRoundDisabled} sound="ready">{nextRoundButtonText}</Button>}
           {isGameOver && isHost && <Button variant="primary" onClick={onRematch} sound="ready">再来一局</Button>}
-          <Button variant="secondary" onClick={onBackToLobby} sound="click">返回大厅</Button>
+          {isGameOver && !isHost && <Button variant="primary" disabled>等待房主再来一局…</Button>}
+          <Button variant="secondary" onClick={onBackToLobby} sound="click" disabled={leaveCountdown > 0}>{leaveCountdown > 0 ? `返回大厅 (${leaveCountdown}s)` : '返回大厅'}</Button>
         </div>
       </div>
     </div>
