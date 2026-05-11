@@ -140,6 +140,7 @@ function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) 
       const token = makeToken(user, config.jwtSecret);
       return { token, user: userResponse(user), isNewUser: user.isNewUser };
     } catch (err) {
+      request.log.error(err, 'GitHub OAuth callback failed');
       return reply.code(500).send({ error: 'Authentication failed' });
     }
   });
