@@ -5,6 +5,17 @@ import { PRE_CHECK_PLUGINS, POST_PROCESS_PLUGINS } from './rules/index';
 
 const ctx = buildRuleContext();
 
+function runPostProcess(state: GameState, next: GameState, action: GameAction, hr: GameState['settings']['houseRules']): GameState {
+  for (const plugin of POST_PROCESS_PLUGINS) {
+    if (!plugin.isEnabled(hr)) continue;
+    if (!plugin.postProcess) continue;
+    next = plugin.postProcess(state, next, action, ctx);
+  }
+  return next;
+}
+
+const TERMINAL_PHASES = new Set(['round_end', 'game_over']);
+
 export function applyActionWithHouseRules(state: GameState, action: GameAction): GameState {
   const hr = state.settings.houseRules;
 
@@ -12,16 +23,15 @@ export function applyActionWithHouseRules(state: GameState, action: GameAction):
     if (!plugin.isEnabled(hr)) continue;
     if (!plugin.preCheck) continue;
     const result = plugin.preCheck(state, action, ctx);
-    if (result.handled) return drainPenaltyQueue(result.state);
+    if (result.handled) {
+      let next = drainPenaltyQueue(result.state);
+      if (next !== state && TERMINAL_PHASES.has(next.phase) && !TERMINAL_PHASES.has(state.phase)) {
+        next = runPostProcess(state, next, action, hr);
+      }
+      return next;
+    }
   }
 
   let next = applyAction(state, action);
-
-  for (const plugin of POST_PROCESS_PLUGINS) {
-    if (!plugin.isEnabled(hr)) continue;
-    if (!plugin.postProcess) continue;
-    next = plugin.postProcess(state, next, action, ctx);
-  }
-
-  return next;
+  return runPostProcess(state, next, action, hr);
 }

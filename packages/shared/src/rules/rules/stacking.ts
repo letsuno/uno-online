@@ -35,10 +35,12 @@ export const stacking: HouseRulePlugin = {
     }
 
     // Case (b): PLAY_CARD when drawStack === 0 — start new stack
+    // Skip wild_draw_four here so it goes through the normal choosing_color → challenging flow
     if (action.type === 'PLAY_CARD' && state.drawStack === 0 && state.phase === 'playing') {
       const player = state.players[state.currentPlayerIndex];
       if (player?.id !== action.playerId) return { handled: false };
       const card = player.hand.find(c => c.id === action.cardId);
+      if (card?.type === 'wild_draw_four') return { handled: false };
       const topCard = state.discardPile[state.discardPile.length - 1];
       if (
         card &&

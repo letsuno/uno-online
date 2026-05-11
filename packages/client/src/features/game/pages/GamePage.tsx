@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Loader2, Eye, LogOut } from 'lucide-react';
+import { Loader2, Eye, LogOut, UserPlus } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useGameStore } from '../stores/game-store';
 import { useIsMyTurn } from '../hooks/useIsMyTurn';
@@ -14,6 +14,7 @@ import { playSound } from '@/shared/sound/sound-manager';
 import { getSocket, refreshVoicePresence } from '@/shared/socket';
 import { leaveVoiceSession } from '@/shared/voice/voice-runtime';
 import { useRoomStore } from '@/shared/stores/room-store';
+import { useToastStore } from '@/shared/stores/toast-store';
 import TopBar from '../components/TopBar';
 import GameTable from '../components/GameTable';
 import GameActions from '../components/GameActions';
@@ -26,6 +27,8 @@ import Confetti from '../components/Confetti';
 import MobileFAB from '../components/MobileFAB';
 import InfoDrawer from '../components/InfoDrawer';
 import PlayerListPanel from '../components/PlayerListPanel';
+import DanmakuLayer from '../components/DanmakuLayer';
+import { useSpectatorStore } from '../stores/spectator-store';
 import GameStartRulesModal from '../components/GameStartRulesModal';
 
 export default function GamePage() {
@@ -37,6 +40,7 @@ export default function GamePage() {
   const openInfoDrawer = useGameStore((s) => s.openInfoDrawer);
   const clearGame = useGameStore((s) => s.clearGame);
   const clearRoom = useRoomStore((s) => s.clearRoom);
+  const clearSpectators = useSpectatorStore((s) => s.clearSpectators);
 
   const isMyTurn = useIsMyTurn();
   const playableIds = usePlayableCardIds();
@@ -121,6 +125,7 @@ export default function GamePage() {
     getSocket().emit('room:leave', () => {
       clearRoom();
       clearGame();
+      clearSpectators();
       navigate('/lobby');
     });
   };
@@ -152,7 +157,10 @@ export default function GamePage() {
       <TopBar roomCode={roomCode ?? ''} />
       <PlayerListPanel />
       <LayoutGroup>
+      <div className="relative flex flex-col flex-1 min-h-0">
       <GameTable onDraw={drawCard} />
+      <DanmakuLayer />
+      </div>
       <AnimatePresence>
         {showTurnBanner && isMyTurn && phase === 'playing' && (
           <motion.div
@@ -181,6 +189,23 @@ export default function GamePage() {
       {isSpectator && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-actions bg-card/90 backdrop-blur-sm rounded-full px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
           <Eye size={16} /> 观战中
+          {phase === 'round_end' && (
+            <button
+              onClick={() => {
+                getSocket().emit('game:spectator_join', (res: { success?: boolean; error?: string }) => {
+                  if (res?.success) {
+                    setSpectator(false);
+                    clearSpectators();
+                  } else {
+                    useToastStore.getState().addToast(res?.error ?? '加入失败', 'error');
+                  }
+                });
+              }}
+              className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/80 px-2 py-1 text-xs text-white transition-colors hover:bg-primary"
+            >
+              <UserPlus size={12} /> 加入游戏
+            </button>
+          )}
           <button
             onClick={backToLobby}
             className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-xs text-foreground transition-colors hover:bg-white/20"

@@ -146,13 +146,11 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   const houseRules = settings?.houseRules;
   const shouldPickColorBeforePlay = (card: CardType) => {
     if (card.type !== 'wild_draw_four' || !houseRules || !topCard) return false;
-    if (topCard.type !== 'draw_two' && topCard.type !== 'wild_draw_four') {
-      return houseRules.stackDrawFour || houseRules.crossStack;
-    }
-    return (
-      drawStack > 0 ||
-      (drawStack === 0 && (houseRules.stackDrawFour || houseRules.crossStack))
-    );
+    if (drawStack <= 0) return false;
+    const canStack =
+      (houseRules.stackDrawFour && topCard.type === 'wild_draw_four') ||
+      (houseRules.crossStack && (topCard.type === 'draw_two' || topCard.type === 'wild_draw_four'));
+    return canStack;
   };
 
   const setActiveFromPointer = (clientX: number) => {

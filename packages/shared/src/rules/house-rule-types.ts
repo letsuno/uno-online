@@ -39,7 +39,7 @@ export interface RuleContext {
   handleForcedPlayAfterDraw: (state: GameState, action: Extract<GameAction, { type: 'DRAW_CARD' }>) => GameState;
   applyDoubleScore: (before: GameState, after: GameState) => GameState;
   canPlayCard: (card: Card, topCard: Card, currentColor: Color) => boolean;
-  getNextPlayerIndex: (current: number, total: number, direction: Direction) => number;
+  getNextPlayerIndex: (current: number, total: number, direction: Direction, skip?: number) => number;
 }
 
 export interface HouseRulePlugin {

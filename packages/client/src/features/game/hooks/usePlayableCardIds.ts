@@ -19,6 +19,7 @@ export function usePlayableCardIds(): Set<string> {
     if (phase !== 'playing') return new Set<string>();
     if (!isMyTurn) {
       if (!settings?.houseRules?.jumpIn) return new Set<string>();
+      if (pendingPenaltyDraws > 0 || drawStack > 0) return new Set<string>();
       return getJumpInCardIds(myHand ?? [], topCard);
     }
     if (pendingPenaltyDraws > 0) return new Set<string>();

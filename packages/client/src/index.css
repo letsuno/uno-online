@@ -357,3 +357,11 @@
 @utility shadow-tech {
   box-shadow: var(--border-glow);
 }
+
+@keyframes danmaku-scroll {
+  from { transform: translateX(100vw); }
+  to { transform: translateX(-100%); }
+}
+.danmaku-item {
+  animation: danmaku-scroll 8s linear forwards;
+}

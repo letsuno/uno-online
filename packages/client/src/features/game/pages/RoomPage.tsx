@@ -96,7 +96,7 @@ export default function RoomPage() {
         <button
           onClick={() => {
             const url = `${window.location.origin}/room/${roomCode}`;
-            navigator.clipboard.writeText(url);
+            navigator.clipboard.writeText(`来玩 UNO 吧！房间号：${roomCode}\n${url}`);
             useToastStore.getState().addToast('房间链接已复制', 'success');
           }}
           className="bg-white/10 hover:bg-white/20 rounded-lg p-1.5 cursor-pointer transition-colors"
