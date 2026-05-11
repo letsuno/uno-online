@@ -92,9 +92,12 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby, onKi
             {allAgreed ? '所有玩家已同意，等待房主开始下一轮' : `已有 ${votes}/${required} 人同意继续下一轮`}
           </p>
         )}
+        {isGameOver && !isHost && (
+          <p className="mb-3 text-xs text-muted-foreground">等待房主发起再来一局</p>
+        )}
         <div className="flex gap-3 justify-center">
           {!isGameOver && <Button variant="primary" onClick={onPlayAgain} disabled={isNextRoundDisabled} sound="ready">{nextRoundButtonText}</Button>}
-          {isGameOver && <Button variant="primary" onClick={onRematch} sound="ready">再来一局</Button>}
+          {isGameOver && isHost && <Button variant="primary" onClick={onRematch} sound="ready">再来一局</Button>}
           <Button variant="secondary" onClick={onBackToLobby} sound="click">返回大厅</Button>
         </div>
       </div>
