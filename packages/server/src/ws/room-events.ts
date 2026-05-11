@@ -92,7 +92,7 @@ export function registerRoomEvents(
       allowSpectators: settings?.allowSpectators ?? true,
       spectatorMode: settings?.spectatorMode ?? 'hidden',
     };
-    const code = await roomManager.createRoom(data.user.userId, data.user.nickname, roomSettings, data.user.avatarUrl, data.user.role);
+    const code = await roomManager.createRoom(data.user.userId, data.user.nickname, roomSettings, data.user.avatarUrl, data.user.role, data.user.isBot);
     data.roomCode = code;
     await socket.join(code);
     const room = await getRoom(redis, code);
@@ -117,7 +117,7 @@ export function registerRoomEvents(
         return callback({ success: true, players, room, rejoin: room.status !== 'waiting' });
       }
 
-      await roomManager.joinRoom(roomCode, data.user.userId, data.user.nickname, data.user.avatarUrl, data.user.role);
+      await roomManager.joinRoom(roomCode, data.user.userId, data.user.nickname, data.user.avatarUrl, data.user.role, data.user.isBot);
       await touchRoomActivity(redis, roomCode);
       data.roomCode = roomCode;
       await socket.join(roomCode);
@@ -271,7 +271,7 @@ export function registerRoomEvents(
     await setRoomStatus(redis, roomCode, 'playing');
     await touchRoomActivity(redis, roomCode);
     const session = GameSession.create(
-      players.map((p) => ({ id: p.userId, name: p.nickname, avatarUrl: p.avatarUrl ?? null, role: p.role as import('@uno-online/shared').UserRole | undefined })),
+      players.map((p) => ({ id: p.userId, name: p.nickname, avatarUrl: p.avatarUrl ?? null, role: p.role as import('@uno-online/shared').UserRole | undefined, isBot: p.isBot })),
       { turnTimeLimit: room.settings?.turnTimeLimit ?? 30, targetScore: room.settings?.targetScore ?? 500, houseRules: room.settings?.houseRules ?? DEFAULT_HOUSE_RULES, allowSpectators: room.settings?.allowSpectators ?? true, spectatorMode: room.settings?.spectatorMode ?? 'hidden' } as RoomSettings,
     );
     sessions.set(roomCode, session);

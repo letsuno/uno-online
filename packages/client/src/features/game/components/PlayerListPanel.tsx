@@ -4,6 +4,7 @@ import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import GoogleRing from '@/shared/components/ui/GoogleRing';
 import PlayerVoiceStatus from '@/shared/voice/PlayerVoiceStatus';
 import { cn, getRoleColor } from '@/shared/lib/utils';
+import { AiBadge } from '@/shared/components/ui/AiBadge';
 
 export default function PlayerListPanel() {
   const players = useGameStore((s) => s.players);
@@ -57,7 +58,7 @@ export default function PlayerListPanel() {
                     isMe && !isActive && 'text-primary',
                     !isActive && !isMe && 'text-foreground',
                   )} style={(!isActive && !isMe && roleColor) ? { color: roleColor } : undefined}>
-                    {p.name}{isMe ? ' (你)' : ''}
+                    {p.name}{isMe ? ' (你)' : ''}{p.isBot && <AiBadge className="ml-1" />}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">

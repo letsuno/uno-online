@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Crown, Check, Copy } from 'lucide-react';
 import { cn, getRoleColor } from '@/shared/lib/utils';
+import { AiBadge } from '@/shared/components/ui/AiBadge';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { useGameStore } from '../stores/game-store';
@@ -113,6 +114,7 @@ export default function RoomPage() {
           return <div key={p.userId} className="flex items-center justify-between border-b border-white/5 py-2">
             <span className="flex min-w-0 flex-1 items-center gap-1.5" style={roleColor ? { color: roleColor } : undefined}>
               <span className="truncate">{p.nickname}</span>
+              {p.isBot && <AiBadge />}
               {room?.ownerId === p.userId && <Crown size={14} className="shrink-0" />}
               <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={p.userId === user?.id} className="shrink-0" />
             </span>

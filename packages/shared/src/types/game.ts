@@ -31,6 +31,7 @@ export interface Player {
   teamId?: number;
   avatarUrl?: string | null;
   role?: UserRole;
+  isBot: boolean;
 }
 
 export interface RoomSettings {

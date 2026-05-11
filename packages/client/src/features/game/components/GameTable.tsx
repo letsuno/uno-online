@@ -318,6 +318,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
             turnEndTime={turnEndTime}
             phase={phase}
             cy={dimensions.height / 2}
+            isBot={actingPlayer.isBot}
           />
         );
       })()}

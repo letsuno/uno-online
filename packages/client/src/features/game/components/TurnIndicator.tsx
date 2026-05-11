@@ -4,6 +4,7 @@ import { useCountdown } from '../hooks/useCountdown';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import GoogleRing from '@/shared/components/ui/GoogleRing';
 import { cn } from '@/shared/lib/utils';
+import { AiBadge } from '@/shared/components/ui/AiBadge';
 
 interface TurnIndicatorProps {
   playerName: string;
@@ -13,9 +14,10 @@ interface TurnIndicatorProps {
   turnEndTime: number | null;
   phase: string | null;
   cy: number;
+  isBot?: boolean;
 }
 
-function TurnIndicator({ playerName, avatarUrl, playerIndex, isMe, turnEndTime, phase, cy }: TurnIndicatorProps) {
+function TurnIndicator({ playerName, avatarUrl, playerIndex, isMe, turnEndTime, phase, cy, isBot }: TurnIndicatorProps) {
   const secondsLeft = useCountdown(turnEndTime);
 
   let label: string;
@@ -64,6 +66,7 @@ function TurnIndicator({ playerName, avatarUrl, playerIndex, isMe, turnEndTime, 
           isMe ? 'text-primary font-bold' : 'text-foreground',
         )}>
           {label}
+          {isBot && <AiBadge className="ml-1.5" />}
         </span>
       </div>
       {secondsLeft !== null && (
