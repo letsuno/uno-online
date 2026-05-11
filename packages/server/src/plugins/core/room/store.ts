@@ -15,7 +15,7 @@ export interface RoomPlayer {
   avatarUrl?: string | null;
   ready: boolean;
   role?: string;
-  isBot?: boolean;
+  isBot: boolean;
 }
 
 const roomPlayerLocks = new Map<string, Promise<void>>();
@@ -93,7 +93,7 @@ export async function addPlayerToRoom(kv: KvStore, roomCode: string, player: { u
   await withRoomPlayerLock(roomCode, async () => {
     const existing = await getRoomPlayers(kv, roomCode);
     if (existing.some(p => p.userId === player.userId)) return;
-    existing.push({ userId: player.userId, nickname: player.nickname, avatarUrl: player.avatarUrl ?? null, ready: false, role: player.role ?? 'normal', isBot: player.isBot });
+    existing.push({ userId: player.userId, nickname: player.nickname, avatarUrl: player.avatarUrl ?? null, ready: false, role: player.role ?? 'normal', isBot: player.isBot ?? false });
     await setRoomPlayers(kv, roomCode, existing);
   });
 }

@@ -7,7 +7,7 @@ export interface RoomPlayer {
   avatarUrl?: string | null;
   ready: boolean;
   role?: string;
-  isBot?: boolean;
+  isBot: boolean;
 }
 
 export interface RoomData {
