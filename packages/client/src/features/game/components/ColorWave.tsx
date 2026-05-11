@@ -2,20 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../stores/game-store';
 import type { Color } from '@uno-online/shared';
-
-const COLOR_MAP: Record<Color, string> = {
-  red: '#ff3366',
-  blue: '#4488ff',
-  green: '#33cc66',
-  yellow: '#fbbf24',
-};
+import { UNO_COLOR_HEX } from '../constants/colors';
 
 interface WaveState {
   id: number;
   color: string;
 }
-
-let waveId = 0;
 
 export default function ColorWave() {
   const currentColor = useGameStore((s) => s.currentColor);
@@ -23,6 +15,7 @@ export default function ColorWave() {
   const lastAction = useGameStore((s) => s.lastAction);
   const [wave, setWave] = useState<WaveState | null>(null);
   const prevColorRef = useRef<Color | null>(null);
+  const waveIdRef = useRef(0);
 
   useEffect(() => {
     if (!currentColor || !lastAction) return;
@@ -33,10 +26,10 @@ export default function ColorWave() {
     prevColorRef.current = currentColor;
     if (prevColor === currentColor) return;
 
-    const hex = COLOR_MAP[currentColor];
+    const hex = UNO_COLOR_HEX[currentColor];
     if (!hex) return;
 
-    const id = ++waveId;
+    const id = ++waveIdRef.current;
     setWave({ id, color: hex });
     const timer = setTimeout(() => setWave(null), 1200);
     return () => clearTimeout(timer);
