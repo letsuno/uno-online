@@ -37,7 +37,7 @@ export async function exchangeCodeForToken(code: string, config: Config): Promis
 
 export async function fetchGitHubUser(accessToken: string, config: Config): Promise<GitHubUser> {
   const { statusCode, body } = await request('https://api.github.com/user', {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': 'UNO-Online' },
     dispatcher: getDispatcher(config),
   });
   if (statusCode !== 200) {
