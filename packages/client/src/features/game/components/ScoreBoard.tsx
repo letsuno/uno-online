@@ -5,6 +5,7 @@ import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/Button';
+import { AiBadge } from '@/shared/components/ui/AiBadge';
 
 const KICK_DELAY_MS = 30_000;
 
@@ -71,7 +72,7 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby, onKi
               const ready = !!vote?.voters.includes(p.id);
               return (
                 <tr key={p.id} className={cn(p.id === winnerId ? 'text-accent' : 'text-foreground')}>
-                  <td className="px-2 py-1.5 text-left">{p.id === winnerId && <Crown size={14} className="inline align-middle mr-1" />}{p.name}</td>
+                  <td className="px-2 py-1.5 text-left">{p.id === winnerId && <Crown size={14} className="inline align-middle mr-1" />}{p.name}{p.isBot && <AiBadge className="ml-1" />}</td>
                   {!isGameOver && (
                     <td className="px-2 py-1.5 text-center whitespace-nowrap">
                       {ready

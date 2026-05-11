@@ -16,7 +16,7 @@ export async function authenticateSocketAsync(socket: Socket, jwtSecret: string)
   if (token.startsWith('uno_ak_')) {
     const user = await verifyApiKey(getDb(), token);
     if (!user) return null;
-    return { userId: user.userId, username: user.username, nickname: user.nickname, avatarUrl: user.avatarUrl, role: user.role as TokenPayload['role'] };
+    return { userId: user.userId, username: user.username, nickname: user.nickname, avatarUrl: user.avatarUrl, role: user.role as TokenPayload['role'], isBot: true };
   }
   return verifyToken(token, jwtSecret);
 }

@@ -191,7 +191,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
         const alreadyInRoom = players.some(p => p.userId === userId);
         if (!alreadyInRoom) {
           try {
-            await roomManager.joinRoom(roomCode, userId, socket.data.user.nickname, socket.data.user.avatarUrl, socket.data.user.role);
+            await roomManager.joinRoom(roomCode, userId, socket.data.user.nickname, socket.data.user.avatarUrl, socket.data.user.role, socket.data.user.isBot);
           } catch {
             return callback?.({ success: false, error: 'Cannot rejoin room' });
           }

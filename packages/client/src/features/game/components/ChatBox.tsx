@@ -3,7 +3,9 @@ import { MessageCircle, X } from 'lucide-react';
 import { getSocket } from '@/shared/socket';
 import { useToastStore } from '@/shared/stores/toast-store';
 import { getRoleColor } from '@/shared/lib/utils';
+import { AiBadge } from '@/shared/components/ui/AiBadge';
 import { useChatStore } from '../stores/chat-store';
+import { useGameStore } from '../stores/game-store';
 
 const QUICK_PHRASES = ['嘻嘻😜', '嘿嘿😏', '哈哈😂', '饶命🙏', '稳了💪', '完蛋😱', '好牌!👍', '等等✋'];
 
@@ -13,6 +15,7 @@ interface ChatBoxProps {
 
 export default function ChatBox({ embedded = false }: ChatBoxProps) {
   const messages = useChatStore((s) => s.messages);
+  const players = useGameStore((s) => s.players);
   const [input, setInput] = useState('');
   const [open, setOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -52,7 +55,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
         <div className="max-h-48 overflow-y-auto text-xs">
           {messages.map((m) => (
             <div key={m.id} className="mb-1">
-              <span className="font-bold" style={{ color: getRoleColor(m.role) || 'var(--accent)' }}>{m.nickname}: </span>
+              <span className="font-bold" style={{ color: getRoleColor(m.role) || 'var(--accent)' }}>{m.nickname}{players.find(p => p.id === m.userId)?.isBot && <AiBadge className="mx-0.5" />}: </span>
               <span>{m.text}</span>
             </div>
           ))}
@@ -107,7 +110,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
       <div className="flex-1 overflow-y-auto p-2 text-xs">
         {messages.map((m) => (
           <div key={m.id} className="mb-1">
-            <span className="text-accent font-bold">{m.nickname}: </span>
+            <span className="text-accent font-bold">{m.nickname}{players.find(p => p.id === m.userId)?.isBot && <AiBadge className="mx-0.5" />}: </span>
             <span>{m.text}</span>
           </div>
         ))}

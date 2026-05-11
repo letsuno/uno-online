@@ -16,6 +16,7 @@ export interface PlayerViewPlayer {
   teamId?: number;
   avatarUrl?: string | null;
   role?: string;
+  isBot: boolean;
 }
 
 export interface PlayerView {
