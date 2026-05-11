@@ -8,9 +8,11 @@ export class UnoSocketClient {
   private socket: TypedSocket | null = null;
   private serverUrl: string;
   private token: string;
-  private eventCallback: GameEventCallback | null = null;
+  private eventCallbacks: GameEventCallback[] = [];
   private _gameState: PlayerView | null = null;
   private _roomInfo: Record<string, unknown> | null = null;
+  private _currentRoomCode: string | null = null;
+  private _hasReceivedInitialState = false;
 
   constructor(serverUrl: string, token: string) {
     this.serverUrl = serverUrl;
@@ -29,8 +31,25 @@ export class UnoSocketClient {
     return this._roomInfo;
   }
 
-  onGameEvent(callback: GameEventCallback): void {
-    this.eventCallback = callback;
+  get currentRoomCode(): string | null {
+    return this._currentRoomCode;
+  }
+
+  get hasReceivedInitialState(): boolean {
+    return this._hasReceivedInitialState;
+  }
+
+  onGameEvent(callback: GameEventCallback): () => void {
+    this.eventCallbacks.push(callback);
+    return () => {
+      this.eventCallbacks = this.eventCallbacks.filter((cb) => cb !== callback);
+    };
+  }
+
+  private emit(event: string, data: unknown): void {
+    for (const cb of this.eventCallbacks) {
+      cb(event, data);
+    }
   }
 
   connect(): Promise<void> {
@@ -58,21 +77,32 @@ export class UnoSocketClient {
   }
 
   disconnect(): void {
+    this._currentRoomCode = null;
+    this._hasReceivedInitialState = false;
     this.socket?.disconnect();
     this.socket = null;
   }
 
   // Room operations
-  createRoom(settings: Record<string, unknown>): Promise<Record<string, unknown>> {
-    return this.request('room:create', settings);
+  async createRoom(settings: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const result = await this.request('room:create', settings);
+    if (result.roomCode) this._currentRoomCode = result.roomCode as string;
+    return result;
   }
 
-  joinRoom(roomCode: string): Promise<Record<string, unknown>> {
-    return this.request('room:join', roomCode);
+  async joinRoom(roomCode: string): Promise<Record<string, unknown>> {
+    const result = await this.request('room:join', roomCode);
+    this._currentRoomCode = roomCode;
+    return result;
   }
 
-  leaveRoom(): Promise<Record<string, unknown>> {
-    return this.request('room:leave');
+  async leaveRoom(): Promise<Record<string, unknown>> {
+    const result = await this.request('room:leave');
+    this._currentRoomCode = null;
+    this._gameState = null;
+    this._roomInfo = null;
+    this._hasReceivedInitialState = false;
+    return result;
   }
 
   setReady(ready: boolean): Promise<Record<string, unknown>> {
@@ -87,8 +117,13 @@ export class UnoSocketClient {
     return this.request('room:update_settings', settings);
   }
 
-  dissolveRoom(): Promise<Record<string, unknown>> {
-    return this.request('room:dissolve');
+  async dissolveRoom(): Promise<Record<string, unknown>> {
+    const result = await this.request('room:dissolve');
+    this._currentRoomCode = null;
+    this._gameState = null;
+    this._roomInfo = null;
+    this._hasReceivedInitialState = false;
+    return result;
   }
 
   // Game operations
@@ -159,30 +194,46 @@ export class UnoSocketClient {
   private registerEventListeners(): void {
     if (!this.socket) return;
 
+    // Reconnection: rejoin room if we were in one
+    this.socket.io.on('reconnect', () => {
+      if (this._currentRoomCode) {
+        (this.socket as Socket).emit('room:rejoin', this._currentRoomCode, () => {});
+      }
+    });
+
     this.socket.on('game:state', (view) => {
+      const isRejoin = this._hasReceivedInitialState;
       this._gameState = view;
-      this.eventCallback?.('game:state', view);
+      this._hasReceivedInitialState = true;
+      this.emit(isRejoin ? 'game:rejoin_state' : 'game:state', view);
     });
 
     this.socket.on('game:update', (view) => {
       this._gameState = view;
-      this.eventCallback?.('game:update', view);
+      this.emit('game:update', view);
     });
 
     this.socket.on('room:updated', (data) => {
       this._roomInfo = data;
-      this.eventCallback?.('room:updated', data);
+      this.emit('room:updated', data);
+    });
+
+    this.socket.on('room:dissolved', (data) => {
+      this._currentRoomCode = null;
+      this._gameState = null;
+      this._roomInfo = null;
+      this._hasReceivedInitialState = false;
+      this.emit('room:dissolved', data);
     });
 
     const forwardEvents: (keyof ServerToClientEvents)[] = [
       'game:card_drawn', 'game:action_rejected', 'game:next_round_vote',
       'game:over', 'game:round_end', 'game:kicked',
       'player:disconnected', 'player:reconnected', 'player:autopilot',
-      'room:dissolved',
     ];
     for (const event of forwardEvents) {
       this.socket.on(event, ((...args: unknown[]) => {
-        this.eventCallback?.(event, args[0]);
+        this.emit(event, args[0]);
       }) as never);
     }
   }

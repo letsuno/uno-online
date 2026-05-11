@@ -37,6 +37,23 @@ export function setupNotifications(
         break;
       }
 
+      case 'game:rejoin_state': {
+        const view = data as PlayerView;
+        const myPlayer = view.players.find((p) => p.id === view.viewerId);
+        const isMyTurn = view.players[view.currentPlayerIndex]?.id === myUserId;
+        send(server, 'info', {
+          type: 'game_reconnected',
+          phase: view.phase,
+          hand: myPlayer?.hand ?? [],
+          isMyTurn,
+          players: view.players.map((p) => ({ id: p.id, name: p.name, handCount: p.handCount })),
+          currentColor: view.currentColor,
+          drawStack: view.drawStack,
+          activeHouseRules: formatActiveRules(view.settings),
+        });
+        break;
+      }
+
       case 'game:update': {
         const view = data as PlayerView;
         const isMyTurn = view.players[view.currentPlayerIndex]?.id === myUserId;
