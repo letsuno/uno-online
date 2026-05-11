@@ -27,6 +27,7 @@ services:
       DOMAIN: ${DOMAIN:-localhost}
       DEV_MODE: ${DEV_MODE:-true}
       ROOM_IDLE_TIMEOUT_MS: ${ROOM_IDLE_TIMEOUT_MS:-7200000}
+      GITHUB_PROXY: ${GITHUB_PROXY:-}
       PORT: "3001"
     volumes:
       - ./data/sqlite:/data
