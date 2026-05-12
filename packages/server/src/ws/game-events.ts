@@ -12,7 +12,7 @@ import { recordGameResult } from '../db/user-repo.js';
 import { saveGameEvents, saveDeckInfo } from '../plugins/core/game-history/service.js';
 import { getRoom, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS } from '@uno-online/shared';
-import { removeSpectator } from '../plugins/core/spectate/ws.js';
+import { removeSpectator, getSpectatorNames } from '../plugins/core/spectate/ws.js';
 import type { SocketData } from './types.js';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
@@ -279,6 +279,7 @@ async function processPendingSpectatorJoins(
     });
   }
   pendingSpectatorJoins.delete(roomCode);
+  io.to(roomCode).emit('room:spectator_list', { spectators: getSpectatorNames(roomCode) });
 }
 
 async function startNextRound(
@@ -676,6 +677,13 @@ export function registerGameEvents(
       });
       callback?.({ success: true, queued: true });
     }
+
+    const joined = pending.has(data.user.userId);
+    io.to(roomCode).emit('game:spectator_queue', {
+      queue: [...pending.values()].map((p) => p.nickname),
+      nickname: data.user.nickname,
+      joined,
+    });
   });
 
   socket.on('game:kick_player', async (payload: { targetId?: string }, callback) => {

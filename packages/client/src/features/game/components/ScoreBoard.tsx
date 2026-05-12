@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Trophy, BarChart3, Crown, Check, UserX } from 'lucide-react';
+import { Trophy, BarChart3, Crown, Check, UserX, UserPlus } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useRoomStore } from '@/shared/stores/room-store';
+import { useSpectatorStore } from '../stores/spectator-store';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/Button';
 import { AiBadge } from '@/shared/components/ui/AiBadge';
@@ -37,6 +38,7 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby, onKi
     }, 1000);
     return () => clearInterval(interval);
   }, [phase]);
+  const pendingJoinQueue = useSpectatorStore((s) => s.pendingJoinQueue);
   const ownerId = useRoomStore((s) => s.room?.ownerId);
   const userId = useEffectiveUserId();
   const sorted = [...players].sort((a, b) => b.score - a.score);
@@ -97,6 +99,11 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby, onKi
             })}
           </tbody>
         </table>
+        {!isGameOver && pendingJoinQueue.length > 0 && (
+          <p className="mb-2 text-xs text-accent flex items-center justify-center gap-1">
+            <UserPlus size={12} /> {pendingJoinQueue.join('、')} 将在下一轮加入
+          </p>
+        )}
         {!isGameOver && (
           <p className="mb-3 text-xs text-muted-foreground">
             {allAgreed ? '所有玩家已同意，等待房主开始下一轮' : `已有 ${votes}/${required} 人同意继续下一轮`}

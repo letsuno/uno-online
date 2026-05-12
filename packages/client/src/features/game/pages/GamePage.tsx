@@ -10,6 +10,7 @@ import { useGameSocket } from '../hooks/useGameSocket';
 import { useGameLogTracker } from '../hooks/useGameLogTracker';
 import { useAutoPlay } from '../hooks/useAutoPlay';
 import { useGameActions } from '../hooks/useGameActions';
+import { useGameHotkeys } from '../hooks/useGameHotkeys';
 import { playSound } from '@/shared/sound/sound-manager';
 import { useBgm } from '@/shared/sound/useBgm';
 import BgmToast from '@/shared/components/BgmToast';
@@ -35,6 +36,7 @@ import CheatOverlay from '../components/CheatOverlay';
 import { useSpectatorStore } from '../stores/spectator-store';
 import GameStartRulesModal from '../components/GameStartRulesModal';
 import ColorWave from '../components/ColorWave';
+import HotkeySettingsModal from '../components/HotkeySettingsModal';
 
 export default function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -42,6 +44,7 @@ export default function GamePage() {
   const phase = useGameStore((s) => s.phase);
   const roundNumber = useGameStore((s) => s.roundNumber);
   const settings = useGameStore((s) => s.settings);
+  const toggleInfoDrawer = useGameStore((s) => s.toggleInfoDrawer);
   const openInfoDrawer = useGameStore((s) => s.openInfoDrawer);
   const clearGame = useGameStore((s) => s.clearGame);
   const clearRoom = useRoomStore((s) => s.clearRoom);
@@ -57,6 +60,7 @@ export default function GamePage() {
   useGameLogTracker();
   const bgmSongName = useBgm('game');
   const [showStartRules, setShowStartRules] = useState(false);
+  const [showHotkeys, setShowHotkeys] = useState(false);
   const shownStartRulesRef = useRef<string | null>(null);
   const [antiCheatKey, setAntiCheatKey] = useState<string | null>(null);
   const shownAntiCheatRef = useRef<string | null>(null);
@@ -126,6 +130,16 @@ export default function GamePage() {
     prevTurnRef.current = isMyTurn && phase === 'playing';
   }, [isMyTurn, phase]);
 
+  useGameHotkeys({
+    autopilot_once: () => {
+      getSocket().emit('game:autopilot_once', (res: { success?: boolean; error?: string }) => {
+        if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
+      });
+    },
+    toggle_info: () => toggleInfoDrawer(),
+    open_chat: () => openInfoDrawer('chat'),
+  });
+
   const isSelectionAllowed = (target: EventTarget | null) => {
     if (!(target instanceof HTMLElement)) return false;
     return Boolean(target.closest('[data-allow-selection], input, textarea, select, [contenteditable="true"]'));
@@ -172,7 +186,7 @@ export default function GamePage() {
           </p>
         </div>
       )}
-      <TopBar roomCode={roomCode ?? ''} />
+      <TopBar roomCode={roomCode ?? ''} onOpenHotkeys={() => setShowHotkeys(true)} />
       <PlayerListPanel />
       <LayoutGroup>
       <div className="relative flex flex-col flex-1 min-h-0">
@@ -229,6 +243,7 @@ export default function GamePage() {
       )}
       {cheatDetected && <CheatOverlay />}
       <BgmToast song={bgmSongName} />
+      <HotkeySettingsModal open={showHotkeys} onClose={() => setShowHotkeys(false)} />
     </div>
   );
 }

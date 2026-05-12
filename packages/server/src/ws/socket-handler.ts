@@ -252,6 +252,30 @@ export function setupSocketHandlers(
       callback?.({ success: true, autopilot: nextAutopilot });
     });
 
+    socket.on('game:autopilot_once', async (callback) => {
+      const roomCode = socket.data.roomCode;
+      if (!roomCode) return callback?.({ success: false, error: '不在房间中' });
+      const session = sessions.get(roomCode);
+      if (!session) return callback?.({ success: false, error: '游戏未开始' });
+      const state = session.getFullState();
+      const player = state.players.find(p => p.id === userId);
+      if (!player) return callback?.({ success: false, error: '玩家不在游戏中' });
+      if (player.autopilot) return callback?.({ success: false, error: '已在托管中' });
+      if (getAutopilotActionPlayerId(state) !== userId) return callback?.({ success: false, error: '不是你的回合' });
+
+      const acted = await executeAutopilot(session, userId, async () => {
+        persister.markDirty(roomCode, session.getFullState());
+        await emitGameUpdate(io, roomCode, session, redis);
+      }, (action) => notifyAutopilotAction(roomCode, session, action));
+
+      if (acted) {
+        persister.markDirty(roomCode, session.getFullState());
+        await emitGameUpdate(io, roomCode, session, redis);
+        startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
+      }
+      callback?.({ success: true });
+    });
+
     socket.on('disconnect', async () => {
       clearRateLimit(socket.id);
       clearThrowTimestamp(userId);

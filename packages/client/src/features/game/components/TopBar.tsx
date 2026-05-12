@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, Volume2, VolumeX, Music, Spade, DoorOpen, Bot, HelpCircle } from 'lucide-react';
+import { Eye, Volume2, VolumeX, Music, Spade, DoorOpen, Bot, HelpCircle, Keyboard } from 'lucide-react';
 import type { Card, Color } from '@uno-online/shared';
 import TurnTimer from './TurnTimer';
 import { useSettingsStore } from '@/shared/stores/settings-store';
@@ -78,9 +78,9 @@ function GameStatus() {
   );
 }
 
-interface TopBarProps { roomCode: string; }
+interface TopBarProps { roomCode: string; onOpenHotkeys: () => void; }
 
-export default function TopBar({ roomCode }: TopBarProps) {
+export default function TopBar({ roomCode, onOpenHotkeys }: TopBarProps) {
   const { colorBlindMode, toggleColorBlind, soundEnabled, toggleSound, bgmEnabled, toggleBgm } = useSettingsStore();
   const ownerId = useRoomStore((s) => s.room?.ownerId);
   const userId = useEffectiveUserId();
@@ -111,6 +111,13 @@ export default function TopBar({ roomCode }: TopBarProps) {
       </div>
       <GameStatus />
       <div className="flex items-center gap-3 justify-end">
+        <button
+          onClick={onOpenHotkeys}
+          className="hidden md:inline bg-transparent border-none text-sm cursor-pointer text-muted-foreground hover:text-accent transition-colors"
+          title="快捷键设置"
+        >
+          <Keyboard size={16} />
+        </button>
         <button
           onClick={toggleInfoDrawer}
           className="hidden md:inline bg-transparent border-none text-sm cursor-pointer text-muted-foreground hover:text-accent transition-colors"

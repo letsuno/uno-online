@@ -16,6 +16,8 @@ import PlayerActionMenu from '../components/PlayerActionMenu';
 import { DEFAULT_HOUSE_RULES } from '@uno-online/shared';
 import type { HouseRules } from '@uno-online/shared';
 import { Button } from '@/shared/components/ui/Button';
+import { useBgm } from '@/shared/sound/useBgm';
+import BgmToast from '@/shared/components/BgmToast';
 
 export default function RoomPage() {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -23,6 +25,7 @@ export default function RoomPage() {
   const { players, room, clearRoom, setRoom, updateRoom } = useRoomStore();
   const setGameState = useGameStore((s) => s.setGameState);
   const navigate = useNavigate();
+  const songName = useBgm('lobby');
 
   useEffect(() => {
     connectSocket();
@@ -191,6 +194,7 @@ export default function RoomPage() {
         <Button variant="danger" onClick={leaveRoom} sound="danger">离开房间</Button>
       </div>
       <VoicePanel />
+      <BgmToast song={songName} />
     </div>
   );
 }
