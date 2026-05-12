@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import AppRouter from './router';
 import ToastContainer from '@/shared/components/Toast';
 import ChangelogModal from '@/shared/components/ChangelogModal';
+import NotificationPermissionDialog from '@/shared/components/NotificationPermissionDialog';
 import { useSettingsStore, FONT_OPTIONS } from '@/shared/stores/settings-store';
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
       <AppRouter />
       <ToastContainer />
       <ChangelogModal />
+      <NotificationPermissionDialog />
     </div>
   );
 }

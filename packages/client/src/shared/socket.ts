@@ -7,6 +7,7 @@ import { useToastStore } from './stores/toast-store';
 import { playSound } from './sound/sound-manager';
 import { useGatewayStore, type PlayerVoicePresence } from './voice/gateway-store';
 import { leaveVoiceSession } from './voice/voice-runtime';
+import { sendNotification } from './utils/notification';
 
 type TypedSocket = SocketType<ServerToClientEvents, ClientToServerEvents>;
 
@@ -56,6 +57,8 @@ export function getSocket(): TypedSocket {
     });
 
     const handleGameView = (view: PlayerView) => {
+      const prevPhase = useGameStore.getState().phase;
+      const prevCurrentIndex = useGameStore.getState().currentPlayerIndex;
       useGameStore.getState().setGameState(view);
       const settings = view.settings;
       if (!settings || view.phase === 'round_end' || view.phase === 'game_over') {
@@ -65,6 +68,25 @@ export function getSocket(): TypedSocket {
           ? Math.floor(settings.turnTimeLimit / 2)
           : settings.turnTimeLimit;
         useGameStore.getState().setTurnEndTime(Date.now() + timeLimit * 1000);
+      }
+
+      const viewerId = view.viewerId ?? useGameStore.getState().viewerId;
+      const currentPlayerId = view.players[view.currentPlayerIndex]?.id;
+
+      if (prevPhase !== 'playing' && view.phase === 'playing' && view.roundNumber === 1) {
+        sendNotification('gameStart');
+      }
+
+      if (
+        view.phase === 'playing' &&
+        currentPlayerId === viewerId &&
+        (prevPhase !== 'playing' || prevCurrentIndex !== view.currentPlayerIndex)
+      ) {
+        sendNotification('myTurn');
+      }
+
+      if (view.phase === 'game_over' && prevPhase !== 'game_over') {
+        sendNotification('gameEnd');
       }
     };
 
@@ -164,6 +186,7 @@ export function getSocket(): TypedSocket {
       useRoomStore.getState().clearRoom();
       useGameStore.getState().clearGame();
       leaveVoiceSession();
+      sendNotification('kicked', data.reason || '你已被移出房间');
       useToastStore.getState().addToast(data.reason || '你已被移出游戏', 'error');
       if (window.location.pathname !== '/lobby') {
         window.location.assign('/lobby');
@@ -182,6 +205,7 @@ export function getSocket(): TypedSocket {
       const message = data?.reason === 'idle_timeout'
         ? '房间长时间没有活动，已自动解散'
         : '房间已被房主解散';
+      sendNotification('roomDissolved', message);
       useToastStore.getState().addToast(message, 'info');
       if (window.location.pathname !== '/lobby') {
         window.location.assign('/lobby');

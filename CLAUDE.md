@@ -88,7 +88,19 @@ src/
 ```bash
 pnpm test                                    # 运行所有测试
 pnpm --filter shared test                    # 仅 shared 测试
+pnpm --filter shared build                   # 构建 shared（生成类型声明，client/server 依赖此步骤）
 pnpm --filter server exec tsc --noEmit       # 服务端类型检查
-pnpm --filter client exec tsc --noEmit       # 客户端类型检查
-pnpm --filter client build                   # 客户端生产构建
+pnpm --filter client exec tsc --noEmit       # 客户端类型检查（需先 build shared）
+pnpm --filter client build                   # 客户端生产构建（需先 build shared）
+```
+
+### 验证流程
+
+client 和 server 的类型检查/构建依赖 shared 的编译产物。完整验证步骤：
+
+```bash
+pnpm --filter shared build                   # 1. 先构建 shared
+pnpm --filter server exec tsc --noEmit       # 2. 服务端类型检查
+pnpm --filter client build                   # 3. 客户端构建（含类型检查）
+pnpm test                                    # 4. 运行测试
 ```
