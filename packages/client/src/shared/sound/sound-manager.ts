@@ -1,4 +1,5 @@
 import { useSettingsStore } from '../stores/settings-store';
+import { getAudioContext } from './audio-context';
 
 type SoundName =
   | 'play_card'
@@ -53,8 +54,6 @@ const FREQUENCIES: Record<SoundName, { freq: number; duration: number; type: Osc
   danger:       { freq: 280, duration: 0.1, type: 'sawtooth' },
 };
 
-let audioCtx: AudioContext | null = null;
-
 const THROW_HIT_SOUND_BY_ITEM: Record<string, string> = {
   '🍅': '/sounds/throw-tomato-squish.mp3',
   '💩': '/sounds/throw-slime-impact.mp3',
@@ -64,19 +63,12 @@ const THROW_HIT_SOUND_BY_ITEM: Record<string, string> = {
   '💖': '/sounds/throw-boing.mp3',
 };
 
-function getAudioCtx(): AudioContext {
-  if (!audioCtx) {
-    audioCtx = new AudioContext();
-  }
-  return audioCtx;
-}
-
 export function playSound(name: SoundName): void {
   const { soundEnabled, soundVolume } = useSettingsStore.getState();
   if (!soundEnabled || soundVolume <= 0) return;
 
   const config = FREQUENCIES[name];
-  const ctx = getAudioCtx();
+  const ctx = getAudioContext();
 
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();

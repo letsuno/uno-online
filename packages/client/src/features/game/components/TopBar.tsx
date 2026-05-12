@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, Volume2, VolumeX, Spade, DoorOpen, Bot, HelpCircle } from 'lucide-react';
+import { Eye, Volume2, VolumeX, Music, Spade, DoorOpen, Bot, HelpCircle } from 'lucide-react';
 import type { Card, Color } from '@uno-online/shared';
 import TurnTimer from './TurnTimer';
 import { useSettingsStore } from '@/shared/stores/settings-store';
@@ -81,7 +81,7 @@ function GameStatus() {
 interface TopBarProps { roomCode: string; }
 
 export default function TopBar({ roomCode }: TopBarProps) {
-  const { colorBlindMode, toggleColorBlind, soundEnabled, toggleSound } = useSettingsStore();
+  const { colorBlindMode, toggleColorBlind, soundEnabled, toggleSound, bgmEnabled, toggleBgm } = useSettingsStore();
   const ownerId = useRoomStore((s) => s.room?.ownerId);
   const userId = useEffectiveUserId();
   const isHost = ownerId === userId;
@@ -138,6 +138,16 @@ export default function TopBar({ roomCode }: TopBarProps) {
           title={colorBlindMode ? '关闭色盲模式' : '开启色盲模式'}
         >
           <Eye size={16} />
+        </button>
+        <button
+          onClick={toggleBgm}
+          className={cn(
+            'bg-transparent border-none text-sm cursor-pointer',
+            bgmEnabled ? 'text-accent' : 'text-muted-foreground'
+          )}
+          title={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
+        >
+          <Music size={16} />
         </button>
         <button
           onClick={toggleSound}

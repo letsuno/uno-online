@@ -334,7 +334,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
         {remainingPenaltyDraws > 0 && dimensions.width > 0 && (
           <motion.div
             className="absolute left-1/2 -translate-x-1/2 z-card pointer-events-none whitespace-nowrap font-game text-lg font-bold text-destructive text-shadow-glow"
-            style={{ top: dimensions.height / 2 - 90 }}
+            style={{ top: dimensions.height / 2 - 130 }}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}

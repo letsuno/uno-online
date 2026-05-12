@@ -13,6 +13,8 @@ export const FONT_OPTIONS: Record<FontOption, { label: string; value: string }> 
 interface SettingsState {
   soundVolume: number;
   soundEnabled: boolean;
+  bgmEnabled: boolean;
+  bgmVolume: number;
   colorBlindMode: boolean;
   fontFamily: FontOption;
   cardImagePack: boolean; // whether a card image pack is loaded
@@ -20,6 +22,8 @@ interface SettingsState {
   uiTheme: UiTheme;
   setSoundVolume: (v: number) => void;
   toggleSound: () => void;
+  toggleBgm: () => void;
+  setBgmVolume: (v: number) => void;
   toggleColorBlind: () => void;
   setFontFamily: (f: FontOption) => void;
   setCardImagePack: (loaded: boolean) => void;
@@ -30,6 +34,8 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>((set) => ({
   soundVolume: parseFloat(localStorage.getItem('soundVolume') ?? '0.7'),
   soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
+  bgmEnabled: localStorage.getItem('bgmEnabled') !== 'false',
+  bgmVolume: parseFloat(localStorage.getItem('bgmVolume') ?? '0.3'),
   colorBlindMode: localStorage.getItem('colorBlindMode') === 'true',
   fontFamily: (localStorage.getItem('fontFamily') as FontOption) || 'default',
   cardImagePack: localStorage.getItem('cardImagePack') === 'true',
@@ -44,6 +50,15 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     localStorage.setItem('soundEnabled', String(next));
     return { soundEnabled: next };
   }),
+  toggleBgm: () => set((s) => {
+    const next = !s.bgmEnabled;
+    localStorage.setItem('bgmEnabled', String(next));
+    return { bgmEnabled: next };
+  }),
+  setBgmVolume: (v) => {
+    localStorage.setItem('bgmVolume', String(v));
+    set({ bgmVolume: v });
+  },
   toggleColorBlind: () => set((s) => {
     const next = !s.colorBlindMode;
     localStorage.setItem('colorBlindMode', String(next));
