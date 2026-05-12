@@ -50,16 +50,6 @@ function DrawPile({ side, isPortrait, onDraw, drawTargetX, drawTargetY, drawAnim
     <div className="flex flex-col items-center gap-1.5 z-card relative min-w-draw-pile-min">
       <DrawCardAnimation trigger={drawAnimTrigger} targetX={drawTargetX} targetY={drawTargetY} />
       <AnimatePresence>
-        {isPenaltyDrawing && canDraw && side === 'left' && (
-          <motion.div
-            className="absolute bottom-hint-bottom left-1/2 -translate-x-1/2 whitespace-nowrap font-game text-caption text-destructive text-shadow-glow"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 6 }}
-          >
-            还要摸 {remainingPenaltyDraws} 张
-          </motion.div>
-        )}
         {showNoPlayableHint && side === 'left' && (
           <motion.div
             className="absolute bottom-hint-bottom left-1/2 -translate-x-1/2 whitespace-nowrap font-game text-caption text-primary text-shadow-glow"

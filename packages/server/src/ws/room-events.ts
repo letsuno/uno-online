@@ -15,7 +15,7 @@ import { dissolveRoom } from './room-lifecycle.js';
 import { removeVoicePresence, setForceMuted } from './voice-presence.js';
 import { getAutopilotActionPlayerId } from './autopilot-action-player.js';
 
-const DRAW_PENALTY_PAUSE_MS = 500;
+const AUTOPILOT_MIN_ACTION_INTERVAL_MS = 500;
 const AUTO_AUTOPILOT_THRESHOLD = 2;
 const BOT_TURN_TIME_LIMIT = 120;
 type AutopilotActionHandler = (roomCode: string, session: GameSession, action: GameAction) => void;
@@ -66,12 +66,6 @@ function canAutopilotActForPlayer(session: GameSession, playerId: string): boole
   return getAutopilotActionPlayerId(state) === playerId;
 }
 
-function shouldPauseAfterAction(before: GameState, session: GameSession, action: GameAction): boolean {
-  if (action.type === 'DRAW_CARD' && (before.pendingPenaltyDraws ?? 0) > 0) return true;
-  if (action.type !== 'PLAY_CARD') return false;
-  const topCard = session.getFullState().discardPile.at(-1);
-  return topCard?.type === 'draw_two' || topCard?.type === 'wild_draw_four';
-}
 
 export function registerRoomEvents(
   socket: Socket,
@@ -394,6 +388,7 @@ export async function executeAutopilot(
   onActionSuccess?: (action: GameAction) => void | Promise<void>,
 ): Promise<boolean> {
   let acted = false;
+  let lastActionTime = 0;
   for (let round = 0; round < 5; round++) {
     if (!canAutopilotActForPlayer(session, playerId)) break;
 
@@ -402,15 +397,18 @@ export async function executeAutopilot(
     if (actions.length === 0) break;
     let anySuccess = false;
     for (const action of actions) {
-      const beforeAction = session.getFullState();
+      if (lastActionTime > 0) {
+        const elapsed = Date.now() - lastActionTime;
+        if (elapsed < AUTOPILOT_MIN_ACTION_INTERVAL_MS) {
+          await sleep(AUTOPILOT_MIN_ACTION_INTERVAL_MS - elapsed);
+        }
+      }
       const result = session.applyAction(action);
       if (result.success) {
+        lastActionTime = Date.now();
         anySuccess = true;
         await onActionSuccess?.(action);
-        if (shouldPauseAfterAction(beforeAction, session, action)) {
-          await onPenaltyPause?.();
-          await sleep(DRAW_PENALTY_PAUSE_MS);
-        }
+        await onPenaltyPause?.();
       }
     }
     if (!anySuccess) break;
@@ -463,7 +461,7 @@ export function startTurnTimer(
   const immediateAutopilotPlayerId = getImmediateAutopilotPlayerId(state);
 
   if (immediateAutopilotPlayerId) {
-    turnTimer.start(roomCode, 2, async (code) => {
+    turnTimer.start(roomCode, 1, async (code) => {
       const s = sessions.get(code);
       if (!s) return;
       const pid = getImmediateAutopilotPlayerId(s.getFullState());
