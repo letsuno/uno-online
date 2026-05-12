@@ -41,7 +41,7 @@ export function getSocket(): TypedSocket {
       let changed = false;
       for (const [uid, p] of Object.entries(newPresence)) {
         const old = oldPresence[uid];
-        if (!old || old.inVoice !== p.inVoice || old.micEnabled !== p.micEnabled) { changed = true; }
+        if (!old || old.inVoice !== p.inVoice || old.micEnabled !== p.micEnabled || old.forceMuted !== p.forceMuted) { changed = true; }
         if (uid === selfId) continue;
         const wasInVoice = old?.inVoice;
         if (p.inVoice && !wasInVoice) playSound('voice_join');

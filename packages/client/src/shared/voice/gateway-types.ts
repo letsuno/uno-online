@@ -97,6 +97,7 @@ export type PlayerVoicePresence = {
   micEnabled: boolean
   speakerMuted: boolean
   speaking: boolean
+  forceMuted: boolean
 }
 
 export type SavedCredentials = {

@@ -57,6 +57,9 @@ export interface ClientToServerEvents {
   'room:ready': (ready: boolean, callback?: (res: SocketCallbackResult) => void) => void;
   'room:update_settings': (settings: Partial<RoomSettings>, callback?: (res: SocketCallbackResult & { room?: Record<string, unknown> }) => void) => void;
   'room:dissolve': (callback?: (res: SocketCallbackResult) => void) => void;
+  'room:transfer_owner': (payload: { targetId: string }, callback?: (res: SocketCallbackResult) => void) => void;
+  'room:kick': (payload: { targetId: string }, callback?: (res: SocketCallbackResult) => void) => void;
+  'voice:force_mute': (payload: { targetId: string; muted: boolean }, callback?: (res: SocketCallbackResult) => void) => void;
   'room:spectate': (roomCode: string, callback?: (res: SocketCallbackResult) => void) => void;
   'game:start': (callback: (res: SocketCallbackResult & { gameState?: PlayerView }) => void) => void;
   'game:play_card': (payload: { cardId: string; chosenColor?: Color }, callback?: (res: SocketCallbackResult) => void) => void;

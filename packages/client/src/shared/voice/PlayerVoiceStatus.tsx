@@ -44,10 +44,15 @@ export default function PlayerVoiceStatus({ playerId, playerName, isSelf = false
     speakerOn = inVoice && !voiceUser?.deaf && !voiceUser?.selfDeaf;
   }
   const speaking = presenceAvailable ? presence.speaking : Boolean(voiceUser && speakingByUserId[voiceUser.id]);
+  const forceMuted = presenceAvailable && presence.forceMuted;
 
   return (
     <span className={cn('inline-flex items-center gap-0.5', className)} title={inVoice ? '语音状态' : '未加入语音'}>
-      {micOn ? (
+      {forceMuted ? (
+        <span title="已被房主静音">
+          <MicOff size={12} className="text-destructive" />
+        </span>
+      ) : micOn ? (
         <Mic size={12} className={cn('text-uno-green', speaking && 'drop-shadow-[0_0_5px_rgba(34,197,94,0.95)]')} />
       ) : (
         <MicOff size={12} className={inVoice ? 'text-destructive' : 'text-muted-foreground/50'} />

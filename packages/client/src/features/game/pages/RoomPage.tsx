@@ -4,7 +4,7 @@ import { Crown, Check, Copy } from 'lucide-react';
 import { cn, getRoleColor } from '@/shared/lib/utils';
 import { AiBadge } from '@/shared/components/ui/AiBadge';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
-import { useRoomStore } from '@/shared/stores/room-store';
+import { useRoomStore, type RoomPlayer } from '@/shared/stores/room-store';
 import { useGameStore } from '../stores/game-store';
 import { getSocket, connectSocket, refreshVoicePresence } from '@/shared/socket';
 import VoicePanel from '@/shared/voice/VoicePanel';
@@ -12,6 +12,7 @@ import PlayerVoiceStatus from '@/shared/voice/PlayerVoiceStatus';
 import { leaveVoiceSession } from '@/shared/voice/voice-runtime';
 import { useToastStore } from '@/shared/stores/toast-store';
 import HouseRulesPanel from '../components/HouseRulesPanel';
+import PlayerActionMenu from '../components/PlayerActionMenu';
 import { DEFAULT_HOUSE_RULES } from '@uno-online/shared';
 import type { HouseRules } from '@uno-online/shared';
 import { Button } from '@/shared/components/ui/Button';
@@ -58,6 +59,7 @@ export default function RoomPage() {
   const myPlayer = players.find((p) => p.userId === user?.id);
   const allReady = players.length >= 2 && players.every((p) => p.ready);
   const [houseRules, setHouseRules] = useState<HouseRules>(DEFAULT_HOUSE_RULES);
+  const [menuTarget, setMenuTarget] = useState<{ player: RoomPlayer; position: { x: number; y: number } } | null>(null);
 
   useEffect(() => {
     if (room?.settings?.houseRules) {
@@ -111,12 +113,20 @@ export default function RoomPage() {
         </h3>
         {players.map((p) => {
           const roleColor = getRoleColor(p.role);
-          return <div key={p.userId} className="flex items-center justify-between border-b border-white/5 py-2">
+          const isMe = p.userId === user?.id;
+          return <div
+            key={p.userId}
+            className={cn('flex items-center justify-between border-b border-white/5 py-2', !isMe && 'cursor-pointer hover:bg-white/5 rounded')}
+            onClick={(e) => {
+              if (isMe) return;
+              setMenuTarget({ player: p, position: { x: e.clientX, y: e.clientY } });
+            }}
+          >
             <span className="flex min-w-0 flex-1 items-center gap-1.5" style={roleColor ? { color: roleColor } : undefined}>
               <span className="truncate">{p.nickname}</span>
               {p.isBot && <AiBadge />}
               {room?.ownerId === p.userId && <Crown size={14} className="shrink-0" />}
-              <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={p.userId === user?.id} className="shrink-0" />
+              <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={isMe} className="shrink-0" />
             </span>
             <span className={cn('text-xs', p.ready ? 'text-uno-green' : 'text-muted-foreground')}>
               {p.ready ? <><Check size={12} className="inline-block align-middle" /> 已准备</> : '未准备'}
@@ -124,6 +134,15 @@ export default function RoomPage() {
           </div>;
         })}
       </div>
+      {menuTarget && (
+        <PlayerActionMenu
+          target={menuTarget.player}
+          isOwner={isOwner}
+          roomStatus={room?.status ?? ''}
+          position={menuTarget.position}
+          onClose={() => setMenuTarget(null)}
+        />
+      )}
       {/* Spectator settings */}
       <div className="min-w-room-min rounded-2xl bg-card p-5 space-y-3">
         <h3 className="mb-3 text-sm text-muted-foreground">观战设置</h3>
