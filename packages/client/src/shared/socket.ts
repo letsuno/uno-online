@@ -9,6 +9,7 @@ import { useGatewayStore, type PlayerVoicePresence } from './voice/gateway-store
 import { leaveVoiceSession } from './voice/voice-runtime';
 import { sendNotification } from './utils/notification';
 import { useServerVersionStore } from './stores/server-version-store';
+import { useSpectatorStore } from '@/features/game/stores/spectator-store';
 
 type TypedSocket = SocketType<ServerToClientEvents, ClientToServerEvents>;
 
@@ -139,12 +140,26 @@ export function getSocket(): TypedSocket {
       }
     });
 
+    socket.on('room:spectator_list', (data) => {
+      if (data.spectators) {
+        const store = useSpectatorStore.getState();
+        store.setSpectators(data.spectators);
+        const spectatorSet = new Set(data.spectators);
+        if (store.pendingJoinQueue.some((n) => !spectatorSet.has(n))) {
+          store.setPendingJoinQueue(store.pendingJoinQueue.filter((n) => spectatorSet.has(n)));
+        }
+      }
+    });
+
     socket.on('room:spectator_joined', (data) => {
       useToastStore.getState().addToast(`${data.nickname} 开始观战`, 'info');
+      if (data.spectators) useSpectatorStore.getState().setSpectators(data.spectators);
     });
 
     socket.on('room:spectator_left', (data) => {
       useToastStore.getState().addToast(`${data.nickname} 离开观战`, 'info');
+      if (data.spectators) useSpectatorStore.getState().setSpectators(data.spectators);
+      else if (data.nickname) useSpectatorStore.getState().removeSpectator(data.nickname);
     });
 
     socket.on('server:version', (data) => {
