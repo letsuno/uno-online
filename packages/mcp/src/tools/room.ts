@@ -10,7 +10,7 @@ export function registerRoomTools(server: McpUnoServer): void {
     '创建游戏房间',
     {
       turnTimeLimit: z.number().optional().describe('每回合时间限制（秒）：15, 30, 或 60'),
-      targetScore: z.number().optional().describe('目标分数：200, 300, 或 500'),
+      targetScore: z.number().optional().describe('目标分数：200, 300, 500, 或 1000'),
       allowSpectators: z.boolean().optional().describe('是否允许观战'),
     },
     (args) => wrapTool(() => {
@@ -50,7 +50,7 @@ export function registerRoomTools(server: McpUnoServer): void {
     '房主更新房间设置（仅等待阶段）',
     {
       turnTimeLimit: z.union([z.literal(15), z.literal(30), z.literal(60)]).optional().describe('每回合时间限制（秒）'),
-      targetScore: z.union([z.literal(200), z.literal(300), z.literal(500)]).optional().describe('目标分数'),
+      targetScore: z.union([z.literal(200), z.literal(300), z.literal(500), z.literal(1000)]).optional().describe('目标分数'),
       allowSpectators: z.boolean().optional().describe('是否允许观战'),
       houseRules: z.record(z.unknown()).optional().describe('村规设置，如 {"stackDrawTwo":true}'),
     },

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Loader2, Eye, LogOut, UserPlus } from 'lucide-react';
+import { Loader2, Eye, LogOut, UserPlus, X } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useGameStore } from '../stores/game-store';
 import { useIsMyTurn } from '../hooks/useIsMyTurn';
@@ -202,32 +202,11 @@ export default function GamePage() {
       {!isSpectator && <PlayerHand onPlayCard={playCard} />}
       </LayoutGroup>
       {isSpectator && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-actions bg-card/90 backdrop-blur-sm rounded-full px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
-          <Eye size={16} /> 观战中
-          {phase === 'round_end' && (
-            <button
-              onClick={() => {
-                getSocket().emit('game:spectator_join', (res: { success?: boolean; error?: string }) => {
-                  if (res?.success) {
-                    setSpectator(false);
-                    clearSpectators();
-                  } else {
-                    useToastStore.getState().addToast(res?.error ?? '加入失败', 'error');
-                  }
-                });
-              }}
-              className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/80 px-2 py-1 text-xs text-white transition-colors hover:bg-primary"
-            >
-              <UserPlus size={12} /> 加入游戏
-            </button>
-          )}
-          <button
-            onClick={backToLobby}
-            className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-xs text-foreground transition-colors hover:bg-white/20"
-          >
-            <LogOut size={12} /> 退出
-          </button>
-        </div>
+        <SpectatorBar
+          phase={phase}
+          onBackToLobby={backToLobby}
+          onJoined={() => { setSpectator(false); clearSpectators(); }}
+        />
       )}
       <VoicePanel />
       <InfoDrawer />
@@ -246,6 +225,60 @@ export default function GamePage() {
         <ScoreBoard onPlayAgain={playAgain} onRematch={rematch} onBackToLobby={backToLobby} onKickPlayer={kickPlayer} />
       )}
       {cheatDetected && <CheatOverlay />}
+    </div>
+  );
+}
+
+function SpectatorBar({ phase, onBackToLobby, onJoined }: { phase: string | null; onBackToLobby: () => void; onJoined: () => void }) {
+  const [queued, setQueued] = useState(false);
+
+  useEffect(() => {
+    const socket = getSocket();
+    const handleState = () => {
+      const { isSpectator } = useGameStore.getState();
+      if (!isSpectator && queued) {
+        onJoined();
+        setQueued(false);
+      }
+    };
+    socket.on('game:state', handleState);
+    return () => { socket.off('game:state', handleState); };
+  }, [queued, onJoined]);
+
+  const toggleQueue = () => {
+    getSocket().emit('game:spectator_join', (res: { success?: boolean; error?: string; queued?: boolean }) => {
+      if (res?.success) {
+        setQueued(res.queued ?? false);
+      } else {
+        useToastStore.getState().addToast(res?.error ?? '操作失败', 'error');
+      }
+    });
+  };
+
+  return (
+    <div className="fixed top-14 left-1/2 -translate-x-1/2 z-actions bg-card/90 backdrop-blur-sm rounded-full px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
+      <Eye size={16} /> 观战中
+      {queued ? (
+        <button
+          onClick={toggleQueue}
+          className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-xs text-foreground transition-colors hover:bg-white/20"
+        >
+          <X size={12} /> 取消加入
+        </button>
+      ) : (
+        <button
+          onClick={toggleQueue}
+          className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/80 px-2 py-1 text-xs text-white transition-colors hover:bg-primary"
+        >
+          <UserPlus size={12} /> 下局加入
+        </button>
+      )}
+      <button
+        onClick={onBackToLobby}
+        className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-xs text-foreground transition-colors hover:bg-white/20"
+      >
+        <LogOut size={12} /> 退出
+      </button>
     </div>
   );
 }

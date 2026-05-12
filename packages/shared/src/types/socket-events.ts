@@ -47,6 +47,7 @@ export interface ServerToClientEvents {
   'room:spectator_list': (data: { spectators: string[] }) => void;
   'game:cheat_detected': () => void;
   'voice:presence': (presence: Record<string, unknown>) => void;
+  'server:version': (data: { version: string }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -79,5 +80,5 @@ export interface ClientToServerEvents {
   'voice:presence': (data: Record<string, unknown>, callback?: (res: SocketCallbackResult) => void) => void;
   'throw:item': (payload: { targetId: string; item: string }, callback?: (res: SocketCallbackResult) => void) => void;
   'player:toggle-autopilot': (callback?: (res: SocketCallbackResult & { autopilot?: boolean }) => void) => void;
-  'game:spectator_join': (callback?: (res: SocketCallbackResult) => void) => void;
+  'game:spectator_join': (callback?: (res: SocketCallbackResult & { queued?: boolean }) => void) => void;
 }

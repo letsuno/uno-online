@@ -36,7 +36,7 @@ export interface Player {
 
 export interface RoomSettings {
   turnTimeLimit: 15 | 30 | 60;
-  targetScore: 200 | 300 | 500;
+  targetScore: 200 | 300 | 500 | 1000;
   houseRules: HouseRules;
   allowSpectators: boolean;
   spectatorMode: 'full' | 'hidden';
