@@ -112,11 +112,37 @@ export function useGameLogTracker(): void {
     } else if (lastAction.type === 'CHALLENGE') {
       const player = findPlayer(lastAction.playerId);
       if (!player) return;
+      const succeeded = lastAction.succeeded;
+      const penaltyPlayer = lastAction.penaltyPlayerId ? findPlayer(lastAction.penaltyPlayerId) : undefined;
+      const penaltyCount = lastAction.penaltyCount;
+      let extra = '+4';
+      if (succeeded !== undefined && penaltyPlayer && penaltyCount) {
+        extra = succeeded
+          ? `成功，${penaltyPlayer.name} 罚摸 ${penaltyCount} 张`
+          : `失败，${player.name} 罚摸 ${penaltyCount} 张`;
+      }
       addLogEntry({
         type: 'challenge',
         playerId: lastAction.playerId,
         playerName: player.name,
-        extra: '质疑 +4',
+        extra,
+      });
+    } else if (lastAction.type === 'ACCEPT') {
+      const player = findPlayer(lastAction.playerId);
+      if (!player) return;
+      addLogEntry({
+        type: 'accept',
+        playerId: lastAction.playerId,
+        playerName: player.name,
+        extra: '+4',
+      });
+    } else if (lastAction.type === 'PASS') {
+      const player = findPlayer(lastAction.playerId);
+      if (!player) return;
+      addLogEntry({
+        type: 'pass',
+        playerId: lastAction.playerId,
+        playerName: player.name,
       });
     }
   }, [lastAction, players, discardPile, addLogEntry]);

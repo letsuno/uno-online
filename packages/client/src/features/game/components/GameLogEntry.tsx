@@ -34,6 +34,8 @@ function getActionDescription(entry: LogEntry): string {
     case 'call_uno': return '喊出';
     case 'catch_uno': return '抓到';
     case 'challenge': return '质疑';
+    case 'accept': return '接受';
+    case 'pass': return '过牌';
     default: return '';
   }
 }

@@ -237,6 +237,10 @@ export default function GameTable({ onDraw }: GameTableProps) {
     setActiveThrows((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
+  const drawStack = useGameStore((s) => s.drawStack);
+  const remainingPenaltyDraws = pendingPenaltyDraws > 0 ? pendingPenaltyDraws : drawStack;
+
   const isClockwise = direction === 'clockwise';
 
   return (
@@ -324,6 +328,21 @@ export default function GameTable({ onDraw }: GameTableProps) {
           />
         );
       })()}
+
+      {/* Penalty draw hint centered above table */}
+      <AnimatePresence>
+        {remainingPenaltyDraws > 0 && dimensions.width > 0 && (
+          <motion.div
+            className="absolute left-1/2 -translate-x-1/2 z-card pointer-events-none whitespace-nowrap font-game text-lg font-bold text-destructive text-shadow-glow"
+            style={{ top: dimensions.height / 2 - 90 }}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+          >
+            还要摸 {remainingPenaltyDraws} 张
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Player nodes */}
       {playerPositions.map((pos, i) => {
