@@ -10,6 +10,8 @@ import DirectionIndicator from './DirectionIndicator';
 import ThrowAnimation from './ThrowAnimation';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
+import { useIsMyTurn } from '../hooks/useIsMyTurn';
+import { usePlayableCardIds } from '../hooks/usePlayableCardIds';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { getSocket } from '@/shared/socket';
 import { useToastStore } from '@/shared/stores/toast-store';
@@ -239,7 +241,11 @@ export default function GameTable({ onDraw }: GameTableProps) {
 
   const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
   const drawStack = useGameStore((s) => s.drawStack);
+  const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
   const remainingPenaltyDraws = pendingPenaltyDraws > 0 ? pendingPenaltyDraws : drawStack;
+  const isMyTurn = useIsMyTurn();
+  const playableIds = usePlayableCardIds();
+  const showNoPlayableHint = isMyTurn && phase === 'playing' && !hasDrawnThisTurn && remainingPenaltyDraws === 0 && playableIds.size === 0 && !settings?.houseRules?.noHints;
 
   const isClockwise = direction === 'clockwise';
 
@@ -329,17 +335,30 @@ export default function GameTable({ onDraw }: GameTableProps) {
         );
       })()}
 
-      {/* Penalty draw hint centered above table */}
+      {/* Draw hint centered above table */}
       <AnimatePresence>
         {remainingPenaltyDraws > 0 && dimensions.width > 0 && (
           <motion.div
+            key="penalty"
             className="absolute left-1/2 -translate-x-1/2 z-card pointer-events-none whitespace-nowrap font-game text-lg font-bold text-destructive text-shadow-glow"
             style={{ top: dimensions.height / 2 - 130 }}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
           >
-            还要摸 {remainingPenaltyDraws} 张
+            {players[currentPlayerIndex]?.id === userId ? '' : `${players[currentPlayerIndex]?.name} `}还要摸 {remainingPenaltyDraws} 张
+          </motion.div>
+        )}
+        {showNoPlayableHint && dimensions.width > 0 && (
+          <motion.div
+            key="no-playable"
+            className="absolute left-1/2 -translate-x-1/2 z-card pointer-events-none whitespace-nowrap font-game text-lg font-bold text-primary text-shadow-glow"
+            style={{ top: dimensions.height / 2 - 130 }}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+          >
+            无牌可出，摸牌
           </motion.div>
         )}
       </AnimatePresence>

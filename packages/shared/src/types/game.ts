@@ -84,7 +84,7 @@ export type GameAction =
   | { type: 'DRAW_CARD'; playerId: string; side: DrawSide }
   | { type: 'PASS'; playerId: string }
   | { type: 'CALL_UNO'; playerId: string }
-  | { type: 'CATCH_UNO'; catcherId: string; targetId: string }
+  | { type: 'CATCH_UNO'; catcherId: string; targetId: string; catcherName?: string }
   | { type: 'CHALLENGE'; playerId: string; succeeded?: boolean; penaltyPlayerId?: string; penaltyCount?: number }
   | { type: 'ACCEPT'; playerId: string }
   | { type: 'CHOOSE_COLOR'; playerId: string; color: Color }

@@ -68,11 +68,12 @@ export function setupSpectateHandlers(
       const view = session.getSpectatorView(room.settings.spectatorMode);
       socket.emit('game:state', view);
       socket.emit('chat:history', session.getChatHistory());
-      socket.emit('room:spectator_list', { spectators: getSpectatorNames(roomCode) });
 
+      const spectators = getSpectatorNames(roomCode);
+      io.to(roomCode).emit('room:spectator_list', { spectators });
       socket.to(roomCode).emit('room:spectator_joined', {
         nickname: data.user.nickname,
-        spectators: getSpectatorNames(roomCode),
+        spectators,
       });
 
       callback?.({ success: true });
@@ -85,9 +86,11 @@ export function setupSpectateHandlers(
         if (nickname) {
           roomSpectators.get(data.roomCode)?.delete(nickname);
         }
-        socket.to(data.roomCode).emit('room:spectator_left', {
+        const spectators = getSpectatorNames(data.roomCode);
+        io.to(data.roomCode).emit('room:spectator_list', { spectators });
+        io.to(data.roomCode).emit('room:spectator_left', {
           nickname: nickname ?? '',
-          spectators: getSpectatorNames(data.roomCode),
+          spectators,
         });
       }
     });

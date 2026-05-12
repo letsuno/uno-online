@@ -197,7 +197,7 @@ export default function GameEffects() {
       addEffect({
         type: 'catch_uno',
         text: '抓 UNO!',
-        catcherName: catcher?.name,
+        catcherName: catcher?.name ?? lastAction.catcherName ?? '观众',
         catcherIndex: catcherIdx >= 0 ? catcherIdx : undefined,
         catcherAvatarUrl: catcher?.avatarUrl,
         targetName: target?.name,
