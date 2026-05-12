@@ -11,6 +11,8 @@ import { useGameLogTracker } from '../hooks/useGameLogTracker';
 import { useAutoPlay } from '../hooks/useAutoPlay';
 import { useGameActions } from '../hooks/useGameActions';
 import { playSound } from '@/shared/sound/sound-manager';
+import { useBgm } from '@/shared/sound/useBgm';
+import BgmToast from '@/shared/components/BgmToast';
 import { getSocket, refreshVoicePresence } from '@/shared/socket';
 import { leaveVoiceSession } from '@/shared/voice/voice-runtime';
 import { useRoomStore } from '@/shared/stores/room-store';
@@ -53,6 +55,7 @@ export default function GamePage() {
 
   const connectionStatus = useGameSocket(roomCode);
   useGameLogTracker();
+  const bgmSongName = useBgm('game');
   const [showStartRules, setShowStartRules] = useState(false);
   const shownStartRulesRef = useRef<string | null>(null);
   const [antiCheatKey, setAntiCheatKey] = useState<string | null>(null);
@@ -225,6 +228,7 @@ export default function GamePage() {
         <ScoreBoard onPlayAgain={playAgain} onRematch={rematch} onBackToLobby={backToLobby} onKickPlayer={kickPlayer} />
       )}
       {cheatDetected && <CheatOverlay />}
+      <BgmToast songName={bgmSongName} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Spade, LogOut, User, Hexagon, Circle, Upload, X, Type, Eye, History, Users, Clock, ClipboardPaste } from 'lucide-react';
+import { Spade, LogOut, User, Hexagon, Circle, Upload, X, Type, Eye, History, Users, Clock, ClipboardPaste, Music } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { getRoleColor } from '@/shared/lib/utils';
 import { useRoomStore } from '@/shared/stores/room-store';
@@ -12,6 +12,10 @@ import { Input } from '@/shared/components/ui/Input';
 import { BUILD_VERSION } from '@/shared/build-info';
 import { ServerButton } from '@/shared/components/ServerButton';
 import { ServerSelectModal } from '@/shared/components/ServerSelectModal';
+import { useBgm } from '@/shared/sound/useBgm';
+import TutorialModal from '@/shared/components/TutorialModal';
+import BgmToast from '@/shared/components/BgmToast';
+import MusicHallModal from '@/shared/components/MusicHallModal';
 import { useLobbyStore } from '../stores/lobby-store';
 
 export default function LobbyPage() {
@@ -24,6 +28,8 @@ export default function LobbyPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { activeRooms, recentGames, fetchActiveRooms, fetchRecentGames } = useLobbyStore();
+  const songName = useBgm('lobby');
+  const [musicHall, setMusicHall] = useState(false);
 
   useEffect(() => {
     fetchActiveRooms();
@@ -270,11 +276,21 @@ export default function LobbyPage() {
             <Hexagon size={14} />
           </button>
         </div>
+        <button
+          onClick={() => setMusicHall(true)}
+          className="bg-card text-foreground border border-white/20 rounded-lg px-2.5 py-1.5 text-sm cursor-pointer flex items-center gap-1"
+          title="音乐厅"
+        >
+          <Music size={14} /> 音乐厅
+        </button>
         <ServerButton />
         <span className="text-xs text-muted-foreground/50">v{BUILD_VERSION}</span>
       </div>
 
       <ServerSelectModal />
+      <TutorialModal />
+      <BgmToast songName={songName} />
+      <MusicHallModal open={musicHall} onClose={() => setMusicHall(false)} currentScene="lobby" />
     </div>
   );
 }
