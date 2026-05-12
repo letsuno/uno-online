@@ -93,7 +93,6 @@ function PlayerNode({
 
   const handleThrowSelect = useCallback((item: string) => {
     onThrowItem?.(item);
-    setShowThrowPicker(false);
   }, [onThrowItem]);
 
   const closeReaction = useCallback(() => setShowReaction(false), []);

@@ -499,7 +499,7 @@ export function registerGameEvents(
     const ctx = getSession(socket, sessions);
     if (!ctx) return callback?.({ success: false });
     const { session, roomCode } = ctx;
-    const result = session.applyAction({ type: 'CATCH_UNO', catcherId: data.user.userId, targetId: payload.targetPlayerId });
+    const result = session.applyAction({ type: 'CATCH_UNO', catcherId: data.user.userId, targetId: payload.targetPlayerId, catcherName: data.user.nickname });
     if (!result.success) return callback?.({ success: false, error: result.error });
     session.recordEvent(GameEventType.CATCH_UNO, { targetPlayerId: payload.targetPlayerId }, data.user.userId);
     persister.markDirty(roomCode, session.getFullState());

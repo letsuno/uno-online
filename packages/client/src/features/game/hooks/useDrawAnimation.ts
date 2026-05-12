@@ -3,6 +3,7 @@ import type { GameAction, HouseRules } from '@uno-online/shared';
 import { useGameStore } from '../stores/game-store';
 import type { PlayerInfo } from '../stores/game-store';
 import type { Position } from './usePlayerLayout';
+import { playSound } from '@/shared/sound/sound-manager';
 
 interface HandGainBump {
   id: number;
@@ -193,6 +194,7 @@ export function useDrawAnimation(
         const drawSide = (lastAction as { side?: string }).side;
         const setAnim = drawSide === 'right' ? setDrawAnimRight : setDrawAnimLeft;
         for (let i = 0; i < added; i++) {
+          playSound('draw_card');
           const target = computeDrawTarget(player.id);
           const timer = window.setTimeout(() => {
             setAnim((prev) => ({

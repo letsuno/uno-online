@@ -100,11 +100,12 @@ export function useGameLogTracker(): void {
     } else if (lastAction.type === 'CATCH_UNO') {
       const catcher = findPlayer(lastAction.catcherId);
       const target = findPlayer(lastAction.targetId);
-      if (!catcher || !target) return;
+      if (!target) return;
+      const catcherName = catcher?.name ?? lastAction.catcherName ?? '观众';
       addLogEntry({
         type: 'catch_uno',
         playerId: lastAction.catcherId,
-        playerName: catcher.name,
+        playerName: catcherName,
         targetId: lastAction.targetId,
         targetName: target.name,
         extra: '未喊 UNO!',

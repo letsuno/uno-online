@@ -11,7 +11,7 @@ import { getRoom, getRoomPlayers, setRoomOwner } from '../plugins/core/room/stor
 import { loadGameState, GameStatePersister } from '../plugins/core/game/state-store.js';
 import { checkRateLimit, clearRateLimit } from './rate-limiter.js';
 import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws.js';
-import { setupSpectateHandlers } from '../plugins/core/spectate/ws.js';
+import { setupSpectateHandlers, getSpectatorNames } from '../plugins/core/spectate/ws.js';
 import { getDb } from '../db/database.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { registerVoicePresenceEvents, removeVoicePresence } from './voice-presence.js';
@@ -195,6 +195,7 @@ export function setupSocketHandlers(
         const players = await getRoomPlayers(redis, roomCode);
         callback?.({ success: true, gameState: session.getPlayerView(userId), players, room });
         socket.emit('chat:history', session.getChatHistory());
+        socket.emit('room:spectator_list', { spectators: getSpectatorNames(roomCode) });
         const state = session.getFullState();
         const connectedCount = state.players.filter(p => p.connected).length;
         if (connectedCount >= 2 && state.phase === 'playing') {
