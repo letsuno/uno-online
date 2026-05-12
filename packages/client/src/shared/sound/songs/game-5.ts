@@ -5,20 +5,19 @@ import { _, T, F, rep, harm, harmArp, bass,
   A4, B4, C5, D5, E5, F5, G5, A5, B5, D6,
 } from './common';
 
-
-const mA: N[] = [ // Am – G – F – G  (rapid staccato)
+const mA: N[] = [
   E5, _,E5, _,A5, _, _, _,  D5, _,D5, _,G5, _, _, _,
   C5, _,C5, _,F5, _, _, _,  D5, _,D5, _,G5, _, _, _,
 ];
-const mB: N[] = [ // Am – F – C – G  (scalar runs)
+const mB: N[] = [
   A4,B4,C5,D5,E5, _,C5, _,  F5,E5,D5,C5,A4, _, _, _,
   C5,D5,E5,G5,E5, _,C5, _,  G5, _,D5, _,B4, _, _, _,
 ];
-const mC: N[] = [ // F – Am – G – C  (leaping, heroic)
+const mC: N[] = [
   F5, _,A5, _,F5,C5, _,A4,  A5, _,E5, _,A4,C5,E5, _,
   G5, _,B5, _,G5,D5, _,B4,  C5,E5,G5, _,C5, _, _, _,
 ];
-const mD: N[] = [ // Am – F – G – Am  (climactic resolution)
+const mD: N[] = [
   A5,G5,E5,C5,A4,C5,E5,G5,  F5,E5,C5,A4,F4,A4,C5,F5,
   G5, _,B5, _,D6, _,B5,G5,  A5, _, _, _, _, _, _, _,
 ];

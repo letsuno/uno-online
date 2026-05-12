@@ -5,28 +5,27 @@ import { _, T, F, rep, harm, harmArp, bass,
   A4, B4, C5, D5, E5, F5, G5, A5, B5, D6,
 } from './common';
 
-
-const mA: N[] = [ // Am – F – C – G  (off-beat syncopated)
+const mA: N[] = [
    _,E5, _,E5,A5, _,E5, _,   _,C5, _,C5,F5, _,C5, _,
    _,G5, _,G5,C5, _,G5, _,   _,D5, _,D5,G5, _, _, _,
 ];
-const mB: N[] = [ // Am – F – C – G  (descending runs)
+const mB: N[] = [
   A5,G5,E5, _,C5, _, _, _,  F5,E5,C5, _,A4, _, _, _,
   G5,E5,C5, _,E5, _, _, _,  G5, _, _, _,D5, _, _, _,
 ];
-const mC: N[] = [ // F – G – Am – C  (call-and-response)
+const mC: N[] = [
   F5,F5, _, _,A5, _, _, _,  G5,G5, _, _,B5, _, _, _,
   A5,A5, _, _,E5, _, _, _,  E5,E5, _, _,G5, _, _, _,
 ];
-const mD: N[] = [ // Am – F – G – C  (climactic close)
+const mD: N[] = [
   A5, _,G5, _,E5, _,C5, _,  A4,C5,E5, _,F5, _,E5,C5,
   D5, _,G5, _,B5, _,A5,G5,  C5, _,E5, _,G5, _, _, _,
 ];
-const mE: N[] = [ // Dm – Am – F – G  (new: walking melody)
+const mE: N[] = [
   D5, _,E5,F5, _,A5, _,F5,  A4, _,C5, _,E5, _,C5,A4,
   F5, _,E5, _,D5, _,C5,A4,  B4, _,D5, _,G5, _, _, _,
 ];
-const mF: N[] = [ // C – Am – F – G  (new: triumphant)
+const mF: N[] = [
   C5, _,E5, _,G5, _,C5,E5,  A5, _,E5, _,C5, _,A4, _,
   F5, _,A5, _,C5,A5, _,F5,  G5, _,B5, _,D6, _, _, _,
 ];

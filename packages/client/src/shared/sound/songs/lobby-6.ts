@@ -6,24 +6,23 @@ import { _, T, F, rep, harm, harmArp, bassHalf,
   C5, D5, E5, F5, G5, A5, B5, C6,
 } from './common';
 
-
-const mA: N[] = [ // Am – Em – F – G  (忧郁主题)
+const mA: N[] = [
   A4, _,C5, _,E5, _, _,D5,  E5, _,B4, _, _,G4, _, _,
   A4, _,C5, _,F5, _, _,E5,  D5, _, _, _, _, _, _, _,
 ];
-const mB: N[] = [ // Am – F – C – G  (展开)
+const mB: N[] = [
   E5, _,A5, _, _,G5, _,E5,  F5, _, _,C5, _, _,A4, _,
   G5, _, _,E5, _,C5, _, _,  D5, _, _, _, _, _, _, _,
 ];
-const mC: N[] = [ // C – G – Am – F  (转大调，明亮)
+const mC: N[] = [
   C5, _,E5, _,G5, _, _,A5,  B5, _,G5, _, _,D5, _, _,
   A5, _, _,E5, _,C5, _, _,  F5, _, _,E5, _,D5, _,C5,
 ];
-const mD: N[] = [ // Dm – G – C – Am  (属准备 → 解决)
+const mD: N[] = [
   D5, _,F5, _,A5, _, _,G5,  G5, _,B5, _, _,A5, _,G5,
   C5, _,E5, _,G5, _, _,C6,  A5, _, _,E5, _, _, _, _,
 ];
-const mE: N[] = [ // F – G – Am – Am  (终止)
+const mE: N[] = [
   F5, _, _,A5, _, _,C6, _,  G5, _, _,B5, _, _,D5, _,
   A5, _, _,E5, _, _,C5, _,  A4, _, _, _, _, _, _, _,
 ];

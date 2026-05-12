@@ -5,20 +5,19 @@ import { _, T, F, rep, harm, harmArp, bass, bassHalf,
   A4, B4, C5, D5, E5, F5, G5, A5, B5,
 } from './common';
 
-
-const mA: N[] = [ // C – Am – F – G  (main theme: stepwise + leaps)
+const mA: N[] = [
   C5, _,D5, _,E5, _,G5, _,  A4, _,C5, _,E5, _, _, _,
   F5, _,E5, _,D5, _,C5, _,  B4, _,D5, _, _, _, _, _,
 ];
-const mB: N[] = [ // Am – F – C – G  (contrast: legato descending)
+const mB: N[] = [
   A5, _,G5, _,E5, _,D5,C5,  F5, _,E5, _,C5, _,A4, _,
   G5, _,E5, _,C5, _,E5, _,  D5, _, _, _, _, _, _, _,
 ];
-const mC: N[] = [ // F – G – Am – F  (bridge: call & response)
+const mC: N[] = [
   F5, _,A5, _, _, _,G5, _,  G5, _,B5, _, _, _,A5, _,
   A5, _,E5, _,C5, _,A4, _,  A4, _,C5, _,F5, _, _, _,
 ];
-const mD: N[] = [ // Dm – G – C – C  (outro: resolving)
+const mD: N[] = [
   D5, _,F5, _,A5, _,G5,F5,  G5, _,B5, _,D5, _,B4, _,
   C5, _,E5, _,G5,E5,C5, _,  C5, _, _, _, _, _, _, _,
 ];

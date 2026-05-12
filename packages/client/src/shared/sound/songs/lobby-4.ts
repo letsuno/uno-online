@@ -5,20 +5,19 @@ import { _, T, F, rep, harm, bassHalf,
   B4, C5, D5, E5, Fs5, G5, A5, B5,
 } from './common';
 
-
-const mA: N[] = [ // G – Em – C – D
+const mA: N[] = [
   B5, _, _,G5, _, _,D5, _,  E5, _, _,G5, _, _,B4, _,
   C5, _, _,E5, _, _,G5, _,  Fs5, _, _, _, _, _, _, _,
 ];
-const mB: N[] = [ // Em – C – G – D
+const mB: N[] = [
   G5, _, _,E5, _, _,B4, _,  C5, _, _,E5, _, _,G5, _,
   D5, _, _,G5, _, _,B5, _,  A5, _, _, _, _, _, _, _,
 ];
-const mC: N[] = [ // G – Bm – C – D
+const mC: N[] = [
   G5, _,B5, _,G5, _,D5, _,  Fs5, _,B5, _,Fs5, _,D5, _,
   E5, _,G5, _,C5, _,E5, _,  D5, _,Fs5, _, _, _, _, _,
 ];
-const mD: N[] = [ // C – D – G – G
+const mD: N[] = [
   C5, _, _,E5, _, _,G5, _,  D5, _, _,Fs5, _, _,A5, _,
   G5, _, _,B5, _, _,D5, _,  G5, _, _, _, _, _, _, _,
 ];

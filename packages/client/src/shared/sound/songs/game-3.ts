@@ -5,28 +5,27 @@ import { _, T, F, rep, harm, harmArp, bass,
   A4, B4, C5, D5, E5, F5, G5, A5, B5, D6,
 } from './common';
 
-
-const mA: N[] = [ // Am – Am – F – G  (urgent arpeggios)
+const mA: N[] = [
   A4, _,C5, _,E5, _,A5, _,  G5, _,E5, _,C5, _,A4, _,
   F5, _,A5, _,F5, _,C5, _,  G5, _,D5, _,B4, _,G4, _,
 ];
-const mB: N[] = [ // Am – F – C – G  (running 8ths)
+const mB: N[] = [
   A4,C5,E5,A5,G5,E5,C5,A4,  A4,C5,F5,A5,G5,F5,C5,A4,
   G4,C5,E5,G5,E5,C5,G4,E4,  G4,B4,D5,G5,D5,B4,G4, _,
 ];
-const mC: N[] = [ // Am – G – F – Am  (high-energy stabs)
+const mC: N[] = [
   E5, _,E5, _,A5,A5,G5, _,  D5, _,D5, _,G5,G5,B5, _,
   C5, _,C5, _,F5,F5,A5, _,  E5, _,E5, _,A5, _, _, _,
 ];
-const mD: N[] = [ // F – G – Am – Am  (resolving descent)
+const mD: N[] = [
   A5, _,G5,E5, _,C5, _,A4,  A4, _,C5, _,F5, _,E5,D5,
   D5, _,G5, _,B5, _,D6, _,  A5, _, _, _, _, _, _, _,
 ];
-const mE: N[] = [ // Am – F – G – C  (new: pulsing octaves)
+const mE: N[] = [
   A4,A5,A4,A5, _,E5, _,C5,  F5, _,F4,F5, _,C5, _,A4,
   G5, _,G4,G5, _,D5, _,B4,  C5,E5,G5, _,C5, _, _, _,
 ];
-const mF: N[] = [ // Am – G – F – Am  (new: final rush)
+const mF: N[] = [
   E5,A5,E5,C5,A4,C5,E5,A5,  D5,G5,D5,B4,G4,B4,D5,G5,
   C5,F5,C5,A4,F4,A4,C5,F5,  A5, _,E5, _,A4, _, _, _,
 ];

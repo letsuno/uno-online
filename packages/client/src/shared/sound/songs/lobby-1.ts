@@ -5,28 +5,27 @@ import { _, T, F, rep, harm, harmArp, bass, bassHalf,
   A4, B4, C5, D5, E5, F5, G5, A5, B5,
 } from './common';
 
-
-const mA: N[] = [ // C – Am – F – G
+const mA: N[] = [
   E5, _,G5, _,E5, _,C5,D5,  E5, _,C5, _,A4, _, _, _,
   A4, _,C5, _,F5, _,E5,D5,  D5, _, _, _,B4, _, _, _,
 ];
-const mB: N[] = [ // C – Am – F – G
+const mB: N[] = [
   G5, _,E5, _,C5, _,D5,E5,  A4, _,C5, _,E5, _, _, _,
   F5, _,E5, _,D5, _,C5, _,  B4, _, _, _, _, _, _, _,
 ];
-const mC: N[] = [ // C – Am – F – G
+const mC: N[] = [
   E5, _,G5, _,E5, _,C5,D5,  C5, _,A4, _,E4, _, _, _,
   A4, _,C5, _,F5, _,E5,D5,  G4, _, _, _, _, _, _, _,
 ];
-const mD: N[] = [ // Dm – G – C – C
+const mD: N[] = [
   D5, _,F5, _,A5, _,F5, _,  G5, _,D5, _,B4, _, _, _,
   C5, _,E5, _,G5, _,E5, _,  C5, _, _, _, _, _, _, _,
 ];
-const mE: N[] = [ // Am – F – G – C  (new: ascending phrases)
+const mE: N[] = [
   A4, _,C5, _,E5, _,A5, _,  F5, _,A5, _,C5, _, _, _,
   D5, _,G5, _,B5, _,G5, _,  E5, _,C5, _, _, _, _, _,
 ];
-const mF: N[] = [ // F – G – Am – C  (new: gentle close)
+const mF: N[] = [
   F5, _,E5, _,D5, _,C5, _,  D5, _,G5, _, _, _, _, _,
   A4, _,C5, _,E5, _, _, _,  C5, _, _, _, _, _, _, _,
 ];

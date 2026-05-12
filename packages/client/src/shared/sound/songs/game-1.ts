@@ -5,42 +5,37 @@ import { _, T, F, rep, harm, harmArp, bass,
   A4, B4, C5, D5, E5, F5, G5, A5, B5, D6,
 } from './common';
 
-
-// ── Melody sections (4 bars = 32 steps) ──
-
-const mA: N[] = [ // C – G – Am – F  (bouncy arpeggios)
+const mA: N[] = [
   C5,C5,E5,E5,G5,G5,E5, _,  B4,B4,D5,D5,G5, _,D5, _,
   A4,A4,C5,C5,E5,E5,C5, _,  F4,F4,A4,A4,C5, _, _, _,
 ];
-const mB: N[] = [ // C – G – F – G  (flowing)
+const mB: N[] = [
   E5, _,G5, _,C5, _,G5,E5,  D5, _,G5, _,B5, _,A5,G5,
   F5, _,A5, _,G5,F5, _,E5,  G5, _,B5, _,D6, _, _, _,
 ];
-const mC: N[] = [ // C – G – Am – F  (A' variation)
+const mC: N[] = [
   C5,C5,E5,E5,G5,G5,E5, _,  B4,B4,D5,D5,G5, _,D5, _,
   A4,A4,C5,C5,E5,E5,C5, _,  A4, _,C5, _,F5, _,E5,D5,
 ];
-const mD: N[] = [ // Am – F – G – C  (bridge)
+const mD: N[] = [
   E5, _,A5, _,E5,C5, _,A4,  F5, _,C5, _,A4, _,C5,F5,
   G5, _,D5, _,B4,D5,G5, _,  C5, _,E5, _,G5, _, _, _,
 ];
-const mE: N[] = [ // Dm – G – C – Am  (new: descending stepwise)
+const mE: N[] = [
   D5, _,F5, _,E5,D5, _,C5,  B4, _,D5, _,G5, _,F5,E5,
   E5, _,G5, _,C5, _,E5,G5,  A5, _,G5, _,E5, _,C5, _,
 ];
-const mF: N[] = [ // F – G – Am – C  (new: syncopated climax)
+const mF: N[] = [
    _,F5, _,A5,C5, _,F5, _,   _,G5, _,B5,D5, _,G5, _,
   A5, _,E5, _,C5,E5,A5, _,  G5, _,E5, _,C5, _, _, _,
 ];
 
-// ── Harmony ──
 const hA  = harm([E4,G4],[D4,G4],[C4,E4],[C4,A3]);
 const hB  = harmArp([C4,E4,G4],[B3,D4,G4],[A3,C4,F4],[B3,D4,G4]);
 const hD  = harmArp([A3,C4,E4],[F3,A3,C4],[G3,B3,D4],[C4,E4,G4]);
 const hE  = harm([D4,F4],[B3,D4],[C4,E4],[C4,A3]);
 const hF  = harm([A3,F4],[B3,G4],[C4,E4],[C4,G4]);
 
-// ── Bass ──
 const bA = bass([C3,C2],[G2,G3],[A2,A3],[F2,F3]);
 const bB = bass([C2,C3],[G2,G3],[F2,F3],[G2,G3]);
 const bD = bass([A2,A3],[F2,F3],[G2,G3],[C2,C3]);

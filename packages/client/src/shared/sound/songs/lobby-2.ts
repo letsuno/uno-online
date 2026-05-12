@@ -5,24 +5,23 @@ import { _, T, F, rep, harm, bassHalf,
   A4, C5, D5, E5, F5, G5, A5,
 } from './common';
 
-
-const mA: N[] = [ // C – Am – F – G
+const mA: N[] = [
   G5, _, _,E5, _, _,C5, _,   _, _,A4, _, _,C5, _, _,
   F5, _, _,E5, _, _,D5, _,   _, _, _, _, _, _, _, _,
 ];
-const mB: N[] = [ // Am – F – C – G
+const mB: N[] = [
   A4, _, _,C5, _, _,E5, _,  F5, _, _, _,C5, _, _, _,
   E5, _, _,G5, _, _,C5, _,  D5, _, _, _, _, _, _, _,
 ];
-const mAp: N[] = [ // C – Am – F – G  (A' with tail)
+const mAp: N[] = [
   G5, _, _,E5, _, _,D5,E5,   _, _,C5, _, _,A4, _, _,
   F5, _, _,A5, _, _,G5, _,   _, _, _, _, _, _, _, _,
 ];
-const mC: N[] = [ // Dm – Am – F – C
+const mC: N[] = [
   D5, _, _,F5, _, _,A5, _,  E5, _, _, _,C5, _, _, _,
   A4, _, _,C5, _, _,F5, _,  E5, _, _, _, _, _, _, _,
 ];
-const mD: N[] = [ // F – G – C – C  (new: gentle resolution)
+const mD: N[] = [
   F5, _, _,E5, _, _,D5, _,  D5, _, _,G5, _, _, _, _,
   E5, _, _,G5, _, _,C5, _,  C5, _, _, _, _, _, _, _,
 ];

@@ -5,24 +5,23 @@ import { _, T, F, rep, harm, harmArp, bass, bassHalf,
   C5, D5, E5, F5, G5, A5, B5, C6,
 } from './common';
 
-
-const mA: N[] = [ // C – G – Am – Em  (古典乐句：上行-下行弧线)
+const mA: N[] = [
   C5, _,D5, _,E5, _,G5, _,  G5, _,A5, _,B5, _,C6, _,
   B5, _,A5, _,G5, _,E5, _,  D5, _,C5, _, _, _, _, _,
 ];
-const mB: N[] = [ // Am – Em – F – C  (对位应答)
+const mB: N[] = [
   A5, _,G5, _,E5, _,C5, _,  E5, _,G5, _,B5, _,G5, _,
   F5, _,A5, _,C5, _,A5, _,  G5, _,E5, _,C5, _, _, _,
 ];
-const mC: N[] = [ // G – D – Em – C  (属调离调)
+const mC: N[] = [
   B5, _,A5, _,G5, _,D5, _,  A5, _,G5, _,F5, _,D5, _,
   E5, _,G5, _,B5, _,G5,E5,  C5, _,E5, _,G5, _, _, _,
 ];
-const mD: N[] = [ // F – G – Am – G  (三度音程双声部)
+const mD: N[] = [
   F5,A5, _,E5,G5, _,D5,F5,  G5,B5, _,F5,A5, _,E5,G5,
   A5,C6, _,G5,B5, _,A5,C6,  B5, _,G5, _,D5, _, _, _,
 ];
-const mE: N[] = [ // F – G – C – C  (古典终止式)
+const mE: N[] = [
   F5, _,A5, _,C6,A5,F5, _,  G5, _,B5, _,D5,B5,G5, _,
   E5, _,G5, _,C6, _,E5, _,  C5, _, _, _, _, _, _, _,
 ];
