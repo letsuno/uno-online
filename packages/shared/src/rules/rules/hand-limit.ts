@@ -1,7 +1,7 @@
-import type { HouseRulePlugin } from '../house-rule-types';
-import type { GameState, GameAction } from '../../types/game';
-import type { PreCheckResult } from '../house-rule-types';
-import { hasPendingDrawObligation } from '../house-rule-helpers';
+import type { HouseRulePlugin } from '../house-rule-types.js';
+import type { GameState, GameAction } from '../../types/game.js';
+import type { PreCheckResult } from '../house-rule-types.js';
+import { hasPendingDrawObligation } from '../house-rule-helpers.js';
 
 export const handLimit: HouseRulePlugin = {
   meta: {

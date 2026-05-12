@@ -1,5 +1,5 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { authPreHandler, type AuthenticatedRequest } from '../auth/service';
+import { authPreHandler, type AuthenticatedRequest } from '../auth/service.js';
 
 export function adminOnly(jwtSecret: string) {
   const auth = authPreHandler(jwtSecret);

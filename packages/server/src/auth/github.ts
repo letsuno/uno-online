@@ -1,5 +1,5 @@
 import { request, ProxyAgent } from 'undici';
-import type { Config } from '../config';
+import type { Config } from '../config.js';
 
 interface GitHubTokenResponse {
   access_token: string;

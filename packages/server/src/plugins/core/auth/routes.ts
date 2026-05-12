@@ -1,11 +1,11 @@
 import type { FastifyInstance } from 'fastify';
-import type { PluginContext } from '../../../plugin-context';
-import { exchangeCodeForToken, fetchGitHubUser } from '../../../auth/github';
-import { findOrCreateUser, findUserByUsername, createLocalUser, isUsernameTaken, setPassword, bindGithub, getUserById } from '../../../db/user-repo';
-import { hashPassword, verifyPassword } from '../../../auth/password';
-import { validateUsername, validatePassword, validateNickname } from '../../../auth/validation';
-import { authPreHandler, makeToken, userResponse } from './service';
-import type { AuthenticatedRequest } from './service';
+import type { PluginContext } from '../../../plugin-context.js';
+import { exchangeCodeForToken, fetchGitHubUser } from '../../../auth/github.js';
+import { findOrCreateUser, findUserByUsername, createLocalUser, isUsernameTaken, setPassword, bindGithub, getUserById } from '../../../db/user-repo.js';
+import { hashPassword, verifyPassword } from '../../../auth/password.js';
+import { validateUsername, validatePassword, validateNickname } from '../../../auth/validation.js';
+import { authPreHandler, makeToken, userResponse } from './service.js';
+import type { AuthenticatedRequest } from './service.js';
 
 export function registerAuthRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const { config } = ctx;

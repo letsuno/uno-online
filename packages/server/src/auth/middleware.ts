@@ -1,8 +1,8 @@
 import type { Socket } from 'socket.io';
-import { verifyToken } from './jwt';
-import type { TokenPayload } from './jwt';
-import { getDb } from '../db/database';
-import { verifyApiKey } from '../plugins/core/api-key/repo';
+import { verifyToken } from './jwt.js';
+import type { TokenPayload } from './jwt.js';
+import { getDb } from '../db/database.js';
+import { verifyApiKey } from '../plugins/core/api-key/repo.js';
 
 export function authenticateSocket(socket: Socket, jwtSecret: string): TokenPayload | null {
   const token = socket.handshake.auth?.['token'] as string | undefined;

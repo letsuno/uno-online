@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import type { PluginContext } from '../../../plugin-context';
-import { authPreHandler } from '../auth/service';
-import type { AuthenticatedRequest } from '../auth/service';
-import { getUserProfile, getUserById, updateNickname, updateAvatar, updateUsername, resolveAvatar } from '../../../db/user-repo';
-import { validateNickname, validateUsername } from '../../../auth/validation';
+import type { PluginContext } from '../../../plugin-context.js';
+import { authPreHandler } from '../auth/service.js';
+import type { AuthenticatedRequest } from '../auth/service.js';
+import { getUserProfile, getUserById, updateNickname, updateAvatar, updateUsername, resolveAvatar } from '../../../db/user-repo.js';
+import { validateNickname, validateUsername } from '../../../auth/validation.js';
 
 export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const { config } = ctx;

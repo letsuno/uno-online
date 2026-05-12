@@ -1,8 +1,8 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { signToken, verifyToken } from '../../../auth/jwt';
-import type { TokenPayload } from '../../../auth/jwt';
+import { signToken, verifyToken } from '../../../auth/jwt.js';
+import type { TokenPayload } from '../../../auth/jwt.js';
 import type { UserRole } from '@uno-online/shared';
-import { resolveAvatar } from '../../../db/user-repo';
+import { resolveAvatar } from '../../../db/user-repo.js';
 
 export interface AuthenticatedRequest extends FastifyRequest {
   user: TokenPayload;

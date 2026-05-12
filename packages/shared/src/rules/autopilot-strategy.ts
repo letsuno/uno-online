@@ -1,6 +1,6 @@
-import type { GameState, GameAction, DrawSide } from '../types/game';
-import type { Color, Card } from '../types/card';
-import { getPlayableCards, isExactJumpInMatch } from './validation';
+import type { GameState, GameAction, DrawSide } from '../types/game.js';
+import type { Color, Card } from '../types/card.js';
+import { getPlayableCards, isExactJumpInMatch } from './validation.js';
 
 function bestColor(hand: Card[], excludeId?: string): Color {
   const counts: Record<Color, number> = { red: 0, blue: 0, green: 0, yellow: 0 };

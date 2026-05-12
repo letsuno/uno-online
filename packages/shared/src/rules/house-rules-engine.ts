@@ -1,7 +1,7 @@
-import type { GameState, GameAction } from '../types/game';
-import { applyAction, drainPenaltyQueue } from './game-engine';
-import { buildRuleContext } from './house-rule-helpers';
-import { PRE_CHECK_PLUGINS, POST_PROCESS_PLUGINS } from './rules/index';
+import type { GameState, GameAction } from '../types/game.js';
+import { applyAction, drainPenaltyQueue } from './game-engine.js';
+import { buildRuleContext } from './house-rule-helpers.js';
+import { PRE_CHECK_PLUGINS, POST_PROCESS_PLUGINS } from './rules/index.js';
 
 const ctx = buildRuleContext();
 

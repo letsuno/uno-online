@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import type { PluginContext } from '../../../plugin-context';
-import { registerRoutes } from './routes';
-import { migrate } from './migration';
+import type { PluginContext } from '../../../plugin-context.js';
+import { registerRoutes } from './routes.js';
+import { migrate } from './migration.js';
 
 export default async function gameHistoryPlugin(fastify: FastifyInstance, opts: { ctx: PluginContext }) {
   await migrate(opts.ctx.db);

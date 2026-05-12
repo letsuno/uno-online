@@ -1,4 +1,4 @@
-import type { TokenPayload } from '../auth/jwt';
+import type { TokenPayload } from '../auth/jwt.js';
 
 export interface SocketData {
   user: TokenPayload;

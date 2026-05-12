@@ -1,14 +1,14 @@
-import type { Card, Color } from '../types/card';
-import type { GameState, Direction, Player } from '../types/game';
-import type { HouseRules } from '../types/house-rules';
-import type { UserRole } from '../types/role';
-import { isColoredCard } from '../types/card';
-import { createDeck, shuffleDeck } from './deck';
-import { getNextPlayerIndex, reverseDirection } from './turn';
-import { INITIAL_HAND_SIZE } from '../constants/deck';
-import { DEFAULT_TARGET_SCORE, DEFAULT_TURN_TIME_LIMIT } from '../constants/scoring';
-import { DEFAULT_HOUSE_RULES } from '../types/house-rules';
-import { PENALTY_STATE_DEFAULTS } from './game-engine';
+import type { Card, Color } from '../types/card.js';
+import type { GameState, Direction, Player } from '../types/game.js';
+import type { HouseRules } from '../types/house-rules.js';
+import type { UserRole } from '../types/role.js';
+import { isColoredCard } from '../types/card.js';
+import { createDeck, shuffleDeck } from './deck.js';
+import { getNextPlayerIndex, reverseDirection } from './turn.js';
+import { INITIAL_HAND_SIZE } from '../constants/deck.js';
+import { DEFAULT_TARGET_SCORE, DEFAULT_TURN_TIME_LIMIT } from '../constants/scoring.js';
+import { DEFAULT_HOUSE_RULES } from '../types/house-rules.js';
+import { PENALTY_STATE_DEFAULTS } from './game-engine.js';
 
 export interface DealResult {
   hands: Record<string, Card[]>;

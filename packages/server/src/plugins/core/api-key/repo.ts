@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'kysely';
 import type { Kysely } from 'kysely';
-import type { Database } from '../../../db/database';
+import type { Database } from '../../../db/database.js';
 
 const MAX_KEYS_PER_USER = 10;
 

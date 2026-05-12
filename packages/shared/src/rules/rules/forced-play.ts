@@ -1,7 +1,7 @@
-import type { HouseRulePlugin } from '../house-rule-types';
-import type { GameState, GameAction } from '../../types/game';
-import type { RuleContext, PreCheckResult } from '../house-rule-types';
-import { hasPendingDrawObligation, hasPlayableCard } from '../house-rule-helpers';
+import type { HouseRulePlugin } from '../house-rule-types.js';
+import type { GameState, GameAction } from '../../types/game.js';
+import type { RuleContext, PreCheckResult } from '../house-rule-types.js';
+import { hasPendingDrawObligation, hasPlayableCard } from '../house-rule-helpers.js';
 
 export const forcedPlay: HouseRulePlugin = {
   meta: {

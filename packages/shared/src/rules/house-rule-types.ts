@@ -1,6 +1,6 @@
-import type { GameState, GameAction, Direction } from '../types/game';
-import type { Card, Color } from '../types/card';
-import type { HouseRules } from '../types/house-rules';
+import type { GameState, GameAction, Direction } from '../types/game.js';
+import type { Card, Color } from '../types/card.js';
+import type { HouseRules } from '../types/house-rules.js';
 
 export interface RuleMetadata {
   id: string;

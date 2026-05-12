@@ -1,4 +1,4 @@
-import type { Color } from '../types/card';
+import type { Color } from '../types/card.js';
 
 export const COLORS: readonly Color[] = ['red', 'blue', 'green', 'yellow'] as const;
 

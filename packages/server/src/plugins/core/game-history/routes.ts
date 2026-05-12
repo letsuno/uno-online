@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import type { PluginContext } from '../../../plugin-context';
-import { authPreHandler } from '../auth/service';
-import { getGamesList, getGameDetail } from './service';
+import type { PluginContext } from '../../../plugin-context.js';
+import { authPreHandler } from '../auth/service.js';
+import { getGamesList, getGameDetail } from './service.js';
 
 export async function registerRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const preHandler = authPreHandler(ctx.config.jwtSecret);

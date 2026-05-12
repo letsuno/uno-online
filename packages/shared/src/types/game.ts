@@ -1,7 +1,7 @@
-import type { Card, Color } from './card';
-import type { ChatMessage } from './chat';
-import type { HouseRules } from './house-rules';
-import type { UserRole } from './role';
+import type { Card, Color } from './card.js';
+import type { ChatMessage } from './chat.js';
+import type { HouseRules } from './house-rules.js';
+import type { UserRole } from './role.js';
 
 export type GamePhase =
   | 'waiting'

@@ -1,4 +1,4 @@
-import type { Card } from '../types/card';
+import type { Card } from '../types/card.js';
 
 export const CARD_SCORES: Record<Card['type'], number | 'face_value'> = {
   number: 'face_value',

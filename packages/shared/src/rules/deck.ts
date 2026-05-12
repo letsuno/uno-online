@@ -1,5 +1,5 @@
-import type { Card } from '../types/card';
-import { COLORS } from '../constants/deck';
+import type { Card } from '../types/card.js';
+import { COLORS } from '../constants/deck.js';
 
 export function createDeck(): Card[] {
   let counter = 0;

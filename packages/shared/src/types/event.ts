@@ -1,6 +1,6 @@
-import type { Card, Color } from './card';
-import type { ChatMessage } from './chat';
-import type { RoomSettings, Direction } from './game';
+import type { Card, Color } from './card.js';
+import type { ChatMessage } from './chat.js';
+import type { RoomSettings, Direction } from './game.js';
 
 export const GameEventType = {
   GAME_START: 'game_start',
