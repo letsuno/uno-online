@@ -65,7 +65,18 @@ function sanitizePresence(payload: Partial<VoicePresence>): Omit<VoicePresence, 
   };
 }
 
-export function registerVoicePresenceEvents(socket: Socket, io: SocketIOServer): void {
+export function registerVoicePresenceEvents(
+  socket: Socket,
+  io: SocketIOServer,
+  getVoiceChannelId?: (roomCode: string) => Promise<number | null>,
+): void {
+  socket.on('voice:channel:get', async (callback) => {
+    const data = socket.data as SocketData;
+    if (!data.roomCode || !getVoiceChannelId) return callback?.({ success: true, voiceChannelId: null });
+    const voiceChannelId = await getVoiceChannelId(data.roomCode);
+    callback?.({ success: true, voiceChannelId });
+  });
+
   socket.on('voice:presence:get', (callback) => {
     const data = socket.data as SocketData;
     if (!data.roomCode) return callback?.({});

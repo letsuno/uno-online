@@ -9,6 +9,7 @@ import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, setRoomOwner, 
 import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
+import type { VoiceChannelManager } from '../voice/channel-manager.js';
 import { setGameStartTime, removePlayerVote, persistGameOnDissolve } from './game-events.js';
 import type { SocketData } from './types.js';
 import { dissolveRoom } from './room-lifecycle.js';
@@ -76,6 +77,7 @@ export function registerRoomEvents(
   sessions: Map<string, GameSession>,
   db: Kysely<Database>,
   persister: GameStatePersister,
+  voiceChannels?: VoiceChannelManager,
 ) {
   const data = socket.data as SocketData;
 
@@ -88,11 +90,12 @@ export function registerRoomEvents(
       spectatorMode: settings?.spectatorMode ?? 'hidden',
     };
     const code = await roomManager.createRoom(data.user.userId, data.user.nickname, roomSettings, data.user.avatarUrl, data.user.role, data.user.isBot);
+    const voiceChannelId = await voiceChannels?.ensureRoomChannel(code) ?? null;
     data.roomCode = code;
     await socket.join(code);
     const room = await getRoom(redis, code);
     const players = await getRoomPlayers(redis, code);
-    callback({ success: true, roomCode: code, players, room });
+    callback({ success: true, roomCode: code, players, room, voiceChannelId });
   });
 
   socket.on('room:join', async (roomCode: string, callback) => {
@@ -109,16 +112,18 @@ export function registerRoomEvents(
         if (room.status !== 'waiting') {
           socket.emit('room:rejoin_redirect', { roomCode });
         }
-        return callback({ success: true, players, room, rejoin: room.status !== 'waiting' });
+        const voiceChannelId = await voiceChannels?.getRoomChannel(roomCode) ?? null;
+        return callback({ success: true, players, room, rejoin: room.status !== 'waiting', voiceChannelId });
       }
 
       await roomManager.joinRoom(roomCode, data.user.userId, data.user.nickname, data.user.avatarUrl, data.user.role, data.user.isBot);
       await touchRoomActivity(redis, roomCode);
       data.roomCode = roomCode;
       await socket.join(roomCode);
+      const voiceChannelId = await voiceChannels?.getRoomChannel(roomCode) ?? null;
       const updatedPlayers = await getRoomPlayers(redis, roomCode);
       io.to(roomCode).emit('room:updated', { players: updatedPlayers, room });
-      callback({ success: true, players: updatedPlayers, room });
+      callback({ success: true, players: updatedPlayers, room, voiceChannelId });
     } catch (err) {
       callback({ success: false, error: (err as Error).message });
     }
@@ -138,7 +143,7 @@ export function registerRoomEvents(
     }
     const room = await getRoom(redis, roomCode);
     if (room?.ownerId === data.user.userId) {
-      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'host_closed', db);
+      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'host_closed', db, voiceChannels);
       return callback?.({ success: true, dissolved: true });
     }
     const { deleted } = await roomManager.leaveRoom(roomCode, data.user.userId);
@@ -184,6 +189,7 @@ export function registerRoomEvents(
     } else {
       sessions.delete(roomCode);
       turnTimer.stop(roomCode);
+      await voiceChannels?.clearRoomChannelMapping(roomCode);
     }
     callback?.({ success: true });
   });
@@ -238,7 +244,7 @@ export function registerRoomEvents(
     if (!room || room.ownerId !== data.user.userId) {
       return callback?.({ success: false, error: 'Only room owner can dissolve' });
     }
-    await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'host_closed', db);
+    await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'host_closed', db, voiceChannels);
     callback?.({ success: true });
   });
 

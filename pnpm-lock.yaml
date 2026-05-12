@@ -144,9 +144,6 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.12.1
         version: 1.29.0(zod@3.25.76)
-      '@uno-online/shared':
-        specifier: workspace:*
-        version: link:../shared
       socket.io-client:
         specifier: ^4.8.0
         version: 4.8.3
@@ -157,6 +154,9 @@ importers:
       '@types/node':
         specifier: ^25.6.0
         version: 25.6.0
+      '@uno-online/shared':
+        specifier: workspace:*
+        version: link:../shared
       tsup:
         specifier: ^8.5.1
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)
@@ -184,6 +184,9 @@ importers:
       '@uno-online/shared':
         specifier: workspace:*
         version: link:../shared
+      '@zeroc/ice':
+        specifier: ^3.8.1
+        version: 3.8.1
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -1394,6 +1397,11 @@ packages:
 
   '@vitest/utils@3.2.4':
     resolution: {integrity: sha512-fB2V0JFrQSMsCo9HiSq3Ezpdv4iYaXRG1Sx8edX3MwxfyNn83mKiGzOcH+Fkxt4MHxr3y42fQi1oeAInqgX2QA==}
+
+  '@zeroc/ice@3.8.1':
+    resolution: {integrity: sha512-2/5m10TBshBjNr0usPeWcEWAPx1ATJqYszrlRRTQ9Zg3VQbVvSu1LBFyiWLmsEXAwc/HrToQgutYKdJDPlaqvA==}
+    engines: {node: '>=22.16.0'}
+    hasBin: true
 
   abstract-logging@2.0.1:
     resolution: {integrity: sha512-2BjRTZxTPvheOvGbBslFSYOUkr+SjPtOnrLP33f+VIWLzezQpZcqVg7ja3L4dBXmzzgwT+a029jRx5PCi3JuiA==}
@@ -3703,6 +3711,8 @@ snapshots:
       '@vitest/pretty-format': 3.2.4
       loupe: 3.2.1
       tinyrainbow: 2.0.0
+
+  '@zeroc/ice@3.8.1': {}
 
   abstract-logging@2.0.1: {}
 
