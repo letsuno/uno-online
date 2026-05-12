@@ -56,15 +56,6 @@ export default function VoicePanel() {
   }, [init]);
 
   useEffect(() => {
-    let cancelled = false;
-    getSocket().emit('voice:channel:get', (res: { voiceChannelId?: number | null }) => {
-      if (cancelled) return;
-      setRoomVoiceChannelId(res.voiceChannelId ?? null);
-    });
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
     if (!connected || roomVoiceChannelId == null || selectedChannelId === roomVoiceChannelId) return;
     joinChannel(roomVoiceChannelId);
   }, [connected, roomVoiceChannelId, selectedChannelId, joinChannel]);

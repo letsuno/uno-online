@@ -42,7 +42,7 @@ export function setupSocketHandlers(
   const userSocketMap = new Map<string, string>();
   const persister = new GameStatePersister(redis);
   const voiceChannels = new VoiceChannelManager(redis, mumbleIce);
-  void voiceChannels.reconcileActiveRooms();
+  voiceChannels.reconcileActiveRooms().catch(err => console.warn('[voice] reconcile failed:', err));
 
   io.use(async (socket, next) => {
     const payload = await authenticateSocketAsync(socket, jwtSecret);

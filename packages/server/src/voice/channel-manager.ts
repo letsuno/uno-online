@@ -85,8 +85,11 @@ export class VoiceChannelManager {
   async reconcileActiveRooms(): Promise<void> {
     if (!this.enabled) return;
 
-    const roomKeys = (await this.kv.keys('room:*')).filter(k => !k.includes(':players') && !k.includes(':state'));
-    await Promise.all(roomKeys.map((key) => this.ensureRoomChannel(key.replace('room:', ''))));
+    const allKeys = await this.kv.keys('room:*');
+    const roomCodes = allKeys
+      .filter(k => /^room:[^:]+$/.test(k))
+      .map(k => k.slice('room:'.length));
+    await Promise.all(roomCodes.map((code) => this.ensureRoomChannel(code)));
   }
 
   async close(): Promise<void> {
