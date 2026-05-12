@@ -170,7 +170,7 @@ export function initializeGame(
     deckHash: '',
     settings: {
       turnTimeLimit: DEFAULT_TURN_TIME_LIMIT as 30,
-      targetScore: DEFAULT_TARGET_SCORE as 500,
+      targetScore: DEFAULT_TARGET_SCORE as 1000,
       houseRules: houseRules ?? DEFAULT_HOUSE_RULES,
       allowSpectators: true,
       spectatorMode: 'hidden' as const,

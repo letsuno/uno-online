@@ -12,6 +12,7 @@ import { recordGameResult } from '../db/user-repo.js';
 import { saveGameEvents, saveDeckInfo } from '../plugins/core/game-history/service.js';
 import { getRoom, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS } from '@uno-online/shared';
+import { removeSpectator } from '../plugins/core/spectate/ws.js';
 import type { SocketData } from './types.js';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
@@ -92,6 +93,7 @@ function buildChatMessage(user: SocketData['user'], text: string, isSpectator = 
 
 const gameStartTimes = new Map<string, number>();
 const nextRoundVotes = new Map<string, Set<string>>();
+const pendingSpectatorJoins = new Map<string, Map<string, { userId: string; nickname: string; avatarUrl?: string | null; role?: string; isBot?: boolean; socketId: string }>>();
 const AUTOPILOT_JUMP_IN_DELAY_MS = 2_000;
 const autopilotJumpInTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -244,6 +246,41 @@ function getNextRoundVoteState(roomCode: string, session: GameSession): NextRoun
   };
 }
 
+async function processPendingSpectatorJoins(
+  io: SocketIOServer,
+  redis: KvStore,
+  roomCode: string,
+  session: GameSession,
+): Promise<void> {
+  const pending = pendingSpectatorJoins.get(roomCode);
+  if (!pending || pending.size === 0) return;
+
+  for (const [userId, info] of pending) {
+    if (session.getPlayerCount() >= MAX_PLAYERS) break;
+    if (session.getFullState().players.some((p) => p.id === userId)) continue;
+
+    const sock = io.sockets.sockets.get(info.socketId);
+    if (sock) (sock.data as SocketData).isSpectator = false;
+
+    removeSpectator(roomCode, info.nickname);
+    session.addPlayer({
+      id: userId,
+      name: info.nickname,
+      avatarUrl: info.avatarUrl,
+      role: info.role as any,
+      isBot: info.isBot,
+    });
+    await addPlayerToRoom(redis, roomCode, {
+      userId,
+      nickname: info.nickname,
+      avatarUrl: info.avatarUrl,
+      role: info.role,
+      isBot: info.isBot,
+    });
+  }
+  pendingSpectatorJoins.delete(roomCode);
+}
+
 async function startNextRound(
   io: SocketIOServer,
   redis: KvStore,
@@ -254,6 +291,7 @@ async function startNextRound(
   persister: GameStatePersister,
 ): Promise<void> {
   nextRoundVotes.delete(roomCode);
+  await processPendingSpectatorJoins(io, redis, roomCode, session);
   session.startNextRound();
   persister.markDirty(roomCode, session.getFullState());
   await Promise.all([
@@ -617,33 +655,27 @@ export function registerGameEvents(
     if (!roomCode || !data.isSpectator) return callback?.({ success: false, error: '非观众' });
     const session = sessions.get(roomCode);
     if (!session) return callback?.({ success: false, error: '游戏会话不存在' });
-    if (!session.isRoundEnd()) return callback?.({ success: false, error: '只能在回合结束时加入' });
-    if (session.getPlayerCount() >= MAX_PLAYERS) return callback?.({ success: false, error: '玩家已满' });
     if (session.getFullState().players.some((p) => p.id === data.user.userId)) {
       return callback?.({ success: false, error: '已在游戏中' });
     }
 
-    data.isSpectator = false;
-    session.addPlayer({
-      id: data.user.userId,
-      name: data.user.nickname,
-      avatarUrl: data.user.avatarUrl,
-      role: data.user.role as any,
-      isBot: data.user.isBot,
-    });
-    await addPlayerToRoom(redis, roomCode, {
-      userId: data.user.userId,
-      nickname: data.user.nickname,
-      avatarUrl: data.user.avatarUrl,
-      role: data.user.role,
-      isBot: data.user.isBot,
-    });
-    persister.markDirty(roomCode, session.getFullState());
+    if (!pendingSpectatorJoins.has(roomCode)) pendingSpectatorJoins.set(roomCode, new Map());
+    const pending = pendingSpectatorJoins.get(roomCode)!;
 
-    const voteState = getNextRoundVoteState(roomCode, session);
-    io.to(roomCode).emit('game:next_round_vote', voteState);
-    await emitGameUpdate(io, roomCode, session, redis);
-    callback?.({ success: true });
+    if (pending.has(data.user.userId)) {
+      pending.delete(data.user.userId);
+      callback?.({ success: true, queued: false });
+    } else {
+      pending.set(data.user.userId, {
+        userId: data.user.userId,
+        nickname: data.user.nickname,
+        avatarUrl: data.user.avatarUrl,
+        role: data.user.role,
+        isBot: data.user.isBot,
+        socketId: socket.id,
+      });
+      callback?.({ success: true, queued: true });
+    }
   });
 
   socket.on('game:kick_player', async (payload: { targetId?: string }, callback) => {
@@ -715,6 +747,7 @@ export function registerGameEvents(
       return callback?.({ success: false, error: '只有房主可以发起再来一局' });
     }
     nextRoundVotes.delete(roomCode);
+    await processPendingSpectatorJoins(io, redis, roomCode, session);
     session.resetForRematch();
     sessions.set(roomCode, session);
     persister.cleanup(roomCode);

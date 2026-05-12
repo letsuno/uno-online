@@ -4,8 +4,9 @@ import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { apiGet, apiPatch, apiPost, apiDelete } from '@/shared/api';
 import { getRoleColor } from '@/shared/lib/utils';
 import AvatarUpload from '@/features/auth/components/AvatarUpload';
-import { Edit3, Save, Lock, Key, Copy, Trash2 } from 'lucide-react';
+import { Edit3, Save, Lock, Key, Copy, Trash2, Bell } from 'lucide-react';
 import { Button } from '@/shared/components/ui/Button';
+import { useNotificationStore, type NotificationEventType } from '@/shared/stores/notification-store';
 
 interface ProfileData {
   user: { id: string; username: string; nickname: string; avatarUrl: string | null; totalGames: number; totalWins: number; githubId?: string | null; role?: string };
@@ -148,6 +149,9 @@ export default function ProfilePage() {
             </p>
           </div>
 
+          {/* Notification settings */}
+          <NotificationSettings />
+
           {/* Password section */}
           <div className="bg-card rounded-xl p-4 w-full max-w-[360px]">
             <h3 className="text-sm text-muted-foreground mb-3 flex items-center gap-1.5">
@@ -238,6 +242,67 @@ export default function ProfilePage() {
         </>
       )}
       <Button variant="secondary" onClick={() => navigate('/lobby')} sound="click">返回大厅</Button>
+    </div>
+  );
+}
+
+const NOTIFICATION_LABELS: { key: NotificationEventType; label: string }[] = [
+  { key: 'gameStart', label: '游戏开始' },
+  { key: 'myTurn', label: '轮到我出牌' },
+  { key: 'gameEnd', label: '游戏结束' },
+  { key: 'kicked', label: '被踢出房间' },
+  { key: 'roomDissolved', label: '房间解散' },
+];
+
+function NotificationSettings() {
+  const { preferences, setPreference } = useNotificationStore();
+  const permission = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
+
+  const handleRequest = async () => {
+    if (typeof Notification !== 'undefined') {
+      await Notification.requestPermission();
+    }
+  };
+
+  return (
+    <div className="bg-card rounded-xl p-4 w-full max-w-[360px]">
+      <h3 className="text-sm text-muted-foreground mb-3 flex items-center gap-1.5">
+        <Bell size={14} /> 通知设置
+      </h3>
+
+      {permission !== 'granted' && (
+        <div className="mb-3 rounded-lg border border-accent/20 bg-accent/5 px-3 py-2">
+          {permission === 'denied' ? (
+            <p className="text-xs text-destructive/80">
+              通知权限已被拒绝，请在浏览器地址栏左侧的网站设置中手动开启。
+            </p>
+          ) : (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">尚未开启通知权限</p>
+              <button onClick={handleRequest} className="text-xs font-bold text-accent hover:opacity-80 transition-opacity">
+                开启
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2">
+        {NOTIFICATION_LABELS.map(({ key, label }) => (
+          <label key={key} className="flex items-center justify-between cursor-pointer">
+            <span className="text-sm">{label}</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={preferences[key]}
+              onClick={() => setPreference(key, !preferences[key])}
+              className={`relative h-5 w-9 rounded-full transition-colors ${preferences[key] ? 'bg-accent' : 'bg-white/15'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${preferences[key] ? 'translate-x-4' : ''}`} />
+            </button>
+          </label>
+        ))}
+      </div>
     </div>
   );
 }

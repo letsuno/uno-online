@@ -15,6 +15,10 @@ export function clearRoomSpectators(roomCode: string): void {
   roomSpectators.delete(roomCode);
 }
 
+export function removeSpectator(roomCode: string, nickname: string): void {
+  roomSpectators.get(roomCode)?.delete(nickname);
+}
+
 export function setupSpectateHandlers(
   io: SocketIOServer,
   kv: KvStore,
