@@ -37,6 +37,9 @@ export default function VoicePanel() {
   const [peerVolumes, setPeerVolumes] = useState<Map<number, number>>(new Map());
   const [micBusy, setMicBusy] = useState(false);
   const voiceName = useAuthStore((s) => s.user?.nickname || s.user?.username);
+  const selfId = useAuthStore((s) => s.user?.id);
+  const playerVoicePresence = useGatewayStore((s) => s.playerVoicePresence);
+  const selfForceMuted = selfId ? playerVoicePresence[selfId]?.forceMuted ?? false : false;
 
   const connected = status === 'connected';
   const unsupported = !canUseWebCodecsOpus();
@@ -80,7 +83,7 @@ export default function VoicePanel() {
   }, [emitPresence]);
 
   const toggleMic = useCallback(async () => {
-    if (micBusy) return;
+    if (micBusy || selfForceMuted) return;
     setMicBusy(true);
     const engine = getVoiceEngine(sendMicOpus, sendMicEnd);
     try {
@@ -97,7 +100,7 @@ export default function VoicePanel() {
     } finally {
       setMicBusy(false);
     }
-  }, [micBusy, micEnabled, sendMicOpus, sendMicEnd, setMicEnabled, emitPresence, connected, speakerMuted, selfSpeaking]);
+  }, [micBusy, selfForceMuted, micEnabled, sendMicOpus, sendMicEnd, setMicEnabled, emitPresence, connected, speakerMuted, selfSpeaking]);
 
   const toggleMute = useCallback(() => {
     const engine = getVoiceEngine(sendMicOpus, sendMicEnd);
@@ -111,6 +114,15 @@ export default function VoicePanel() {
     if (!connected) return;
     emitPresence({ inVoice: true, micEnabled, speakerMuted, speaking: selfSpeaking });
   }, [connected, micEnabled, speakerMuted, selfSpeaking, emitPresence]);
+
+  useEffect(() => {
+    if (!selfForceMuted || !connected || !micEnabled) return;
+    const engine = getVoiceEngine(sendMicOpus, sendMicEnd);
+    engine.disableMic();
+    setMicEnabled(false);
+    useGatewayStore.getState().setSelfSpeaking(false);
+    emitPresence({ inVoice: true, micEnabled: false, speakerMuted, speaking: false });
+  }, [selfForceMuted, connected, micEnabled, sendMicOpus, sendMicEnd, setMicEnabled, emitPresence, speakerMuted]);
 
   const setPeerVolume = useCallback((userId: number, volume: number) => {
     setPeerVolumes((prev) => {
@@ -147,7 +159,7 @@ export default function VoicePanel() {
         </button>
       ) : (
         <>
-          <button onClick={toggleMic} disabled={micBusy} className={cn(voiceBtn(micEnabled, micEnabled && selfSpeaking), micBusy && 'opacity-70 cursor-wait')} title={micEnabled ? '关闭麦克风' : '开启麦克风'}>
+          <button onClick={toggleMic} disabled={micBusy || selfForceMuted} className={cn(voiceBtn(micEnabled, micEnabled && selfSpeaking), (micBusy || selfForceMuted) && 'opacity-40 cursor-not-allowed')} title={selfForceMuted ? '已被房主静音' : micEnabled ? '关闭麦克风' : '开启麦克风'}>
             {micEnabled ? <Mic size={16} /> : <MicOff size={16} />}
           </button>
           <button onClick={toggleMute} className={voiceBtn(!speakerMuted)} title={speakerMuted ? '打开扬声器' : '关闭扬声器'}>
