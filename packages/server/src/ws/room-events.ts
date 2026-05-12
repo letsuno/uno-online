@@ -88,7 +88,7 @@ export function registerRoomEvents(
   socket.on('room:create', async (settings: Partial<RoomSettings>, callback) => {
     const roomSettings: RoomSettings = {
       turnTimeLimit: settings?.turnTimeLimit ?? 30,
-      targetScore: settings?.targetScore ?? 500,
+      targetScore: settings?.targetScore ?? 1000,
       houseRules: settings?.houseRules ?? DEFAULT_HOUSE_RULES,
       allowSpectators: settings?.allowSpectators ?? true,
       spectatorMode: settings?.spectatorMode ?? 'hidden',
@@ -219,7 +219,7 @@ export function registerRoomEvents(
 
     const nextSettings: RoomSettings = {
       turnTimeLimit: settings.turnTimeLimit ?? room.settings.turnTimeLimit ?? 30,
-      targetScore: settings.targetScore ?? room.settings.targetScore ?? 500,
+      targetScore: settings.targetScore ?? room.settings.targetScore ?? 1000,
       houseRules: {
         ...DEFAULT_HOUSE_RULES,
         ...(room.settings.houseRules ?? {}),
@@ -330,7 +330,7 @@ export function registerRoomEvents(
     await touchRoomActivity(redis, roomCode);
     const session = GameSession.create(
       players.map((p) => ({ id: p.userId, name: p.nickname, avatarUrl: p.avatarUrl ?? null, role: p.role as import('@uno-online/shared').UserRole | undefined, isBot: p.isBot })),
-      { turnTimeLimit: room.settings?.turnTimeLimit ?? 30, targetScore: room.settings?.targetScore ?? 500, houseRules: room.settings?.houseRules ?? DEFAULT_HOUSE_RULES, allowSpectators: room.settings?.allowSpectators ?? true, spectatorMode: room.settings?.spectatorMode ?? 'hidden' } as RoomSettings,
+      { turnTimeLimit: room.settings?.turnTimeLimit ?? 30, targetScore: room.settings?.targetScore ?? 1000, houseRules: room.settings?.houseRules ?? DEFAULT_HOUSE_RULES, allowSpectators: room.settings?.allowSpectators ?? true, spectatorMode: room.settings?.spectatorMode ?? 'hidden' } as RoomSettings,
     );
     sessions.set(roomCode, session);
     setGameStartTime(roomCode);

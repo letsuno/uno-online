@@ -16,6 +16,6 @@ export function getCardScore(card: Card): number {
   return CARD_SCORES[card.type] as number;
 }
 
-export const DEFAULT_TARGET_SCORE = 500;
+export const DEFAULT_TARGET_SCORE = 1000;
 export const DEFAULT_TURN_TIME_LIMIT = 30;
 export const UNO_PENALTY_CARDS = 2;
