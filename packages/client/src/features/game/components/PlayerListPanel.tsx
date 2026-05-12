@@ -1,4 +1,4 @@
-import { Eye } from 'lucide-react';
+import { Eye, UserPlus } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
 import { useSpectatorStore } from '../stores/spectator-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
@@ -12,6 +12,7 @@ export default function PlayerListPanel() {
   const players = useGameStore((s) => s.players);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
   const spectators = useSpectatorStore((s) => s.spectators);
+  const pendingJoinQueue = useSpectatorStore((s) => s.pendingJoinQueue);
   const userId = useEffectiveUserId();
 
   if (players.length === 0) return null;
@@ -80,12 +81,16 @@ export default function PlayerListPanel() {
               观众 ({spectators.length})
             </div>
             <div className="py-1">
-              {spectators.map((name) => (
-                <div key={name} className="flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground">
-                  <Eye size={12} className="shrink-0" />
-                  <span className="truncate">{name}</span>
-                </div>
-              ))}
+              {spectators.map((name) => {
+                const queued = pendingJoinQueue.includes(name);
+                return (
+                  <div key={name} className="flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground">
+                    {queued ? <UserPlus size={12} className="shrink-0 text-accent" /> : <Eye size={12} className="shrink-0" />}
+                    <span className={cn('truncate', queued && 'text-accent')}>{name}</span>
+                    {queued && <span className="text-2xs text-accent ml-auto shrink-0">加入中</span>}
+                  </div>
+                );
+              })}
             </div>
           </>
         )}

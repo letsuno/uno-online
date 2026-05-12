@@ -51,8 +51,8 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
 
   if (embedded) {
     return (
-      <div className="w-full flex flex-col gap-2 select-text" data-allow-selection>
-        <div className="max-h-48 overflow-y-auto text-xs">
+      <div className="w-full flex flex-col flex-1 min-h-0 gap-2 select-text" data-allow-selection>
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin text-xs">
           {messages.map((m) => (
             <div key={m.id} className="mb-1">
               <span className="font-bold" style={{ color: getRoleColor(m.role) || 'var(--accent)' }}>{m.nickname}{players.find(p => p.id === m.userId)?.isBot && <AiBadge className="mx-0.5" />}: </span>
@@ -61,7 +61,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
           ))}
           <div ref={bottomRef} />
         </div>
-        <div className="flex gap-0.5 flex-wrap">
+        <div className="flex gap-0.5 flex-wrap shrink-0">
           {['👍', '😂', '😭', '🎉', '💪', '😱', '🤔', '❤️'].map((emoji) => (
             <button key={emoji} onClick={() => sendPhrase(emoji)}
               className="bg-transparent border-none text-sm cursor-pointer p-0.5">
@@ -69,7 +69,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
             </button>
           ))}
         </div>
-        <div className="flex gap-1 flex-wrap">
+        <div className="flex gap-1 flex-wrap shrink-0">
           {QUICK_PHRASES.map((phrase) => (
             <button key={phrase} onClick={() => sendPhrase(phrase)}
               className="bg-white/10 rounded-lg text-2xs px-2 py-0.5 text-foreground cursor-pointer transition-colors duration-150 hover:bg-white/20">
@@ -77,7 +77,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
             </button>
           ))}
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 shrink-0">
           <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()}
             placeholder="发送消息..."
             className="flex-1 px-2.5 py-1.5 rounded-lg border border-white/20 bg-muted text-foreground text-xs"
