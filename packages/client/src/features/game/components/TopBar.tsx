@@ -103,14 +103,14 @@ export default function TopBar({ roomCode }: TopBarProps) {
   };
 
   return (
-    <div className="flex justify-between items-center px-4 py-2 bg-black/30 text-caption z-topbar">
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center px-4 py-2 bg-black/30 text-caption z-topbar">
       <div className="flex items-center gap-3">
         <span className="font-bold text-primary font-game"><Spade size={18} className="inline align-middle" /> UNO Online</span>
         <span className="text-muted-foreground">房间: {roomCode}</span>
         <span className="text-muted-foreground/50 text-xs hidden md:inline">v{BUILD_VERSION}</span>
       </div>
       <GameStatus />
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 justify-end">
         <button
           onClick={toggleInfoDrawer}
           className="hidden md:inline bg-transparent border-none text-sm cursor-pointer text-muted-foreground hover:text-accent transition-colors"

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Card } from '@uno-online/shared';
 
-export type GameLogEntryType = 'play_skip' | 'play_reverse' | 'play_draw_two' | 'play_wild' | 'play_wild_draw_four' | 'play_number' | 'call_uno' | 'catch_uno' | 'challenge' | 'draw' | 'round_separator';
+export type GameLogEntryType = 'play_skip' | 'play_reverse' | 'play_draw_two' | 'play_wild' | 'play_wild_draw_four' | 'play_number' | 'call_uno' | 'catch_uno' | 'challenge' | 'accept' | 'pass' | 'draw' | 'round_separator';
 
 export interface GameLogEntry {
   id: string;

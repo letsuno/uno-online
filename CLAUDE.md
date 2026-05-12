@@ -104,3 +104,14 @@ pnpm --filter server exec tsc --noEmit       # 2. 服务端类型检查
 pnpm --filter client build                   # 3. 客户端构建（含类型检查）
 pnpm test                                    # 4. 运行测试
 ```
+
+### Docker 构建与发布
+
+Dockerfile 包含两个目标镜像：`server`（Node.js 后端）和 `caddy`（前端 + 管理后台静态资源）。
+
+```bash
+docker build --target server -t djkcyl/uno-online-server:latest .   # 构建服务端镜像
+docker build --target caddy -t djkcyl/uno-online-caddy:latest .     # 构建前端镜像
+docker push djkcyl/uno-online-server:latest                         # 推送服务端镜像
+docker push djkcyl/uno-online-caddy:latest                          # 推送前端镜像
+```
