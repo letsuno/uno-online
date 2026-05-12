@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
@@ -22,28 +21,17 @@ export default function InfoDrawer() {
   const toggleInfoDrawer = useGameStore((s) => s.toggleInfoDrawer);
   const setInfoDrawerTab = useGameStore((s) => s.setInfoDrawerTab);
 
-  const openInfoDrawer = useGameStore((s) => s.openInfoDrawer);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
-      if (e.key === 'h' || e.key === 'H' || e.key === '?') {
-        e.preventDefault();
-        toggleInfoDrawer();
-      }
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        openInfoDrawer('chat');
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleInfoDrawer, openInfoDrawer]);
-
   return (
     <AnimatePresence>
       {open && (
+        <>
+        <motion.div
+          className="hidden md:block fixed inset-0 z-fab"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={toggleInfoDrawer}
+        />
         <motion.div
           className="hidden md:flex fixed right-0 top-0 bottom-0 w-[360px] z-fab flex-col border-l border-white/15 bg-slate-950/85 backdrop-blur-xl"
           initial={{ x: '100%' }}
@@ -81,13 +69,17 @@ export default function InfoDrawer() {
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto scrollbar-thin p-4">
+          <div className={cn(
+            'flex-1 min-h-0 p-4',
+            activeTab === 'chat' ? 'flex flex-col' : 'overflow-y-auto scrollbar-thin',
+          )}>
             {activeTab === 'rules' && <GameRulesPanel />}
             {activeTab === 'house-rules' && <HouseRulesCard embedded />}
             {activeTab === 'log' && <GameLog embedded />}
             {activeTab === 'chat' && <ChatBox embedded />}
           </div>
         </motion.div>
+        </>
       )}
     </AnimatePresence>
   );

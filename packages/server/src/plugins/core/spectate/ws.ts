@@ -7,7 +7,7 @@ import { loadGameState } from '../game/state-store.js';
 
 const roomSpectators = new Map<string, Set<string>>();
 
-function getSpectatorNames(roomCode: string): string[] {
+export function getSpectatorNames(roomCode: string): string[] {
   return [...(roomSpectators.get(roomCode) ?? [])];
 }
 
