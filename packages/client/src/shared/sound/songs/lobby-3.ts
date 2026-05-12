@@ -35,7 +35,7 @@ const bD = bassHalf([D3,F3],[G2,G3],[C2,C3],[C2,C3]);
 function join(...s: N[][]): N[] { return s.flat(); }
 
 const song: Song = {
-  name: 'Waiting Room', bpm: 92, stepsPerBeat: 2,
+  name: 'Waiting Room', meta: { 'author':'Claude', 'key':'C 大调', 'style':'温暖柔和', 'wave':'方波' }, bpm: 92, stepsPerBeat: 2,
   tones: [
     { wave: 'square', gain: 0.10, dur: 0.18,
       notes: join(mA, mB, mC, mB, mA, mB, mC, mD) },

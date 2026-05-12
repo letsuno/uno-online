@@ -47,7 +47,7 @@ const bF = bass([C2,C3],[A2,A3],[F2,F3],[G2,G3]);
 function join(...s: N[][]): N[] { return s.flat(); }
 
 const song: Song = {
-  name: 'Reverse!', bpm: 128, stepsPerBeat: 2,
+  name: 'Reverse!', meta: { 'author':'Claude', 'key':'A 小调', 'style':'切分律动', 'wave':'方波' }, bpm: 128, stepsPerBeat: 2,
   tones: [
     { wave: 'square', gain: 0.15, dur: 0.1,
       notes: join(mA, mB, mC, mD, mE, mA, mF, mD) },

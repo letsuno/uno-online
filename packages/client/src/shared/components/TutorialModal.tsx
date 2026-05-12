@@ -181,7 +181,7 @@ export default function TutorialModal() {
               </div>
             </div>
 
-            <div className="max-h-[52vh] overflow-y-auto p-5 scrollbar-thin">
+            <div className="min-h-[320px] max-h-[52vh] overflow-y-auto p-5 scrollbar-thin">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                   key={page}

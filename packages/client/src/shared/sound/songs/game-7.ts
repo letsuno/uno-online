@@ -41,7 +41,7 @@ const bE = bass([D3,A3],[C2,C3],[Bb2,Bb3],[F2,F3]);
 function join(...s: N[][]): N[] { return s.flat(); }
 
 const song: Song = {
-  name: 'Carnival', bpm: 132, stepsPerBeat: 2,
+  name: 'Carnival', meta: { 'author':'Claude', 'key':'F 大调', 'style':'拉丁嘉年华', 'wave':'正弦波' }, bpm: 132, stepsPerBeat: 2,
   tones: [
     { wave: 'sine', gain: 0.18, dur: 0.12,
       notes: join(mA, mB, mA, mC, mD, mA, mB, mE) },

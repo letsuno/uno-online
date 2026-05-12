@@ -13,7 +13,8 @@ export const Bb2 = 116.54, Bb3 = 233.08, Bb4 = 466.16, Bb5 = 932.33;
 export type N = number | null;
 export interface ToneCh { wave: OscillatorType; gain: number; dur: number; notes: N[] }
 export interface DrumCh { gain: number; hits: boolean[] }
-export interface Song { name: string; bpm: number; stepsPerBeat: number; tones: ToneCh[]; kick: DrumCh; snare: DrumCh; hihat: DrumCh }
+export interface SongMeta { author: string; key: string; style: string; wave: string }
+export interface Song { name: string; meta: SongMeta; bpm: number; stepsPerBeat: number; tones: ToneCh[]; kick: DrumCh; snare: DrumCh; hihat: DrumCh }
 
 export function rep(p: boolean[], n: number): boolean[] {
   const r: boolean[] = [];

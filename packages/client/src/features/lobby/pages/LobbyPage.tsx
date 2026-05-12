@@ -219,6 +219,13 @@ export default function LobbyPage() {
 
       {/* Settings + version */}
       <div className="absolute bottom-6 right-6 flex items-center gap-3">
+        <button
+          onClick={() => setMusicHall(true)}
+          className="bg-card text-foreground border border-white/20 rounded-lg px-2.5 py-1.5 text-sm cursor-pointer flex items-center gap-1"
+          title="音乐厅"
+        >
+          <Music size={14} /> 音乐厅
+        </button>
         {cardImagePack && isPackLoaded() ? (
           <button
             onClick={() => { clearCardPack(); setCardImagePack(false); }}
@@ -276,20 +283,16 @@ export default function LobbyPage() {
             <Hexagon size={14} />
           </button>
         </div>
-        <button
-          onClick={() => setMusicHall(true)}
-          className="bg-card text-foreground border border-white/20 rounded-lg px-2.5 py-1.5 text-sm cursor-pointer flex items-center gap-1"
-          title="音乐厅"
-        >
-          <Music size={14} /> 音乐厅
-        </button>
+      </div>
+
+      <div className="absolute bottom-6 left-6 flex items-center gap-3">
         <ServerButton />
         <span className="text-xs text-muted-foreground/50">v{BUILD_VERSION}</span>
       </div>
 
       <ServerSelectModal />
       <TutorialModal />
-      <BgmToast songName={songName} />
+      <BgmToast song={songName} />
       <MusicHallModal open={musicHall} onClose={() => setMusicHall(false)} currentScene="lobby" />
     </div>
   );

@@ -43,7 +43,7 @@ const bD: N[] = [
 function join(...s: N[][]): N[] { return s.flat(); }
 
 const song: Song = {
-  name: 'Pulse', bpm: 140, stepsPerBeat: 2,
+  name: 'Pulse', meta: { 'author':'Claude', 'key':'A 小调', 'style':'纯节奏', 'wave':'方波' }, bpm: 140, stepsPerBeat: 2,
   tones: [
     { wave: 'square', gain: 0.12, dur: 0.05,
       notes: join(mA, mB, mC, mD, mA, mB, mC, mE) },

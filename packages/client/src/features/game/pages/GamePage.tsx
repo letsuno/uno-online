@@ -228,7 +228,7 @@ export default function GamePage() {
         <ScoreBoard onPlayAgain={playAgain} onRematch={rematch} onBackToLobby={backToLobby} onKickPlayer={kickPlayer} />
       )}
       {cheatDetected && <CheatOverlay />}
-      <BgmToast songName={bgmSongName} />
+      <BgmToast song={bgmSongName} />
     </div>
   );
 }

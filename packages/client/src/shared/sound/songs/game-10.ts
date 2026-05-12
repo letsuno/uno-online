@@ -41,7 +41,7 @@ const bE = bassHalf([F2,F3],[G2,G3],[C2,C3],[C2,C3]);
 function join(...s: N[][]): N[] { return s.flat(); }
 
 const song: Song = {
-  name: 'Minuet', bpm: 108, stepsPerBeat: 2,
+  name: 'Minuet', meta: { 'author':'Claude', 'key':'C 大调', 'style':'巴洛克小步舞', 'wave':'三角波' }, bpm: 108, stepsPerBeat: 2,
   tones: [
     { wave: 'triangle', gain: 0.14, dur: 0.16,
       notes: join(mA, mB, mA, mC, mD, mA, mB, mE) },

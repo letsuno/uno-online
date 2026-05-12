@@ -41,7 +41,7 @@ const bE = bass([E2,E3],[D2,D3],[C3,C4],[G2,G3]);
 function join(...s: N[][]): N[] { return s.flat(); }
 
 const song: Song = {
-  name: 'Blitz', bpm: 135, stepsPerBeat: 2,
+  name: 'Blitz', meta: { 'author':'Claude', 'key':'G 大调', 'style':'进行曲', 'wave':'锯齿波' }, bpm: 135, stepsPerBeat: 2,
   tones: [
     { wave: 'sawtooth', gain: 0.10, dur: 0.1,
       notes: join(mA, mB, mC, mA, mD, mA, mB, mE) },

@@ -45,7 +45,7 @@ const bF = bassHalf([F2,F3],[G2,G3],[A2,A3],[C2,C3]);
 function join(...s: N[][]): N[] { return s.flat(); }
 
 const song: Song = {
-  name: 'Shuffle', bpm: 96, stepsPerBeat: 2,
+  name: 'Shuffle', meta: { 'author':'Claude', 'key':'C 大调', 'style':'轻快摇曳', 'wave':'方波' }, bpm: 96, stepsPerBeat: 2,
   tones: [
     { wave: 'square', gain: 0.10, dur: 0.18,
       notes: join(mA, mB, mC, mD, mE, mA, mB, mF) },

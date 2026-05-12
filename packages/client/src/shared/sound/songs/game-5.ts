@@ -38,7 +38,7 @@ const bD = bass([A2,A3],[F2,F3],[G2,G3],[A2,A3]);
 function join(...s: N[][]): N[] { return s.flat(); }
 
 const song: Song = {
-  name: 'Wild Card', bpm: 148, stepsPerBeat: 2,
+  name: 'Wild Card', meta: { 'author':'Claude', 'key':'A 小调', 'style':'极速冲刺', 'wave':'方波' }, bpm: 148, stepsPerBeat: 2,
   tones: [
     { wave: 'square', gain: 0.15, dur: 0.09,
       notes: join(mA, mA, mB, mB, mC, mC, mD, mD) },

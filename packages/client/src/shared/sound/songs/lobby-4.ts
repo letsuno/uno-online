@@ -35,7 +35,7 @@ const bD = bassHalf([C3,null],[D2,null],[G2,null],[G2,null]);
 function join(...s: N[][]): N[] { return s.flat(); }
 
 const song: Song = {
-  name: 'Breeze', bpm: 84, stepsPerBeat: 2,
+  name: 'Breeze', meta: { 'author':'Claude', 'key':'G 大调', 'style':'田园清风', 'wave':'正弦波' }, bpm: 84, stepsPerBeat: 2,
   tones: [
     { wave: 'sine', gain: 0.12, dur: 0.25,
       notes: join(mA, mB, mA, mC, mA, mB, mA, mD) },

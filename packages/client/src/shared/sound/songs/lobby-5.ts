@@ -41,7 +41,7 @@ const bE = bassHalf([Bb2,null],[C2,null],[F2,null],[F2,null]);
 function join(...s: N[][]): N[] { return s.flat(); }
 
 const song: Song = {
-  name: 'Sunset', bpm: 78, stepsPerBeat: 2,
+  name: 'Sunset', meta: { 'author':'Claude', 'key':'F 大调', 'style':'日落音乐盒', 'wave':'三角波' }, bpm: 78, stepsPerBeat: 2,
   tones: [
     { wave: 'triangle', gain: 0.12, dur: 0.3,
       notes: join(mA, mB, mC, mA, mD, mB, mC, mE) },

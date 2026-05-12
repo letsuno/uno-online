@@ -1,21 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useSettingsStore } from '../stores/settings-store';
-import { bgm } from './bgm-engine';
+import { bgm, type SongInfo } from './bgm-engine';
 
-export function useBgm(scene: string): string | null {
+export function useBgm(scene: string): SongInfo | null {
   const enabled = useSettingsStore((s) => s.bgmEnabled);
   const volume = useSettingsStore((s) => s.bgmVolume);
-  const [songName, setSongName] = useState<string | null>(null);
+  const [song, setSong] = useState<SongInfo | null>(null);
 
   useEffect(() => {
-    bgm.onSongChange = setSongName;
+    bgm.onSongChange = setSong;
     return () => { bgm.onSongChange = null; };
   }, []);
 
   useEffect(() => {
     if (!enabled) {
       bgm.stop();
-      setSongName(null);
+      setSong(null);
       return;
     }
     bgm.setVolume(volume);
@@ -27,5 +27,5 @@ export function useBgm(scene: string): string | null {
     bgm.setVolume(volume);
   }, [volume]);
 
-  return songName;
+  return song;
 }

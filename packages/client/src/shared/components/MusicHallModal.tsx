@@ -3,40 +3,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Music, X, Play, Square } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { bgm } from '@/shared/sound/bgm-engine';
-
-interface SongMeta {
-  name: string;
-  bpm: string;
-  key: string;
-  style: string;
-  wave: string;
-}
-
-const GAME_SONGS: SongMeta[] = [
-  { name: 'UNO Bounce',  bpm: '138', key: 'C 大调', style: '弹跳琶音',   wave: '方波' },
-  { name: 'Reverse!',    bpm: '128', key: 'A 小调', style: '切分律动',   wave: '方波' },
-  { name: 'Draw Four!',  bpm: '144', key: 'A 小调', style: '高速连奏',   wave: '方波' },
-  { name: 'Color Wheel', bpm: '120', key: 'C 大调', style: '回旋轮盘',   wave: '方波' },
-  { name: 'Wild Card',   bpm: '148', key: 'A 小调', style: '极速冲刺',   wave: '方波' },
-  { name: 'Blitz',       bpm: '135', key: 'G 大调', style: '进行曲',     wave: '锯齿波' },
-  { name: 'Carnival',    bpm: '132', key: 'F 大调', style: '拉丁嘉年华', wave: '正弦波' },
-  { name: 'Midnight',    bpm: '116', key: 'D 小调', style: '暗夜氛围',   wave: '方波' },
-  { name: 'Pulse',       bpm: '140', key: 'A 小调', style: '纯节奏',     wave: '方波' },
-  { name: 'Minuet',      bpm: '108', key: 'C 大调', style: '巴洛克小步舞', wave: '三角波' },
-];
-
-const LOBBY_SONGS: SongMeta[] = [
-  { name: 'Shuffle',      bpm: '96', key: 'C 大调', style: '轻快摇曳',   wave: '方波' },
-  { name: 'Daydream',     bpm: '88', key: 'C 大调', style: '空灵梦幻',   wave: '方波' },
-  { name: 'Waiting Room', bpm: '92', key: 'C 大调', style: '温暖柔和',   wave: '方波' },
-  { name: 'Breeze',       bpm: '84', key: 'G 大调', style: '田园清风',   wave: '正弦波' },
-  { name: 'Sunset',       bpm: '78', key: 'F 大调', style: '日落音乐盒', wave: '三角波' },
-  { name: 'Nocturne',     bpm: '72', key: 'Am/C',  style: '浪漫夜曲',   wave: '正弦波' },
-];
+import { PLAYLISTS } from '@/shared/sound/songs/index';
 
 const TABS = [
-  { key: 'game' as const, label: '游戏曲目', songs: GAME_SONGS },
-  { key: 'lobby' as const, label: '大厅曲目', songs: LOBBY_SONGS },
+  { key: 'game' as const, label: '游戏曲目' },
+  { key: 'lobby' as const, label: '大厅曲目' },
 ];
 
 interface Props {
@@ -48,6 +19,8 @@ interface Props {
 export default function MusicHallModal({ open, onClose, currentScene }: Props) {
   const [tab, setTab] = useState<'game' | 'lobby'>('game');
   const [playing, setPlaying] = useState<string | null>(null);
+
+  const songs = PLAYLISTS[tab] ?? [];
 
   const play = (scene: string, index: number) => {
     const key = `${scene}:${index}`;
@@ -67,8 +40,6 @@ export default function MusicHallModal({ open, onClose, currentScene }: Props) {
   };
 
   if (!open) return null;
-
-  const current = TABS.find((t) => t.key === tab)!;
 
   return (
     <AnimatePresence>
@@ -112,14 +83,14 @@ export default function MusicHallModal({ open, onClose, currentScene }: Props) {
                   )}
                 >
                   {t.label}
-                  <span className="ml-1 text-xs opacity-50">({t.songs.length})</span>
+                  <span className="ml-1 text-xs opacity-50">({(PLAYLISTS[t.key] ?? []).length})</span>
                 </button>
               ))}
             </div>
 
             <div className="max-h-[50vh] overflow-y-auto p-3 scrollbar-thin">
               <div className="flex flex-col gap-1.5">
-                {current.songs.map((song, i) => {
+                {songs.map((song, i) => {
                   const key = `${tab}:${i}`;
                   const isPlaying = playing === key;
                   return (
@@ -161,11 +132,13 @@ export default function MusicHallModal({ open, onClose, currentScene }: Props) {
                         <div className="flex items-center gap-2 mt-0.5 text-2xs text-muted-foreground">
                           <span>{song.bpm} BPM</span>
                           <span className="opacity-40">·</span>
-                          <span>{song.key}</span>
+                          <span>{song.meta.key}</span>
                           <span className="opacity-40">·</span>
-                          <span>{song.style}</span>
+                          <span>{song.meta.style}</span>
                           <span className="opacity-40">·</span>
-                          <span>{song.wave}</span>
+                          <span>{song.meta.wave}</span>
+                          <span className="opacity-40">·</span>
+                          <span>{song.meta.author}</span>
                         </div>
                       </div>
                     </button>

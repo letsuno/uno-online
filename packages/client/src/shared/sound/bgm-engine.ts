@@ -1,6 +1,8 @@
 import { getAudioContext } from './audio-context';
 import { PLAYLISTS, type Song } from './songs/index';
-import type { ToneCh } from './songs/common';
+import type { ToneCh, SongMeta } from './songs/common';
+
+export interface SongInfo { name: string; meta: SongMeta }
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -28,11 +30,11 @@ class BgmEngine {
   private step = 0;
   private nextTime = 0;
   private _playing = false;
-  private _onSongChange: ((name: string) => void) | null = null;
+  private _onSongChange: ((info: SongInfo) => void) | null = null;
 
   get isPlaying() { return this._playing; }
-  get currentSongName() { return this._playing ? this.song?.name ?? null : null; }
-  set onSongChange(cb: ((name: string) => void) | null) { this._onSongChange = cb; }
+  get currentSong(): SongInfo | null { return this._playing && this.song ? { name: this.song.name, meta: this.song.meta } : null; }
+  set onSongChange(cb: ((info: SongInfo) => void) | null) { this._onSongChange = cb; }
 
   private getMaster(): GainNode {
     if (!this.master) {
@@ -123,7 +125,7 @@ class BgmEngine {
     this.buildVoices();
     this.step = 0;
     this.nextTime = ctx.currentTime + 0.05;
-    this._onSongChange?.(this.song.name);
+    this._onSongChange?.({ name: this.song.name, meta: this.song.meta });
     this.tick();
     this.timer = setInterval(() => this.tick(), 25);
   }
@@ -161,7 +163,7 @@ class BgmEngine {
       this.song = this.playlist[this.songIdx]!;
       this.step = 0;
       this.buildVoices();
-      this._onSongChange?.(this.song.name);
+      this._onSongChange?.({ name: this.song.name, meta: this.song.meta });
     }
 
     const i = this.step;

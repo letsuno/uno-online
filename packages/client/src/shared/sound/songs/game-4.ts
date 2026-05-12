@@ -35,7 +35,7 @@ const bD = bass([D3,F3],[G2,G3],[C2,C3],[C2,C3]);
 function join(...s: N[][]): N[] { return s.flat(); }
 
 const song: Song = {
-  name: 'Color Wheel', bpm: 120, stepsPerBeat: 2,
+  name: 'Color Wheel', meta: { 'author':'Claude', 'key':'C 大调', 'style':'回旋轮盘', 'wave':'方波' }, bpm: 120, stepsPerBeat: 2,
   tones: [
     { wave: 'square', gain: 0.14, dur: 0.12,
       notes: join(mA, mB, mA, mC, mA, mB, mA, mD) },

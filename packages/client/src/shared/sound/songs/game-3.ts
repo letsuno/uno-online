@@ -53,7 +53,7 @@ const bF = bass([A2,A3],[G2,G3],[F2,F3],[A2,A3]);
 function join(...s: N[][]): N[] { return s.flat(); }
 
 const song: Song = {
-  name: 'Draw Four!', bpm: 144, stepsPerBeat: 2,
+  name: 'Draw Four!', meta: { 'author':'Claude', 'key':'A 小调', 'style':'高速连奏', 'wave':'方波' }, bpm: 144, stepsPerBeat: 2,
   tones: [
     { wave: 'square', gain: 0.15, dur: 0.1,
       notes: join(mA, mB, mA, mC, mD, mE, mB, mF) },

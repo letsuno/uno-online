@@ -39,7 +39,7 @@ const bD = bassHalf([F2,null],[G2,null],[C2,null],[C2,null]);
 function join(...s: N[][]): N[] { return s.flat(); }
 
 const song: Song = {
-  name: 'Daydream', bpm: 88, stepsPerBeat: 2,
+  name: 'Daydream', meta: { 'author':'Claude', 'key':'C 大调', 'style':'空灵梦幻', 'wave':'方波' }, bpm: 88, stepsPerBeat: 2,
   tones: [
     { wave: 'square', gain: 0.10, dur: 0.22,
       notes: join(mA, mB, mAp, mC, mA, mB, mAp, mD) },

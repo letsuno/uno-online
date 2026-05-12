@@ -45,7 +45,7 @@ const bF = bass([F2,F3],[G2,G3],[A2,A3],[C2,C3]);
 function join(...s: N[][]): N[] { return s.flat(); }
 
 const song: Song = {
-  name: 'UNO Bounce', bpm: 138, stepsPerBeat: 2,
+  name: 'UNO Bounce', meta: { 'author':'Claude', 'key':'C 大调', 'style':'弹跳琶音', 'wave':'方波' }, bpm: 138, stepsPerBeat: 2,
   tones: [
     { wave: 'square', gain: 0.15, dur: 0.1,
       notes: join(mA, mC, mB, mD, mE, mA, mB, mF) },
