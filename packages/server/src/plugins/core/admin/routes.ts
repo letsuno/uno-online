@@ -1,10 +1,10 @@
 import type { FastifyInstance } from 'fastify';
-import type { PluginContext } from '../../../plugin-context';
+import type { PluginContext } from '../../../plugin-context.js';
 import type { UserRole } from '@uno-online/shared';
-import type { AuthenticatedRequest } from '../auth/service';
-import { adminOnly } from './middleware';
-import { getRoom, getRoomPlayers, deleteRoom } from '../room/store';
-import { getGamesList, getGameDetail } from '../game-history/service';
+import type { AuthenticatedRequest } from '../auth/service.js';
+import { adminOnly } from './middleware.js';
+import { getRoom, getRoomPlayers, deleteRoom } from '../room/store.js';
+import { getGamesList, getGameDetail } from '../game-history/service.js';
 import { sql } from 'kysely';
 
 export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext) {

@@ -1,5 +1,5 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
-import type { SocketData } from './types';
+import type { SocketData } from './types.js';
 
 export interface VoicePresence {
   inVoice: boolean;

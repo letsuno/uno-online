@@ -1,7 +1,7 @@
-import type { HouseRulePlugin } from '../house-rule-types';
-import type { GameState, GameAction } from '../../types/game';
-import type { RuleContext, PreCheckResult } from '../house-rule-types';
-import { checkRoundEnd } from '../game-engine';
+import type { HouseRulePlugin } from '../house-rule-types.js';
+import type { GameState, GameAction } from '../../types/game.js';
+import type { RuleContext, PreCheckResult } from '../house-rule-types.js';
+import { checkRoundEnd } from '../game-engine.js';
 
 export const deflection: HouseRulePlugin = {
   meta: {

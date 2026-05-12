@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import type { PluginContext } from '../../../plugin-context';
+import type { PluginContext } from '../../../plugin-context.js';
 import type { ServerInfo } from '@uno-online/shared';
 import { createRequire } from 'module';
 

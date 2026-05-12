@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
-import type { PluginContext } from '../../../plugin-context';
-import { authPreHandler } from '../auth/service';
-import type { AuthenticatedRequest } from '../auth/service';
-import { createApiKey, listApiKeys, deleteApiKey, verifyApiKey } from './repo';
+import type { PluginContext } from '../../../plugin-context.js';
+import { authPreHandler } from '../auth/service.js';
+import type { AuthenticatedRequest } from '../auth/service.js';
+import { createApiKey, listApiKeys, deleteApiKey, verifyApiKey } from './repo.js';
 
 // ── Rate limiter for unauthenticated verify endpoint ──
 

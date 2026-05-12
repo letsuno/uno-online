@@ -1,14 +1,14 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { Server as SocketIOServer } from 'socket.io';
-import type { Config } from './config';
-import { loadPlugins } from './plugin-loader';
-import { getDb } from './db/database';
-import { setupSocketHandlers } from './ws/socket-handler';
-import { dissolveRoom } from './ws/room-lifecycle';
-import { createKvStore } from './kv/index';
-import type { PluginContext } from './plugin-context';
-import { adminOnly } from './plugins/core/admin/middleware';
+import type { Config } from './config.js';
+import { loadPlugins } from './plugin-loader.js';
+import { getDb } from './db/database.js';
+import { setupSocketHandlers } from './ws/socket-handler.js';
+import { dissolveRoom } from './ws/room-lifecycle.js';
+import { createKvStore } from './kv/index.js';
+import type { PluginContext } from './plugin-context.js';
+import { adminOnly } from './plugins/core/admin/middleware.js';
 
 export async function createApp(config: Config) {
   const fastify = Fastify({ logger: true });

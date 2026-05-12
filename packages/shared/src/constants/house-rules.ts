@@ -1,4 +1,4 @@
-import type { HouseRules } from '../types/house-rules';
+import type { HouseRules } from '../types/house-rules.js';
 
 export interface HouseRuleDefinition {
   key: keyof HouseRules;

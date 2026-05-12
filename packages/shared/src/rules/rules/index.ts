@@ -1,24 +1,24 @@
-import type { HouseRulePlugin } from '../house-rule-types';
-import { finishRestrictions } from './finish-restrictions';
-import { silentUno } from './silent-uno';
-import { noChallengeWildFour } from './no-challenge-wild-four';
-import { unoPenalty } from './uno-penalty';
-import { handLimit } from './hand-limit';
-import { forcedPlay } from './forced-play';
-import { deathDrawPass, deathDrawDraw } from './death-draw';
-import { multiPlayPass, multiPlayPost } from './multi-play';
-import { misplayPenalty } from './misplay-penalty';
-import { deflection } from './deflection';
-import { stacking } from './stacking';
-import { drawUntilPlayable } from './draw-until-playable';
-import { jumpIn } from './jump-in';
-import { sevenSwapPost, sevenSwapTarget } from './seven-swap';
-import { zeroRotate } from './zero-rotate';
-import { revengeMode } from './revenge-mode';
-import { forcedPlayAfterDraw } from './forced-play-after-draw';
-import { doubleScore } from './double-score';
-import { teamMode } from './team-mode';
-import { elimination } from './elimination';
+import type { HouseRulePlugin } from '../house-rule-types.js';
+import { finishRestrictions } from './finish-restrictions.js';
+import { silentUno } from './silent-uno.js';
+import { noChallengeWildFour } from './no-challenge-wild-four.js';
+import { unoPenalty } from './uno-penalty.js';
+import { handLimit } from './hand-limit.js';
+import { forcedPlay } from './forced-play.js';
+import { deathDrawPass, deathDrawDraw } from './death-draw.js';
+import { multiPlayPass, multiPlayPost } from './multi-play.js';
+import { misplayPenalty } from './misplay-penalty.js';
+import { deflection } from './deflection.js';
+import { stacking } from './stacking.js';
+import { drawUntilPlayable } from './draw-until-playable.js';
+import { jumpIn } from './jump-in.js';
+import { sevenSwapPost, sevenSwapTarget } from './seven-swap.js';
+import { zeroRotate } from './zero-rotate.js';
+import { revengeMode } from './revenge-mode.js';
+import { forcedPlayAfterDraw } from './forced-play-after-draw.js';
+import { doubleScore } from './double-score.js';
+import { teamMode } from './team-mode.js';
+import { elimination } from './elimination.js';
 
 export const PRE_CHECK_PLUGINS: HouseRulePlugin[] = [
   finishRestrictions,

@@ -1,6 +1,6 @@
-import type { HouseRulePlugin } from '../house-rule-types';
-import type { GameState, GameAction } from '../../types/game';
-import type { RuleContext } from '../house-rule-types';
+import type { HouseRulePlugin } from '../house-rule-types.js';
+import type { GameState, GameAction } from '../../types/game.js';
+import type { RuleContext } from '../house-rule-types.js';
 
 export const teamMode: HouseRulePlugin = {
   meta: {

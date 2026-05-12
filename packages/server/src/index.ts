@@ -5,10 +5,9 @@ import { setGamePersistence } from './ws/game-events.js';
 
 async function main() {
   const config = loadConfig();
+  await migrateDb();
   if (config.devMode) {
     setGamePersistence(false);
-  } else {
-    await migrateDb();
   }
   const { fastify, turnTimer, kv } = await createApp(config);
 
