@@ -28,6 +28,13 @@ services:
       DEV_MODE: ${DEV_MODE:-true}
       ROOM_IDLE_TIMEOUT_MS: ${ROOM_IDLE_TIMEOUT_MS:-7200000}
       GITHUB_PROXY: ${GITHUB_PROXY:-}
+      MUMBLE_ICE_ENABLED: ${MUMBLE_ICE_ENABLED:-true}
+      MUMBLE_ICE_HOST: ${MUMBLE_ICE_HOST:-mumble}
+      MUMBLE_ICE_PORT: ${MUMBLE_ICE_PORT:-6502}
+      MUMBLE_ICE_SECRET: ${MUMBLE_ICE_SECRET:-uno-online-mumble-ice-secret}
+      MUMBLE_ICE_SERVER_ID: ${MUMBLE_ICE_SERVER_ID:-1}
+      MUMBLE_ICE_PARENT_CHANNEL_ID: ${MUMBLE_ICE_PARENT_CHANNEL_ID:-0}
+      MUMBLE_CHANNEL_PREFIX: ${MUMBLE_CHANNEL_PREFIX:-UNO }
       PORT: "3001"
     volumes:
       - ./data/sqlite:/data
@@ -57,6 +64,8 @@ services:
       - ./data/mumble:/data
     environment:
       MUMBLE_SUPERUSER_PASSWORD: ${MUMBLE_SUPERUSER_PASSWORD:-admin}
+      MUMBLE_CONFIG_ICE: ${MUMBLE_CONFIG_ICE:-tcp -h 0.0.0.0 -p 6502}
+      MUMBLE_CONFIG_ICESECRETWRITE: ${MUMBLE_ICE_SECRET:-uno-online-mumble-ice-secret}
     restart: unless-stopped
 
   mumble-gateway:

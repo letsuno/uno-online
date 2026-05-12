@@ -185,6 +185,7 @@ export type GatewayStore = {
   clearPlayerVoicePresence: () => void
   selectChannel: (channelId: number) => void
   joinSelectedChannel: () => void
+  joinChannel: (channelId: number) => void
   listenChannel: (channelId: number) => void
   unlistenChannel: (channelId: number) => void
   sendTextToSelectedChannel: (message: string) => void

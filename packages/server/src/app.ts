@@ -30,17 +30,17 @@ export async function createApp(config: Config) {
   const ctx: PluginContext = { db: getDb(), kv, io, config };
   await loadPlugins(fastify, ctx);
 
-  const wsContext = setupSocketHandlers(io, kv, config.jwtSecret, config.roomIdleTimeoutMs);
+  const wsContext = setupSocketHandlers(io, kv, config.jwtSecret, config.roomIdleTimeoutMs, config.mumbleIce);
   const { sessions, turnTimer, persister } = wsContext;
 
   fastify.post<{ Params: { code: string } }>(
     '/api/admin/rooms/:code/cheat',
     { preHandler: adminOnly(config.jwtSecret) },
-    async (request, reply) => {
+    async (request, _reply) => {
       const { code } = request.params;
       io.to(code).emit('game:cheat_detected');
       await new Promise((r) => setTimeout(r, 1500));
-      await dissolveRoom(io, kv, code, sessions, turnTimer, persister, 'host_closed', getDb());
+      await dissolveRoom(io, kv, code, sessions, turnTimer, persister, 'host_closed', getDb(), wsContext.voiceChannels);
       return { success: true };
     },
   );
