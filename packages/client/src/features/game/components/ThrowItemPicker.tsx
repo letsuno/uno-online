@@ -50,12 +50,21 @@ export default function ThrowItemPicker({ onSelect, onClose, anchorX, anchorY }:
     return () => document.removeEventListener('mousedown', handleClick);
   }, [onClose]);
 
+  const lastSendRef = useRef(0);
+
+  const throttledSelect = useCallback((item: string) => {
+    const now = Date.now();
+    if (now - lastSendRef.current < REPEAT_INTERVAL_MS) return;
+    lastSendRef.current = now;
+    onSelect(item);
+  }, [onSelect]);
+
   const startRepeat = useCallback((item: string) => {
     stopRepeat();
-    onSelect(item);
-    intervalRef.current = setInterval(() => onSelect(item), REPEAT_INTERVAL_MS);
+    throttledSelect(item);
+    intervalRef.current = setInterval(() => throttledSelect(item), REPEAT_INTERVAL_MS);
     maxTimerRef.current = setTimeout(stopRepeat, MAX_HOLD_MS);
-  }, [onSelect, stopRepeat]);
+  }, [throttledSelect, stopRepeat]);
 
   useEffect(() => {
     const handleUp = () => stopRepeat();
@@ -83,7 +92,6 @@ export default function ThrowItemPicker({ onSelect, onClose, anchorX, anchorY }:
             <button
               key={emoji}
               onPointerDown={(e) => { e.preventDefault(); startRepeat(emoji); }}
-              onClick={() => onSelect(emoji)}
               className="flex flex-col items-center gap-0.5 bg-transparent cursor-pointer transition-transform duration-150 hover:scale-125 select-none touch-none"
             >
               <span className="text-2xl">{emoji}</span>
