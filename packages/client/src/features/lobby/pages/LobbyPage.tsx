@@ -13,6 +13,7 @@ import { BUILD_VERSION } from '@/shared/build-info';
 import { ServerButton } from '@/shared/components/ServerButton';
 import { ServerSelectModal } from '@/shared/components/ServerSelectModal';
 import { useBgm } from '@/shared/sound/useBgm';
+import { getAudioContext } from '@/shared/sound/audio-context';
 import TutorialModal from '@/shared/components/TutorialModal';
 import BgmToast from '@/shared/components/BgmToast';
 import MusicHallModal from '@/shared/components/MusicHallModal';
@@ -30,6 +31,16 @@ export default function LobbyPage() {
   const { activeRooms, recentGames, fetchActiveRooms, fetchRecentGames } = useLobbyStore();
   const songName = useBgm('lobby');
   const [musicHall, setMusicHall] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  useEffect(() => {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') {
+      setShowTutorial(true);
+    } else if (!localStorage.getItem('tutorialShown')) {
+      setShowTutorial(true);
+    }
+  }, []);
 
   useEffect(() => {
     fetchActiveRooms();
@@ -291,7 +302,7 @@ export default function LobbyPage() {
       </div>
 
       <ServerSelectModal />
-      <TutorialModal />
+      <TutorialModal open={showTutorial} onClose={() => { setShowTutorial(false); localStorage.setItem('tutorialShown', 'true'); }} />
       <BgmToast song={songName} />
       <MusicHallModal open={musicHall} onClose={() => setMusicHall(false)} currentScene="lobby" />
     </div>
