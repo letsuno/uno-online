@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Spade, ChevronRight, ChevronLeft, Megaphone, Trophy } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
@@ -160,14 +160,11 @@ const PAGES: PageDef[] = [
   },
 ];
 
-export default function TutorialModal() {
-  const [open, setOpen] = useState(false);
+export default function TutorialModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [page, setPage] = useState(0);
   const [dir, setDir] = useState(1);
 
-  useEffect(() => { setOpen(true); }, []);
-
-  const close = () => { setOpen(false); setPage(0); };
+  const close = () => { setPage(0); onClose(); };
   const go = (next: number) => { setDir(next > page ? 1 : -1); setPage(next); };
 
   if (!open) return null;
