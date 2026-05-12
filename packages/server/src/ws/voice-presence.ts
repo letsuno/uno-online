@@ -6,6 +6,7 @@ export interface VoicePresence {
   micEnabled: boolean;
   speakerMuted: boolean;
   speaking: boolean;
+  forceMuted: boolean;
 }
 
 const presenceByRoom = new Map<string, Map<string, VoicePresence>>();
@@ -42,7 +43,20 @@ export function clearVoicePresence(io: SocketIOServer, roomCode: string): void {
   io.to(roomCode).emit('voice:presence', {});
 }
 
-function sanitizePresence(payload: Partial<VoicePresence>): VoicePresence {
+export function setForceMuted(io: SocketIOServer, roomCode: string, targetUserId: string, muted: boolean): void {
+  const roomPresence = presenceByRoom.get(roomCode);
+  if (!roomPresence) return;
+  const existing = roomPresence.get(targetUserId);
+  if (!existing) return;
+  existing.forceMuted = muted;
+  if (muted) {
+    existing.micEnabled = false;
+    existing.speaking = false;
+  }
+  emitVoicePresence(io, roomCode);
+}
+
+function sanitizePresence(payload: Partial<VoicePresence>): Omit<VoicePresence, 'forceMuted'> {
   return {
     inVoice: payload.inVoice === true,
     micEnabled: payload.micEnabled === true,
@@ -63,8 +77,16 @@ export function registerVoicePresenceEvents(socket: Socket, io: SocketIOServer):
     const roomCode = data.roomCode;
     if (!roomCode) return callback?.({ success: false });
 
-    const presence = sanitizePresence(payload ?? {});
-    if (presence.inVoice) {
+    const sanitized = sanitizePresence(payload ?? {});
+    if (sanitized.inVoice) {
+      const existing = presenceByRoom.get(roomCode)?.get(data.user.userId);
+      const forceMuted = existing?.forceMuted ?? false;
+      const presence: VoicePresence = {
+        ...sanitized,
+        forceMuted,
+        micEnabled: forceMuted ? false : sanitized.micEnabled,
+        speaking: forceMuted ? false : sanitized.speaking,
+      };
       getRoomPresence(roomCode).set(data.user.userId, presence);
     } else {
       presenceByRoom.get(roomCode)?.delete(data.user.userId);

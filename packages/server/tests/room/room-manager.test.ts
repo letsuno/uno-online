@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import Redis from 'ioredis';
 import { RoomManager } from '../../src/plugins/core/room/manager';
-import { getRoom, getRoomPlayers } from '../../src/plugins/core/room/store';
+import { getRoom, getRoomPlayers, setRoomOwner } from '../../src/plugins/core/room/store';
 
 const redis = new Redis(process.env['REDIS_URL'] ?? 'redis://localhost:6379');
 
@@ -84,5 +84,30 @@ describe('RoomManager', () => {
     await manager.setReady(code, 'owner-1', true);
     await manager.setReady(code, 'p2', true);
     expect(await manager.areAllReady(code)).toBe(true);
+  });
+
+  it('transfers ownership to a specific player', async () => {
+    const manager = new RoomManager(redis);
+    const code = await manager.createRoom('owner-1', 'Alice');
+    await manager.joinRoom(code, 'p2', 'Bob');
+    await manager.joinRoom(code, 'p3', 'Carol');
+    await setRoomOwner(redis, code, 'p3');
+    const room = await getRoom(redis, code);
+    expect(room!.ownerId).toBe('p3');
+    const players = await getRoomPlayers(redis, code);
+    expect(players).toHaveLength(3);
+  });
+
+  it('kick removes target player from room without affecting others', async () => {
+    const manager = new RoomManager(redis);
+    const code = await manager.createRoom('owner-1', 'Alice');
+    await manager.joinRoom(code, 'p2', 'Bob');
+    await manager.joinRoom(code, 'p3', 'Carol');
+    await manager.leaveRoom(code, 'p2');
+    const players = await getRoomPlayers(redis, code);
+    expect(players).toHaveLength(2);
+    expect(players.map(p => p.userId)).toEqual(['owner-1', 'p3']);
+    const room = await getRoom(redis, code);
+    expect(room!.ownerId).toBe('owner-1');
   });
 });

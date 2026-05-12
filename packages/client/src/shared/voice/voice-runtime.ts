@@ -1,6 +1,7 @@
 import { VoiceEngine } from './voice-engine';
 import { createWebCodecsOpusDecoder, createWebCodecsOpusEncoder } from './webcodecs-opus';
 import { useGatewayStore } from './gateway-store';
+import { useRoomStore } from '@/shared/stores/room-store';
 
 type Encoder = ReturnType<typeof createWebCodecsOpusEncoder>;
 type Decoder = ReturnType<typeof createWebCodecsOpusDecoder>;
@@ -62,12 +63,33 @@ export function leaveVoiceSession(): void {
   store.clearPlayerVoicePresence();
 }
 
+function isMumbleUserForceMuted(mumbleUserId: number): boolean {
+  const { usersById, playerVoicePresence } = useGatewayStore.getState();
+  const mumbleUser = usersById[mumbleUserId];
+  if (!mumbleUser) return false;
+
+  const forceMutedIds = Object.entries(playerVoicePresence)
+    .filter(([, p]) => p.forceMuted)
+    .map(([id]) => id);
+  if (forceMutedIds.length === 0) return false;
+
+  const normalize = (name: string) => name.trim().replace(/[^\p{L}\p{N}_ .-]/gu, '').slice(0, 32).toLocaleLowerCase();
+  const mumbleName = normalize(mumbleUser.name);
+  const { players } = useRoomStore.getState();
+
+  return forceMutedIds.some(gameUserId => {
+    const player = players.find(p => p.userId === gameUserId);
+    return player && normalize(player.nickname) === mumbleName;
+  });
+}
+
 export function decodeVoiceFrame(
   userId: number,
   opus: Uint8Array,
   sendMicOpus: (opus: Uint8Array) => void,
   sendMicEnd: () => void,
 ): void {
+  if (isMumbleUserForceMuted(userId)) return;
   const runtimeEngine = getVoiceEngine(sendMicOpus, sendMicEnd);
 
   const createDecoder = () => {

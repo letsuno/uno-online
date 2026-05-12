@@ -5,14 +5,14 @@ import type { GameAction, GameState, RoomSettings } from '@uno-online/shared';
 import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, GameEventType } from '@uno-online/shared';
 import type { Database } from '../db/database';
 import { RoomManager } from '../plugins/core/room/manager';
-import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, touchRoomActivity } from '../plugins/core/room/store';
+import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity } from '../plugins/core/room/store';
 import { GameSession } from '../plugins/core/game/session';
 import type { GameStatePersister } from '../plugins/core/game/state-store';
 import type { TurnTimer } from '../plugins/core/game/turn-timer';
 import { setGameStartTime, removePlayerVote, persistGameOnDissolve } from './game-events';
 import type { SocketData } from './types';
 import { dissolveRoom } from './room-lifecycle';
-import { removeVoicePresence } from './voice-presence';
+import { removeVoicePresence, setForceMuted } from './voice-presence';
 import { getAutopilotActionPlayerId } from './autopilot-action-player';
 
 const DRAW_PENALTY_PAUSE_MS = 500;
@@ -245,6 +245,63 @@ export function registerRoomEvents(
       return callback?.({ success: false, error: 'Only room owner can dissolve' });
     }
     await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'host_closed', db);
+    callback?.({ success: true });
+  });
+
+  socket.on('room:transfer_owner', async (payload: { targetId: string }, callback) => {
+    const roomCode = data.roomCode;
+    if (!roomCode) return callback?.({ success: false, error: '不在房间中' });
+    const room = await getRoom(redis, roomCode);
+    if (!room) return callback?.({ success: false, error: '房间不存在' });
+    if (room.ownerId !== data.user.userId) return callback?.({ success: false, error: '只有房主可以移交' });
+    if (room.status !== 'waiting') return callback?.({ success: false, error: '游戏进行中无法移交房主' });
+    if (payload.targetId === data.user.userId) return callback?.({ success: false, error: '不能移交给自己' });
+    const players = await getRoomPlayers(redis, roomCode);
+    if (!players.some(p => p.userId === payload.targetId)) return callback?.({ success: false, error: '目标玩家不在房间中' });
+    await setRoomOwner(redis, roomCode, payload.targetId);
+    await touchRoomActivity(redis, roomCode);
+    const updatedRoom = await getRoom(redis, roomCode);
+    io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
+    callback?.({ success: true });
+  });
+
+  socket.on('room:kick', async (payload: { targetId: string }, callback) => {
+    const roomCode = data.roomCode;
+    if (!roomCode) return callback?.({ success: false, error: '不在房间中' });
+    const room = await getRoom(redis, roomCode);
+    if (!room) return callback?.({ success: false, error: '房间不存在' });
+    if (room.ownerId !== data.user.userId) return callback?.({ success: false, error: '只有房主可以踢人' });
+    if (room.status !== 'waiting') return callback?.({ success: false, error: '游戏进行中无法踢人' });
+    if (payload.targetId === data.user.userId) return callback?.({ success: false, error: '不能踢自己' });
+    const players = await getRoomPlayers(redis, roomCode);
+    if (!players.some(p => p.userId === payload.targetId)) return callback?.({ success: false, error: '目标玩家不在房间中' });
+    await roomManager.leaveRoom(roomCode, payload.targetId);
+    removeVoicePresence(io, roomCode, payload.targetId);
+    const targetSockets = await io.in(roomCode).fetchSockets();
+    for (const s of targetSockets) {
+      if ((s.data as SocketData).user.userId === payload.targetId) {
+        s.emit('game:kicked', { reason: '你已被房主移出房间' });
+        s.leave(roomCode);
+        (s.data as SocketData).roomCode = null;
+      }
+    }
+    await touchRoomActivity(redis, roomCode);
+    const updatedPlayers = await getRoomPlayers(redis, roomCode);
+    const updatedRoom = await getRoom(redis, roomCode);
+    io.to(roomCode).emit('room:updated', { players: updatedPlayers, room: updatedRoom });
+    callback?.({ success: true });
+  });
+
+  socket.on('voice:force_mute', async (payload: { targetId: string; muted: boolean }, callback) => {
+    const roomCode = data.roomCode;
+    if (!roomCode) return callback?.({ success: false, error: '不在房间中' });
+    const room = await getRoom(redis, roomCode);
+    if (!room) return callback?.({ success: false, error: '房间不存在' });
+    if (room.ownerId !== data.user.userId) return callback?.({ success: false, error: '只有房主可以强制静音' });
+    if (payload.targetId === data.user.userId) return callback?.({ success: false, error: '不能静音自己' });
+    const players = await getRoomPlayers(redis, roomCode);
+    if (!players.some(p => p.userId === payload.targetId)) return callback?.({ success: false, error: '目标玩家不在房间中' });
+    setForceMuted(io, roomCode, payload.targetId, payload.muted);
     callback?.({ success: true });
   });
 
