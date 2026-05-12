@@ -315,11 +315,17 @@ export const useGatewayStore = create<GatewayStore>()(
       selectChannel: (channelId) => set({ selectedChannelId: channelId }),
 
       joinSelectedChannel: () => {
-        const ws = get()._ws
         const channelId = get().selectedChannelId
-        if (!ws || ws.readyState !== WebSocket.OPEN || channelId == null) return
+        if (channelId == null) return
+        get().joinChannel(channelId)
+      },
+
+      joinChannel: (channelId: number) => {
+        const ws = get()._ws
+        if (!ws || ws.readyState !== WebSocket.OPEN) return
         try {
           ws.send(JSON.stringify({ type: 'joinChannel', channelId }))
+          set({ selectedChannelId: channelId })
         } catch {}
       },
 

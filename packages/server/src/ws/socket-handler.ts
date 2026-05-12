@@ -15,6 +15,8 @@ import { setupSpectateHandlers } from '../plugins/core/spectate/ws.js';
 import { getDb } from '../db/database.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { registerVoicePresenceEvents, removeVoicePresence } from './voice-presence.js';
+import { VoiceChannelManager } from '../voice/channel-manager.js';
+import type { MumbleIceConfig } from '../config.js';
 
 const RECONNECT_TIMEOUT_MS = 60_000;
 const AUTOPILOT_THINK_MS = 2_000;
@@ -24,7 +26,13 @@ const ALL_DISCONNECT_TIMEOUT_MS = 5 * 60_000;
 
 const autopilotToggleTimestamps = new Map<string, number>();
 
-export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecret: string, roomIdleTimeoutMs: number) {
+export function setupSocketHandlers(
+  io: SocketIOServer,
+  redis: KvStore,
+  jwtSecret: string,
+  roomIdleTimeoutMs: number,
+  mumbleIce: MumbleIceConfig,
+) {
   const roomManager = new RoomManager(redis);
   const turnTimer = new TurnTimer();
   const sessions = new Map<string, GameSession>();
@@ -33,6 +41,8 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
   const autoPlayIntervals = new Map<string, ReturnType<typeof setInterval>>();
   const userSocketMap = new Map<string, string>();
   const persister = new GameStatePersister(redis);
+  const voiceChannels = new VoiceChannelManager(redis, mumbleIce);
+  voiceChannels.reconcileActiveRooms().catch(err => console.warn('[voice] reconcile failed:', err));
 
   io.use(async (socket, next) => {
     const payload = await authenticateSocketAsync(socket, jwtSecret);
@@ -46,7 +56,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
   });
 
   io.use((socket, next) => {
-    socket.use(([event], next) => {
+    socket.use(([_event], next) => {
       if (!checkRateLimit(socket.id)) {
         return next(new Error('Rate limited'));
       }
@@ -121,7 +131,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       if (!Number.isFinite(lastActivityAt) || now - lastActivityAt < roomIdleTimeoutMs) continue;
 
       stopAutoPlayForRoom(roomCode);
-      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'idle_timeout', getDb());
+      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'idle_timeout', getDb(), voiceChannels);
     }
   }
 
@@ -206,10 +216,10 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
       }
     });
 
-    registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions, getDb(), persister);
+    registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions, getDb(), persister, voiceChannels);
     registerGameEvents(socket, io, redis, turnTimer, sessions, getDb(), persister);
     registerInteractionEvents(socket, io);
-    registerVoicePresenceEvents(socket, io);
+    registerVoicePresenceEvents(socket, io, (roomCode) => voiceChannels.getRoomChannel(roomCode));
 
     socket.on('player:toggle-autopilot', async (callback) => {
       const now = Date.now();
@@ -273,7 +283,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
             if (!sessions.has(roomCode)) return;
             try {
               stopAutoPlayForRoom(roomCode);
-              await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'idle_timeout', getDb());
+              await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'idle_timeout', getDb(), voiceChannels);
             } catch (err) {
               console.error(`[allDisconnect] Failed to dissolve room ${roomCode}:`, err);
             }
@@ -322,6 +332,7 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
           } else {
             sessions.delete(roomCode);
             turnTimer.stop(roomCode);
+            await voiceChannels.clearRoomChannelMapping(roomCode);
           }
         }, RECONNECT_TIMEOUT_MS);
         disconnectTimers.set(userId, timer);
@@ -331,5 +342,5 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
 
   setupSpectateHandlers(io, redis, sessions);
 
-  return { roomManager, turnTimer, sessions, persister };
+  return { roomManager, turnTimer, sessions, persister, voiceChannels };
 }

@@ -6,6 +6,7 @@ import type { GameSession } from '../plugins/core/game/session.js';
 import { deleteRoom } from '../plugins/core/room/store.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
+import type { VoiceChannelManager } from '../voice/channel-manager.js';
 import { persistGameOnDissolve } from './game-events.js';
 import { clearRoomTimeouts } from './room-events.js';
 import type { SocketData } from './types.js';
@@ -20,6 +21,7 @@ export async function dissolveRoom(
   persister: GameStatePersister,
   reason: 'host_closed' | 'idle_timeout' | 'empty' = 'host_closed',
   db?: Kysely<Database>,
+  voiceChannels?: VoiceChannelManager,
 ): Promise<void> {
   turnTimer.stop(roomCode);
   clearRoomTimeouts(roomCode);
@@ -47,5 +49,6 @@ export async function dissolveRoom(
     await s.leave(roomCode);
   }
 
+  await voiceChannels?.deleteRoomChannel(roomCode);
   await deleteRoom(kv, roomCode);
 }

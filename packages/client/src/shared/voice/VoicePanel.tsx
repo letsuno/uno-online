@@ -20,8 +20,10 @@ export default function VoicePanel() {
   const usersById = useGatewayStore((s) => s.usersById);
   const speakingByUserId = useGatewayStore((s) => s.speakingByUserId);
   const selfUserId = useGatewayStore((s) => s.selfUserId);
+  const selectedChannelId = useGatewayStore((s) => s.selectedChannelId);
   const init = useGatewayStore((s) => s.init);
   const connect = useGatewayStore((s) => s.connect);
+  const joinChannel = useGatewayStore((s) => s.joinChannel);
   const setVoiceSink = useGatewayStore((s) => s.setVoiceSink);
   const sendMicOpus = useGatewayStore((s) => s.sendMicOpus);
   const sendMicEnd = useGatewayStore((s) => s.sendMicEnd);
@@ -36,6 +38,7 @@ export default function VoicePanel() {
   const [expanded, setExpanded] = useState(false);
   const [peerVolumes, setPeerVolumes] = useState<Map<number, number>>(new Map());
   const [micBusy, setMicBusy] = useState(false);
+  const [roomVoiceChannelId, setRoomVoiceChannelId] = useState<number | null>(null);
   const voiceName = useAuthStore((s) => s.user?.nickname || s.user?.username);
   const selfId = useAuthStore((s) => s.user?.id);
   const playerVoicePresence = useGatewayStore((s) => s.playerVoicePresence);
@@ -51,6 +54,11 @@ export default function VoicePanel() {
   useEffect(() => {
     init();
   }, [init]);
+
+  useEffect(() => {
+    if (!connected || roomVoiceChannelId == null || selectedChannelId === roomVoiceChannelId) return;
+    joinChannel(roomVoiceChannelId);
+  }, [connected, roomVoiceChannelId, selectedChannelId, joinChannel]);
 
   useEffect(() => {
     if (!connected) return;
@@ -71,6 +79,12 @@ export default function VoicePanel() {
       return;
     }
     console.log('[voice] joining voice, gateway status:', gatewayStatus, 'status:', status);
+    const voiceChannelId = await new Promise<number | null>((resolve) => {
+      getSocket().emit('voice:channel:get', (res: { voiceChannelId?: number | null }) => {
+        resolve(res.voiceChannelId ?? null);
+      });
+    });
+    setRoomVoiceChannelId(voiceChannelId);
     const engine = getVoiceEngine(sendMicOpus, sendMicEnd);
     await engine.enableAudio();
     engine.setMuted(speakerMuted);

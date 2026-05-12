@@ -9,10 +9,11 @@ async function main() {
   if (config.devMode) {
     setGamePersistence(false);
   }
-  const { fastify, turnTimer, kv } = await createApp(config);
+  const { fastify, turnTimer, kv, voiceChannels } = await createApp(config);
 
   const shutdown = async () => {
     turnTimer.stopAll();
+    await voiceChannels.close();
     await fastify.close();
     if (!config.devMode) {
       await destroyDb();

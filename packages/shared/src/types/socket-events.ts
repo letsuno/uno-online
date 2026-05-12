@@ -12,12 +12,14 @@ export interface RoomCreateResult extends SocketCallbackResult {
   roomCode?: string;
   players?: Record<string, unknown>[];
   room?: Record<string, unknown>;
+  voiceChannelId?: number | null;
 }
 
 export interface RoomJoinResult extends SocketCallbackResult {
   room?: Record<string, unknown>;
   players?: Record<string, unknown>[];
   rejoin?: boolean;
+  voiceChannelId?: number | null;
 }
 
 export interface ServerToClientEvents {
@@ -76,6 +78,7 @@ export interface ClientToServerEvents {
   'game:kick_player': (payload: { targetId?: string }, callback?: (res: SocketCallbackResult) => void) => void;
   'game:rematch': (callback?: (res: SocketCallbackResult) => void) => void;
   'chat:message': (data: { text: string }) => void;
+  'voice:channel:get': (callback: (res: SocketCallbackResult & { voiceChannelId?: number | null }) => void) => void;
   'voice:presence:get': (callback: (presence: Record<string, unknown>) => void) => void;
   'voice:presence': (data: Record<string, unknown>, callback?: (res: SocketCallbackResult) => void) => void;
   'throw:item': (payload: { targetId: string; item: string }, callback?: (res: SocketCallbackResult) => void) => void;
