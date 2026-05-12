@@ -1,8 +1,8 @@
-import type { HouseRulePlugin } from '../house-rule-types';
-import type { GameState, GameAction } from '../../types/game';
-import type { RuleContext, PreCheckResult } from '../house-rule-types';
-import { isExactJumpInMatch } from '../validation';
-import { reverseDirection } from '../turn';
+import type { HouseRulePlugin } from '../house-rule-types.js';
+import type { GameState, GameAction } from '../../types/game.js';
+import type { RuleContext, PreCheckResult } from '../house-rule-types.js';
+import { isExactJumpInMatch } from '../validation.js';
+import { reverseDirection } from '../turn.js';
 
 export const jumpIn: HouseRulePlugin = {
   meta: {

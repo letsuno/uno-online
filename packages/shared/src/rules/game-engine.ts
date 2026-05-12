@@ -1,10 +1,10 @@
-import type { GameState, GameAction, DrawSide } from '../types/game';
-import type { Color } from '../types/card';
-import { reshuffleSideFromDiscard } from './deck';
-import { canPlayCard, isValidWildDrawFour, canRespondToDrawStack as canRespondToDrawStackPure } from './validation';
-import { getNextPlayerIndex, reverseDirection } from './turn';
-import { calculateRoundScores } from './scoring';
-import { UNO_PENALTY_CARDS } from '../constants/scoring';
+import type { GameState, GameAction, DrawSide } from '../types/game.js';
+import type { Color } from '../types/card.js';
+import { reshuffleSideFromDiscard } from './deck.js';
+import { canPlayCard, isValidWildDrawFour, canRespondToDrawStack as canRespondToDrawStackPure } from './validation.js';
+import { getNextPlayerIndex, reverseDirection } from './turn.js';
+import { calculateRoundScores } from './scoring.js';
+import { UNO_PENALTY_CARDS } from '../constants/scoring.js';
 
 export const PENALTY_STATE_DEFAULTS = {
   pendingPenaltyDraws: 0,

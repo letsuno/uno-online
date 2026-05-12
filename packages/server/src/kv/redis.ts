@@ -1,9 +1,6 @@
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 import type { KvStore } from './types.js';
 
-/**
- * Redis-backed KV store.
- */
 export class RedisKvStore implements KvStore {
   private client: Redis;
 

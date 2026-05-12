@@ -1,7 +1,7 @@
-import type { Card, Color } from './card';
-import type { PlayerView } from './player-view';
-import type { ChatMessage } from './chat';
-import type { RoomSettings } from './game';
+import type { Card, Color } from './card.js';
+import type { PlayerView } from './player-view.js';
+import type { ChatMessage } from './chat.js';
+import type { RoomSettings } from './game.js';
 
 export interface SocketCallbackResult {
   success: boolean;

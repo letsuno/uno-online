@@ -1,15 +1,15 @@
 import type { Server as SocketIOServer } from 'socket.io';
 import type { Kysely } from 'kysely';
-import type { KvStore } from '../kv/types';
-import type { Database } from '../db/database';
-import type { GameSession } from '../plugins/core/game/session';
-import { deleteRoom } from '../plugins/core/room/store';
-import type { TurnTimer } from '../plugins/core/game/turn-timer';
-import type { GameStatePersister } from '../plugins/core/game/state-store';
-import { persistGameOnDissolve } from './game-events';
-import { clearRoomTimeouts } from './room-events';
-import type { SocketData } from './types';
-import { clearVoicePresence } from './voice-presence';
+import type { KvStore } from '../kv/types.js';
+import type { Database } from '../db/database.js';
+import type { GameSession } from '../plugins/core/game/session.js';
+import { deleteRoom } from '../plugins/core/room/store.js';
+import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
+import type { GameStatePersister } from '../plugins/core/game/state-store.js';
+import { persistGameOnDissolve } from './game-events.js';
+import { clearRoomTimeouts } from './room-events.js';
+import type { SocketData } from './types.js';
+import { clearVoicePresence } from './voice-presence.js';
 
 export async function dissolveRoom(
   io: SocketIOServer,

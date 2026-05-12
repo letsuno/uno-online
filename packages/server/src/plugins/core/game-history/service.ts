@@ -1,5 +1,5 @@
 import type { Kysely } from 'kysely';
-import type { Database } from '../../../db/database';
+import type { Database } from '../../../db/database.js';
 import type { GameEvent, GameEventType } from '@uno-online/shared';
 
 export async function saveGameEvents(

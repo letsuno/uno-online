@@ -1,5 +1,5 @@
-import type { Card } from './card';
-import type { GameState } from './game';
+import type { Card } from './card.js';
+import type { GameState } from './game.js';
 
 export interface PlayerViewPlayer {
   id: string;

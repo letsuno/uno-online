@@ -1,9 +1,9 @@
 import type { Server as SocketIOServer } from 'socket.io';
-import type { KvStore } from '../../../kv/types';
-import type { SocketData } from '../../../ws/types';
-import { deleteRoom, getRoom } from '../room/store';
-import { GameSession } from '../game/session';
-import { loadGameState } from '../game/state-store';
+import type { KvStore } from '../../../kv/types.js';
+import type { SocketData } from '../../../ws/types.js';
+import { deleteRoom, getRoom } from '../room/store.js';
+import { GameSession } from '../game/session.js';
+import { loadGameState } from '../game/state-store.js';
 
 const roomSpectators = new Map<string, Set<string>>();
 

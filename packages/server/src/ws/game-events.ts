@@ -3,16 +3,16 @@ import type { KvStore } from '../kv/types.js';
 import type { ChatMessage, Color, GameAction } from '@uno-online/shared';
 import { chooseAutopilotJumpInAction, GameEventType } from '@uno-online/shared';
 import type { Kysely } from 'kysely';
-import type { Database } from '../db/database';
-import { GameSession } from '../plugins/core/game/session';
-import type { GameStatePersister } from '../plugins/core/game/state-store';
-import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts } from './room-events';
-import type { TurnTimer } from '../plugins/core/game/turn-timer';
-import { recordGameResult } from '../db/user-repo';
-import { saveGameEvents, saveDeckInfo } from '../plugins/core/game-history/service';
-import { getRoom, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom } from '../plugins/core/room/store';
+import type { Database } from '../db/database.js';
+import { GameSession } from '../plugins/core/game/session.js';
+import type { GameStatePersister } from '../plugins/core/game/state-store.js';
+import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts } from './room-events.js';
+import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
+import { recordGameResult } from '../db/user-repo.js';
+import { saveGameEvents, saveDeckInfo } from '../plugins/core/game-history/service.js';
+import { getRoom, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS } from '@uno-online/shared';
-import type { SocketData } from './types';
+import type { SocketData } from './types.js';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
   const data = socket.data as SocketData;

@@ -1,11 +1,11 @@
-import type { GameState, GameAction } from '../types/game';
-import type { Card } from '../types/card';
-import type { Color } from '../types/card';
-import { isWildCard } from '../types/card';
-import { canPlayCard } from './validation';
-import { getNextPlayerIndex } from './turn';
-import { applyAction, checkRoundEnd, startPenaltyDraw, drawCards } from './game-engine';
-import type { RuleContext } from './house-rule-types';
+import type { GameState, GameAction } from '../types/game.js';
+import type { Card } from '../types/card.js';
+import type { Color } from '../types/card.js';
+import { isWildCard } from '../types/card.js';
+import { canPlayCard } from './validation.js';
+import { getNextPlayerIndex } from './turn.js';
+import { applyAction, checkRoundEnd, startPenaltyDraw, drawCards } from './game-engine.js';
+import type { RuleContext } from './house-rule-types.js';
 
 export function drawCardsFromDeck(state: GameState, playerId: string, count: number): GameState {
   const side = state.deckLeft.length >= state.deckRight.length ? 'left' : 'right';

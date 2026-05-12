@@ -1,5 +1,5 @@
-import type { RuleMetadata } from './house-rule-types';
-import { PRE_CHECK_PLUGINS, POST_PROCESS_PLUGINS } from './rules/index';
+import type { RuleMetadata } from './house-rule-types.js';
+import { PRE_CHECK_PLUGINS, POST_PROCESS_PLUGINS } from './rules/index.js';
 
 export function getAllRuleMetadata(): RuleMetadata[] {
   const seen = new Set<string>();

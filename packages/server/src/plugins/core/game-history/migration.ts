@@ -1,6 +1,6 @@
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
-import type { Database } from '../../../db/database';
+import type { Database } from '../../../db/database.js';
 
 export async function migrate(db: Kysely<Database>): Promise<void> {
   await db.schema
