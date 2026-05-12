@@ -8,6 +8,7 @@ import { playSound } from './sound/sound-manager';
 import { useGatewayStore, type PlayerVoicePresence } from './voice/gateway-store';
 import { leaveVoiceSession } from './voice/voice-runtime';
 import { sendNotification } from './utils/notification';
+import { useServerVersionStore } from './stores/server-version-store';
 
 type TypedSocket = SocketType<ServerToClientEvents, ClientToServerEvents>;
 
@@ -144,6 +145,10 @@ export function getSocket(): TypedSocket {
 
     socket.on('room:spectator_left', (data) => {
       useToastStore.getState().addToast(`${data.nickname} 离开观战`, 'info');
+    });
+
+    socket.on('server:version', (data) => {
+      useServerVersionStore.getState().setVersion(data.version);
     });
 
     socket.on('connect', () => {

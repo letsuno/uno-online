@@ -130,8 +130,12 @@ export function setupSocketHandlers(io: SocketIOServer, redis: KvStore, jwtSecre
   }, ROOM_IDLE_SWEEP_MS);
   idleCleanupInterval.unref?.();
 
+  const serverStartTime = new Date().toISOString();
+
   io.on('connection', async (socket) => {
     const userId = socket.data.user.userId;
+
+    socket.emit('server:version', { version: serverStartTime });
 
     // Multi-tab: kick existing connection for same user
     const existingSocketId = userSocketMap.get(userId);

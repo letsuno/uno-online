@@ -47,6 +47,7 @@ export interface ServerToClientEvents {
   'room:spectator_list': (data: { spectators: string[] }) => void;
   'game:cheat_detected': () => void;
   'voice:presence': (presence: Record<string, unknown>) => void;
+  'server:version': (data: { version: string }) => void;
 }
 
 export interface ClientToServerEvents {

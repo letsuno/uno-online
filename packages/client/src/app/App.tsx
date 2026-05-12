@@ -3,6 +3,7 @@ import AppRouter from './router';
 import ToastContainer from '@/shared/components/Toast';
 import ChangelogModal from '@/shared/components/ChangelogModal';
 import NotificationPermissionDialog from '@/shared/components/NotificationPermissionDialog';
+import ServerUpdateDialog from '@/shared/components/ServerUpdateDialog';
 import { useSettingsStore, FONT_OPTIONS } from '@/shared/stores/settings-store';
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
       <ToastContainer />
       <ChangelogModal />
       <NotificationPermissionDialog />
+      <ServerUpdateDialog />
     </div>
   );
 }
