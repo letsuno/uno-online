@@ -80,5 +80,5 @@ export interface ClientToServerEvents {
   'voice:presence': (data: Record<string, unknown>, callback?: (res: SocketCallbackResult) => void) => void;
   'throw:item': (payload: { targetId: string; item: string }, callback?: (res: SocketCallbackResult) => void) => void;
   'player:toggle-autopilot': (callback?: (res: SocketCallbackResult & { autopilot?: boolean }) => void) => void;
-  'game:spectator_join': (callback?: (res: SocketCallbackResult) => void) => void;
+  'game:spectator_join': (callback?: (res: SocketCallbackResult & { queued?: boolean }) => void) => void;
 }
