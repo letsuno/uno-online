@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Crown, Check, Copy, Eye } from 'lucide-react';
+import { Crown, Check, Copy, Eye, Trash2 } from 'lucide-react';
 import { cn, getRoleColor } from '@/shared/lib/utils';
 import { AiBadge } from '@/shared/components/ui/AiBadge';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
@@ -118,8 +118,14 @@ export default function RoomPage() {
   };
 
   const leaveRoom = () => {
-    if (!window.confirm('确定要离开房间吗？')) return;
+    const msg = isOwner ? '你是房主，离开后房主权将转让给其他玩家，确定吗？' : '确定要离开房间吗？';
+    if (!window.confirm(msg)) return;
     leaveRoomHook();
+  };
+
+  const dissolveRoom = () => {
+    if (!window.confirm('确定要解散房间吗？所有玩家将被踢出。')) return;
+    getSocket().emit('room:dissolve', () => {});
   };
 
   /* House-rules helpers */
@@ -308,7 +314,7 @@ export default function RoomPage() {
               {myPlayer?.ready ? '取消准备' : '准备'}
             </Button>
           )}
-          {!isOwner && !myPlayer?.spectator && (
+          {!myPlayer?.spectator && (
             <Button variant="secondary" onClick={toggleSpectator} sound="click">
               <Eye size={14} className="inline align-middle mr-1" />观战
             </Button>
@@ -319,6 +325,11 @@ export default function RoomPage() {
             </Button>
           )}
           <Button variant="danger" onClick={leaveRoom} sound="danger">离开房间</Button>
+          {isOwner && (
+            <Button variant="danger" onClick={dissolveRoom} sound="danger">
+              <Trash2 size={14} className="inline align-middle mr-1" />解散房间
+            </Button>
+          )}
         </div>
 
         {menuTarget && (

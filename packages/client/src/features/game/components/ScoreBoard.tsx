@@ -241,7 +241,7 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
             {!isGameOver && <Button variant="primary" onClick={onPlayAgain} disabled={isNextRoundDisabled} sound="ready">{nextRoundButtonText}</Button>}
             {isGameOver && isHost && <Button variant="primary" onClick={onBackToRoom} disabled={cooldownActive} sound="ready">{cooldownActive ? `返回房间 (${startCooldown}s)` : '返回房间'}</Button>}
             {isGameOver && !isHost && <Button variant="primary" disabled>{cooldownActive ? `${startCooldown}s` : '等待房主返回房间…'}</Button>}
-            {!isHost && <Button variant="secondary" onClick={onLeaveToSpectate} sound="click"><Eye size={14} className="inline align-middle mr-1" />进入观战席</Button>}
+            <Button variant="secondary" onClick={onLeaveToSpectate} sound="click"><Eye size={14} className="inline align-middle mr-1" />进入观战席</Button>
             <Button variant="secondary" onClick={onBackToLobby} sound="click" disabled={leaveCountdown > 0}>{leaveCountdown > 0 ? `返回大厅 (${leaveCountdown}s)` : '返回大厅'}</Button>
           </div>
         )}

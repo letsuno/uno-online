@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, Volume2, VolumeX, Music, Spade, DoorOpen, LogOut, Bot, HelpCircle, Keyboard } from 'lucide-react';
+import { Eye, Volume2, VolumeX, Music, Spade, DoorOpen, LogOut, Bot, HelpCircle, Keyboard, Trash2 } from 'lucide-react';
 import type { Card, Color } from '@uno-online/shared';
 import TurnTimer from './TurnTimer';
 import { useSettingsStore } from '@/shared/stores/settings-store';
@@ -100,9 +100,14 @@ export default function TopBar({ roomCode, onOpenHotkeys }: TopBarProps) {
   };
 
   const handleLeave = () => {
-    const msg = isHost ? '你是房主，离开将解散房间，确定吗？' : '确定要退出对局吗？';
+    const msg = isHost ? '你是房主，离开后房主权将转让给其他玩家，确定吗？' : '确定要退出对局吗？';
     if (!window.confirm(msg)) return;
     leaveRoom();
+  };
+
+  const handleDissolve = () => {
+    if (!window.confirm('确定要解散房间吗？所有玩家将被踢出。')) return;
+    getSocket().emit('room:dissolve', () => {});
   };
 
   return (
@@ -173,10 +178,19 @@ export default function TopBar({ roomCode, onOpenHotkeys }: TopBarProps) {
         <button
           onClick={handleLeave}
           className="bg-transparent border-none text-sm cursor-pointer text-destructive hover:text-destructive/80 transition-colors"
-          title={isHost ? '离开并解散房间' : '退出对局'}
+          title={isHost ? '离开并转让房主' : '退出对局'}
         >
           {isHost ? <DoorOpen size={16} /> : <LogOut size={16} />}
         </button>
+        {isHost && (
+          <button
+            onClick={handleDissolve}
+            className="bg-transparent border-none text-sm cursor-pointer text-destructive hover:text-destructive/80 transition-colors"
+            title="解散房间"
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
       </div>
     </div>
   );

@@ -584,12 +584,13 @@ export function registerGameEvents(
     }
 
     const playerIds = new Set(session.getFullState().players.map((p) => p.id));
-    if (!playerIds.has(data.user.userId)) {
-      return callback?.({ success: false, error: 'Player not in game' });
-    }
-
     const room = await getRoom(redis, roomCode);
     const isOwner = room?.ownerId === data.user.userId;
+    // Players can always vote. The owner can also vote/trigger the next round
+    // even while sitting on the spectator bench (not in session.players).
+    if (!playerIds.has(data.user.userId) && !isOwner) {
+      return callback?.({ success: false, error: 'Player not in game' });
+    }
     const votes = nextRoundVotes.get(roomCode) ?? new Set<string>();
     const hadAlreadyVoted = votes.has(data.user.userId);
     votes.add(data.user.userId);
@@ -722,11 +723,6 @@ export function registerGameEvents(
     const state = session.getFullState();
     const player = state.players.find((p) => p.id === data.user.userId);
     if (!player) return callback?.({ success: false, error: '玩家不在游戏中' });
-
-    const room = await getRoom(redis, roomCode);
-    if (room?.ownerId === data.user.userId) {
-      return callback?.({ success: false, error: '房主不能离开对局' });
-    }
 
     session.removePlayer(data.user.userId);
     await removePlayerFromRoom(redis, roomCode, data.user.userId);
