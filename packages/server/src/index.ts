@@ -1,14 +1,9 @@
 import { loadConfig } from './config.js';
 import { createApp } from './app.js';
 import { destroyDb, migrateDb } from './db/database.js';
-import { setGamePersistence } from './ws/game-events.js';
-
 async function main() {
   const config = loadConfig();
   await migrateDb();
-  if (config.devMode) {
-    setGamePersistence(false);
-  }
   const { fastify, turnTimer, kv, voiceChannels } = await createApp(config);
 
   const shutdown = async () => {

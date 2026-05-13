@@ -40,7 +40,7 @@ export async function createApp(config: Config) {
       const { code } = request.params;
       io.to(code).emit('game:cheat_detected');
       await new Promise((r) => setTimeout(r, 1500));
-      await dissolveRoom(io, kv, code, sessions, turnTimer, persister, 'host_closed', getDb(), wsContext.voiceChannels);
+      await dissolveRoom(io, kv, code, sessions, turnTimer, persister, 'host_closed', wsContext.voiceChannels);
       return { success: true };
     },
   );

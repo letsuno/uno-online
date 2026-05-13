@@ -5,15 +5,12 @@ import { authRoutes, authProtectedRoutes } from '@/features/auth/routes';
 import { gameProtectedRoutes } from '@/features/game/routes';
 import { lobbyProtectedRoutes } from '@/features/lobby/routes';
 import { profileProtectedRoutes } from '@/features/profile/routes';
-import { replayProtectedRoutes } from '@/features/replay/routes';
-
 const allPublicRoutes = [...authRoutes];
 const allProtectedRoutes = [
   ...authProtectedRoutes,
   ...gameProtectedRoutes,
   ...lobbyProtectedRoutes,
   ...profileProtectedRoutes,
-  ...replayProtectedRoutes,
 ];
 
 export default function AppRouter() {

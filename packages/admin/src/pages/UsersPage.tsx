@@ -32,8 +32,6 @@ interface UserRow {
   username: string;
   nickname: string;
   role: string;
-  totalGames: number;
-  totalWins: number;
   createdAt: string;
 }
 
@@ -162,8 +160,6 @@ export default function UsersPage() {
                 <TableHead>Username</TableHead>
                 <TableHead>Nickname</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead>Games</TableHead>
-                <TableHead>Wins</TableHead>
                 <TableHead className="w-[80px]" />
               </TableRow>
             </TableHeader>
@@ -190,8 +186,6 @@ export default function UsersPage() {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell className="text-slate-300">{user.totalGames}</TableCell>
-                  <TableCell className="text-slate-300">{user.totalWins}</TableCell>
                   <TableCell>
                     <Button variant="ghost" size="sm" onClick={() => openEditDialog(user)}>
                       Edit
@@ -201,7 +195,7 @@ export default function UsersPage() {
               ))}
               {data.users.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-slate-400 py-8">
+                  <TableCell colSpan={4} className="text-center text-slate-400 py-8">
                     No users found
                   </TableCell>
                 </TableRow>
