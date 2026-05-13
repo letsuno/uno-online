@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Trophy, BarChart3, Crown, Check, UserX, UserPlus } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Trophy, BarChart3, Crown, Check, UserX, UserPlus, WifiOff } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useRoomStore } from '@/shared/stores/room-store';
@@ -8,7 +8,29 @@ import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/Button';
 import { AiBadge } from '@/shared/components/ui/AiBadge';
 
-const KICK_DELAY_MS = 30_000;
+const KICK_DELAY_S = 30;
+
+function KickCountdownRing({ remaining, total }: { remaining: number; total: number }) {
+  const r = 7;
+  const circumference = 2 * Math.PI * r;
+  const progress = Math.max(0, remaining / total);
+
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" className="inline align-middle">
+      <circle cx="9" cy="9" r={r} fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground/20" />
+      <circle
+        cx="9" cy="9" r={r} fill="none" stroke="currentColor" strokeWidth="2"
+        className="text-destructive"
+        strokeDasharray={circumference}
+        strokeDashoffset={circumference * (1 - progress)}
+        strokeLinecap="round"
+        transform="rotate(-90 9 9)"
+        style={{ transition: 'stroke-dashoffset 1s linear' }}
+      />
+      <text x="9" y="9" textAnchor="middle" dominantBaseline="central" className="fill-muted-foreground" fontSize="7">{remaining}</text>
+    </svg>
+  );
+}
 
 interface ScoreBoardProps {
   onPlayAgain: () => void;
@@ -22,13 +44,17 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby, onKi
   const winnerId = useGameStore((s) => s.winnerId);
   const phase = useGameStore((s) => s.phase);
   const vote = useGameStore((s) => s.nextRoundVote);
-  const [canKick, setCanKick] = useState(false);
+  const [kickCountdown, setKickCountdown] = useState(KICK_DELAY_S);
   const [leaveCountdown, setLeaveCountdown] = useState(5);
+  const kickTimerRef = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
-    if (phase !== 'round_end') { setCanKick(false); return; }
-    const timer = setTimeout(() => setCanKick(true), KICK_DELAY_MS);
-    return () => clearTimeout(timer);
+    if (phase !== 'round_end') { setKickCountdown(KICK_DELAY_S); return; }
+    setKickCountdown(KICK_DELAY_S);
+    kickTimerRef.current = setInterval(() => {
+      setKickCountdown((c) => { if (c <= 1) { clearInterval(kickTimerRef.current); return 0; } return c - 1; });
+    }, 1000);
+    return () => clearInterval(kickTimerRef.current);
   }, [phase]);
 
   useEffect(() => {
@@ -49,6 +75,7 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby, onKi
   const votes = vote?.votes ?? 0;
   const required = vote?.required ?? fallbackRequired;
   const allAgreed = votes >= required;
+  const canKick = kickCountdown === 0;
   const nextRoundButtonText = isHost
     ? allAgreed
       ? '开始下一轮'
@@ -81,16 +108,25 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby, onKi
           <tbody>
             {sorted.map((p) => {
               const ready = !!vote?.voters.includes(p.id);
+              const disconnected = !p.connected;
+              const isSelf = p.id === userId;
               return (
                 <tr key={p.id} className={cn(p.id === winnerId ? 'text-accent' : 'text-foreground')}>
-                  <td className="px-2 py-1.5 text-left">{p.id === winnerId && <Crown size={14} className="inline align-middle mr-1" />}{p.name}{p.isBot && <AiBadge className="ml-1" />}</td>
+                  <td className="px-2 py-1.5 text-left">
+                    {p.id === winnerId && <Crown size={14} className="inline align-middle mr-1" />}
+                    <span className={cn(disconnected && 'opacity-50')}>{p.name}</span>
+                    {p.isBot && <AiBadge className="ml-1" />}
+                    {disconnected && <WifiOff size={12} className="inline align-middle ml-1 text-destructive" />}
+                  </td>
                   {!isGameOver && (
                     <td className="px-2 py-1.5 text-center whitespace-nowrap">
                       {ready
                         ? <Check size={14} className="inline text-green-400" />
-                        : isHost && canKick && p.id !== userId
+                        : isHost && canKick && !isSelf
                           ? <button onClick={() => onKickPlayer(p.id)} className="text-xs text-destructive hover:text-destructive/80 cursor-pointer bg-transparent border-none" title="踢出游戏"><UserX size={14} className="inline" /></button>
-                          : <span className="text-xs text-muted-foreground">等待中</span>}
+                          : isSelf
+                            ? <span className="text-xs text-muted-foreground">等待中</span>
+                            : <KickCountdownRing remaining={kickCountdown} total={KICK_DELAY_S} />}
                     </td>
                   )}
                   <td className="px-2 py-1.5 text-right font-bold">{p.score}</td>
