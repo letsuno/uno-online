@@ -6,7 +6,7 @@ import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts } from './room-events.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
-import { getRoom, getRoomPlayers, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom, resetAllPlayersReady } from '../plugins/core/room/store.js';
+import { getRoom, getRoomPlayers, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom, resetAllPlayersReady, setUserRoom } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS } from '@uno-online/shared';
 import { removeSpectator, addSpectator, getSpectatorNames, clearRoomSpectators } from '../plugins/core/spectate/ws.js';
 import type { SocketData } from './types.js';
@@ -64,13 +64,16 @@ export function getPendingSpectatorQueue(roomCode: string): string[] {
   return [...pending.values()].map((p) => p.nickname);
 }
 
-export function isSpectatorPendingJoin(roomCode: string, userId: string): boolean {
-  return pendingSpectatorJoins.get(roomCode)?.has(userId) ?? false;
+export function removePendingSpectatorJoin(roomCode: string, userId: string): boolean {
+  const pending = pendingSpectatorJoins.get(roomCode);
+  if (!pending) return false;
+  const removed = pending.delete(userId);
+  if (pending.size === 0) pendingSpectatorJoins.delete(roomCode);
+  return removed;
 }
 
-export function updatePendingSpectatorSocketId(roomCode: string, userId: string, newSocketId: string): void {
-  const entry = pendingSpectatorJoins.get(roomCode)?.get(userId);
-  if (entry) entry.socketId = newSocketId;
+export function clearPendingSpectatorJoins(roomCode: string): void {
+  pendingSpectatorJoins.delete(roomCode);
 }
 
 interface NextRoundVoteState {
@@ -207,6 +210,7 @@ async function processPendingSpectatorJoins(
   if (!pending || pending.size === 0) return;
 
   const joined: string[] = [];
+  const userRoomWrites: Promise<void>[] = [];
   for (const [userId, info] of pending) {
     if (session.getPlayerCount() >= MAX_PLAYERS) break;
     if (session.getFullState().players.some((p) => p.id === userId)) {
@@ -232,8 +236,10 @@ async function processPendingSpectatorJoins(
       role: info.role,
       isBot: info.isBot,
     });
+    userRoomWrites.push(setUserRoom(redis, userId, roomCode));
     joined.push(userId);
   }
+  await Promise.all(userRoomWrites);
 
   for (const id of joined) pending.delete(id);
 

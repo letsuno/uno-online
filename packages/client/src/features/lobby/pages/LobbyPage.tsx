@@ -39,6 +39,25 @@ export default function LobbyPage() {
   }, []);
 
   useEffect(() => {
+    connectSocket();
+    const socket = getSocket();
+    let cancelled = false;
+    const checkRoom = () => {
+      socket.emit('user:current_room', (res) => {
+        if (cancelled || !res.roomCode) return;
+        setRoom(res.roomCode, [], null);
+        navigate(`/room/${res.roomCode}`);
+      });
+    };
+    if (socket.connected) checkRoom();
+    else socket.once('connect', checkRoom);
+    return () => {
+      cancelled = true;
+      socket.off('connect', checkRoom);
+    };
+  }, []);
+
+  useEffect(() => {
     fetchActiveRooms();
     const interval = setInterval(fetchActiveRooms, 30_000);
     return () => clearInterval(interval);

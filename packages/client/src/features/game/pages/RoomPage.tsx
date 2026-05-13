@@ -9,9 +9,9 @@ import { useGameStore } from '../stores/game-store';
 import { getSocket, connectSocket, refreshVoicePresence } from '@/shared/socket';
 import VoicePanel from '@/shared/voice/VoicePanel';
 import PlayerVoiceStatus from '@/shared/voice/PlayerVoiceStatus';
-import { leaveVoiceSession } from '@/shared/voice/voice-runtime';
 import { useToastStore } from '@/shared/stores/toast-store';
 import PlayerActionMenu from '../components/PlayerActionMenu';
+import { useLeaveRoom } from '../hooks/useLeaveRoom';
 import { DEFAULT_HOUSE_RULES, HOUSE_RULES_PRESETS, HOUSE_RULE_DEFINITIONS } from '@uno-online/shared';
 import type { HouseRules, HouseRuleDefinition } from '@uno-online/shared';
 import { Button } from '@/shared/components/ui/Button';
@@ -44,10 +44,11 @@ const RULES: RuleDef[] = HOUSE_RULE_DEFINITIONS.map((def) => ({
 export default function RoomPage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const user = useAuthStore((s) => s.user);
-  const { players, room, clearRoom, setRoom, updateRoom } = useRoomStore();
+  const { players, room, setRoom } = useRoomStore();
   const setGameState = useGameStore((s) => s.setGameState);
   const navigate = useNavigate();
   const songName = useBgm('lobby');
+  const leaveRoomHook = useLeaveRoom();
 
   useEffect(() => {
     connectSocket();
@@ -118,12 +119,7 @@ export default function RoomPage() {
 
   const leaveRoom = () => {
     if (!window.confirm('确定要离开房间吗？')) return;
-    getSocket().emit('voice:presence', { inVoice: false, micEnabled: false, speakerMuted: false, speaking: false });
-    leaveVoiceSession();
-    getSocket().emit('room:leave', () => {
-      clearRoom();
-      navigate('/lobby');
-    });
+    leaveRoomHook();
   };
 
   /* House-rules helpers */

@@ -138,3 +138,26 @@ export async function deleteRoom(kv: KvStore, roomCode: string): Promise<void> {
     `game:${roomCode}:state`,
   );
 }
+
+export async function setUserRoom(kv: KvStore, userId: string, roomCode: string): Promise<void> {
+  await kv.set(`user:${userId}:room`, roomCode);
+}
+
+export async function clearUserRoom(kv: KvStore, userId: string): Promise<void> {
+  await kv.del(`user:${userId}:room`);
+}
+
+export async function getUserRoom(kv: KvStore, userId: string): Promise<string | null> {
+  return kv.get(`user:${userId}:room`);
+}
+
+export async function ensureNotInRoom(kv: KvStore, userId: string, targetRoomCode?: string): Promise<string | null> {
+  const existingRoom = await getUserRoom(kv, userId);
+  if (!existingRoom || existingRoom === targetRoomCode) return null;
+  const room = await getRoom(kv, existingRoom);
+  if (!room) {
+    await clearUserRoom(kv, userId);
+    return null;
+  }
+  return `你已在房间 ${existingRoom} 中，请先退出当前房间`;
+}
