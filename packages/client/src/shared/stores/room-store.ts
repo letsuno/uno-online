@@ -6,6 +6,7 @@ export interface RoomPlayer {
   nickname: string;
   avatarUrl?: string | null;
   ready: boolean;
+  spectator?: boolean;
   role?: string;
   isBot: boolean;
 }

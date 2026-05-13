@@ -61,6 +61,16 @@ export default function GamePage() {
   const showScoreBoard = phase === 'round_end' || phase === 'game_over';
 
   const connectionStatus = useGameSocket(roomCode);
+
+  useEffect(() => {
+    const socket = getSocket();
+    const handleBackToRoom = () => {
+      navigate(`/room/${roomCode}`);
+    };
+    socket.on('game:back_to_room', handleBackToRoom);
+    return () => { socket.off('game:back_to_room', handleBackToRoom); };
+  }, [roomCode, navigate]);
+
   useGameLogTracker();
   const bgmSongName = useBgm('game');
   const [showStartRules, setShowStartRules] = useState(false);
@@ -104,7 +114,7 @@ export default function GamePage() {
     pass,
     swapTarget,
     playAgain,
-    rematch,
+    backToRoom,
     kickPlayer,
     leaveToSpectate,
   } = useGameActions();
@@ -250,7 +260,7 @@ export default function GamePage() {
         <ScoreBoard
           isSpectator={isSpectator}
           onPlayAgain={playAgain}
-          onRematch={rematch}
+          onBackToRoom={backToRoom}
           onBackToLobby={backToLobby}
           onKickPlayer={kickPlayer}
           onLeaveToSpectate={leaveToSpectate}
