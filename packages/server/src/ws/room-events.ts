@@ -2,7 +2,7 @@ import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { Kysely } from 'kysely';
 import type { KvStore } from '../kv/types.js';
 import type { GameAction, GameState, RoomSettings } from '@uno-online/shared';
-import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, GameEventType } from '@uno-online/shared';
+import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction, GameEventType } from '@uno-online/shared';
 import type { Database } from '../db/database.js';
 import { RoomManager } from '../plugins/core/room/manager.js';
 import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity } from '../plugins/core/room/store.js';
@@ -396,10 +396,13 @@ export async function executeAutopilot(
   let acted = false;
   let lastActionTime = 0;
   for (let round = 0; round < 5; round++) {
-    if (!canAutopilotActForPlayer(session, playerId)) break;
-
     const st = session.getFullState();
-    const actions = chooseAutopilotAction(st, playerId);
+    let actions: GameAction[];
+    if (canAutopilotActForPlayer(session, playerId)) {
+      actions = chooseAutopilotAction(st, playerId);
+    } else {
+      actions = chooseJumpInAction(st, playerId);
+    }
     if (actions.length === 0) break;
     let anySuccess = false;
     for (const action of actions) {

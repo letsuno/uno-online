@@ -28,7 +28,7 @@ function formatTime(timestamp: number): string {
 }
 
 function getActionDescription(entry: LogEntry): string {
-  if (entry.type.startsWith('play_')) return '打出';
+  if (entry.type.startsWith('play_')) return entry.isJumpIn ? '抢出' : '打出';
   switch (entry.type) {
     case 'draw': return '摸牌';
     case 'call_uno': return '喊出';
@@ -47,6 +47,7 @@ interface GameLogEntryProps {
 export default function GameLogEntry({ entry }: GameLogEntryProps) {
   const isCatchUno = entry.type === 'catch_uno';
   const isCallUno = entry.type === 'call_uno';
+  const isJumpIn = entry.isJumpIn;
 
   return (
     <div
@@ -54,6 +55,7 @@ export default function GameLogEntry({ entry }: GameLogEntryProps) {
         'flex items-center gap-1.5 py-1 px-1',
         isCallUno && 'bg-accent/10 border border-accent/20 rounded-lg',
         isCatchUno && 'bg-destructive/10 border border-destructive/20 rounded-lg',
+        isJumpIn && 'bg-sky-500/10 border border-sky-500/20 rounded-lg',
       )}
     >
       <span className="text-2xs text-muted-foreground min-w-8 shrink-0">

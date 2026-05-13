@@ -38,7 +38,7 @@ export const jumpIn: HouseRulePlugin = {
         players,
         discardPile: [...state.discardPile, card],
         currentPlayerIndex: nextIdx,
-        lastAction: action,
+        lastAction: { ...action, isJumpIn: true },
       };
 
       switch (card.type) {

@@ -15,6 +15,7 @@ export interface GameLogEntry {
   extra?: string;
   count?: number;
   roundNumber?: number;
+  isJumpIn?: boolean;
 }
 
 let entryId = 0;
