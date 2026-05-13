@@ -164,16 +164,17 @@ export default function TutorialModal({ open, onClose }: { open: boolean; onClos
   const [page, setPage] = useState(0);
   const [dir, setDir] = useState(1);
 
-  const close = () => { setPage(0); onClose(); };
+  // Reset to page 0 only *after* the exit animation finishes — otherwise the
+  // user sees page 0 fade out instead of whatever page they were on when they
+  // closed it.
+  const close = () => onClose();
   const go = (next: number) => { setDir(next > page ? 1 : -1); setPage(next); };
-
-  if (!open) return null;
 
   const current = PAGES[page]!;
   const isLast = page === PAGES.length - 1;
 
   return (
-    <AnimatePresence>
+    <AnimatePresence onExitComplete={() => setPage(0)}>
       {open && (
         <motion.div
           initial={{ opacity: 0 }}

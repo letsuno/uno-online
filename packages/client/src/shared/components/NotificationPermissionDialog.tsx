@@ -26,7 +26,7 @@ export default function NotificationPermissionDialog() {
 
   const close = () => setOpen(false);
 
-  if (!open || permission === 'unsupported') return null;
+  if (permission === 'unsupported') return null;
 
   const isDenied = permission === 'denied';
 

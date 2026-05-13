@@ -21,8 +21,6 @@ export default function ChangelogModal() {
     localStorage.setItem(STORAGE_KEY, import.meta.env.BUILD_VERSION as string);
   };
 
-  if (!open) return null;
-
   return (
     <AnimatePresence>
       {open && (

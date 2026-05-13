@@ -37,13 +37,23 @@ export default function MusicHallModal({ open, onClose, currentScene }: Props) {
   const [playing, setPlaying] = useState<string | null>(null);
   const bgmVolume = useSettingsStore((s) => s.bgmVolume);
   const setBgmVolume = useSettingsStore((s) => s.setBgmVolume);
+  const bgmEnabled = useSettingsStore((s) => s.bgmEnabled);
 
   const songs = PLAYLISTS[tab] ?? [];
+
+  // When the user previews a song with BGM off, resuming/stopping on close
+  // must honor their BGM preference instead of unconditionally starting the
+  // scene playlist (which would surprise-play even though the BGM button is
+  // still showing 关闭).
+  const resumeOrStop = () => {
+    if (bgmEnabled) bgm.start(currentScene);
+    else bgm.stop();
+  };
 
   const play = (scene: string, index: number) => {
     const key = `${scene}:${index}`;
     if (playing === key) {
-      bgm.start(currentScene);
+      resumeOrStop();
       setPlaying(null);
     } else {
       bgm.playSingle(scene, index);
@@ -52,7 +62,7 @@ export default function MusicHallModal({ open, onClose, currentScene }: Props) {
   };
 
   const close = () => {
-    if (playing) bgm.start(currentScene);
+    if (playing) resumeOrStop();
     setPlaying(null);
     onClose();
   };
@@ -62,8 +72,6 @@ export default function MusicHallModal({ open, onClose, currentScene }: Props) {
     setBgmVolume(v);
     bgm.setVolume(v);
   };
-
-  if (!open) return null;
 
   return (
     <AnimatePresence>

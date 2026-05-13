@@ -49,11 +49,10 @@ export default function HotkeySettingsModal({ open, onClose }: Props) {
     if (!open) setListening(null);
   }, [open]);
 
-  if (!open) return null;
-
   return (
     <AnimatePresence>
-      <motion.div
+      {open && (
+        <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -117,6 +116,7 @@ export default function HotkeySettingsModal({ open, onClose }: Props) {
           </div>
         </motion.div>
       </motion.div>
+      )}
     </AnimatePresence>
   );
 }

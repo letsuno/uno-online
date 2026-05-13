@@ -129,8 +129,6 @@ export default function ProfileModal() {
 
   const profileRoleColor = getRoleColor(profile?.user.role);
 
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
       {isOpen && (
