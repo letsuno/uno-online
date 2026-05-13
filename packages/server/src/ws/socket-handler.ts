@@ -5,7 +5,7 @@ import { RoomManager } from '../plugins/core/room/manager.js';
 import { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import { GameSession } from '../plugins/core/game/session.js';
 import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, notifyAutopilotAction, resetPlayerTimeout } from './room-events.js';
-import { getAutopilotActionPlayerId } from './autopilot-action-player.js';
+import { getAutopilotActionPlayerId, canPlayerAutopilotOnce } from './autopilot-action-player.js';
 import { registerGameEvents, addAutopilotVote, clearChatTimestamps } from './game-events.js';
 import { getRoom, getRoomPlayers, setRoomOwner } from '../plugins/core/room/store.js';
 import { loadGameState, GameStatePersister } from '../plugins/core/game/state-store.js';
@@ -262,7 +262,7 @@ export function setupSocketHandlers(
       const player = state.players.find(p => p.id === userId);
       if (!player) return callback?.({ success: false, error: '玩家不在游戏中' });
       if (player.autopilot) return callback?.({ success: false, error: '已在托管中' });
-      if (getAutopilotActionPlayerId(state) !== userId) return callback?.({ success: false, error: '不是你的回合' });
+      if (!canPlayerAutopilotOnce(state, userId)) return callback?.({ success: false, error: '不是你的回合' });
 
       const acted = await executeAutopilot(session, userId, async () => {
         persister.markDirty(roomCode, session.getFullState());

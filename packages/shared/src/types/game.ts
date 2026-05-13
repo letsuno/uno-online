@@ -80,7 +80,7 @@ export interface RoundResult {
 }
 
 export type GameAction =
-  | { type: 'PLAY_CARD'; playerId: string; cardId: string; chosenColor?: Color }
+  | { type: 'PLAY_CARD'; playerId: string; cardId: string; chosenColor?: Color; isJumpIn?: boolean }
   | { type: 'DRAW_CARD'; playerId: string; side: DrawSide }
   | { type: 'PASS'; playerId: string }
   | { type: 'CALL_UNO'; playerId: string }
