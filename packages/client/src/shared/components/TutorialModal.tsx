@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Spade, ChevronRight, ChevronLeft, Megaphone, Trophy } from 'lucide-react';
+import { Spade, ChevronRight, ChevronLeft, Megaphone, Trophy, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
 function Card({ color, label }: { color: string; label: string }) {
@@ -62,9 +62,9 @@ const PAGES: PageDef[] = [
             { n: '2', text: <>出与弃牌堆顶<strong className="text-foreground">颜色</strong>或<strong className="text-foreground">数字</strong>相同的牌</> },
             { n: '3', text: <>最先打完所有手牌的玩家<strong className="text-foreground">获胜</strong></> },
           ].map((step) => (
-            <div key={step.n} className="flex items-start gap-3 rounded-xl bg-white/5 p-4">
+            <div key={step.n} className="flex items-start gap-3 rounded-xl bg-white/[0.04] border border-white/[0.05] p-4">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/20 text-accent text-sm font-bold shrink-0">{step.n}</span>
-              <p className="text-sm text-slate-300 leading-relaxed">{step.text}</p>
+              <p className="text-sm text-foreground/80 leading-relaxed">{step.text}</p>
             </div>
           ))}
         </div>
@@ -76,7 +76,7 @@ const PAGES: PageDef[] = [
     subtitle: '了解每种卡牌的效果',
     body: (
       <div className="w-full max-w-xl grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl bg-white/5 p-5">
+        <div className="rounded-xl bg-white/[0.04] border border-white/[0.05] p-5">
           <div className="flex items-center gap-2 mb-3">
             <SmallCard color="red" label="3" />
             <SmallCard color="blue" label="7" />
@@ -84,30 +84,30 @@ const PAGES: PageDef[] = [
             <SmallCard color="yellow" label="9" />
           </div>
           <p className="text-sm font-bold text-foreground">数字牌 (0-9)</p>
-          <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">四种颜色各有 0-9 数字牌，匹配颜色或数字即可打出</p>
+          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">四种颜色各有 0-9 数字牌，匹配颜色或数字即可打出</p>
         </div>
-        <div className="rounded-xl bg-white/5 p-5">
+        <div className="rounded-xl bg-white/[0.04] border border-white/[0.05] p-5">
           <div className="flex items-center gap-2 mb-3">
             <SmallCard color="red" label="⊘" />
             <SmallCard color="green" label="⇆" />
             <SmallCard color="blue" label="+2" />
           </div>
           <p className="text-sm font-bold text-foreground">功能牌</p>
-          <div className="text-xs text-slate-400 mt-1.5 leading-relaxed space-y-1">
-            <p><strong className="text-slate-200">⊘ 跳过</strong> — 下家失去出牌机会</p>
-            <p><strong className="text-slate-200">⇆ 反转</strong> — 改变出牌方向</p>
-            <p><strong className="text-slate-200">+2</strong> — 下家摸 2 张并跳过回合</p>
+          <div className="text-xs text-muted-foreground mt-1.5 leading-relaxed space-y-1">
+            <p><strong className="text-foreground">⊘ 跳过</strong> — 下家失去出牌机会</p>
+            <p><strong className="text-foreground">⇆ 反转</strong> — 改变出牌方向</p>
+            <p><strong className="text-foreground">+2</strong> — 下家摸 2 张并跳过回合</p>
           </div>
         </div>
-        <div className="rounded-xl bg-white/5 p-5 sm:col-span-2">
+        <div className="rounded-xl bg-white/[0.04] border border-white/[0.05] p-5 sm:col-span-2">
           <div className="flex items-center gap-2 mb-3">
             <SmallCard color="wild" label="W" />
             <SmallCard color="dark" label="+4" />
           </div>
           <p className="text-sm font-bold text-foreground">万能牌</p>
-          <div className="text-xs text-slate-400 mt-1.5 leading-relaxed sm:flex sm:gap-6">
-            <p><strong className="text-slate-200">W 变色</strong> — 任何时候打出，自由选择接下来的颜色</p>
-            <p className="mt-1 sm:mt-0"><strong className="text-slate-200">+4</strong> — 选颜色 + 下家摸 4 张牌，下家可以质疑合法性</p>
+          <div className="text-xs text-muted-foreground mt-1.5 leading-relaxed sm:flex sm:gap-6">
+            <p><strong className="text-foreground">W 变色</strong> — 任何时候打出，自由选择接下来的颜色</p>
+            <p className="mt-1 sm:mt-0"><strong className="text-foreground">+4</strong> — 选颜色 + 下家摸 4 张牌，下家可以质疑合法性</p>
           </div>
         </div>
       </div>
@@ -118,7 +118,7 @@ const PAGES: PageDef[] = [
     subtitle: '掌握规则，赢得胜利',
     body: (
       <div className="w-full max-w-xl grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl bg-white/5 p-5">
+        <div className="rounded-xl bg-white/[0.04] border border-white/[0.05] p-5">
           <div className="flex items-center gap-2 mb-4">
             <Megaphone size={20} className="text-accent shrink-0" />
             <p className="text-base font-bold text-foreground">UNO 喊牌</p>
@@ -126,30 +126,30 @@ const PAGES: PageDef[] = [
           <div className="space-y-3">
             <div className="flex items-start gap-3">
               <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-500/20 text-red-400 text-xs font-bold shrink-0">!</span>
-              <p className="text-sm text-slate-300">手中只剩 <strong className="text-foreground">1 张牌</strong>时必须喊「UNO」</p>
+              <p className="text-sm text-foreground/80">手中只剩 <strong className="text-foreground">1 张牌</strong>时必须喊「UNO」</p>
             </div>
             <div className="flex items-start gap-3">
               <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-500/20 text-red-400 text-xs font-bold shrink-0">!</span>
-              <p className="text-sm text-slate-300">未喊被抓到 → 罚摸 <strong className="text-foreground">2 张</strong></p>
+              <p className="text-sm text-foreground/80">未喊被抓到 → 罚摸 <strong className="text-foreground">2 张</strong></p>
             </div>
           </div>
         </div>
-        <div className="rounded-xl bg-white/5 p-5">
+        <div className="rounded-xl bg-white/[0.04] border border-white/[0.05] p-5">
           <div className="flex items-center gap-2 mb-4">
             <Trophy size={20} className="text-accent shrink-0" />
             <p className="text-base font-bold text-foreground">胜利与计分</p>
           </div>
-          <p className="text-sm text-slate-400 mb-4">赢家获得其他玩家手中剩余牌的分值总和</p>
+          <p className="text-sm text-muted-foreground mb-4">赢家获得其他玩家手中剩余牌的分值总和</p>
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-lg bg-white/5 py-3">
+            <div className="rounded-lg bg-white/[0.04] border border-white/[0.05] py-3">
               <p className="text-foreground font-bold text-lg">0-9</p>
               <p className="text-2xs text-muted-foreground mt-1">面值分</p>
             </div>
-            <div className="rounded-lg bg-white/5 py-3">
+            <div className="rounded-lg bg-white/[0.04] border border-white/[0.05] py-3">
               <p className="text-foreground font-bold text-lg">20</p>
               <p className="text-2xs text-muted-foreground mt-1">功能牌</p>
             </div>
-            <div className="rounded-lg bg-white/5 py-3">
+            <div className="rounded-lg bg-white/[0.04] border border-white/[0.05] py-3">
               <p className="text-foreground font-bold text-lg">50</p>
               <p className="text-2xs text-muted-foreground mt-1">万能牌</p>
             </div>
@@ -180,8 +180,19 @@ export default function TutorialModal({ open, onClose }: { open: boolean; onClos
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
-          className="fixed inset-0 z-modal flex flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950"
+          className="fixed inset-0 z-modal flex flex-col bg-[linear-gradient(135deg,#1a1a2e_0%,#16213e_50%,#0f3460_100%)]"
         >
+          <div
+            className="absolute top-[42%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] rounded-full pointer-events-none animate-[breathe_6s_ease-in-out_infinite]"
+            style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.06) 0%, rgba(251,191,36,0.02) 30%, transparent 60%)' }}
+          />
+          <button
+            onClick={close}
+            className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-[#475569] transition-all hover:bg-white/[0.08] hover:text-[#94a3b8] cursor-pointer z-10"
+            title="关闭"
+          >
+            <X size={18} />
+          </button>
           <div className="flex flex-col flex-1 items-center justify-center px-6 py-6 overflow-hidden">
             <div className="flex flex-col items-center gap-2 mb-8">
               <motion.div
@@ -235,7 +246,7 @@ export default function TutorialModal({ open, onClose }: { open: boolean; onClos
               )}
               <button
                 onClick={isLast ? close : () => go(page + 1)}
-                className="flex-1 rounded-xl bg-accent px-5 py-3 text-sm font-bold text-white transition-colors hover:opacity-90"
+                className="flex-1 rounded-xl bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] px-5 py-3 text-sm font-bold text-[#1a1a2e] shadow-[0_4px_20px_rgba(251,191,36,0.25)] transition-colors hover:opacity-90"
               >
                 {isLast ? '开始游戏' : <>下一页 <ChevronRight size={14} className="ml-1 inline" /></>}
               </button>
