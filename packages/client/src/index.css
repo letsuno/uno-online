@@ -240,6 +240,11 @@
   }
 }
 
+@keyframes breathe {
+  0%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+}
+
 @utility font-game {
   font-family: var(--font-game);
 }
@@ -279,6 +284,37 @@
   &::-webkit-scrollbar-thumb:hover {
     background: rgba(148, 163, 184, 0.5);
   }
+}
+@utility glass-panel {
+  background: rgba(22, 33, 62, 0.65);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 22px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+@utility glass-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 18px 24px;
+  color: var(--foreground);
+  font-size: 16px;
+  outline: none;
+  transition: all 0.25s;
+  &::placeholder {
+    color: rgba(51, 65, 85, 1);
+    letter-spacing: 1px;
+    font-size: 13px;
+  }
+  &:focus {
+    border-color: rgba(251, 191, 36, 0.3);
+    background: rgba(255, 255, 255, 0.07);
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.06);
+  }
+}
+@utility glass-modal-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
 }
 @utility bg-wild-gradient {
   background: conic-gradient(#ff3366 0deg 90deg, #4488ff 90deg 180deg, #33cc66 180deg 270deg, #fbbf24 270deg 360deg);
