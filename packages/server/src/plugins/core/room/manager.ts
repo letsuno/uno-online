@@ -4,6 +4,7 @@ import { MAX_PLAYERS, ROOM_CODE_LENGTH, ROOM_CODE_CHARS, DEFAULT_HOUSE_RULES } f
 import {
   createRoom, getRoom, addPlayerToRoom, removePlayerFromRoom,
   getRoomPlayers, setPlayerReady, setRoomOwner, deleteRoom,
+  setPlayerSpectator, resetAllPlayersReady,
 } from './store.js';
 
 function generateRoomCode(): string {
@@ -59,7 +60,16 @@ export class RoomManager {
 
   async areAllReady(roomCode: string): Promise<boolean> {
     const players = await getRoomPlayers(this.redis, roomCode);
-    if (players.length < 2) return false;
-    return players.every((p) => p.ready);
+    const activePlayers = players.filter((p) => !p.spectator);
+    if (activePlayers.length < 2) return false;
+    return activePlayers.every((p) => p.ready);
+  }
+
+  async setSpectator(roomCode: string, userId: string, spectator: boolean): Promise<void> {
+    await setPlayerSpectator(this.redis, roomCode, userId, spectator);
+  }
+
+  async resetReady(roomCode: string): Promise<void> {
+    await resetAllPlayersReady(this.redis, roomCode);
   }
 }

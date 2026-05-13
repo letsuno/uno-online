@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Crown, Check, Copy } from 'lucide-react';
+import { Crown, Check, Copy, Eye } from 'lucide-react';
 import { cn, getRoleColor } from '@/shared/lib/utils';
 import { AiBadge } from '@/shared/components/ui/AiBadge';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
@@ -82,7 +82,8 @@ export default function RoomPage() {
 
   const isOwner = room?.ownerId === user?.id;
   const myPlayer = players.find((p) => p.userId === user?.id);
-  const allReady = players.length >= 2 && players.every((p) => p.ready);
+  const activePlayers = players.filter((p) => !p.spectator);
+  const allReady = activePlayers.length >= 2 && activePlayers.every((p) => p.ready);
   const [houseRules, setHouseRules] = useState<HouseRules>(DEFAULT_HOUSE_RULES);
   const [menuTarget, setMenuTarget] = useState<{ player: RoomPlayer; position: { x: number; y: number } } | null>(null);
 
@@ -94,6 +95,15 @@ export default function RoomPage() {
 
   const toggleReady = () => {
     getSocket().emit('room:ready', !myPlayer?.ready, () => {});
+  };
+
+  const toggleSpectator = () => {
+    const newVal = !myPlayer?.spectator;
+    getSocket().emit('room:toggle_spectator', newVal, (res: { success?: boolean; error?: string }) => {
+      if (!res?.success && res?.error) {
+        useToastStore.getState().addToast(res.error, 'error');
+      }
+    });
   };
 
   const startGame = () => {
@@ -186,8 +196,8 @@ export default function RoomPage() {
                       {room?.ownerId === p.userId && <Crown size={16} className="shrink-0 text-primary" />}
                       <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={isMe} className="shrink-0" />
                     </span>
-                    <span className={cn('text-xs font-medium', p.ready ? 'text-uno-green' : 'text-muted-foreground')}>
-                      {p.ready ? <><Check size={14} className="inline-block align-middle" /> 已准备</> : '未准备'}
+                    <span className={cn('text-xs font-medium', p.spectator ? 'text-blue-400' : p.ready ? 'text-uno-green' : 'text-muted-foreground')}>
+                      {p.spectator ? <><Eye size={14} className="inline-block align-middle" /> 观战</> : p.ready ? <><Check size={14} className="inline-block align-middle" /> 已准备</> : '未准备'}
                     </span>
                   </div>
                 );
@@ -295,9 +305,18 @@ export default function RoomPage() {
 
         {/* Action buttons */}
         <div className="flex gap-4">
-          <Button variant="game" onClick={toggleReady} sound="ready">
-            {myPlayer?.ready ? '取消准备' : '准备'}
-          </Button>
+          {myPlayer?.spectator ? (
+            <Button variant="game" onClick={toggleSpectator} sound="click">取消观战</Button>
+          ) : (
+            <Button variant="game" onClick={toggleReady} sound="ready">
+              {myPlayer?.ready ? '取消准备' : '准备'}
+            </Button>
+          )}
+          {!isOwner && !myPlayer?.spectator && (
+            <Button variant="secondary" onClick={toggleSpectator} sound="click">
+              <Eye size={14} className="inline align-middle mr-1" />观战
+            </Button>
+          )}
           {isOwner && (
             <Button variant="game" className={cn(!allReady && 'opacity-50')} onClick={startGame} disabled={!allReady} sound="ready">
               开始游戏

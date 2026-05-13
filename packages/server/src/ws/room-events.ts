@@ -13,6 +13,7 @@ import type { SocketData } from './types.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { removeVoicePresence, setForceMuted } from './voice-presence.js';
 import { getAutopilotActionPlayerId } from './autopilot-action-player.js';
+import { addSpectator } from '../plugins/core/spectate/ws.js';
 
 const AUTOPILOT_MIN_ACTION_INTERVAL_MS = 500;
 const AUTO_AUTOPILOT_THRESHOLD = 2;
@@ -162,6 +163,7 @@ export function registerRoomEvents(
           io.to(roomCode).emit('game:over', {
             winnerId: lastPlayer.id,
             scores: Object.fromEntries(st.players.map((p) => [p.id, p.score])),
+            gameOverAt: Date.now(),
           });
         } else {
           turnTimer.stop(roomCode);
@@ -193,6 +195,21 @@ export function registerRoomEvents(
     const roomCode = data.roomCode;
     if (!roomCode) return callback?.({ success: false });
     await roomManager.setReady(roomCode, data.user.userId, ready);
+    await touchRoomActivity(redis, roomCode);
+    const players = await getRoomPlayers(redis, roomCode);
+    io.to(roomCode).emit('room:updated', { players });
+    callback?.({ success: true });
+  });
+
+  socket.on('room:toggle_spectator', async (spectator: boolean, callback) => {
+    const roomCode = data.roomCode;
+    if (!roomCode) return callback?.({ success: false });
+    const room = await getRoom(redis, roomCode);
+    if (!room || room.status !== 'waiting') return callback?.({ success: false });
+    if (room.ownerId === data.user.userId) {
+      return callback?.({ success: false, error: '房主不能观战' });
+    }
+    await roomManager.setSpectator(roomCode, data.user.userId, spectator);
     await touchRoomActivity(redis, roomCode);
     const players = await getRoomPlayers(redis, roomCode);
     io.to(roomCode).emit('room:updated', { players });
@@ -314,7 +331,10 @@ export function registerRoomEvents(
       seen.add(p.userId);
       return true;
     });
-    if (players.length < MIN_PLAYERS) {
+    const activePlayers = players.filter((p) => !p.spectator);
+    const roomSpectatorPlayers = players.filter((p) => p.spectator);
+
+    if (activePlayers.length < MIN_PLAYERS) {
       return callback?.({ success: false, error: 'Not enough players' });
     }
     const allReady = await roomManager.areAllReady(roomCode);
@@ -324,17 +344,25 @@ export function registerRoomEvents(
     await setRoomStatus(redis, roomCode, 'playing');
     await touchRoomActivity(redis, roomCode);
     const session = GameSession.create(
-      players.map((p) => ({ id: p.userId, name: p.nickname, avatarUrl: p.avatarUrl ?? null, role: p.role as import('@uno-online/shared').UserRole | undefined, isBot: p.isBot })),
+      activePlayers.map((p) => ({ id: p.userId, name: p.nickname, avatarUrl: p.avatarUrl ?? null, role: p.role as import('@uno-online/shared').UserRole | undefined, isBot: p.isBot })),
       { turnTimeLimit: room.settings?.turnTimeLimit ?? 30, targetScore: room.settings?.targetScore ?? 1000, houseRules: room.settings?.houseRules ?? DEFAULT_HOUSE_RULES, allowSpectators: room.settings?.allowSpectators ?? true, spectatorMode: room.settings?.spectatorMode ?? 'hidden' } as RoomSettings,
     );
     sessions.set(roomCode, session);
     persister.markDirty(roomCode, session.getFullState());
     await persister.flushNow(roomCode);
 
+    const spectatorMode = (room.settings?.spectatorMode as 'full' | 'hidden') ?? 'hidden';
     const sockets = await io.in(roomCode).fetchSockets();
     for (const s of sockets) {
-      const userId = (s.data as SocketData).user.userId;
-      s.emit('game:state', session.getPlayerView(userId));
+      const sData = s.data as SocketData;
+      const sUserId = sData.user.userId;
+      if (roomSpectatorPlayers.some((p) => p.userId === sUserId)) {
+        sData.isSpectator = true;
+        addSpectator(roomCode, sData.user.nickname);
+        s.emit('game:state', session.getSpectatorView(spectatorMode));
+      } else {
+        s.emit('game:state', session.getPlayerView(sUserId));
+      }
     }
 
     startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
@@ -359,6 +387,7 @@ export function registerRoomEvents(
             winnerId: winner.id,
             reason: 'blitz_timeout',
             scores: Object.fromEntries(s.getFullState().players.map(p => [p.id, p.score])),
+            gameOverAt: Date.now(),
           });
           turnTimer.stop(roomCode);
         }

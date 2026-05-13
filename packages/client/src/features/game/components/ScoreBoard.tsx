@@ -12,6 +12,7 @@ import { getSocket } from '@/shared/socket';
 import { useToastStore } from '@/shared/stores/toast-store';
 
 const KICK_DELAY_S = 30;
+const START_COOLDOWN_S = 10;
 
 function KickCountdownRing({ remaining, total }: { remaining: number; total: number }) {
   const r = 7;
@@ -38,25 +39,31 @@ function KickCountdownRing({ remaining, total }: { remaining: number; total: num
 interface ScoreBoardProps {
   isSpectator?: boolean;
   onPlayAgain: () => void;
-  onRematch: () => void;
+  onBackToRoom: () => void;
   onBackToLobby: () => void;
   onKickPlayer: (targetId: string) => void;
   onLeaveToSpectate: () => void;
   onJoinedFromSpectator?: () => void;
 }
 
-export default function ScoreBoard({ isSpectator = false, onPlayAgain, onRematch, onBackToLobby, onKickPlayer, onLeaveToSpectate, onJoinedFromSpectator }: ScoreBoardProps) {
+export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToRoom, onBackToLobby, onKickPlayer, onLeaveToSpectate, onJoinedFromSpectator }: ScoreBoardProps) {
   const players = useGameStore((s) => s.players);
   const winnerId = useGameStore((s) => s.winnerId);
   const phase = useGameStore((s) => s.phase);
   const vote = useGameStore((s) => s.nextRoundVote);
   const roundEndAt = vote?.roundEndAt ?? null;
+  const gameOverAt = useGameStore((s) => s.gameOverAt);
   const pendingJoinQueue = useSpectatorStore((s) => s.pendingJoinQueue);
   const [kickCountdown, setKickCountdown] = useState(() => {
     if (!roundEndAt) return KICK_DELAY_S;
     return Math.max(0, KICK_DELAY_S - Math.floor((Date.now() - roundEndAt) / 1000));
   });
   const [leaveCountdown, setLeaveCountdown] = useState(5);
+  const [startCooldown, setStartCooldown] = useState(() => {
+    const endAt = roundEndAt ?? gameOverAt;
+    if (endAt) return Math.max(0, START_COOLDOWN_S - Math.floor((Date.now() - endAt) / 1000));
+    return START_COOLDOWN_S;
+  });
   const [spectatorQueued, setSpectatorQueued] = useState(() => {
     const nickname = useAuthStore.getState().user?.nickname;
     return !!nickname && pendingJoinQueue.includes(nickname);
@@ -82,6 +89,19 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onRematch
     }, 1000);
     return () => clearInterval(interval);
   }, [phase]);
+
+  useEffect(() => {
+    const endAt = roundEndAt ?? gameOverAt;
+    const initial = endAt
+      ? Math.max(0, START_COOLDOWN_S - Math.floor((Date.now() - endAt) / 1000))
+      : START_COOLDOWN_S;
+    setStartCooldown(initial);
+    if (initial <= 0) return;
+    const interval = setInterval(() => {
+      setStartCooldown((c) => { if (c <= 1) { clearInterval(interval); return 0; } return c - 1; });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [phase, roundEndAt, gameOverAt]);
 
   useEffect(() => {
     const nickname = useAuthStore.getState().user?.nickname;
@@ -125,20 +145,23 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onRematch
   const required = vote?.required ?? fallbackRequired;
   const allAgreed = votes >= required;
   const canKick = kickCountdown === 0;
-  const nextRoundButtonText = isHost
-    ? allAgreed
-      ? '开始下一轮'
-      : hasVoted
-        ? `等待同意 (${votes}/${required})`
-        : `同意继续 (${votes}/${required})`
-    : hasVoted
+  const cooldownActive = startCooldown > 0;
+  const nextRoundButtonText = cooldownActive
+    ? `${startCooldown}s`
+    : isHost
       ? allAgreed
-        ? '等待房主开始'
-        : `已同意 (${votes}/${required})`
-      : `同意继续 (${votes}/${required})`;
-  const isNextRoundDisabled = !isGameOver && (
+        ? '开始下一轮'
+        : hasVoted
+          ? `等待同意 (${votes}/${required})`
+          : `同意继续 (${votes}/${required})`
+      : hasVoted
+        ? allAgreed
+          ? '等待房主开始'
+          : `已同意 (${votes}/${required})`
+        : `同意继续 (${votes}/${required})`;
+  const isNextRoundDisabled = cooldownActive || (!isGameOver && (
     isHost ? hasVoted && !allAgreed : hasVoted
-  );
+  ));
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-modal">
@@ -216,8 +239,8 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onRematch
         ) : (
           <div className="flex gap-3 justify-center flex-wrap">
             {!isGameOver && <Button variant="primary" onClick={onPlayAgain} disabled={isNextRoundDisabled} sound="ready">{nextRoundButtonText}</Button>}
-            {isGameOver && isHost && <Button variant="primary" onClick={onRematch} sound="ready">再来一局</Button>}
-            {isGameOver && !isHost && <Button variant="primary" disabled>等待房主再来一局…</Button>}
+            {isGameOver && isHost && <Button variant="primary" onClick={onBackToRoom} disabled={cooldownActive} sound="ready">{cooldownActive ? `返回房间 (${startCooldown}s)` : '返回房间'}</Button>}
+            {isGameOver && !isHost && <Button variant="primary" disabled>{cooldownActive ? `${startCooldown}s` : '等待房主返回房间…'}</Button>}
             {!isHost && <Button variant="secondary" onClick={onLeaveToSpectate} sound="click"><Eye size={14} className="inline align-middle mr-1" />进入观战席</Button>}
             <Button variant="secondary" onClick={onBackToLobby} sound="click" disabled={leaveCountdown > 0}>{leaveCountdown > 0 ? `返回大厅 (${leaveCountdown}s)` : '返回大厅'}</Button>
           </div>

@@ -58,10 +58,10 @@ export function useGameActions() {
     });
   }, []);
 
-  const rematch = useCallback(() => {
-    getSocket().emit('game:rematch', (res: { success?: boolean; error?: string }) => {
+  const backToRoom = useCallback(() => {
+    getSocket().emit('game:back_to_room', (res: { success?: boolean; error?: string }) => {
       if (res && !res.success) {
-        useToastStore.getState().addToast(res.error || '无法发起再来一局', 'error');
+        useToastStore.getState().addToast(res.error || '操作失败', 'error');
       }
     });
   }, []);
@@ -95,7 +95,7 @@ export function useGameActions() {
     pass,
     swapTarget,
     playAgain,
-    rematch,
+    backToRoom,
     kickPlayer,
     leaveToSpectate,
   };
