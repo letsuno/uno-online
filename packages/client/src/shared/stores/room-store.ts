@@ -36,11 +36,11 @@ function dedup(players: RoomPlayer[]): RoomPlayer[] {
 }
 
 export const useRoomStore = create<RoomState>((set) => ({
-  roomCode: sessionStorage.getItem('roomCode'),
+  roomCode: localStorage.getItem('roomCode'),
   players: [],
   room: null,
   setRoom: (roomCode, players, room) => {
-    sessionStorage.setItem('roomCode', roomCode);
+    localStorage.setItem('roomCode', roomCode);
     set({ roomCode, players: dedup(players), room });
   },
   updateRoom: (data) => set((state) => ({
@@ -48,7 +48,7 @@ export const useRoomStore = create<RoomState>((set) => ({
     room: data.room ?? state.room,
   })),
   clearRoom: () => {
-    sessionStorage.removeItem('roomCode');
+    localStorage.removeItem('roomCode');
     set({ roomCode: null, players: [], room: null });
   },
 }));

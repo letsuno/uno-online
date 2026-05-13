@@ -15,9 +15,8 @@ import { playSound } from '@/shared/sound/sound-manager';
 import { useBgm } from '@/shared/sound/useBgm';
 import BgmToast from '@/shared/components/BgmToast';
 import { getSocket, refreshVoicePresence } from '@/shared/socket';
-import { leaveVoiceSession } from '@/shared/voice/voice-runtime';
-import { useRoomStore } from '@/shared/stores/room-store';
 import { useToastStore } from '@/shared/stores/toast-store';
+import { useLeaveRoom } from '../hooks/useLeaveRoom';
 import TopBar from '../components/TopBar';
 import GameTable from '../components/GameTable';
 import GameActions from '../components/GameActions';
@@ -48,8 +47,7 @@ export default function GamePage() {
   const settings = useGameStore((s) => s.settings);
   const toggleInfoDrawer = useGameStore((s) => s.toggleInfoDrawer);
   const openInfoDrawer = useGameStore((s) => s.openInfoDrawer);
-  const clearGame = useGameStore((s) => s.clearGame);
-  const clearRoom = useRoomStore((s) => s.clearRoom);
+  const backToLobby = useLeaveRoom();
   const clearSpectators = useSpectatorStore((s) => s.clearSpectators);
   const cheatDetected = useGameStore((s) => s.cheatDetected);
 
@@ -164,16 +162,6 @@ export default function GamePage() {
     }
   };
 
-  const backToLobby = () => {
-    getSocket().emit('voice:presence', { inVoice: false, micEnabled: false, speakerMuted: false, speaking: false });
-    leaveVoiceSession();
-    getSocket().emit('room:leave', () => {
-      clearRoom();
-      clearGame();
-      clearSpectators();
-      navigate('/lobby');
-    });
-  };
 
   if (!phase) {
     return <div className="flex flex-1 items-center justify-center">

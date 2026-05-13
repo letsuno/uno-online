@@ -6,10 +6,10 @@ import { useRoomStore, type RoomPlayer, type RoomData } from './stores/room-stor
 import { useToastStore } from './stores/toast-store';
 import { playSound } from './sound/sound-manager';
 import { useGatewayStore, type PlayerVoicePresence } from './voice/gateway-store';
-import { leaveVoiceSession } from './voice/voice-runtime';
 import { sendNotification } from './utils/notification';
 import { useServerVersionStore } from './stores/server-version-store';
 import { useSpectatorStore } from '@/features/game/stores/spectator-store';
+import { resetClientRoomState } from './stores/reset-room';
 
 type TypedSocket = SocketType<ServerToClientEvents, ClientToServerEvents>;
 
@@ -198,9 +198,7 @@ export function getSocket(): TypedSocket {
 
     socket.on('connect_error', (err) => {
       if (err.message === 'Authentication failed') {
-        useRoomStore.getState().clearRoom();
-        useGameStore.getState().clearGame();
-        leaveVoiceSession();
+        resetClientRoomState();
         localStorage.removeItem('token');
         socket?.disconnect();
         socket = null;
@@ -209,9 +207,7 @@ export function getSocket(): TypedSocket {
     });
 
     socket.on('auth:kicked', (_data) => {
-      useRoomStore.getState().clearRoom();
-      useGameStore.getState().clearGame();
-      leaveVoiceSession();
+      resetClientRoomState();
       localStorage.removeItem('token');
       window.location.href = '/';
     });
@@ -222,9 +218,7 @@ export function getSocket(): TypedSocket {
         useToastStore.getState().addToast(data.reason || '你已被移至观战席', 'info');
         return;
       }
-      useRoomStore.getState().clearRoom();
-      useGameStore.getState().clearGame();
-      leaveVoiceSession();
+      resetClientRoomState();
       sendNotification('kicked', data.reason || '你已被移出房间');
       useToastStore.getState().addToast(data.reason || '你已被移出游戏', 'error');
       if (window.location.pathname !== '/lobby') {
@@ -238,9 +232,7 @@ export function getSocket(): TypedSocket {
 
     socket.on('room:dissolved', (data) => {
       if (useGameStore.getState().cheatDetected) return;
-      useRoomStore.getState().clearRoom();
-      useGameStore.getState().clearGame();
-      leaveVoiceSession();
+      resetClientRoomState();
       const message = data?.reason === 'idle_timeout'
         ? '房间长时间没有活动，已自动解散'
         : '房间已被房主解散';

@@ -89,4 +89,5 @@ export interface ClientToServerEvents {
   'game:spectator_join': (callback?: (res: SocketCallbackResult & { queued?: boolean }) => void) => void;
   'game:leave_to_spectate': (callback?: (res: SocketCallbackResult) => void) => void;
   'game:autopilot_once': (callback?: (res: SocketCallbackResult) => void) => void;
+  'user:current_room': (callback: (res: { roomCode: string | null }) => void) => void;
 }
