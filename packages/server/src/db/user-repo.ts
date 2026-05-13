@@ -143,15 +143,4 @@ export async function getUserById(id: string) {
     .executeTakeFirst() ?? null;
 }
 
-export async function getUserProfile(userId: string) {
-  const db = getDb();
-  const user = await db
-    .selectFrom('users')
-    .select([...userPublicFields])
-    .where('id', '=', userId)
-    .executeTakeFirst();
-
-  if (!user) return null;
-  return { user };
-}
 

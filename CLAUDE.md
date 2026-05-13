@@ -37,7 +37,7 @@ pnpm --filter admin dev                                         # 管理后台 :
 所有功能以 Fastify 插件形式组织在 `packages/server/src/plugins/` 下，通过 `PluginContext`（db, kv, io, config）注入共享依赖。
 
 ```
-plugins/core/     — auth, profile, admin, room, game, game-history, server-info, interaction, spectate, api-key
+plugins/core/     — auth, profile, admin, room, game, server-info, interaction, spectate, api-key
 plugins/features/ — 扩展功能（签到、积分、商店等）
 ```
 
@@ -46,7 +46,7 @@ plugins/features/ — 扩展功能（签到、积分、商店等）
 前端按功能域拆分为独立模块，每个 Feature 包含自己的页面、store、组件和路由定义，通过 `React.lazy()` 实现代码分割。
 
 ```
-features/ — auth, game, lobby, profile, replay
+features/ — auth, game, lobby, profile
 shared/   — 跨 Feature 共享的组件、工具、store
 ```
 

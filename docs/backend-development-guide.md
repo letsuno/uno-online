@@ -39,11 +39,6 @@ packages/server/src/
       routes.ts           # 服务器状态查询路由
     interaction/
       ws.ts               # 扔道具 WS 事件
-    game-history/
-      index.ts            # 插件入口
-      routes.ts           # 游戏记录查询路由
-      service.ts          # 记录存储逻辑
-      migration.ts        # 数据库迁移
     spectate/
       index.ts            # 插件入口
       routes.ts           # 观战 HTTP 路由
