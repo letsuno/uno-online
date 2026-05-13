@@ -8,6 +8,7 @@ import AvatarUpload from '@/features/auth/components/AvatarUpload';
 import { Button } from '@/shared/components/ui/Button';
 import { useNotificationStore, type NotificationEventType } from '@/shared/stores/notification-store';
 import { useProfileModalStore } from '@/shared/stores/profile-modal-store';
+import { showConfirm } from '@/shared/stores/confirm-store';
 
 interface ProfileData {
   user: { id: string; username: string; nickname: string; avatarUrl: string | null; githubId?: string | null; role?: string };
@@ -112,7 +113,12 @@ export default function ProfileModal() {
   };
 
   const handleDeleteKey = async (id: string) => {
-    if (!confirm('确定要删除这个 API Key 吗？删除后使用该 Key 的 MCP 客户端将无法连接。')) return;
+    if (!(await showConfirm({
+      title: '删除 API Key',
+      message: '删除后使用该 Key 的 MCP 客户端将无法连接，确定吗？',
+      confirmText: '删除',
+      variant: 'danger',
+    }))) return;
     try {
       await apiDelete(`/api-keys/${id}`);
       setApiKeys((prev) => prev.filter((k) => k.id !== id));
