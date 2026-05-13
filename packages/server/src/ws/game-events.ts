@@ -255,9 +255,13 @@ async function processPendingSpectatorJoins(
   const pending = pendingSpectatorJoins.get(roomCode);
   if (!pending || pending.size === 0) return;
 
+  const joined: string[] = [];
   for (const [userId, info] of pending) {
     if (session.getPlayerCount() >= MAX_PLAYERS) break;
-    if (session.getFullState().players.some((p) => p.id === userId)) continue;
+    if (session.getFullState().players.some((p) => p.id === userId)) {
+      joined.push(userId);
+      continue;
+    }
 
     const sock = io.sockets.sockets.get(info.socketId);
     if (sock) (sock.data as SocketData).isSpectator = false;
@@ -277,8 +281,20 @@ async function processPendingSpectatorJoins(
       role: info.role,
       isBot: info.isBot,
     });
+    joined.push(userId);
   }
-  pendingSpectatorJoins.delete(roomCode);
+
+  for (const id of joined) pending.delete(id);
+
+  if (pending.size === 0) {
+    pendingSpectatorJoins.delete(roomCode);
+  } else {
+    io.to(roomCode).emit('game:spectator_queue', {
+      queue: [...pending.values()].map((p) => p.nickname),
+      nickname: '',
+      joined: true,
+    });
+  }
   io.to(roomCode).emit('room:spectator_list', { spectators: getSpectatorNames(roomCode) });
 }
 
@@ -496,9 +512,10 @@ export function registerGameEvents(
   });
 
   socket.on('game:catch_uno', async (payload: { targetPlayerId: string }, callback) => {
-    const ctx = getSession(socket, sessions);
-    if (!ctx) return callback?.({ success: false });
-    const { session, roomCode } = ctx;
+    const roomCode = data.roomCode;
+    if (!roomCode) return callback?.({ success: false });
+    const session = sessions.get(roomCode);
+    if (!session) return callback?.({ success: false });
     const result = session.applyAction({ type: 'CATCH_UNO', catcherId: data.user.userId, targetId: payload.targetPlayerId, catcherName: data.user.nickname });
     if (!result.success) return callback?.({ success: false, error: result.error });
     session.recordEvent(GameEventType.CATCH_UNO, { targetPlayerId: payload.targetPlayerId }, data.user.userId);
@@ -667,6 +684,11 @@ export function registerGameEvents(
       pending.delete(data.user.userId);
       callback?.({ success: true, queued: false });
     } else {
+      const currentCount = session.getPlayerCount();
+      const queuedCount = pending.size;
+      if (currentCount + queuedCount >= MAX_PLAYERS) {
+        return callback?.({ success: false, error: `房间人数已达上限 (${MAX_PLAYERS})，无法排队` });
+      }
       pending.set(data.user.userId, {
         userId: data.user.userId,
         nickname: data.user.nickname,
