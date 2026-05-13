@@ -31,6 +31,7 @@ import MobileFAB from '../components/MobileFAB';
 import InfoDrawer from '../components/InfoDrawer';
 import PlayerListPanel from '../components/PlayerListPanel';
 import DanmakuLayer from '../components/DanmakuLayer';
+import SpectatorActions from '../components/SpectatorActions';
 import AntiCheatToast from '../components/AntiCheatToast';
 import CheatOverlay from '../components/CheatOverlay';
 import { useSpectatorStore } from '../stores/spectator-store';
@@ -219,11 +220,14 @@ export default function GamePage() {
       {!isSpectator && <PlayerHand onPlayCard={playCard} />}
       </LayoutGroup>
       {isSpectator && (
-        <SpectatorBar
-          phase={phase}
-          onBackToLobby={backToLobby}
-          onJoined={() => { setSpectator(false); clearSpectators(); }}
-        />
+        <>
+          <SpectatorActions onCatchUno={catchUno} />
+          <SpectatorBar
+            phase={phase}
+            onBackToLobby={backToLobby}
+            onJoined={() => { setSpectator(false); clearSpectators(); }}
+          />
+        </>
       )}
       <VoicePanel />
       <InfoDrawer />

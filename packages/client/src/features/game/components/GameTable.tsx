@@ -8,6 +8,7 @@ import TurnIndicator from './TurnIndicator';
 import HandSwapAnimation from './HandSwapAnimation';
 import DirectionIndicator from './DirectionIndicator';
 import ThrowAnimation from './ThrowAnimation';
+import SpectatorSeats from './SpectatorSeats';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useIsMyTurn } from '../hooks/useIsMyTurn';
@@ -191,11 +192,16 @@ export default function GameTable({ onDraw }: GameTableProps) {
     currentPlayerIndex,
   );
 
+  const spectatorFallbackPos = useMemo(() => {
+    if (dimensions.width === 0) return null;
+    return { x: dimensions.width / 2, y: dimensions.height - 24 };
+  }, [dimensions]);
+
   // Listen for throw:item events from socket
   useEffect(() => {
     const socket = getSocket();
     const handler = (data: { fromId: string; targetId: string; item: string }) => {
-      const fromPos = getPlayerPosition(data.fromId);
+      const fromPos = getPlayerPosition(data.fromId) ?? spectatorFallbackPos;
       const toPos = getPlayerPosition(data.targetId);
       if (!fromPos || !toPos) return;
       if (data.targetId === userId) {
@@ -218,7 +224,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
     socket.on('throw:item', handler);
     return () => { socket.off('throw:item', handler); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [players, dimensions]);
+  }, [players, dimensions]); // spectatorFallbackPos derives from dimensions
 
   // Handle reaction from quick reaction menu
   const handleReaction = useCallback((emoji: string) => {
@@ -418,6 +424,9 @@ export default function GameTable({ onDraw }: GameTableProps) {
           />
         ))}
       </AnimatePresence>
+
+      {/* Spectator seats */}
+      <SpectatorSeats />
     </div>
   );
 }

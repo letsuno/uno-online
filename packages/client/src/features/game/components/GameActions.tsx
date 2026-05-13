@@ -1,8 +1,8 @@
-import { useState } from 'react';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useIsMyTurn } from '../hooks/useIsMyTurn';
 import { usePlayableCardIds } from '../hooks/usePlayableCardIds';
+import { useCooldown } from '../hooks/useCooldown';
 import { Button } from '@/shared/components/ui/Button';
 
 interface GameActionsProps {
@@ -23,7 +23,7 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   const drawStack = useGameStore((s) => s.drawStack);
   const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
   const settings = useGameStore((s) => s.settings);
-  const [cooldown, setCooldown] = useState(false);
+  const { cooldown, withCooldown } = useCooldown();
 
   const me = players.find((p) => p.id === userId);
   const isMyTurn = useIsMyTurn();
@@ -44,13 +44,6 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
   const canPassAfterDraw = pendingPenaltyDraws === 0 && drawStack === 0 && hasDrawnThisTurn && (!mustDrawUntilPlayable || playableIds.size > 0);
   const canPass = canPassAfterDraw || noCardsAvailable;
-
-  const withCooldown = (fn: () => void) => () => {
-    if (cooldown) return;
-    setCooldown(true);
-    fn();
-    setTimeout(() => setCooldown(false), 1000);
-  };
 
   return (
     <div className="relative z-actions flex justify-center gap-2.5 py-2 pointer-events-auto">
