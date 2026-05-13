@@ -4,6 +4,7 @@ import { cn } from '@/shared/lib/utils';
 import { getSocket } from '@/shared/socket';
 import { useGatewayStore } from '@/shared/voice/gateway-store';
 import { useToastStore } from '@/shared/stores/toast-store';
+import { showConfirm } from '@/shared/stores/confirm-store';
 import type { RoomPlayer } from '@/shared/stores/room-store';
 
 interface PlayerActionMenuProps {
@@ -43,16 +44,25 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
     return () => document.removeEventListener('mousedown', handleClick);
   }, [onClose]);
 
-  const transferOwner = () => {
-    if (!window.confirm(`确定要将房主移交给 ${target.nickname} 吗？`)) return;
+  const transferOwner = async () => {
+    if (!(await showConfirm({
+      title: '移交房主',
+      message: `确定要将房主移交给 ${target.nickname} 吗？`,
+      confirmText: '移交',
+    }))) return;
     getSocket().emit('room:transfer_owner', { targetId: target.userId }, (res) => {
       if (!res.success) useToastStore.getState().addToast(res.error ?? '移交失败', 'error');
     });
     onClose();
   };
 
-  const kickPlayer = () => {
-    if (!window.confirm(`确定要将 ${target.nickname} 踢出房间吗？`)) return;
+  const kickPlayer = async () => {
+    if (!(await showConfirm({
+      title: '踢出玩家',
+      message: `确定要将 ${target.nickname} 踢出房间吗？`,
+      confirmText: '踢出',
+      variant: 'danger',
+    }))) return;
     getSocket().emit('room:kick', { targetId: target.userId }, (res) => {
       if (!res.success) useToastStore.getState().addToast(res.error ?? '踢出失败', 'error');
     });

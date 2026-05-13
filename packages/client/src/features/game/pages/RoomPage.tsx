@@ -10,6 +10,7 @@ import { getSocket, connectSocket, refreshVoicePresence } from '@/shared/socket'
 import VoicePanel from '@/shared/voice/VoicePanel';
 import PlayerVoiceStatus from '@/shared/voice/PlayerVoiceStatus';
 import { useToastStore } from '@/shared/stores/toast-store';
+import { showConfirm } from '@/shared/stores/confirm-store';
 import PlayerActionMenu from '../components/PlayerActionMenu';
 import { useLeaveRoom } from '../hooks/useLeaveRoom';
 import { DEFAULT_HOUSE_RULES, HOUSE_RULES_PRESETS, HOUSE_RULE_DEFINITIONS, MAX_PLAYERS } from '@uno-online/shared';
@@ -110,22 +111,40 @@ export default function RoomPage() {
 
   const startGame = () => {
     getSocket().emit('game:start', (res: any) => {
-      if (!res.success) alert(res.error);
-      if (res.success && res.gameState) {
+      if (!res.success) {
+        useToastStore.getState().addToast(res.error ?? '开始失败', 'error');
+        return;
+      }
+      if (res.gameState) {
         setGameState(res.gameState);
         navigate(`/game/${roomCode}`);
       }
     });
   };
 
-  const leaveRoom = () => {
-    const msg = isOwner ? '你是房主，离开后房主权将转让给其他玩家，确定吗？' : '确定要离开房间吗？';
-    if (!window.confirm(msg)) return;
+  const leaveRoom = async () => {
+    const ok = isOwner
+      ? await showConfirm({
+          title: '离开房间',
+          message: '你是房主，离开后房主权将转让给其他玩家。',
+          confirmText: '离开',
+        })
+      : await showConfirm({
+          title: '离开房间',
+          message: '确定要离开房间吗？',
+          confirmText: '离开',
+        });
+    if (!ok) return;
     leaveRoomHook();
   };
 
-  const dissolveRoom = () => {
-    if (!window.confirm('确定要解散房间吗？所有玩家将被踢出。')) return;
+  const dissolveRoom = async () => {
+    if (!(await showConfirm({
+      title: '解散房间',
+      message: '确定要解散房间吗？所有玩家将被踢出。',
+      confirmText: '解散',
+      variant: 'danger',
+    }))) return;
     getSocket().emit('room:dissolve', () => {});
   };
 

@@ -8,6 +8,7 @@ import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useLeaveRoom } from '../hooks/useLeaveRoom';
 import { getSocket } from '@/shared/socket';
+import { showConfirm } from '@/shared/stores/confirm-store';
 import { cn } from '@/shared/lib/utils';
 import { BUILD_VERSION } from '@/shared/build-info';
 
@@ -99,14 +100,29 @@ export default function TopBar({ roomCode, onOpenHotkeys }: TopBarProps) {
     setTimeout(() => setAutopilotCooldown(false), AUTOPILOT_COOLDOWN_MS);
   };
 
-  const handleLeave = () => {
-    const msg = isHost ? '你是房主，离开后房主权将转让给其他玩家，确定吗？' : '确定要退出对局吗？';
-    if (!window.confirm(msg)) return;
+  const handleLeave = async () => {
+    const ok = isHost
+      ? await showConfirm({
+          title: '退出对局',
+          message: '你是房主，离开后房主权将转让给其他玩家。',
+          confirmText: '退出',
+        })
+      : await showConfirm({
+          title: '退出对局',
+          message: '确定要退出对局吗？',
+          confirmText: '退出',
+        });
+    if (!ok) return;
     leaveRoom();
   };
 
-  const handleDissolve = () => {
-    if (!window.confirm('确定要解散房间吗？所有玩家将被踢出。')) return;
+  const handleDissolve = async () => {
+    if (!(await showConfirm({
+      title: '解散房间',
+      message: '确定要解散房间吗？所有玩家将被踢出。',
+      confirmText: '解散',
+      variant: 'danger',
+    }))) return;
     getSocket().emit('room:dissolve', () => {});
   };
 
