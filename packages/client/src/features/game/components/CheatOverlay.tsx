@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRoomStore } from '@/shared/stores/room-store';
-import { useGameStore } from '../stores/game-store';
-import { leaveVoiceSession } from '@/shared/voice/voice-runtime';
+import { resetClientRoomState } from '@/shared/stores/reset-room';
 
 const SLICE_COUNT = 5;
 const DURATION = 500;
@@ -11,8 +9,6 @@ const MAX_OFFSET = 80;
 
 export default function CheatOverlay() {
   const navigate = useNavigate();
-  const clearRoom = useRoomStore((s) => s.clearRoom);
-  const clearGame = useGameStore((s) => s.clearGame);
   const canvasRef = useRef<HTMLDivElement>(null);
   const realRef = useRef<HTMLDivElement>(null);
   const [showBtn, setShowBtn] = useState(false);
@@ -67,9 +63,7 @@ export default function CheatOverlay() {
   }, []);
 
   const handleContinue = () => {
-    clearRoom();
-    clearGame();
-    leaveVoiceSession();
+    resetClientRoomState();
     navigate('/lobby');
   };
 

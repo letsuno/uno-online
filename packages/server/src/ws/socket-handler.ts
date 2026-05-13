@@ -6,8 +6,9 @@ import { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import { GameSession } from '../plugins/core/game/session.js';
 import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, notifyAutopilotAction, resetPlayerTimeout } from './room-events.js';
 import { getAutopilotActionPlayerId, canPlayerAutopilotOnce } from './autopilot-action-player.js';
-import { registerGameEvents, addAutopilotVote, clearChatTimestamps, getRoundEndVoteState, isSpectatorPendingJoin, updatePendingSpectatorSocketId, getPendingSpectatorQueue } from './game-events.js';
-import { getRoom, getRoomPlayers, setRoomOwner } from '../plugins/core/room/store.js';
+import { registerGameEvents, addAutopilotVote, clearChatTimestamps, getRoundEndVoteState, getPendingSpectatorQueue } from './game-events.js';
+import { getRoom, getRoomPlayers, setRoomOwner, clearUserRoom, getUserRoom } from '../plugins/core/room/store.js';
+import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
 import { loadGameState, GameStatePersister } from '../plugins/core/game/state-store.js';
 import { checkRateLimit, clearRateLimit } from './rate-limiter.js';
 import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws.js';
@@ -165,12 +166,24 @@ export function setupSocketHandlers(
       stopAutoPlay(userId);
     }
 
+    socket.on('user:current_room', async (callback) => {
+      const roomCode = await getUserRoom(redis, userId);
+      if (!roomCode) return callback({ roomCode: null });
+      const room = await getRoom(redis, roomCode);
+      if (!room) {
+        await clearUserRoom(redis, userId);
+        return callback({ roomCode: null });
+      }
+      callback({ roomCode });
+    });
+
     // Handle reconnection: restore room and game state
     socket.on('room:rejoin', async (roomCode: string, callback) => {
       const room = await getRoom(redis, roomCode);
-      if (!room) return callback?.({ success: false, error: 'Room not found' });
-      socket.data.roomCode = roomCode;
-      await socket.join(roomCode);
+      if (!room) {
+        await clearUserRoom(redis, userId);
+        return callback?.({ success: false, error: 'Room not found' });
+      }
 
       let session = sessions.get(roomCode);
       if (!session) {
@@ -186,30 +199,27 @@ export function setupSocketHandlers(
 
         if (!isPlayerInGame) {
           // User is not a player — rejoin as spectator
-          if (room.status === 'playing' && room.settings.allowSpectators) {
-            socket.data.isSpectator = true;
-            addSpectator(roomCode, socket.data.user.nickname);
-            if (isSpectatorPendingJoin(roomCode, userId)) {
-              updatePendingSpectatorSocketId(roomCode, userId, socket.id);
-            }
-            const spectatorMode = (room.settings.spectatorMode as 'full' | 'hidden') ?? 'hidden';
-            const view = session.getSpectatorView(spectatorMode);
-            callback?.({ success: true, gameState: view, isSpectator: true });
-            socket.emit('chat:history', session.getChatHistory());
-            const spectators = getSpectatorNames(roomCode);
-            io.to(roomCode).emit('room:spectator_list', { spectators });
-            const queue = getPendingSpectatorQueue(roomCode);
-            if (queue.length > 0) {
-              socket.emit('game:spectator_queue', { queue, nickname: '', joined: true });
-            }
-            const voteState = getRoundEndVoteState(roomCode, session);
-            if (voteState) socket.emit('game:next_round_vote', voteState);
-          } else {
-            callback?.({ success: false, error: '无法观战该房间' });
+          if (!(room.status === 'playing' && room.settings.allowSpectators)) {
+            return callback?.({ success: false, error: '无法观战该房间' });
           }
+          await joinRoomSocket(redis, socket, roomCode, { asSpectator: true });
+          addSpectator(roomCode, socket.data.user.nickname);
+          const spectatorMode = (room.settings.spectatorMode as 'full' | 'hidden') ?? 'hidden';
+          const view = session.getSpectatorView(spectatorMode);
+          callback?.({ success: true, gameState: view, isSpectator: true });
+          socket.emit('chat:history', session.getChatHistory());
+          const spectators = getSpectatorNames(roomCode);
+          io.to(roomCode).emit('room:spectator_list', { spectators });
+          const queue = getPendingSpectatorQueue(roomCode);
+          if (queue.length > 0) {
+            socket.emit('game:spectator_queue', { queue, nickname: '', joined: true });
+          }
+          const voteState = getRoundEndVoteState(roomCode, session);
+          if (voteState) socket.emit('game:next_round_vote', voteState);
           return;
         }
 
+        await joinRoomSocket(redis, socket, roomCode);
         cancelDissolutionTimer(roomCode);
         session.setPlayerConnected(userId, true);
         session.setPlayerAutopilot(userId, false);
@@ -240,6 +250,7 @@ export function setupSocketHandlers(
             return callback?.({ success: false, error: 'Cannot rejoin room' });
           }
         }
+        await joinRoomSocket(redis, socket, roomCode);
         const updatedPlayers = await getRoomPlayers(redis, roomCode);
         io.to(roomCode).emit('room:updated', { players: updatedPlayers, room });
         callback?.({ success: true, players: updatedPlayers, room });
@@ -378,10 +389,15 @@ export function setupSocketHandlers(
         // Start reconnect window before removing from room
         const timer = setTimeout(async () => {
           disconnectTimers.delete(userId);
-          const { deleted } = await roomManager.leaveRoom(roomCode, userId);
+          const [{ deleted }] = await Promise.all([
+            roomManager.leaveRoom(roomCode, userId),
+            clearUserRoom(redis, userId),
+          ]);
           if (!deleted) {
-            const room = await getRoom(redis, roomCode);
-            const players = await getRoomPlayers(redis, roomCode);
+            const [room, players] = await Promise.all([
+              getRoom(redis, roomCode),
+              getRoomPlayers(redis, roomCode),
+            ]);
             io.to(roomCode).emit('room:updated', { players, room });
           } else {
             sessions.delete(roomCode);

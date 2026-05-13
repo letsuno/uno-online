@@ -1,11 +1,12 @@
 import type { Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
 import type { GameSession } from '../plugins/core/game/session.js';
-import { deleteRoom } from '../plugins/core/room/store.js';
+import { deleteRoom, clearUserRoom } from '../plugins/core/room/store.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import type { VoiceChannelManager } from '../voice/channel-manager.js';
 import { clearRoomTimeouts } from './room-events.js';
+import { clearPendingSpectatorJoins } from './game-events.js';
 import type { SocketData } from './types.js';
 import { clearVoicePresence } from './voice-presence.js';
 
@@ -21,6 +22,7 @@ export async function dissolveRoom(
 ): Promise<void> {
   turnTimer.stop(roomCode);
   clearRoomTimeouts(roomCode);
+  clearPendingSpectatorJoins(roomCode);
   persister.cleanup(roomCode);
   const session = sessions.get(roomCode);
   session?.clearChatHistory();
@@ -30,13 +32,18 @@ export async function dissolveRoom(
   io.to(roomCode).emit('room:dissolved', { reason });
 
   const sockets = await io.in(roomCode).fetchSockets();
+  const pending: Promise<unknown>[] = [];
   for (const s of sockets) {
     const data = s.data as SocketData;
+    pending.push(clearUserRoom(kv, data.user.userId));
     data.roomCode = null;
     data.isSpectator = false;
-    await s.leave(roomCode);
+    pending.push(Promise.resolve(s.leave(roomCode)));
   }
+  await Promise.all(pending);
 
-  await voiceChannels?.deleteRoomChannel(roomCode);
-  await deleteRoom(kv, roomCode);
+  await Promise.all([
+    voiceChannels?.deleteRoomChannel(roomCode),
+    deleteRoom(kv, roomCode),
+  ]);
 }

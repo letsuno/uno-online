@@ -1,9 +1,11 @@
 import type { Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../../../kv/types.js';
 import type { SocketData } from '../../../ws/types.js';
-import { deleteRoom, getRoom } from '../room/store.js';
+import { deleteRoom, getRoom, clearUserRoom, ensureNotInRoom } from '../room/store.js';
 import { GameSession } from '../game/session.js';
 import { loadGameState } from '../game/state-store.js';
+import { removePendingSpectatorJoin, getPendingSpectatorQueue } from '../../../ws/game-events.js';
+import { joinRoomSocket } from '../../../ws/socket-room.js';
 
 const roomSpectators = new Map<string, Set<string>>();
 
@@ -51,6 +53,12 @@ export function setupSpectateHandlers(
         return;
       }
 
+      const conflict = await ensureNotInRoom(kv, data.user.userId, roomCode);
+      if (conflict) {
+        callback?.({ success: false, error: conflict });
+        return;
+      }
+
       let session = sessions.get(roomCode);
       if (!session) {
         const savedState = await loadGameState(kv, roomCode);
@@ -63,9 +71,7 @@ export function setupSpectateHandlers(
         sessions.set(roomCode, session);
       }
 
-      data.roomCode = roomCode;
-      data.isSpectator = true;
-      await socket.join(roomCode);
+      await joinRoomSocket(kv, socket, roomCode, { asSpectator: true });
 
       if (!roomSpectators.has(roomCode)) roomSpectators.set(roomCode, new Set());
       roomSpectators.get(roomCode)!.add(data.user.nickname);
@@ -86,18 +92,26 @@ export function setupSpectateHandlers(
 
     socket.on('disconnect', () => {
       const data = socket.data as SocketData;
-      if (data.isSpectator && data.roomCode) {
-        const nickname = data.user?.nickname;
-        if (nickname) {
-          roomSpectators.get(data.roomCode)?.delete(nickname);
-        }
-        const spectators = getSpectatorNames(data.roomCode);
-        io.to(data.roomCode).emit('room:spectator_list', { spectators });
-        io.to(data.roomCode).emit('room:spectator_left', {
+      if (!data.isSpectator || !data.roomCode) return;
+      const roomCode = data.roomCode;
+      const nickname = data.user?.nickname;
+      if (nickname) {
+        roomSpectators.get(roomCode)?.delete(nickname);
+      }
+      if (removePendingSpectatorJoin(roomCode, data.user.userId)) {
+        io.to(roomCode).emit('game:spectator_queue', {
+          queue: getPendingSpectatorQueue(roomCode),
           nickname: nickname ?? '',
-          spectators,
+          joined: false,
         });
       }
+      const spectators = getSpectatorNames(roomCode);
+      io.to(roomCode).emit('room:spectator_list', { spectators });
+      io.to(roomCode).emit('room:spectator_left', {
+        nickname: nickname ?? '',
+        spectators,
+      });
+      void clearUserRoom(kv, data.user.userId);
     });
   });
 }

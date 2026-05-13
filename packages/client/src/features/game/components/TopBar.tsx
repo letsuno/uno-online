@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Eye, Volume2, VolumeX, Music, Spade, DoorOpen, Bot, HelpCircle, Keyboard } from 'lucide-react';
+import { Eye, Volume2, VolumeX, Music, Spade, DoorOpen, LogOut, Bot, HelpCircle, Keyboard } from 'lucide-react';
 import type { Card, Color } from '@uno-online/shared';
 import TurnTimer from './TurnTimer';
 import { useSettingsStore } from '@/shared/stores/settings-store';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
+import { useLeaveRoom } from '../hooks/useLeaveRoom';
 import { getSocket } from '@/shared/socket';
 import { cn } from '@/shared/lib/utils';
 import { BUILD_VERSION } from '@/shared/build-info';
@@ -85,6 +86,7 @@ export default function TopBar({ roomCode, onOpenHotkeys }: TopBarProps) {
   const ownerId = useRoomStore((s) => s.room?.ownerId);
   const userId = useEffectiveUserId();
   const isHost = ownerId === userId;
+  const leaveRoom = useLeaveRoom();
   const toggleInfoDrawer = useGameStore((s) => s.toggleInfoDrawer);
   const players = useGameStore((s) => s.players);
   const myAutopilot = players.find(p => p.id === userId)?.autopilot ?? false;
@@ -97,9 +99,10 @@ export default function TopBar({ roomCode, onOpenHotkeys }: TopBarProps) {
     setTimeout(() => setAutopilotCooldown(false), AUTOPILOT_COOLDOWN_MS);
   };
 
-  const handleDissolve = () => {
-    if (!window.confirm('确定要解散房间吗？所有玩家将被踢出。')) return;
-    getSocket().emit('room:dissolve', () => {});
+  const handleLeave = () => {
+    const msg = isHost ? '你是房主，离开将解散房间，确定吗？' : '确定要退出对局吗？';
+    if (!window.confirm(msg)) return;
+    leaveRoom();
   };
 
   return (
@@ -167,15 +170,13 @@ export default function TopBar({ roomCode, onOpenHotkeys }: TopBarProps) {
           {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
         </button>
         <TurnTimer />
-        {isHost && (
-          <button
-            onClick={handleDissolve}
-            className="bg-transparent border-none text-sm cursor-pointer text-destructive hover:text-destructive/80 transition-colors"
-            title="解散房间"
-          >
-            <DoorOpen size={16} />
-          </button>
-        )}
+        <button
+          onClick={handleLeave}
+          className="bg-transparent border-none text-sm cursor-pointer text-destructive hover:text-destructive/80 transition-colors"
+          title={isHost ? '离开并解散房间' : '退出对局'}
+        >
+          {isHost ? <DoorOpen size={16} /> : <LogOut size={16} />}
+        </button>
       </div>
     </div>
   );
