@@ -145,20 +145,44 @@ export function registerRoomEvents(
       socket.to(roomCode).emit('room:spectator_left', {
         nickname: data.user.nickname,
       });
+
+      // If the owner is leaving while on the spectator bench (e.g. after
+      // game:leave_to_spectate), transfer ownership before clearing socket
+      // state — otherwise the room is left with an offline owner.
+      const room = await getRoom(redis, roomCode);
+      if (room?.ownerId === data.user.userId) {
+        const players = await getRoomPlayers(redis, roomCode);
+        const nextOwner = players[0];
+        if (nextOwner) {
+          await setRoomOwner(redis, roomCode, nextOwner.userId);
+          const updatedRoom = await getRoom(redis, roomCode);
+          io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
+        } else {
+          // No player left to inherit — fully dissolve the room.
+          await leaveRoomSocket(redis, socket, roomCode);
+          await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
+          return callback?.({ success: true, dissolved: true });
+        }
+      }
+
       await leaveRoomSocket(redis, socket, roomCode);
       return callback?.({ success: true });
     }
     const room = await getRoom(redis, roomCode);
-    if (room?.ownerId === data.user.userId) {
-      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'host_closed', voiceChannels);
-      return callback?.({ success: true, dissolved: true });
-    }
+    const wasOwner = room?.ownerId === data.user.userId;
     const { deleted } = await roomManager.leaveRoom(roomCode, data.user.userId);
     removeVoicePresence(io, roomCode, data.user.userId);
     await leaveRoomSocket(redis, socket, roomCode);
 
+    // Room is now empty — do full cleanup (notify any external spectators,
+    // tear down session/timers/voice/chat).
+    if (deleted) {
+      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
+      return callback?.({ success: true, dissolved: true });
+    }
+
     const session = sessions.get(roomCode);
-    if (session && !deleted) {
+    if (session) {
       const willEndGame = session.getPlayerCount() - 1 < MIN_PLAYERS;
 
       if (willEndGame) {
@@ -187,14 +211,11 @@ export function registerRoomEvents(
       await emitGameUpdate(io, roomCode, session, redis);
     }
 
-    if (!deleted) {
-      const players = await getRoomPlayers(redis, roomCode);
-      io.to(roomCode).emit('room:updated', { players, room });
-    } else {
-      sessions.delete(roomCode);
-      turnTimer.stop(roomCode);
-      await voiceChannels?.clearRoomChannelMapping(roomCode);
-    }
+    // If the leaver was the owner, manager.leaveRoom has just transferred
+    // ownership to players[0]; the cached `room` still has the stale ownerId.
+    const updatedRoom = wasOwner ? await getRoom(redis, roomCode) : room;
+    const players = await getRoomPlayers(redis, roomCode);
+    io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
     callback?.({ success: true });
   });
 
@@ -213,9 +234,6 @@ export function registerRoomEvents(
     if (!roomCode) return callback?.({ success: false });
     const room = await getRoom(redis, roomCode);
     if (!room || room.status !== 'waiting') return callback?.({ success: false });
-    if (room.ownerId === data.user.userId) {
-      return callback?.({ success: false, error: '房主不能观战' });
-    }
     await roomManager.setSpectator(roomCode, data.user.userId, spectator);
     await touchRoomActivity(redis, roomCode);
     const players = await getRoomPlayers(redis, roomCode);

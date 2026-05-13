@@ -5,6 +5,7 @@ import { authRoutes, authProtectedRoutes } from '@/features/auth/routes';
 import { gameProtectedRoutes } from '@/features/game/routes';
 import { lobbyProtectedRoutes } from '@/features/lobby/routes';
 import { profileProtectedRoutes } from '@/features/profile/routes';
+import CheatOverlayMount from '@/features/game/components/CheatOverlayMount';
 const allPublicRoutes = [...authRoutes];
 const allProtectedRoutes = [
   ...authProtectedRoutes,
@@ -34,6 +35,7 @@ export default function AppRouter() {
           </Route>
         </Routes>
       </Suspense>
+      <CheatOverlayMount />
     </BrowserRouter>
   );
 }

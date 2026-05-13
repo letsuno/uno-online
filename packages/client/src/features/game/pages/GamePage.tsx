@@ -32,7 +32,6 @@ import PlayerListPanel from '../components/PlayerListPanel';
 import DanmakuLayer from '../components/DanmakuLayer';
 import SpectatorActions from '../components/SpectatorActions';
 import AntiCheatToast from '../components/AntiCheatToast';
-import CheatOverlay from '../components/CheatOverlay';
 import { useSpectatorStore } from '../stores/spectator-store';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import GameStartRulesModal from '../components/GameStartRulesModal';
@@ -49,7 +48,6 @@ export default function GamePage() {
   const openInfoDrawer = useGameStore((s) => s.openInfoDrawer);
   const backToLobby = useLeaveRoom();
   const clearSpectators = useSpectatorStore((s) => s.clearSpectators);
-  const cheatDetected = useGameStore((s) => s.cheatDetected);
 
   const isSpectator = useGameStore((s) => s.isSpectator);
   const setSpectator = useGameStore((s) => s.setSpectator);
@@ -255,7 +253,6 @@ export default function GamePage() {
           onJoinedFromSpectator={() => { setSpectator(false); clearSpectators(); }}
         />
       )}
-      {cheatDetected && <CheatOverlay />}
       <BgmToast song={bgmSongName} />
       <HotkeySettingsModal open={showHotkeys} onClose={() => setShowHotkeys(false)} />
     </div>
