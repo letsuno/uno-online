@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Ban, RotateCcw, Trophy, ShieldAlert, ShieldX, Megaphone, Hand } from 'lucide-react';
+import { Ban, RotateCcw, Trophy, ShieldAlert, ShieldX, ShieldCheck, Megaphone, Hand } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { playSound } from '@/shared/sound/sound-manager';
@@ -10,7 +10,7 @@ import CardBack from './CardBack';
 
 interface Effect {
   id: string;
-  type: 'uno_call' | 'skip' | 'reverse' | 'draw' | 'victory' | 'catch_uno' | 'challenge';
+  type: 'uno_call' | 'skip' | 'reverse' | 'draw' | 'victory' | 'catch_uno' | 'challenge' | 'accept';
   text: string;
   targetName?: string;
   targetIndex?: number;
@@ -188,6 +188,17 @@ export default function GameEffects() {
         targetAvatarUrl: caller?.avatarUrl,
       });
       playSound('uno_call');
+    } else if (lastAction.type === 'ACCEPT') {
+      const accepter = players.find((p) => p.id === lastAction.playerId);
+      const accepterIdx = findIdx(lastAction.playerId);
+
+      addEffect({
+        type: 'accept',
+        text: '接受 +4!',
+        targetName: accepter?.name,
+        targetIndex: accepterIdx >= 0 ? accepterIdx : undefined,
+        targetAvatarUrl: accepter?.avatarUrl,
+      });
     } else if (lastAction.type === 'CATCH_UNO') {
       const catcher = players.find((p) => p.id === lastAction.catcherId);
       const target = players.find((p) => p.id === lastAction.targetId);
@@ -243,6 +254,7 @@ export default function GameEffects() {
                 {effect.type === 'victory' && <Trophy size={140} />}
                 {effect.type === 'uno_call' && <Megaphone size={120} />}
                 {effect.type === 'catch_uno' && <Hand size={120} />}
+                {effect.type === 'accept' && <ShieldCheck size={120} />}
                 {effect.type === 'challenge' && effect.text.includes('成功') && <ShieldAlert size={120} />}
                 {effect.type === 'challenge' && effect.text.includes('失败') && <ShieldX size={120} />}
                 {effect.text}
@@ -324,6 +336,17 @@ export default function GameEffects() {
                     ))}
                   </div>
                   <span className="text-2xl font-black text-destructive text-shadow-bold">x{effect.drawCount}</span>
+                </motion.div>
+              )}
+              {effect.type === 'accept' && effect.targetName && (
+                <motion.div
+                  initial={{ y: -10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="flex items-center gap-2"
+                >
+                  {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} avatarUrl={effect.targetAvatarUrl} name={effect.targetName} />}
+                  <span className="text-2xl font-bold text-accent text-shadow-bold">{effect.targetName}</span>
                 </motion.div>
               )}
               {effect.type === 'challenge' && (
