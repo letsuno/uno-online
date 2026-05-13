@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { User, LogOut, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { getRoleColor } from '@/shared/lib/utils';
+import { useProfileModalStore } from '@/shared/stores/profile-modal-store';
 
 export default function UserCapsule() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const openProfile = useProfileModalStore((s) => s.open);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -45,7 +47,7 @@ export default function UserCapsule() {
         {!user?.id.startsWith('ephemeral_') && (
           <>
             <button
-              onClick={() => { setOpen(false); navigate('/profile'); }}
+              onClick={() => { setOpen(false); openProfile(); }}
               className="flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-[10px] text-[13px] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-all cursor-pointer"
             >
               <User size={15} /> 个人信息
