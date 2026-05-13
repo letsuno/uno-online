@@ -179,14 +179,6 @@
   --border-glow: none;
 }
 
-.theme-tech {
-  --radius-btn: 4px;
-  --radius-input: 4px;
-  --radius-card-ui: 6px;
-  --radius-panel-ui: 8px;
-  --border-glow: 0 0 8px rgba(68, 136, 255, 0.3);
-}
-
 @layer base {
   * {
     @apply border-border;
