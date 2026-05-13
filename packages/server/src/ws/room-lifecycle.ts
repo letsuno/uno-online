@@ -1,13 +1,13 @@
 import type { Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
 import type { GameSession } from '../plugins/core/game/session.js';
-import { deleteRoom, clearUserRoom } from '../plugins/core/room/store.js';
+import { deleteRoom } from '../plugins/core/room/store.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import type { VoiceChannelManager } from '../voice/channel-manager.js';
 import { clearRoomTimeouts } from './room-events.js';
 import { clearPendingSpectatorJoins } from './game-events.js';
-import type { SocketData } from './types.js';
+import { leaveRoomSocket } from './socket-room.js';
 import { clearVoicePresence } from './voice-presence.js';
 
 export async function dissolveRoom(
@@ -32,15 +32,7 @@ export async function dissolveRoom(
   io.to(roomCode).emit('room:dissolved', { reason });
 
   const sockets = await io.in(roomCode).fetchSockets();
-  const pending: Promise<unknown>[] = [];
-  for (const s of sockets) {
-    const data = s.data as SocketData;
-    pending.push(clearUserRoom(kv, data.user.userId));
-    data.roomCode = null;
-    data.isSpectator = false;
-    pending.push(Promise.resolve(s.leave(roomCode)));
-  }
-  await Promise.all(pending);
+  await Promise.all(sockets.map((s) => leaveRoomSocket(kv, s, roomCode)));
 
   await Promise.all([
     voiceChannels?.deleteRoomChannel(roomCode),

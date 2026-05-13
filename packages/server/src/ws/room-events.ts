@@ -3,7 +3,7 @@ import type { KvStore } from '../kv/types.js';
 import type { GameAction, GameState, RoomSettings } from '@uno-online/shared';
 import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager.js';
-import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, clearUserRoom, ensureNotInRoom } from '../plugins/core/room/store.js';
+import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, ensureNotInRoom } from '../plugins/core/room/store.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
 import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
@@ -296,15 +296,15 @@ export function registerRoomEvents(
     if (!players.some(p => p.userId === payload.targetId)) return callback?.({ success: false, error: '目标玩家不在房间中' });
     await roomManager.leaveRoom(roomCode, payload.targetId);
     removeVoicePresence(io, roomCode, payload.targetId);
-    await clearUserRoom(redis, payload.targetId);
     const targetSockets = await io.in(roomCode).fetchSockets();
+    const cleanups: Promise<void>[] = [];
     for (const s of targetSockets) {
       if ((s.data as SocketData).user.userId === payload.targetId) {
         s.emit('game:kicked', { reason: '你已被房主移出房间' });
-        s.leave(roomCode);
-        (s.data as SocketData).roomCode = null;
+        cleanups.push(leaveRoomSocket(redis, s, roomCode));
       }
     }
+    await Promise.all(cleanups);
     await touchRoomActivity(redis, roomCode);
     const updatedPlayers = await getRoomPlayers(redis, roomCode);
     const updatedRoom = await getRoom(redis, roomCode);
