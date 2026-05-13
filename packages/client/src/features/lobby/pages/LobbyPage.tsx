@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, X, ClipboardPaste, Music, Volume2, VolumeX, ArrowRight } from 'lucide-react';
+import { Upload, X, ClipboardPaste, Music, Volume2, VolumeX, ArrowRight, BookOpen } from 'lucide-react';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { useSettingsStore } from '@/shared/stores/settings-store';
 import { loadCardPack, clearCardPack, isPackLoaded } from '@/shared/utils/card-images';
@@ -149,6 +149,15 @@ export default function LobbyPage() {
                 />
               </label>
             )}
+
+            {/* Tutorial */}
+            <button
+              onClick={() => setShowTutorial(true)}
+              className={ctrlIconBase}
+              title="游戏教程"
+            >
+              <BookOpen size={16} />
+            </button>
           </>
         }
       />
