@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { LogIn, Spade, Type, Upload, X } from 'lucide-react';
+import { LogIn, Spade, Upload, X } from 'lucide-react';
 import { useAuthStore } from '../stores/auth-store';
-import { useSettingsStore, FONT_OPTIONS, type FontOption } from '@/shared/stores/settings-store';
+import { useSettingsStore } from '@/shared/stores/settings-store';
 import { loadCardPack, clearCardPack, isPackLoaded } from '@/shared/utils/card-images';
 import { apiGet } from '@/shared/api';
 import { Button } from '@/shared/components/ui/Button';
@@ -18,7 +18,7 @@ interface AuthConfig {
 
 export default function HomePage() {
   const { user, token, loading, loadUser, devLogin, passwordLogin } = useAuthStore();
-  const { fontFamily, setFontFamily, cardImagePack, setCardImagePack } = useSettingsStore();
+  const { cardImagePack, setCardImagePack } = useSettingsStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [devUsername, setDevUsername] = useState('');
@@ -183,19 +183,6 @@ export default function HomePage() {
               />
             </label>
           )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Type size={16} className="text-muted-foreground" />
-          <select
-            value={fontFamily}
-            onChange={(e) => setFontFamily(e.target.value as FontOption)}
-            className="bg-card text-foreground border border-white/20 rounded-lg px-2.5 py-1.5 text-sm cursor-pointer"
-            style={{ fontFamily: FONT_OPTIONS[fontFamily].value }}
-          >
-            {(Object.keys(FONT_OPTIONS) as FontOption[]).map((k) => (
-              <option key={k} value={k}>{FONT_OPTIONS[k].label}</option>
-            ))}
-          </select>
         </div>
       </div>
 
