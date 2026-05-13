@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Spade, LogOut, User, Hexagon, Circle, Upload, X, Type, Eye, Users, ClipboardPaste, Music } from 'lucide-react';
+import { Spade, LogOut, User, Upload, X, Eye, Users, ClipboardPaste, Music, Volume2, VolumeX } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { getRoleColor } from '@/shared/lib/utils';
 import { useRoomStore } from '@/shared/stores/room-store';
-import { useSettingsStore, FONT_OPTIONS, type FontOption } from '@/shared/stores/settings-store';
+import { useSettingsStore } from '@/shared/stores/settings-store';
 import { loadCardPack, clearCardPack, isPackLoaded } from '@/shared/utils/card-images';
 import { getSocket, connectSocket } from '@/shared/socket';
 import { Button } from '@/shared/components/ui/Button';
@@ -23,7 +23,7 @@ export default function LobbyPage() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const setRoom = useRoomStore((s) => s.setRoom);
-  const { uiTheme, setUiTheme, fontFamily, setFontFamily, cardImagePack, setCardImagePack } = useSettingsStore();
+  const { bgmEnabled, toggleBgm, cardImagePack, setCardImagePack } = useSettingsStore();
   const navigate = useNavigate();
   const [joinCode, setJoinCode] = useState('');
   const [error, setError] = useState('');
@@ -202,6 +202,13 @@ export default function LobbyPage() {
       {/* Settings + version */}
       <div className="absolute bottom-6 right-6 flex items-center gap-3">
         <button
+          onClick={toggleBgm}
+          className="bg-card text-foreground border border-white/20 rounded-lg px-2.5 py-1.5 text-sm cursor-pointer flex items-center gap-1"
+          title={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
+        >
+          {bgmEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+        </button>
+        <button
           onClick={() => setMusicHall(true)}
           className="bg-card text-foreground border border-white/20 rounded-lg px-2.5 py-1.5 text-sm cursor-pointer flex items-center gap-1"
           title="音乐厅"
@@ -236,35 +243,6 @@ export default function LobbyPage() {
             />
           </label>
         )}
-        <div className="flex items-center gap-2">
-          <Type size={16} className="text-muted-foreground" />
-          <select
-            value={fontFamily}
-            onChange={(e) => setFontFamily(e.target.value as FontOption)}
-            className="bg-card text-foreground border border-white/20 rounded-lg px-2.5 py-1.5 text-sm cursor-pointer"
-            style={{ fontFamily: FONT_OPTIONS[fontFamily].value }}
-          >
-            {(Object.keys(FONT_OPTIONS) as FontOption[]).map((k) => (
-              <option key={k} value={k}>{FONT_OPTIONS[k].label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-center gap-1 rounded-btn bg-card/60 p-1">
-          <button
-            onClick={() => setUiTheme('rounded')}
-            className={`p-1.5 rounded-full transition-colors ${uiTheme === 'rounded' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-            title="圆角风格"
-          >
-            <Circle size={14} />
-          </button>
-          <button
-            onClick={() => setUiTheme('tech')}
-            className={`p-1.5 rounded-sm transition-colors ${uiTheme === 'tech' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-            title="科技风格"
-          >
-            <Hexagon size={14} />
-          </button>
-        </div>
       </div>
 
       <div className="absolute bottom-6 left-6 flex items-center gap-3">
