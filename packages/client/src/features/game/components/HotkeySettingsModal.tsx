@@ -57,16 +57,16 @@ export default function HotkeySettingsModal({ open, onClose }: Props) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-modal flex items-center justify-center glass-modal-backdrop"
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="bg-card rounded-panel-ui shadow-card border border-white/10 w-full max-w-sm mx-4"
+          className="glass-panel w-full max-w-sm mx-4"
         >
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
             <h3 className="text-sm font-bold text-foreground">快捷键设置</h3>
             <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
               <X size={16} />
@@ -106,7 +106,7 @@ export default function HotkeySettingsModal({ open, onClose }: Props) {
             })}
           </div>
 
-          <div className="px-5 py-3 border-t border-white/10 flex justify-between items-center">
+          <div className="px-5 py-3 border-t border-white/5 flex justify-between items-center">
             <button
               onClick={resetAll}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"

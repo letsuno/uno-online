@@ -1,27 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Spade, LogOut, User, Upload, X, Eye, Users, ClipboardPaste, Music, Volume2, VolumeX } from 'lucide-react';
-import { useAuthStore } from '@/features/auth/stores/auth-store';
-import { getRoleColor } from '@/shared/lib/utils';
+import { Upload, X, ClipboardPaste, Music, Volume2, VolumeX, ArrowRight, BookOpen } from 'lucide-react';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { useSettingsStore } from '@/shared/stores/settings-store';
 import { loadCardPack, clearCardPack, isPackLoaded } from '@/shared/utils/card-images';
 import { getSocket, connectSocket } from '@/shared/socket';
 import { Button } from '@/shared/components/ui/Button';
-import { Input } from '@/shared/components/ui/Input';
-import { BUILD_VERSION } from '@/shared/build-info';
-import { ServerButton } from '@/shared/components/ServerButton';
 import { ServerSelectModal } from '@/shared/components/ServerSelectModal';
 import { useBgm } from '@/shared/sound/useBgm';
 import { getAudioContext } from '@/shared/sound/audio-context';
 import TutorialModal from '@/shared/components/TutorialModal';
 import BgmToast from '@/shared/components/BgmToast';
 import MusicHallModal from '@/shared/components/MusicHallModal';
+import GamePageShell from '@/shared/components/GamePageShell';
+import GameTopBar from '@/shared/components/GameTopBar';
+import ServerStatusBar from '@/shared/components/ServerStatusBar';
 import { useLobbyStore } from '../stores/lobby-store';
 
 export default function LobbyPage() {
-  const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
   const setRoom = useRoomStore((s) => s.setRoom);
   const { bgmEnabled, toggleBgm, cardImagePack, setCardImagePack } = useSettingsStore();
   const navigate = useNavigate();
@@ -94,166 +90,196 @@ export default function LobbyPage() {
     });
   };
 
-  const userRoleColor = getRoleColor(user?.role);
+  const ctrlIconBase =
+    'w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-base cursor-pointer text-[#475569] transition-all hover:bg-white/[0.08] hover:text-[#94a3b8]';
+  const ctrlIconActive =
+    'text-[#fbbf24] bg-[rgba(251,191,36,0.08)] border-[rgba(251,191,36,0.15)]';
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6 p-5">
-      {/* Header */}
-      <div className="text-center">
-        <h1 className="font-game text-heading-xl text-primary text-shadow-bold">
-          <Spade size={32} className="inline-block align-middle" /> 游戏大厅
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          欢迎回来, <span className="font-bold" style={userRoleColor ? { color: userRoleColor } : undefined}>{user?.nickname ?? user?.username}</span>
-        </p>
-      </div>
+    <GamePageShell>
+      {/* Top bar */}
+      <GameTopBar
+        leftControls={
+          <>
+            {/* Music toggle */}
+            <button
+              onClick={toggleBgm}
+              className={`${ctrlIconBase} ${bgmEnabled ? ctrlIconActive : ''}`}
+              title={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
+            >
+              {bgmEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            </button>
 
-      {/* Main card */}
-      <div className="w-full max-w-sm rounded-panel-ui bg-card/80 backdrop-blur-sm p-6 shadow-card shadow-tech flex flex-col gap-5">
-        {/* Create room */}
-        <Button variant="primary" size="lg" className="w-full" onClick={handleCreate} disabled={loading} sound="ready">
-          {loading ? '创建中...' : '创建房间'}
-        </Button>
+            {/* Music hall */}
+            <button
+              onClick={() => setMusicHall(true)}
+              className={ctrlIconBase}
+              title="音乐厅"
+            >
+              <Music size={16} />
+            </button>
 
-        {/* Divider */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-white/15" />
-          <span className="text-xs text-muted-foreground">或加入房间</span>
-          <div className="flex-1 h-px bg-white/15" />
-        </div>
+            {/* Card pack */}
+            {cardImagePack && isPackLoaded() ? (
+              <button
+                onClick={() => { clearCardPack(); setCardImagePack(false); }}
+                className={ctrlIconBase}
+                title="卸载资源包"
+              >
+                <X size={16} />
+              </button>
+            ) : (
+              <label className={`${ctrlIconBase}`} title="加载卡面资源包">
+                <Upload size={16} />
+                <input
+                  type="file"
+                  accept=".zip"
+                  hidden
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      await loadCardPack(file);
+                      setCardImagePack(true);
+                    } catch {
+                      setCardImagePack(false);
+                    }
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+            )}
 
-        {/* Join room */}
-        <div className="flex gap-2">
-          <Input
-            value={joinCode}
-            onChange={(e) => { setJoinCode(extractRoomCode(e.target.value)); setError(''); }}
-            onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-            placeholder="房间码或链接"
-            maxLength={100}
-            className="flex-1 text-center uppercase tracking-room-code"
-            inputSize="lg"
-          />
-          <button
-            onClick={handlePaste}
-            className="bg-white/10 hover:bg-white/20 rounded-lg px-2.5 cursor-pointer transition-colors"
-            title="从剪贴板粘贴"
+            {/* Tutorial */}
+            <button
+              onClick={() => setShowTutorial(true)}
+              className={ctrlIconBase}
+              title="游戏教程"
+            >
+              <BookOpen size={16} />
+            </button>
+          </>
+        }
+      />
+
+      {/* Center content */}
+      <div className="flex flex-col items-center justify-center relative z-[1]">
+        {/* Brand */}
+        <div className="text-center mb-16">
+          <h1
+            className="font-game text-[88px] font-black text-primary tracking-[10px]"
+            style={{ textShadow: '5px 6px 0px rgba(0,0,0,0.3), 0 0 80px rgba(251,191,36,0.1)' }}
           >
-            <ClipboardPaste size={18} className="text-muted-foreground" />
-          </button>
-          <Button variant="outline" onClick={handleJoin} disabled={loading} className="px-6" sound="ready">
-            加入
-          </Button>
-        </div>
-
-        {error && <p className="text-sm text-destructive text-center">{error}</p>}
-      </div>
-
-        {/* Active games */}
-        {activeRooms.length > 0 && (
-          <div className="w-full max-w-sm">
-            <h3 className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
-              <Users size={14} /> 正在进行的对战
-            </h3>
-            <div className="flex flex-col gap-2">
-              {activeRooms.map((room) => (
-                <div key={room.roomCode} className="rounded-panel-ui bg-card/60 p-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-bold">{room.players.map(p => p.nickname).join(' vs ')}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {room.playerCount} 人 · {room.spectatorCount} 人观战
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    sound="click"
-                    onClick={() => {
-                      connectSocket();
-                      getSocket().emit('room:spectate', room.roomCode, (res: any) => {
-                        if (res.success) navigate(`/game/${room.roomCode}?spectate=true`);
-                        else {
-                          setError(res.error || '无法观战');
-                          fetchActiveRooms();
-                        }
-                      });
-                    }}
-                  >
-                    <Eye size={14} className="mr-1" /> 观战
-                  </Button>
-                </div>
-              ))}
-            </div>
+            &#9824; UNO
+          </h1>
+          <div className="text-[15px] text-[#3e4a63] tracking-[8px] font-medium mt-3">
+            ONLINE CARD GAME
           </div>
-        )}
+        </div>
 
-
-      {/* Bottom actions */}
-      <div className="flex items-center gap-3">
-        {!user?.id.startsWith('ephemeral_') && (
-          <Button variant="ghost" size="sm" onClick={() => navigate('/profile')} sound="click">
-            <User size={14} className="mr-1 inline-block" /> 个人信息
-          </Button>
-        )}
-        <Button variant="ghost" size="sm" onClick={() => { logout(); navigate('/'); }} sound="click">
-          <LogOut size={14} className="mr-1 inline-block" /> 退出登录
-        </Button>
-      </div>
-
-      {/* Settings + version */}
-      <div className="absolute bottom-6 right-6 flex items-center gap-3">
-        <button
-          onClick={toggleBgm}
-          className="bg-card text-foreground border border-white/20 rounded-lg px-2.5 py-1.5 text-sm cursor-pointer flex items-center gap-1"
-          title={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
-        >
-          {bgmEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />} {bgmEnabled ? '音乐' : '静音'}
-        </button>
-        <button
-          onClick={() => setMusicHall(true)}
-          className="bg-card text-foreground border border-white/20 rounded-lg px-2.5 py-1.5 text-sm cursor-pointer flex items-center gap-1"
-          title="音乐厅"
-        >
-          <Music size={14} /> 音乐厅
-        </button>
-        {cardImagePack && isPackLoaded() ? (
-          <button
-            onClick={() => { clearCardPack(); setCardImagePack(false); }}
-            className="bg-card text-foreground border border-white/20 rounded-lg px-2.5 py-1.5 text-sm cursor-pointer flex items-center gap-1"
+        {/* Actions */}
+        <div className="flex flex-col items-center gap-[22px] w-[440px] max-w-[90vw]">
+          {/* Create room */}
+          <Button
+            variant="game"
+            size="lg"
+            className="w-full tracking-[6px] text-2xl py-6"
+            onClick={handleCreate}
+            disabled={loading}
+            sound="ready"
           >
-            <X size={14} /> 卸载资源包
-          </button>
-        ) : (
-          <label className="bg-card text-foreground border border-white/20 rounded-lg px-2.5 py-1.5 text-sm cursor-pointer flex items-center gap-1">
-            <Upload size={14} /> 加载卡面资源包
+            {loading ? '创建中...' : '创 建 房 间'}
+          </Button>
+
+          {/* Divider */}
+          <div className="flex items-center gap-4 w-full">
+            <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)' }} />
+            <span className="text-[13px] text-[#3e4a63] tracking-[2px]">或加入房间</span>
+            <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)' }} />
+          </div>
+
+          {/* Join row */}
+          <div className="flex gap-2.5 w-full">
             <input
-              type="file"
-              accept=".zip"
-              hidden
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                try {
-                  await loadCardPack(file);
-                  setCardImagePack(true);
-                } catch {
-                  setCardImagePack(false);
-                }
-                e.target.value = '';
-              }}
+              value={joinCode}
+              onChange={(e) => { setJoinCode(extractRoomCode(e.target.value)); setError(''); }}
+              onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+              placeholder="房间码或链接"
+              maxLength={100}
+              className="glass-input flex-1 text-center uppercase tracking-[5px] text-lg"
             />
-          </label>
-        )}
+            <button
+              onClick={handlePaste}
+              className="w-[58px] flex-shrink-0 border border-white/[0.08] rounded-[18px] bg-white/[0.04] text-[#475569] text-[22px] cursor-pointer transition-all flex items-center justify-center hover:bg-white/[0.08] hover:text-[#94a3b8] hover:border-white/[0.12]"
+              title="从剪贴板粘贴"
+            >
+              <ClipboardPaste size={20} />
+            </button>
+            <button
+              onClick={handleJoin}
+              disabled={loading}
+              className="w-[62px] flex-shrink-0 border border-[rgba(251,191,36,0.2)] rounded-[18px] bg-[rgba(251,191,36,0.08)] text-[#fbbf24] text-2xl cursor-pointer transition-all flex items-center justify-center hover:bg-[rgba(251,191,36,0.15)] hover:border-[rgba(251,191,36,0.35)] hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed"
+              title="加入房间"
+            >
+              <ArrowRight size={22} />
+            </button>
+          </div>
+
+          {error && <p className="text-sm text-destructive text-center">{error}</p>}
+        </div>
       </div>
 
-      <div className="absolute bottom-6 left-6 flex items-center gap-3">
-        <ServerButton />
-        <span className="text-xs text-muted-foreground/50">v{BUILD_VERSION}</span>
-      </div>
+      {/* Floating live games panel */}
+      {activeRooms.length > 0 && (
+        <div className="absolute right-8 top-1/2 -translate-y-1/2 w-[280px] glass-panel p-5 z-[5]">
+          {/* Header */}
+          <div className="flex items-center gap-2.5 mb-4 px-1">
+            <span className="w-2 h-2 rounded-full bg-[#22c55e] shadow-[0_0_10px_rgba(34,197,94,0.4)] animate-pulse" />
+            <span className="text-sm font-semibold text-[#94a3b8]">正在进行的对战</span>
+            <span className="ml-auto text-xs text-[#475569] bg-white/[0.04] px-2.5 py-0.5 rounded-xl">
+              {activeRooms.length} 场
+            </span>
+          </div>
+          {/* List */}
+          <div className="flex flex-col gap-2 max-h-[340px] overflow-y-auto">
+            {activeRooms.map((room) => (
+              <div
+                key={room.roomCode}
+                className="group bg-white/[0.03] rounded-[14px] p-3.5 cursor-pointer transition-all border border-transparent hover:bg-white/[0.06] hover:border-[rgba(251,191,36,0.1)]"
+                onClick={() => {
+                  connectSocket();
+                  getSocket().emit('room:spectate', room.roomCode, (res: any) => {
+                    if (res.success) navigate(`/game/${room.roomCode}?spectate=true`);
+                    else {
+                      setError(res.error || '无法观战');
+                      fetchActiveRooms();
+                    }
+                  });
+                }}
+              >
+                <div className="text-sm font-semibold text-[#cbd5e1]">
+                  {room.players.map(p => p.nickname).join(' vs ')}
+                </div>
+                <div className="text-xs text-[#475569] mt-1 flex justify-between items-center">
+                  <span>{room.playerCount} 人 · {room.spectatorCount} 人观战</span>
+                  <span className="text-[#fbbf24] text-xs font-semibold opacity-0 -translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-x-0">
+                    观战 ›
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
+      {/* Bottom left: server status */}
+      <ServerStatusBar />
+
+      {/* Modals */}
       <ServerSelectModal />
       <TutorialModal open={showTutorial} onClose={() => { setShowTutorial(false); localStorage.setItem('tutorialShown', 'true'); }} />
       <BgmToast song={songName} />
       <MusicHallModal open={musicHall} onClose={() => setMusicHall(false)} currentScene="lobby" />
-    </div>
+    </GamePageShell>
   );
 }

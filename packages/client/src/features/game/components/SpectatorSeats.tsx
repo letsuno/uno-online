@@ -3,14 +3,21 @@ import { Eye } from 'lucide-react';
 import { useSpectatorStore } from '../stores/spectator-store';
 import { cn } from '@/shared/lib/utils';
 
-function SpectatorSeats() {
+interface SpectatorSeatsProps {
+  top?: number;
+}
+
+function SpectatorSeats({ top }: SpectatorSeatsProps) {
   const spectators = useSpectatorStore((s) => s.spectators);
   const pendingJoinQueue = useSpectatorStore((s) => s.pendingJoinQueue);
 
   if (spectators.length === 0) return null;
 
   return (
-    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-card/60 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/5">
+    <div
+      className="absolute left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-card/60 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/5"
+      style={top != null ? { top } : { bottom: 8 }}
+    >
       <Eye size={12} className="text-muted-foreground shrink-0" />
       <div className="flex items-center gap-1">
         {spectators.map((name) => {

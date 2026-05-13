@@ -20,12 +20,8 @@ export function usePlayableCardIds(): Set<string> {
   return useMemo(() => {
     if (phase === 'challenging' && pendingDrawPlayerId === userId && topCard) {
       const hr = settings?.houseRules;
-      const canStack = hr?.stackDrawFour || hr?.crossStack;
-      if (canStack) {
-        const ids = (myHand ?? []).filter(c => canRespondToDrawStack(c, topCard, hr)).map(c => c.id);
-        return new Set(ids);
-      }
-      return new Set<string>();
+      const ids = (myHand ?? []).filter(c => canRespondToDrawStack(c, topCard, hr)).map(c => c.id);
+      return new Set(ids);
     }
     if (phase !== 'playing') return new Set<string>();
     if (!isMyTurn) {

@@ -43,8 +43,8 @@ function ServerCard({
       onClick={onSelect}
       className="cursor-pointer rounded-xl border p-3.5 transition-colors"
       style={{
-        background: isSelected ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.04)',
-        borderColor: isSelected ? '#ef4444' : 'rgba(255,255,255,0.1)',
+        background: isSelected ? 'rgba(251,191,36,0.08)' : 'rgba(255,255,255,0.04)',
+        borderColor: isSelected ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.1)',
         borderWidth: isSelected ? '1.5px' : '1px',
         opacity: isOnline ? 1 : 0.5,
       }}
@@ -172,7 +172,7 @@ export function ServerSelectModal() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 glass-modal-backdrop"
             onClick={closeModal}
           />
 
@@ -182,10 +182,10 @@ export function ServerSelectModal() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.2 }}
-            className="relative w-full max-w-[460px] rounded-2xl bg-card shadow-2xl"
+            className="relative w-full max-w-[460px] glass-panel"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/[0.08] px-6 py-4">
+            <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
               <div className="flex items-center gap-2 text-lg font-bold">
                 <Server size={18} /> 选择服务器
               </div>
@@ -210,19 +210,19 @@ export function ServerSelectModal() {
             </div>
 
             {/* Add custom server */}
-            <div className="border-t border-white/[0.08] px-4 pb-4 pt-3">
+            <div className="border-t border-white/5 px-4 pb-4 pt-3">
               <div className="flex gap-2">
                 <input
                   value={newAddress}
                   onChange={(e) => { setNewAddress(e.target.value); setAddError(''); }}
                   onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
                   placeholder="输入服务器地址  如 uno.example.com"
-                  className="flex-1 rounded-lg border border-white/15 bg-background px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  className="flex-1 glass-input px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
                 <button
                   onClick={handleAdd}
                   disabled={adding}
-                  className="flex items-center gap-1 whitespace-nowrap rounded-lg bg-blue-600 px-3.5 py-2 text-[13px] font-bold text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+                  className="flex items-center gap-1 whitespace-nowrap rounded-lg bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] px-3.5 py-2 text-[13px] font-bold text-[#1a1a2e] transition-colors hover:opacity-90 disabled:opacity-50"
                 >
                   <Plus size={14} /> {adding ? '添加中...' : '添加'}
                 </button>

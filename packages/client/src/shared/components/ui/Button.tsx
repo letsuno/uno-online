@@ -19,6 +19,8 @@ const buttonVariants = cva(
           'bg-transparent text-foreground px-4 py-2 text-sm hover:bg-white/10',
         outline:
           'bg-transparent text-primary border-2 border-primary/50 px-5 py-2 text-sm hover:bg-primary/10',
+        game:
+          'bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] text-[#1a1a2e] px-6 py-[22px] text-xl font-[family-name:var(--font-game)] tracking-[4px] shadow-[0_6px_28px_rgba(251,191,36,0.25),inset_0_1px_0_rgba(255,255,255,0.2)] hover:translate-y-[-3px] hover:shadow-[0_10px_40px_rgba(251,191,36,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] active:translate-y-[-1px] relative overflow-hidden',
       },
       size: {
         default: '',
