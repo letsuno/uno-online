@@ -172,9 +172,9 @@ export default function RoomPage() {
 
   return (
     <GamePageShell>
-      <div className="relative z-1 flex flex-col items-center gap-6 w-full px-8 py-20">
+      <div className="relative z-1 flex flex-col items-center gap-4 md:gap-6 w-full h-full overflow-y-auto scrollbar-thin px-4 md:px-8 py-8 md:py-20">
         {/* Title */}
-        <h2 className="font-game text-[36px] text-primary text-shadow-bold flex items-center gap-3">
+        <h2 className="font-game text-2xl md:text-[36px] text-primary text-shadow-bold flex items-center gap-2 md:gap-3 shrink-0">
           房间 {roomCode}
           <button
             onClick={() => {
@@ -190,9 +190,9 @@ export default function RoomPage() {
         </h2>
 
         {/* Two-column layout */}
-        <div className="flex flex-col md:flex-row gap-6 w-full max-w-[900px] flex-1 min-h-0">
+        <div className="flex flex-col md:flex-row gap-4 md:gap-6 w-full max-w-[900px] md:flex-1 md:min-h-0">
           {/* Left: Player + spectator lists */}
-          <div className="flex-1 glass-panel p-6 flex flex-col gap-4 min-h-0">
+          <div className="flex-1 glass-panel p-4 md:p-6 flex flex-col gap-4 min-h-0">
             <section>
               <h3 className="mb-4 text-sm text-muted-foreground font-game">
                 玩家 ({activePlayers.length}/{MAX_PLAYERS})
@@ -268,7 +268,7 @@ export default function RoomPage() {
           </div>
 
           {/* Right: Settings (spectator + house rules in one panel) */}
-          <div className="w-full md:w-[320px] md:shrink-0 glass-panel p-5 flex flex-col max-h-[calc(100vh-280px)]">
+          <div className="w-full md:w-[320px] md:shrink-0 glass-panel p-4 md:p-5 flex flex-col md:max-h-[calc(100vh-280px)]">
             {/* Spectator section */}
             <h3 className="mb-3 text-sm text-muted-foreground font-game">观战设置</h3>
             <div className="space-y-3">
@@ -365,28 +365,34 @@ export default function RoomPage() {
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex gap-4">
+        {/* Action buttons — uniform sizing across variants; `game` variant
+            keeps its gradient/shadow accents but is sized down to match
+            secondary/danger so the row reads as one consistent control bar. */}
+        <div className="flex flex-wrap justify-center gap-2.5 md:gap-3 shrink-0">
           {myPlayer?.spectator ? (
-            <Button variant="game" onClick={toggleSpectator} sound="click">取消观战</Button>
+            <Button variant="game" onClick={toggleSpectator} sound="click" className="text-sm md:text-base px-5 py-2.5 tracking-normal">
+              取消观战
+            </Button>
           ) : (
-            <Button variant="game" onClick={toggleReady} sound="ready">
+            <Button variant="game" onClick={toggleReady} sound="ready" className="text-sm md:text-base px-5 py-2.5 tracking-normal">
               {myPlayer?.ready ? '取消准备' : '准备'}
             </Button>
           )}
           {!myPlayer?.spectator && (
-            <Button variant="secondary" onClick={toggleSpectator} sound="click">
+            <Button variant="secondary" onClick={toggleSpectator} sound="click" className="text-sm md:text-base px-5 py-2.5">
               <Eye size={14} className="inline align-middle mr-1" />观战
             </Button>
           )}
           {isOwner && (
-            <Button variant="game" className={cn(!allReady && 'opacity-50')} onClick={startGame} disabled={!allReady} sound="ready">
+            <Button variant="game" className={cn('text-sm md:text-base px-5 py-2.5 tracking-normal', !allReady && 'opacity-50')} onClick={startGame} disabled={!allReady} sound="ready">
               开始游戏
             </Button>
           )}
-          <Button variant="danger" onClick={leaveRoom} sound="danger">离开房间</Button>
+          <Button variant="danger" onClick={leaveRoom} sound="danger" className="text-sm md:text-base px-5 py-2.5">
+            离开房间
+          </Button>
           {isOwner && (
-            <Button variant="danger" onClick={dissolveRoom} sound="danger">
+            <Button variant="danger" onClick={dissolveRoom} sound="danger" className="text-sm md:text-base px-5 py-2.5">
               <Trash2 size={14} className="inline align-middle mr-1" />解散房间
             </Button>
           )}
