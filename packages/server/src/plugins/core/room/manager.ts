@@ -36,7 +36,11 @@ export class RoomManager {
     if (room.status !== 'waiting') throw new Error('Game already in progress');
     const players = await getRoomPlayers(this.redis, roomCode);
     if (players.some((p) => p.userId === userId)) throw new Error('Already in room');
-    if (players.length >= MAX_PLAYERS) throw new Error('Room is full');
+    // MAX_PLAYERS gates the active roster, not the spectator bench — joining
+    // as a player should still succeed when the only thing filling the room
+    // is in-room spectators.
+    const activePlayers = players.filter((p) => !p.spectator);
+    if (activePlayers.length >= MAX_PLAYERS) throw new Error('Room is full');
     await addPlayerToRoom(this.redis, roomCode, { userId, nickname, avatarUrl, role, isBot });
   }
 
