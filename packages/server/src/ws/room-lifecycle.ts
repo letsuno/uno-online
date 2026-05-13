@@ -29,7 +29,16 @@ export async function dissolveRoom(
   sessions.delete(roomCode);
   io.to(roomCode).emit('chat:cleared');
   clearVoicePresence(io, roomCode);
-  io.to(roomCode).emit('room:dissolved', { reason });
+
+  // host_closed = the owner explicitly chose to dissolve. Surface that with
+  // the glitch overlay (reused from cheat detection) instead of the standard
+  // "room dissolved" toast/navigate path, so it feels deliberate and dramatic.
+  // Other reasons (idle_timeout, empty) keep the quieter notification.
+  if (reason === 'host_closed') {
+    io.to(roomCode).emit('game:cheat_detected');
+  } else {
+    io.to(roomCode).emit('room:dissolved', { reason });
+  }
 
   const sockets = await io.in(roomCode).fetchSockets();
   await Promise.all(sockets.map((s) => leaveRoomSocket(kv, s, roomCode)));
