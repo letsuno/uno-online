@@ -4,6 +4,7 @@ import ChangelogModal from '@/shared/components/ChangelogModal';
 import NotificationPermissionDialog from '@/shared/components/NotificationPermissionDialog';
 import ServerUpdateDialog from '@/shared/components/ServerUpdateDialog';
 import ProfileModal from '@/shared/components/ProfileModal';
+import ConfirmDialog from '@/shared/components/ConfirmDialog';
 
 export default function App() {
 
@@ -15,6 +16,7 @@ export default function App() {
       <NotificationPermissionDialog />
       <ServerUpdateDialog />
       <ProfileModal />
+      <ConfirmDialog />
     </div>
   );
 }
