@@ -160,8 +160,6 @@ export function ServerSelectModal() {
     }
   };
 
-  if (!isModalOpen) return null;
-
   return (
     <AnimatePresence>
       {isModalOpen && (
