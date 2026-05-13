@@ -97,7 +97,7 @@ export default function RoomPage() {
 
   return (
     <GamePageShell>
-      <div className="relative z-1 flex flex-col items-center gap-6 p-5 overflow-y-auto max-h-screen">
+      <div className="relative z-1 flex flex-col items-center gap-6 p-5 overflow-y-auto max-h-screen scrollbar-thin">
         <h2 className="font-game text-[32px] text-primary text-shadow-bold flex items-center gap-2">
           房间 {roomCode}
           <button
@@ -153,13 +153,23 @@ export default function RoomPage() {
           <h3 className="mb-3 text-sm text-muted-foreground">观战设置</h3>
           <div className="flex items-center justify-between">
             <label className="text-sm">允许观战</label>
-            <input
-              type="checkbox"
-              checked={room?.settings?.allowSpectators ?? true}
-              onChange={(e) => getSocket().emit('room:update_settings', { allowSpectators: e.target.checked })}
-              className="accent-primary"
+            <button
+              type="button"
+              role="switch"
+              aria-checked={room?.settings?.allowSpectators ?? true}
+              onClick={() => { if (isOwner) getSocket().emit('room:update_settings', { allowSpectators: !(room?.settings?.allowSpectators ?? true) }); }}
               disabled={!isOwner}
-            />
+              className={cn(
+                'w-11 h-6 rounded-xl relative transition-colors duration-200',
+                !isOwner ? 'cursor-default opacity-50' : 'cursor-pointer',
+                (room?.settings?.allowSpectators ?? true) ? 'bg-accent' : 'bg-white/15'
+              )}
+            >
+              <span className={cn(
+                'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform',
+                (room?.settings?.allowSpectators ?? true) ? 'translate-x-5' : ''
+              )} />
+            </button>
           </div>
           {(room?.settings?.allowSpectators ?? true) && (
             <div className="flex items-center justify-between">
@@ -167,7 +177,10 @@ export default function RoomPage() {
               <select
                 value={room?.settings?.spectatorMode ?? 'hidden'}
                 onChange={(e) => getSocket().emit('room:update_settings', { spectatorMode: e.target.value as 'full' | 'hidden' })}
-                className="bg-card text-foreground border border-white/15 rounded px-2 py-1 text-sm"
+                className={cn(
+                  'bg-white/[0.06] text-foreground border border-white/10 rounded-xl px-3 py-1.5 text-sm outline-none cursor-pointer',
+                  !isOwner && 'opacity-50 cursor-default'
+                )}
                 disabled={!isOwner}
               >
                 <option value="hidden">只看出牌</option>

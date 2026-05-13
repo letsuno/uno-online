@@ -122,9 +122,9 @@ export default function ProfilePage() {
   const profileRoleColor = getRoleColor(profile?.user.role);
 
   return (
-    <GamePageShell showDecoCards={false}>
+    <GamePageShell showDecoCards={true}>
       <GameTopBar />
-      <div className="relative z-1 flex flex-col items-center gap-6 w-full max-w-[480px] overflow-y-auto max-h-[calc(100vh-120px)] p-6">
+      <div className="relative z-1 flex flex-col items-center gap-6 w-full max-w-[520px] overflow-y-auto max-h-[calc(100vh-120px)] p-6 scrollbar-thin">
         <h2 className="font-game text-[32px] text-primary text-shadow-bold">个人信息</h2>
         {profile && (
           <>
