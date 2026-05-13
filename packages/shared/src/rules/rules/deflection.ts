@@ -12,8 +12,70 @@ export const deflection: HouseRulePlugin = {
   },
   isEnabled: (hr) => hr.reverseDeflectDrawTwo || hr.reverseDeflectDrawFour || hr.skipDeflect,
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
-    if (action.type !== 'PLAY_CARD' || state.drawStack <= 0) return { handled: false };
     const hr = state.settings.houseRules;
+
+    // During challenging phase: deflect WD4 with Reverse or Skip
+    if (action.type === 'PLAY_CARD' && state.phase === 'challenging' && state.pendingDrawPlayerId) {
+      if (action.playerId !== state.pendingDrawPlayerId) return { handled: false };
+      const playerIdx = state.players.findIndex(p => p.id === action.playerId);
+      if (playerIdx === -1) return { handled: true, state };
+      const player = state.players[playerIdx]!;
+      const card = player.hand.find(c => c.id === action.cardId);
+      if (!card) return { handled: true, state };
+      const topCard = state.discardPile[state.discardPile.length - 1];
+
+      if (hr.reverseDeflectDrawFour && card.type === 'reverse' && topCard?.type === 'wild_draw_four') {
+        const newHand = player.hand.filter(c => c.id !== action.cardId);
+        const newDirection = state.direction === 'clockwise' ? 'counter_clockwise' : 'clockwise';
+        const players = state.players.map((p, i) =>
+          i === playerIdx ? { ...p, hand: newHand } : p,
+        );
+        const wd4PlayerIdx = state.currentPlayerIndex;
+        const wd4PlayerId = state.players[wd4PlayerIdx]!.id;
+        const afterPenaltyNextIdx = ctx.getNextPlayerIndex(wd4PlayerIdx, players.length, newDirection);
+        const baseState = checkRoundEnd({
+          ...state,
+          players,
+          discardPile: [...state.discardPile, card],
+          currentColor: card.color ?? state.currentColor,
+          direction: newDirection,
+          phase: 'playing',
+          pendingDrawPlayerId: null,
+          lastAction: action,
+        }, action.playerId);
+        return {
+          handled: true,
+          state: ctx.startPenaltyDraw(baseState, wd4PlayerId, 4, afterPenaltyNextIdx, action.playerId),
+        };
+      }
+
+      if (hr.skipDeflect && card.type === 'skip') {
+        const newHand = player.hand.filter(c => c.id !== action.cardId);
+        const players = state.players.map((p, i) =>
+          i === playerIdx ? { ...p, hand: newHand } : p,
+        );
+        const nextIdx = ctx.getNextPlayerIndex(playerIdx, players.length, state.direction);
+        const nextPlayerId = state.players[nextIdx]!.id;
+        const afterPenaltyNextIdx = ctx.getNextPlayerIndex(nextIdx, players.length, state.direction);
+        const baseState = checkRoundEnd({
+          ...state,
+          players,
+          discardPile: [...state.discardPile, card],
+          currentColor: card.color ?? state.currentColor,
+          phase: 'playing',
+          pendingDrawPlayerId: null,
+          lastAction: action,
+        }, action.playerId);
+        return {
+          handled: true,
+          state: ctx.startPenaltyDraw(baseState, nextPlayerId, 4, afterPenaltyNextIdx, action.playerId),
+        };
+      }
+
+      return { handled: false };
+    }
+
+    if (action.type !== 'PLAY_CARD' || state.drawStack <= 0) return { handled: false };
     const player = state.players[state.currentPlayerIndex];
     if (!player || player.id !== action.playerId) return { handled: false };
     const card = player.hand.find(c => c.id === action.cardId);

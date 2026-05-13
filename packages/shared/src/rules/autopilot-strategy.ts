@@ -84,6 +84,20 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
           return [{ type: 'PLAY_CARD', playerId, cardId: stackable.id, ...(chosenColor ? { chosenColor } : {}) }];
         }
       }
+      if (topCard?.type === 'wild_draw_four') {
+        if (hr.reverseDeflectDrawFour) {
+          const reverseCard = player.hand.find(c => c.type === 'reverse');
+          if (reverseCard) {
+            return [{ type: 'PLAY_CARD', playerId, cardId: reverseCard.id }];
+          }
+        }
+        if (hr.skipDeflect) {
+          const skipCard = player.hand.find(c => c.type === 'skip');
+          if (skipCard) {
+            return [{ type: 'PLAY_CARD', playerId, cardId: skipCard.id }];
+          }
+        }
+      }
       return [{ type: 'ACCEPT', playerId }];
     }
     return [];

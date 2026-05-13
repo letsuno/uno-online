@@ -20,6 +20,7 @@ import { useGatewayStore } from '@/shared/voice/gateway-store';
 import { useMemo } from 'react';
 import { playThrowHitSound } from '@/shared/sound/sound-manager';
 import { usePlayerLayout } from '../hooks/usePlayerLayout';
+import { useSeatShuffleAnimation } from '../hooks/useSeatShuffleAnimation';
 import { useDrawAnimation } from '../hooks/useDrawAnimation';
 import { useChatBubbles } from '../hooks/useChatBubbles';
 
@@ -170,6 +171,14 @@ export default function GameTable({ onDraw }: GameTableProps) {
   // Player layout
   const { playerPositions, getPlayerPosition } = usePlayerLayout(dimensions, players, userId);
 
+  // Seat shuffle animation
+  const shuffleSeatsEnabled = settings?.houseRules?.shuffleSeats ?? false;
+  const { positions: animatedPositions, shufflePhase } = useSeatShuffleAnimation(
+    playerPositions,
+    roundNumber,
+    shuffleSeatsEnabled,
+  );
+
   // Draw animation and hand swap animation
   const {
     drawAnimLeft,
@@ -270,7 +279,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
       {/* Center area: DrawPile + DiscardPile */}
       {dimensions.width > 0 && (
         <div
-          className="absolute flex items-center justify-center gap-3 md:gap-6"
+          className="absolute flex items-center justify-center gap-6 md:gap-12"
           style={{
             left: dimensions.width / 2,
             top: dimensions.height / 2,
@@ -369,8 +378,25 @@ export default function GameTable({ onDraw }: GameTableProps) {
         )}
       </AnimatePresence>
 
+      {/* Seat shuffle overlay */}
+      <AnimatePresence>
+        {shufflePhase !== 'idle' && dimensions.width > 0 && (
+          <motion.div
+            className="absolute left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+            style={{ top: dimensions.height / 2 - 100 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.3 } }}
+          >
+            <div className="px-4 py-2 rounded-full bg-black/60 border border-primary/30 backdrop-blur-sm">
+              <span className="text-sm font-game font-bold text-primary text-shadow-glow">🔀 随机座位</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Player nodes */}
-      {playerPositions.map((pos, i) => {
+      {animatedPositions.map((pos, i) => {
         const player = players[i];
         if (!player) return null;
         const isActive = i === currentPlayerIndex;
@@ -389,6 +415,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
             isSpeaking={isMe ? selfSpeaking : mumbleSpeakingNames.has(player.name)}
             voiceState={voicePresence[player.id]}
             position={pos}
+            shufflePhase={shufflePhase}
             turnEndTime={isActive ? turnEndTime : null}
             turnTimeLimit={settings ? (settings.houseRules?.fastMode ? Math.floor(settings.turnTimeLimit / 2) : settings.turnTimeLimit) : undefined}
             lastPlayedCard={lastPlayed?.card ?? null}
@@ -426,7 +453,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
       </AnimatePresence>
 
       {/* Spectator seats */}
-      <SpectatorSeats />
+      {dimensions.width > 0 && <SpectatorSeats top={dimensions.height / 2 - 168} />}
     </div>
   );
 }

@@ -29,6 +29,9 @@ export function useGameSocket(roomCode: string | undefined) {
           if (roomCode && res.players && res.room) {
             setRoom(roomCode, res.players, res.room);
           }
+          if (res.isSpectator) {
+            useGameStore.getState().setSpectator(true);
+          }
           setGameState(res.gameState);
           refreshVoicePresence();
         } else {
@@ -46,10 +49,12 @@ export function useGameSocket(roomCode: string | undefined) {
 
     const onSpectatorQueue = (data: { queue: string[]; nickname: string; joined: boolean }) => {
       useSpectatorStore.getState().setPendingJoinQueue(data.queue);
-      useToastStore.getState().addToast(
-        data.joined ? `${data.nickname} 将在下一轮加入游戏` : `${data.nickname} 取消了加入`,
-        'info',
-      );
+      if (data.nickname) {
+        useToastStore.getState().addToast(
+          data.joined ? `${data.nickname} 将在下一轮加入游戏` : `${data.nickname} 取消了加入`,
+          'info',
+        );
+      }
     };
     socket.on('game:spectator_queue', onSpectatorQueue);
 
@@ -71,6 +76,9 @@ export function useGameSocket(roomCode: string | undefined) {
           if (res.success && res.gameState) {
             if (res.players && res.room) {
               setRoom(roomCode, res.players, res.room);
+            }
+            if (res.isSpectator) {
+              useGameStore.getState().setSpectator(true);
             }
             setGameState(res.gameState);
             refreshVoicePresence();

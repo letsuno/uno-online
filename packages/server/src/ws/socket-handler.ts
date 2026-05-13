@@ -6,12 +6,12 @@ import { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import { GameSession } from '../plugins/core/game/session.js';
 import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, notifyAutopilotAction, resetPlayerTimeout } from './room-events.js';
 import { getAutopilotActionPlayerId, canPlayerAutopilotOnce } from './autopilot-action-player.js';
-import { registerGameEvents, addAutopilotVote, clearChatTimestamps, getRoundEndVoteState } from './game-events.js';
+import { registerGameEvents, addAutopilotVote, clearChatTimestamps, getRoundEndVoteState, isSpectatorPendingJoin, updatePendingSpectatorSocketId, getPendingSpectatorQueue } from './game-events.js';
 import { getRoom, getRoomPlayers, setRoomOwner } from '../plugins/core/room/store.js';
 import { loadGameState, GameStatePersister } from '../plugins/core/game/state-store.js';
 import { checkRateLimit, clearRateLimit } from './rate-limiter.js';
 import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws.js';
-import { setupSpectateHandlers, getSpectatorNames } from '../plugins/core/spectate/ws.js';
+import { setupSpectateHandlers, getSpectatorNames, addSpectator } from '../plugins/core/spectate/ws.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { registerVoicePresenceEvents, removeVoicePresence } from './voice-presence.js';
 import { VoiceChannelManager } from '../voice/channel-manager.js';
@@ -182,6 +182,34 @@ export function setupSocketHandlers(
       }
 
       if (session) {
+        const isPlayerInGame = session.getFullState().players.some(p => p.id === userId);
+
+        if (!isPlayerInGame) {
+          // User is not a player — rejoin as spectator
+          if (room.status === 'playing' && room.settings.allowSpectators) {
+            socket.data.isSpectator = true;
+            addSpectator(roomCode, socket.data.user.nickname);
+            if (isSpectatorPendingJoin(roomCode, userId)) {
+              updatePendingSpectatorSocketId(roomCode, userId, socket.id);
+            }
+            const spectatorMode = (room.settings.spectatorMode as 'full' | 'hidden') ?? 'hidden';
+            const view = session.getSpectatorView(spectatorMode);
+            callback?.({ success: true, gameState: view, isSpectator: true });
+            socket.emit('chat:history', session.getChatHistory());
+            const spectators = getSpectatorNames(roomCode);
+            io.to(roomCode).emit('room:spectator_list', { spectators });
+            const queue = getPendingSpectatorQueue(roomCode);
+            if (queue.length > 0) {
+              socket.emit('game:spectator_queue', { queue, nickname: '', joined: true });
+            }
+            const voteState = getRoundEndVoteState(roomCode, session);
+            if (voteState) socket.emit('game:next_round_vote', voteState);
+          } else {
+            callback?.({ success: false, error: '无法观战该房间' });
+          }
+          return;
+        }
+
         cancelDissolutionTimer(roomCode);
         session.setPlayerConnected(userId, true);
         session.setPlayerAutopilot(userId, false);

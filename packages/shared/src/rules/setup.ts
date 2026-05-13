@@ -204,7 +204,8 @@ export function initializeNextRound(prevState: GameState): GameState {
   }
 
   const currentColor: Color | null = isColoredCard(topCard) ? topCard.color : null;
-  const applied = applyFirstDiscardEffect(effect, players, prevState.currentPlayerIndex, 'clockwise', deckAfterDiscard);
+  const startIdx = players.length > 0 ? prevState.currentPlayerIndex % players.length : 0;
+  const applied = applyFirstDiscardEffect(effect, players, startIdx, 'clockwise', deckAfterDiscard);
 
   return {
     phase: applied.phase,

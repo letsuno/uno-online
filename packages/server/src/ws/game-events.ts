@@ -57,6 +57,21 @@ const pendingSpectatorJoins = new Map<string, Map<string, { userId: string; nick
 const AUTOPILOT_JUMP_IN_DELAY_MS = 2_000;
 const autopilotJumpInTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+export function getPendingSpectatorQueue(roomCode: string): string[] {
+  const pending = pendingSpectatorJoins.get(roomCode);
+  if (!pending) return [];
+  return [...pending.values()].map((p) => p.nickname);
+}
+
+export function isSpectatorPendingJoin(roomCode: string, userId: string): boolean {
+  return pendingSpectatorJoins.get(roomCode)?.has(userId) ?? false;
+}
+
+export function updatePendingSpectatorSocketId(roomCode: string, userId: string, newSocketId: string): void {
+  const entry = pendingSpectatorJoins.get(roomCode)?.get(userId);
+  if (entry) entry.socketId = newSocketId;
+}
+
 interface NextRoundVoteState {
   votes: number;
   required: number;
@@ -252,10 +267,16 @@ async function startNextRound(
     persister.flushNow(roomCode),
   ]);
   io.to(roomCode).emit('game:next_round_vote', { votes: 0, required: session.getFullState().players.length, voters: [] });
+  const room = await getRoom(redis, roomCode);
+  const spectatorMode = (room?.settings?.spectatorMode as 'full' | 'hidden') ?? 'hidden';
   const sockets = await io.in(roomCode).fetchSockets();
   for (const s of sockets) {
-    const userId = (s.data as SocketData).user.userId;
-    s.emit('game:state', session.getPlayerView(userId));
+    const sData = s.data as SocketData;
+    if (sData.isSpectator) {
+      s.emit('game:state', session.getSpectatorView(spectatorMode));
+    } else {
+      s.emit('game:state', session.getPlayerView(sData.user.userId));
+    }
   }
   startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
 }
@@ -741,10 +762,16 @@ export function registerGameEvents(
       persister.flushNow(roomCode),
     ]);
     io.to(roomCode).emit('chat:cleared');
+    const room2 = await getRoom(redis, roomCode);
+    const spectatorMode2 = (room2?.settings?.spectatorMode as 'full' | 'hidden') ?? 'hidden';
     const sockets = await io.in(roomCode).fetchSockets();
     for (const s of sockets) {
-      const userId = (s.data as SocketData).user.userId;
-      s.emit('game:state', session.getPlayerView(userId));
+      const sData = s.data as SocketData;
+      if (sData.isSpectator) {
+        s.emit('game:state', session.getSpectatorView(spectatorMode2));
+      } else {
+        s.emit('game:state', session.getPlayerView(sData.user.userId));
+      }
     }
     startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
     callback?.({ success: true });
