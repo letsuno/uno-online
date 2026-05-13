@@ -8,7 +8,7 @@ import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerT
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import { getRoom, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS } from '@uno-online/shared';
-import { removeSpectator, getSpectatorNames } from '../plugins/core/spectate/ws.js';
+import { removeSpectator, addSpectator, getSpectatorNames } from '../plugins/core/spectate/ws.js';
 import type { SocketData } from './types.js';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
@@ -52,6 +52,7 @@ function buildChatMessage(user: SocketData['user'], text: string, isSpectator = 
 }
 
 const nextRoundVotes = new Map<string, Set<string>>();
+const roundEndTimestamps = new Map<string, number>();
 const pendingSpectatorJoins = new Map<string, Map<string, { userId: string; nickname: string; avatarUrl?: string | null; role?: string; isBot?: boolean; socketId: string }>>();
 const AUTOPILOT_JUMP_IN_DELAY_MS = 2_000;
 const autopilotJumpInTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -60,6 +61,7 @@ interface NextRoundVoteState {
   votes: number;
   required: number;
   voters: string[];
+  roundEndAt: number;
 }
 
 export function addAutopilotVote(roomCode: string, playerId: string, session: GameSession, io: SocketIOServer): void {
@@ -170,7 +172,13 @@ function getNextRoundVoteState(roomCode: string, session: GameSession): NextRoun
     votes: voters.length,
     required: playerIds.size,
     voters,
+    roundEndAt: roundEndTimestamps.get(roomCode) ?? Date.now(),
   };
+}
+
+export function getRoundEndVoteState(roomCode: string, session: GameSession): NextRoundVoteState | null {
+  if (!session.isRoundEnd()) return null;
+  return getNextRoundVoteState(roomCode, session);
 }
 
 async function processPendingSpectatorJoins(
@@ -235,6 +243,7 @@ async function startNextRound(
   persister: GameStatePersister,
 ): Promise<void> {
   nextRoundVotes.delete(roomCode);
+  roundEndTimestamps.delete(roomCode);
   await processPendingSpectatorJoins(io, redis, roomCode, session);
   session.startNextRound();
   persister.markDirty(roomCode, session.getFullState());
@@ -274,6 +283,7 @@ async function emitTerminalStateIfNeeded(
 
   if (state.phase === 'round_end') {
     nextRoundVotes.delete(roomCode);
+    roundEndTimestamps.set(roomCode, Date.now());
 
     const connectedAutopilotIds = state.players.filter((p) => p.autopilot && p.connected).map((p) => p.id);
     if (connectedAutopilotIds.length > 0) {
@@ -637,17 +647,18 @@ export function registerGameEvents(
       return callback?.({ success: false, error: '玩家不在游戏中' });
     }
 
+    const targetPlayer = state.players.find((p) => p.id === targetId);
     session.removePlayer(targetId);
     await removePlayerFromRoom(redis, roomCode, targetId);
 
     const targetSockets = await io.in(roomCode).fetchSockets();
     for (const s of targetSockets) {
       if ((s.data as SocketData).user.userId === targetId) {
-        s.emit('game:kicked', { reason: '你已被房主移出游戏' });
-        s.leave(roomCode);
-        (s.data as SocketData).roomCode = null;
+        (s.data as SocketData).isSpectator = true;
+        s.emit('game:kicked', { reason: '你已被房主移至观战席', toSpectator: true });
       }
     }
+    if (targetPlayer) addSpectator(roomCode, targetPlayer.name);
 
     voters.delete(targetId);
     const voteState = getNextRoundVoteState(roomCode, session);
@@ -658,7 +669,50 @@ export function registerGameEvents(
       persister.flushNow(roomCode),
       emitGameUpdate(io, roomCode, session, redis),
     ]);
+    const spectators = getSpectatorNames(roomCode);
+    io.to(roomCode).emit('room:spectator_list', { spectators });
     io.to(roomCode).emit('room:updated', { players: state.players.filter((p) => p.id !== targetId).map((p) => ({ userId: p.id, name: p.name })) });
+
+    callback?.({ success: true });
+  });
+
+  socket.on('game:leave_to_spectate', async (callback) => {
+    const ctx = getSession(socket, sessions);
+    if (!ctx) return callback?.({ success: false, error: 'No active game' });
+    const { session, roomCode } = ctx;
+
+    if (!session.isRoundEnd()) {
+      return callback?.({ success: false, error: '只能在回合结束阶段切换观战' });
+    }
+
+    const state = session.getFullState();
+    const player = state.players.find((p) => p.id === data.user.userId);
+    if (!player) return callback?.({ success: false, error: '玩家不在游戏中' });
+
+    const room = await getRoom(redis, roomCode);
+    if (room?.ownerId === data.user.userId) {
+      return callback?.({ success: false, error: '房主不能离开对局' });
+    }
+
+    session.removePlayer(data.user.userId);
+    await removePlayerFromRoom(redis, roomCode, data.user.userId);
+
+    (socket.data as SocketData).isSpectator = true;
+    addSpectator(roomCode, player.name);
+
+    const voters = nextRoundVotes.get(roomCode) ?? new Set<string>();
+    voters.delete(data.user.userId);
+    const voteState = getNextRoundVoteState(roomCode, session);
+    io.to(roomCode).emit('game:next_round_vote', voteState);
+
+    persister.markDirty(roomCode, session.getFullState());
+    await Promise.all([
+      persister.flushNow(roomCode),
+      emitGameUpdate(io, roomCode, session, redis),
+    ]);
+    const spectators = getSpectatorNames(roomCode);
+    io.to(roomCode).emit('room:spectator_list', { spectators });
+    io.to(roomCode).emit('room:updated', { players: state.players.filter((p) => p.id !== data.user.userId).map((p) => ({ userId: p.id, name: p.name })) });
 
     callback?.({ success: true });
   });
@@ -675,6 +729,7 @@ export function registerGameEvents(
       return callback?.({ success: false, error: '只有房主可以发起再来一局' });
     }
     nextRoundVotes.delete(roomCode);
+    roundEndTimestamps.delete(roomCode);
     await processPendingSpectatorJoins(io, redis, roomCode, session);
     session.resetForRematch();
     sessions.set(roomCode, session);

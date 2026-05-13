@@ -6,7 +6,7 @@ import { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import { GameSession } from '../plugins/core/game/session.js';
 import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, notifyAutopilotAction, resetPlayerTimeout } from './room-events.js';
 import { getAutopilotActionPlayerId, canPlayerAutopilotOnce } from './autopilot-action-player.js';
-import { registerGameEvents, addAutopilotVote, clearChatTimestamps } from './game-events.js';
+import { registerGameEvents, addAutopilotVote, clearChatTimestamps, getRoundEndVoteState } from './game-events.js';
 import { getRoom, getRoomPlayers, setRoomOwner } from '../plugins/core/room/store.js';
 import { loadGameState, GameStatePersister } from '../plugins/core/game/state-store.js';
 import { checkRateLimit, clearRateLimit } from './rate-limiter.js';
@@ -195,6 +195,8 @@ export function setupSocketHandlers(
         callback?.({ success: true, gameState: session.getPlayerView(userId), players, room });
         socket.emit('chat:history', session.getChatHistory());
         socket.emit('room:spectator_list', { spectators: getSpectatorNames(roomCode) });
+        const voteState = getRoundEndVoteState(roomCode, session);
+        if (voteState) socket.emit('game:next_round_vote', voteState);
         const state = session.getFullState();
         const connectedCount = state.players.filter(p => p.connected).length;
         if (connectedCount >= 2 && state.phase === 'playing') {

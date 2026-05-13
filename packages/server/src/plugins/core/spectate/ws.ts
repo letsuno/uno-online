@@ -19,6 +19,11 @@ export function removeSpectator(roomCode: string, nickname: string): void {
   roomSpectators.get(roomCode)?.delete(nickname);
 }
 
+export function addSpectator(roomCode: string, nickname: string): void {
+  if (!roomSpectators.has(roomCode)) roomSpectators.set(roomCode, new Set());
+  roomSpectators.get(roomCode)!.add(nickname);
+}
+
 export function setupSpectateHandlers(
   io: SocketIOServer,
   kv: KvStore,
