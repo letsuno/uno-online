@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Trophy, BarChart3, Crown, Check, UserX, UserPlus, WifiOff } from 'lucide-react';
+import { Trophy, BarChart3, Crown, Check, UserX, UserPlus, WifiOff, Eye } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useRoomStore } from '@/shared/stores/room-store';
@@ -37,25 +37,33 @@ interface ScoreBoardProps {
   onRematch: () => void;
   onBackToLobby: () => void;
   onKickPlayer: (targetId: string) => void;
+  onLeaveToSpectate: () => void;
 }
 
-export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby, onKickPlayer }: ScoreBoardProps) {
+export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby, onKickPlayer, onLeaveToSpectate }: ScoreBoardProps) {
   const players = useGameStore((s) => s.players);
   const winnerId = useGameStore((s) => s.winnerId);
   const phase = useGameStore((s) => s.phase);
   const vote = useGameStore((s) => s.nextRoundVote);
-  const [kickCountdown, setKickCountdown] = useState(KICK_DELAY_S);
+  const roundEndAt = vote?.roundEndAt ?? null;
+  const [kickCountdown, setKickCountdown] = useState(() => {
+    if (!roundEndAt) return KICK_DELAY_S;
+    return Math.max(0, KICK_DELAY_S - Math.floor((Date.now() - roundEndAt) / 1000));
+  });
   const [leaveCountdown, setLeaveCountdown] = useState(5);
   const kickTimerRef = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
-    if (phase !== 'round_end') { setKickCountdown(KICK_DELAY_S); return; }
-    setKickCountdown(KICK_DELAY_S);
+    if (phase !== 'round_end' || !roundEndAt) { setKickCountdown(KICK_DELAY_S); return; }
+    const calc = () => Math.max(0, KICK_DELAY_S - Math.floor((Date.now() - roundEndAt) / 1000));
+    setKickCountdown(calc());
     kickTimerRef.current = setInterval(() => {
-      setKickCountdown((c) => { if (c <= 1) { clearInterval(kickTimerRef.current); return 0; } return c - 1; });
+      const v = calc();
+      setKickCountdown(v);
+      if (v <= 0) clearInterval(kickTimerRef.current);
     }, 1000);
     return () => clearInterval(kickTimerRef.current);
-  }, [phase]);
+  }, [phase, roundEndAt]);
 
   useEffect(() => {
     setLeaveCountdown(5);
@@ -122,11 +130,15 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby, onKi
                     <td className="px-2 py-1.5 text-center whitespace-nowrap">
                       {ready
                         ? <Check size={14} className="inline text-green-400" />
-                        : isHost && canKick && !isSelf
-                          ? <button onClick={() => onKickPlayer(p.id)} className="text-xs text-destructive hover:text-destructive/80 cursor-pointer bg-transparent border-none" title="踢出游戏"><UserX size={14} className="inline" /></button>
-                          : isSelf
-                            ? <span className="text-xs text-muted-foreground">等待中</span>
-                            : <KickCountdownRing remaining={kickCountdown} total={KICK_DELAY_S} />}
+                        : isSelf
+                          ? <span className="text-xs text-muted-foreground">等待中</span>
+                          : isHost && canKick
+                            ? <button onClick={() => onKickPlayer(p.id)} className="text-xs text-destructive hover:text-destructive/80 cursor-pointer bg-transparent border-none" title="移至观战席"><UserX size={14} className="inline" /></button>
+                            : disconnected
+                              ? canKick
+                                ? <span className="text-xs text-destructive">已超时</span>
+                                : <KickCountdownRing remaining={kickCountdown} total={KICK_DELAY_S} />
+                              : <span className="text-xs text-muted-foreground">等待中</span>}
                     </td>
                   )}
                   <td className="px-2 py-1.5 text-right font-bold">{p.score}</td>
@@ -145,10 +157,11 @@ export default function ScoreBoard({ onPlayAgain, onRematch, onBackToLobby, onKi
             {allAgreed ? '所有玩家已同意，等待房主开始下一轮' : `已有 ${votes}/${required} 人同意继续下一轮`}
           </p>
         )}
-        <div className="flex gap-3 justify-center">
+        <div className="flex gap-3 justify-center flex-wrap">
           {!isGameOver && <Button variant="primary" onClick={onPlayAgain} disabled={isNextRoundDisabled} sound="ready">{nextRoundButtonText}</Button>}
           {isGameOver && isHost && <Button variant="primary" onClick={onRematch} sound="ready">再来一局</Button>}
           {isGameOver && !isHost && <Button variant="primary" disabled>等待房主再来一局…</Button>}
+          {!isHost && <Button variant="secondary" onClick={onLeaveToSpectate} sound="click"><Eye size={14} className="inline align-middle mr-1" />进入观战席</Button>}
           <Button variant="secondary" onClick={onBackToLobby} sound="click" disabled={leaveCountdown > 0}>{leaveCountdown > 0 ? `返回大厅 (${leaveCountdown}s)` : '返回大厅'}</Button>
         </div>
       </div>

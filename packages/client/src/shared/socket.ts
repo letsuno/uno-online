@@ -203,6 +203,11 @@ export function getSocket(): TypedSocket {
     });
 
     socket.on('game:kicked', (data) => {
+      if (data.toSpectator) {
+        useGameStore.getState().setSpectator(true);
+        useToastStore.getState().addToast(data.reason || '你已被移至观战席', 'info');
+        return;
+      }
       useRoomStore.getState().clearRoom();
       useGameStore.getState().clearGame();
       leaveVoiceSession();
