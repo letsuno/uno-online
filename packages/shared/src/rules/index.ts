@@ -11,5 +11,5 @@ export type { HouseRulePlugin, RuleMetadata, RuleContext, PreCheckResult } from 
 export { buildRuleContext } from './house-rule-helpers.js';
 export { getAllRuleMetadata } from './house-rule-registry.js';
 export { PRE_CHECK_PLUGINS, POST_PROCESS_PLUGINS } from './rules/index.js';
-export { chooseAutopilotAction, chooseAutopilotJumpInAction } from './autopilot-strategy.js';
+export { chooseAutopilotAction, chooseAutopilotJumpInAction, canJumpIn, chooseJumpInAction } from './autopilot-strategy.js';
 export { HOUSE_RULE_DESCRIPTIONS } from './rule-descriptions.js';

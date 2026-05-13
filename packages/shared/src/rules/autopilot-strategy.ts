@@ -34,20 +34,34 @@ function pickPlayableCard(playable: Card[], currentColor: Color): Card {
   );
 }
 
-export function chooseAutopilotJumpInAction(state: GameState, playerId: string): GameAction[] {
-  if (!state.settings.houseRules.jumpIn || state.phase !== 'playing') return [];
-
+export function canJumpIn(state: GameState, playerId: string): boolean {
+  if (!state.settings.houseRules.jumpIn || state.phase !== 'playing') return false;
+  if ((state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0) return false;
   const currentPlayer = state.players[state.currentPlayerIndex];
-  if (!currentPlayer || currentPlayer.id === playerId) return [];
-
+  if (!currentPlayer || currentPlayer.id === playerId) return false;
   const player = state.players.find(p => p.id === playerId);
   const topCard = state.discardPile[state.discardPile.length - 1];
-  if (!player?.autopilot || !topCard) return [];
+  if (!player || !topCard) return false;
+  return player.hand.some(c => isExactJumpInMatch(c, topCard));
+}
 
+export function chooseJumpInAction(state: GameState, playerId: string): GameAction[] {
+  if (!state.settings.houseRules.jumpIn || state.phase !== 'playing') return [];
+  if ((state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0) return [];
+  const currentPlayer = state.players[state.currentPlayerIndex];
+  if (!currentPlayer || currentPlayer.id === playerId) return [];
+  const player = state.players.find(p => p.id === playerId);
+  const topCard = state.discardPile[state.discardPile.length - 1];
+  if (!player || !topCard) return [];
   const card = player.hand.find(c => isExactJumpInMatch(c, topCard));
   if (!card) return [];
-
   return playCardActions(playerId, card, player.hand);
+}
+
+export function chooseAutopilotJumpInAction(state: GameState, playerId: string): GameAction[] {
+  const player = state.players.find(p => p.id === playerId);
+  if (!player?.autopilot) return [];
+  return chooseJumpInAction(state, playerId);
 }
 
 export function chooseAutopilotAction(state: GameState, playerId: string): GameAction[] {

@@ -79,6 +79,7 @@ export function useGameLogTracker(): void {
         playerId: lastAction.playerId,
         playerName: player.name,
         card: topCard,
+        isJumpIn: lastAction.isJumpIn,
       });
     } else if (lastAction.type === 'DRAW_CARD') {
       const player = findPlayer(lastAction.playerId);
