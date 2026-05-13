@@ -6,9 +6,9 @@ import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts } from './room-events.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
-import { getRoom, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom } from '../plugins/core/room/store.js';
+import { getRoom, getRoomPlayers, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom, resetAllPlayersReady } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS } from '@uno-online/shared';
-import { removeSpectator, addSpectator, getSpectatorNames } from '../plugins/core/spectate/ws.js';
+import { removeSpectator, addSpectator, getSpectatorNames, clearRoomSpectators } from '../plugins/core/spectate/ws.js';
 import type { SocketData } from './types.js';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
@@ -53,6 +53,7 @@ function buildChatMessage(user: SocketData['user'], text: string, isSpectator = 
 
 const nextRoundVotes = new Map<string, Set<string>>();
 const roundEndTimestamps = new Map<string, number>();
+const NEXT_ROUND_COOLDOWN_MS = 10_000;
 const pendingSpectatorJoins = new Map<string, Map<string, { userId: string; nickname: string; avatarUrl?: string | null; role?: string; isBot?: boolean; socketId: string }>>();
 const AUTOPILOT_JUMP_IN_DELAY_MS = 2_000;
 const autopilotJumpInTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -300,6 +301,7 @@ async function emitTerminalStateIfNeeded(
   io.to(roomCode).emit(state.phase === 'game_over' ? 'game:over' : 'game:round_end', {
     winnerId: state.winnerId,
     scores: Object.fromEntries(state.players.map((p) => [p.id, p.score])),
+    ...(state.phase === 'game_over' ? { gameOverAt: Date.now() } : {}),
   });
 
   if (state.phase === 'round_end') {
@@ -319,6 +321,7 @@ async function emitTerminalStateIfNeeded(
   }
 
   if (state.phase === 'game_over') {
+    roundEndTimestamps.set(roomCode, Date.now());
     await Promise.all([
       setRoomStatus(redis, roomCode, 'finished'),
       touchRoomActivity(redis, roomCode),
@@ -590,6 +593,10 @@ export function registerGameEvents(
     io.to(roomCode).emit('game:next_round_vote', voteState);
 
     if (isOwner && hadAlreadyVoted && voteState.votes >= voteState.required) {
+      const endedAt = roundEndTimestamps.get(roomCode);
+      if (endedAt && Date.now() - endedAt < NEXT_ROUND_COOLDOWN_MS) {
+        return callback?.({ success: true, started: false, vote: voteState });
+      }
       await startNextRound(io, redis, roomCode, session, turnTimer, sessions, persister);
       return callback?.({ success: true, started: true, vote: voteState });
     }
@@ -738,7 +745,7 @@ export function registerGameEvents(
     callback?.({ success: true });
   });
 
-  socket.on('game:rematch', async (callback) => {
+  socket.on('game:back_to_room', async (callback) => {
     const ctx = getSession(socket, sessions);
     if (!ctx) return callback?.({ success: false, error: 'No active game' });
     const { session, roomCode } = ctx;
@@ -747,33 +754,47 @@ export function registerGameEvents(
     }
     const room = await getRoom(redis, roomCode);
     if (room?.ownerId !== data.user.userId) {
-      return callback?.({ success: false, error: '只有房主可以发起再来一局' });
+      return callback?.({ success: false, error: '只有房主可以返回房间' });
     }
+    const endedAt = roundEndTimestamps.get(roomCode);
+    if (endedAt && Date.now() - endedAt < NEXT_ROUND_COOLDOWN_MS) {
+      const remaining = Math.ceil((NEXT_ROUND_COOLDOWN_MS - (Date.now() - endedAt)) / 1000);
+      return callback?.({ success: false, error: `请等待 ${remaining} 秒后再操作` });
+    }
+
     nextRoundVotes.delete(roomCode);
     roundEndTimestamps.delete(roomCode);
-    await processPendingSpectatorJoins(io, redis, roomCode, session);
-    session.resetForRematch();
-    sessions.set(roomCode, session);
+    sessions.delete(roomCode);
     persister.cleanup(roomCode);
-    persister.markDirty(roomCode, session.getFullState());
-    await Promise.all([
-      setRoomStatus(redis, roomCode, 'playing'),
-      touchRoomActivity(redis, roomCode),
-      persister.flushNow(roomCode),
-    ]);
-    io.to(roomCode).emit('chat:cleared');
-    const room2 = await getRoom(redis, roomCode);
-    const spectatorMode2 = (room2?.settings?.spectatorMode as 'full' | 'hidden') ?? 'hidden';
+    turnTimer.stop(roomCode);
+    clearRoomTimeouts(roomCode);
+
+    await setRoomStatus(redis, roomCode, 'waiting');
+    await resetAllPlayersReady(redis, roomCode);
+
+    const currentRoomPlayers = await getRoomPlayers(redis, roomCode);
+    const currentIds = new Set(currentRoomPlayers.map((p) => p.userId));
     const sockets = await io.in(roomCode).fetchSockets();
     for (const s of sockets) {
       const sData = s.data as SocketData;
-      if (sData.isSpectator) {
-        s.emit('game:state', session.getSpectatorView(spectatorMode2));
-      } else {
-        s.emit('game:state', session.getPlayerView(sData.user.userId));
+      if (sData.isSpectator && !currentIds.has(sData.user.userId)) {
+        await addPlayerToRoom(redis, roomCode, {
+          userId: sData.user.userId,
+          nickname: sData.user.nickname,
+          avatarUrl: sData.user.avatarUrl,
+          role: sData.user.role,
+          isBot: sData.user.isBot,
+        });
       }
+      sData.isSpectator = false;
     }
-    startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
+
+    clearRoomSpectators(roomCode);
+    await touchRoomActivity(redis, roomCode);
+    const players = await getRoomPlayers(redis, roomCode);
+    const updatedRoom = await getRoom(redis, roomCode);
+    io.to(roomCode).emit('game:back_to_room', { players, room: updatedRoom });
+    io.to(roomCode).emit('chat:cleared');
     callback?.({ success: true });
   });
 }

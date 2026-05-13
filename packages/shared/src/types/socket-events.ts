@@ -28,7 +28,8 @@ export interface ServerToClientEvents {
   'game:card_drawn': (data: { card: Card }) => void;
   'game:action_rejected': (data: { action?: string; reason: string }) => void;
   'game:next_round_vote': (data: { votes: number; required: number; voters: string[]; roundEndAt: number }) => void;
-  'game:over': (data: { winnerId: string | null; scores: Record<string, number>; reason?: string }) => void;
+  'game:over': (data: { winnerId: string | null; scores: Record<string, number>; reason?: string; gameOverAt?: number }) => void;
+  'game:back_to_room': (data: { players: Record<string, unknown>[]; room: Record<string, unknown> }) => void;
   'game:round_end': (data: { winnerId: string | null; scores: Record<string, number> }) => void;
   'game:kicked': (data: { reason: string; toSpectator?: boolean }) => void;
   'auth:kicked': (data: { reason: string }) => void;
@@ -59,6 +60,7 @@ export interface ClientToServerEvents {
   'room:rejoin': (roomCode: string, callback: (res: SocketCallbackResult & Record<string, unknown>) => void) => void;
   'room:leave': (callback?: (res: SocketCallbackResult) => void) => void;
   'room:ready': (ready: boolean, callback?: (res: SocketCallbackResult) => void) => void;
+  'room:toggle_spectator': (spectator: boolean, callback?: (res: SocketCallbackResult) => void) => void;
   'room:update_settings': (settings: Partial<RoomSettings>, callback?: (res: SocketCallbackResult & { room?: Record<string, unknown> }) => void) => void;
   'room:dissolve': (callback?: (res: SocketCallbackResult) => void) => void;
   'room:transfer_owner': (payload: { targetId: string }, callback?: (res: SocketCallbackResult) => void) => void;
@@ -77,7 +79,7 @@ export interface ClientToServerEvents {
   'game:choose_swap_target': (payload: { targetId: string }, callback?: (res: SocketCallbackResult) => void) => void;
   'game:next_round': (callback?: (res: SocketCallbackResult & { started?: boolean; vote?: { votes: number; required: number; voters: string[] } }) => void) => void;
   'game:kick_player': (payload: { targetId?: string }, callback?: (res: SocketCallbackResult) => void) => void;
-  'game:rematch': (callback?: (res: SocketCallbackResult) => void) => void;
+  'game:back_to_room': (callback?: (res: SocketCallbackResult) => void) => void;
   'chat:message': (data: { text: string }) => void;
   'voice:channel:get': (callback: (res: SocketCallbackResult & { voiceChannelId?: number | null }) => void) => void;
   'voice:presence:get': (callback: (presence: Record<string, unknown>) => void) => void;

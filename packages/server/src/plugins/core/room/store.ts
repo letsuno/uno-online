@@ -14,6 +14,7 @@ export interface RoomPlayer {
   nickname: string;
   avatarUrl?: string | null;
   ready: boolean;
+  spectator: boolean;
   role?: string;
   isBot: boolean;
 }
@@ -93,7 +94,7 @@ export async function addPlayerToRoom(kv: KvStore, roomCode: string, player: { u
   await withRoomPlayerLock(roomCode, async () => {
     const existing = await getRoomPlayers(kv, roomCode);
     if (existing.some(p => p.userId === player.userId)) return;
-    existing.push({ userId: player.userId, nickname: player.nickname, avatarUrl: player.avatarUrl ?? null, ready: false, role: player.role ?? 'normal', isBot: player.isBot ?? false });
+    existing.push({ userId: player.userId, nickname: player.nickname, avatarUrl: player.avatarUrl ?? null, ready: false, spectator: false, role: player.role ?? 'normal', isBot: player.isBot ?? false });
     await setRoomPlayers(kv, roomCode, existing);
   });
 }
@@ -110,6 +111,22 @@ export async function setPlayerReady(kv: KvStore, roomCode: string, userId: stri
   await withRoomPlayerLock(roomCode, async () => {
     const players = await getRoomPlayers(kv, roomCode);
     const updated = players.map((p) => p.userId === userId ? { ...p, ready } : p);
+    await setRoomPlayers(kv, roomCode, updated);
+  });
+}
+
+export async function setPlayerSpectator(kv: KvStore, roomCode: string, userId: string, spectator: boolean): Promise<void> {
+  await withRoomPlayerLock(roomCode, async () => {
+    const players = await getRoomPlayers(kv, roomCode);
+    const updated = players.map((p) => p.userId === userId ? { ...p, spectator, ready: spectator ? false : p.ready } : p);
+    await setRoomPlayers(kv, roomCode, updated);
+  });
+}
+
+export async function resetAllPlayersReady(kv: KvStore, roomCode: string): Promise<void> {
+  await withRoomPlayerLock(roomCode, async () => {
+    const players = await getRoomPlayers(kv, roomCode);
+    const updated = players.map((p) => ({ ...p, ready: false }));
     await setRoomPlayers(kv, roomCode, updated);
   });
 }

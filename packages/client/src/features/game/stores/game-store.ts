@@ -35,6 +35,7 @@ interface GameState {
   isSpectator: boolean;
   deckHash: string | null;
   nextRoundVote: NextRoundVoteState | null;
+  gameOverAt: number | null;
   cheatDetected: boolean;
   setCheatDetected: (value: boolean) => void;
   setSpectator: (value: boolean) => void;
@@ -45,6 +46,7 @@ interface GameState {
   setInfoDrawerTab: (tab: InfoDrawerTab) => void;
   setGameState: (view: PlayerView) => void;
   setNextRoundVote: (vote: NextRoundVoteState | null) => void;
+  setGameOverAt: (t: number | null) => void;
   setDrawnCard: (card: Card | null) => void;
   setTurnEndTime: (t: number | null) => void;
   clearGame: () => void;
@@ -73,6 +75,7 @@ export const useGameStore = create<GameState>((set) => ({
   isSpectator: false,
   deckHash: null,
   nextRoundVote: null,
+  gameOverAt: null,
   cheatDetected: false,
   setCheatDetected: (value) => set({ cheatDetected: value }),
   setSpectator: (value) => set({ isSpectator: value }),
@@ -123,10 +126,12 @@ export const useGameStore = create<GameState>((set) => ({
         lastDrawnCard: hasDrawnThisTurn ? state.lastDrawnCard : null,
         deckHash: view.deckHash ?? state.deckHash,
         nextRoundVote: phase === 'round_end' ? state.nextRoundVote : null,
+        gameOverAt: phase === 'game_over' ? state.gameOverAt : null,
         ...spectatorChange,
       };
     }),
   setNextRoundVote: (vote) => set({ nextRoundVote: vote }),
+  setGameOverAt: (t) => set({ gameOverAt: t }),
   setDrawnCard: (card) => set({ lastDrawnCard: card, hasDrawnThisTurn: true }),
   setTurnEndTime: (t) => set({ turnEndTime: t }),
   clearGame: () =>
@@ -153,6 +158,7 @@ export const useGameStore = create<GameState>((set) => ({
       isSpectator: false,
       deckHash: null,
       nextRoundVote: null,
+      gameOverAt: null,
       cheatDetected: false,
       infoDrawerOpen: false,
       infoDrawerTab: 'rules' as InfoDrawerTab,

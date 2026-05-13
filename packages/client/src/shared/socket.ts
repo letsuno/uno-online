@@ -105,6 +105,20 @@ export function getSocket(): TypedSocket {
       useGameStore.getState().setNextRoundVote(vote.votes > 0 ? vote : null);
     });
 
+    socket.on('game:over', (data: { gameOverAt?: number }) => {
+      if (data.gameOverAt) {
+        useGameStore.getState().setGameOverAt(data.gameOverAt);
+      }
+    });
+
+    socket.on('game:back_to_room', (data: { players?: unknown[]; room?: unknown }) => {
+      const roomCode = useRoomStore.getState().roomCode;
+      if (data.players && data.room && roomCode) {
+        useRoomStore.getState().setRoom(roomCode, data.players as any, data.room as any);
+      }
+      useGameStore.getState().clearGame();
+    });
+
     socket.on('game:card_drawn', (data) => {
       useGameStore.getState().setDrawnCard(data.card);
     });
