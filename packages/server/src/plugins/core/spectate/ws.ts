@@ -111,7 +111,9 @@ export function setupSpectateHandlers(
         nickname: nickname ?? '',
         spectators,
       });
-      void clearUserRoom(kv, data.user.userId);
+      clearUserRoom(kv, data.user.userId).catch((err) => {
+        console.warn('[spectate] clearUserRoom on disconnect failed:', err);
+      });
     });
   });
 }
