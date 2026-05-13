@@ -124,116 +124,129 @@ export default function ProfilePage() {
   return (
     <GamePageShell showDecoCards={true}>
       <GameTopBar />
-      <div className="relative z-1 flex flex-col items-center gap-6 w-full max-w-[520px] overflow-y-auto max-h-[calc(100vh-120px)] p-6 scrollbar-thin">
-        <h2 className="font-game text-[32px] text-primary text-shadow-bold">个人信息</h2>
-        {profile && (
-          <>
-            <AvatarUpload avatarUrl={profile.user.avatarUrl} size={96} onUpload={handleAvatarUpload} />
+      <div className="relative z-1 flex flex-col items-center w-full px-6 pt-24 pb-8">
+        {/* Two-column layout */}
+        <div className="flex flex-col md:flex-row gap-8 w-full max-w-[860px]">
 
-            <div className="text-center">
-              {editingNickname ? (
-                <div className="flex items-center gap-2">
-                  <input value={nickname} onChange={(e) => setNickname(e.target.value)}
-                    className="glass-input w-40 text-sm" />
-                  <Button variant="primary" size="sm" onClick={handleSaveNickname} disabled={saving} sound="click">
-                    <Save size={14} />
-                  </Button>
+          {/* Left: Profile card */}
+          <div className="w-full md:w-[240px] md:shrink-0 glass-panel p-6 flex flex-col items-center gap-4">
+            {profile && (
+              <>
+                <AvatarUpload avatarUrl={profile.user.avatarUrl} size={96} onUpload={handleAvatarUpload} />
+
+                <div className="text-center">
+                  {editingNickname ? (
+                    <div className="flex items-center gap-2">
+                      <input value={nickname} onChange={(e) => setNickname(e.target.value)}
+                        className="glass-input w-32 text-sm" />
+                      <Button variant="primary" size="sm" onClick={handleSaveNickname} disabled={saving} sound="click">
+                        <Save size={14} />
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-xl font-bold cursor-pointer" onClick={() => setEditingNickname(true)}
+                      style={profileRoleColor ? { color: profileRoleColor } : undefined}>
+                      {profile.user.nickname} <Edit3 size={14} className="inline-block align-middle text-muted-foreground" />
+                    </p>
+                  )}
+                  <p className="text-muted-foreground text-sm mt-1">@{profile.user.username}</p>
                 </div>
-              ) : (
-                <p className="text-xl font-bold cursor-pointer" onClick={() => setEditingNickname(true)}
-                  style={profileRoleColor ? { color: profileRoleColor } : undefined}>
-                  {profile.user.nickname} <Edit3 size={14} className="inline-block align-middle text-muted-foreground" />
-                </p>
-              )}
-              <p className="text-muted-foreground text-sm mt-1">@{profile.user.username}</p>
-            </div>
+              </>
+            )}
 
+            <div className="flex-1" />
+
+            <Button variant="ghost" className="w-full" onClick={() => navigate('/lobby')} sound="click">返回大厅</Button>
+          </div>
+
+          {/* Right: All settings in one panel */}
+          <div className="flex-1 glass-panel p-6 overflow-y-auto scrollbar-thin max-h-[calc(100vh-180px)]">
             {/* Notification settings */}
-            <NotificationSettings />
+            <NotificationSettingsInline />
+
+            <div className="border-b border-white/5 my-5" />
 
             {/* Password section */}
-            <div className="glass-panel p-5 w-full">
-              <h3 className="text-sm text-muted-foreground mb-3 flex items-center gap-1.5">
-                <Lock size={14} /> 设置密码
-              </h3>
-              <div className="flex flex-col gap-2">
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="新密码"
-                  className="glass-input w-full text-sm" autoComplete="new-password" />
-                <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} placeholder="确认密码"
-                  className="glass-input w-full text-sm" autoComplete="new-password" />
-                {passwordMsg && (
-                  <p className={`text-xs m-0 ${passwordMsg.includes('成功') ? 'text-uno-green' : 'text-destructive'}`}>{passwordMsg}</p>
+            <h3 className="text-sm text-muted-foreground mb-3 flex items-center gap-1.5">
+              <Lock size={14} /> 设置密码
+            </h3>
+            <div className="flex flex-col gap-2">
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="新密码"
+                className="glass-input w-full text-sm" autoComplete="new-password" />
+              <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} placeholder="确认密码"
+                className="glass-input w-full text-sm" autoComplete="new-password" />
+              {passwordMsg && (
+                <p className={`text-xs m-0 ${passwordMsg.includes('成功') ? 'text-uno-green' : 'text-destructive'}`}>{passwordMsg}</p>
+              )}
+              <Button variant="primary" size="sm" onClick={handleSetPassword} sound="click">保存密码</Button>
+            </div>
+
+            <div className="border-b border-white/5 my-5" />
+
+            {/* API Keys section */}
+            <h3 className="text-sm text-muted-foreground mb-3 flex items-center gap-1.5">
+              <Key size={14} /> API Keys
+            </h3>
+            <p className="text-xs text-muted-foreground mb-3">用于连接 MCP 客户端（如 Claude Code），让 AI 代你玩游戏</p>
+
+            {newKeyFull && (
+              <div className="mb-3 rounded-lg border border-uno-green/30 bg-uno-green/10 p-3">
+                <p className="text-xs text-uno-green mb-2">Key 已生成，请立即复制（仅显示一次）：</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 break-all rounded bg-black/30 px-2 py-1 text-xs">{newKeyFull}</code>
+                  <Button size="sm" variant="secondary" onClick={handleCopyKey} sound="click">
+                    <Copy size={12} /> {keyCopied ? '已复制' : ''}
+                  </Button>
+                </div>
+                {keyCopied && (
+                  <button onClick={handleDismissKey} className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    我已保存，关闭此提示
+                  </button>
                 )}
-                <Button variant="primary" size="sm" onClick={handleSetPassword} sound="click">保存密码</Button>
               </div>
+            )}
+
+            {keyError && (
+              <p className="text-xs text-destructive mb-2">{keyError}</p>
+            )}
+
+            <div className="flex gap-2 mb-3">
+              <input
+                type="text"
+                placeholder="Key 名称（如：我的 Claude）"
+                value={newKeyName}
+                onChange={(e) => setNewKeyName(e.target.value)}
+                maxLength={50}
+                className="glass-input w-full text-sm flex-1"
+              />
+              <Button variant="primary" size="sm" onClick={handleCreateKey} disabled={creatingKey || !newKeyName.trim()} sound="click">
+                生成
+              </Button>
             </div>
 
-            {/* API Keys */}
-            <div className="glass-panel p-5 w-full">
-              <h3 className="text-sm text-muted-foreground mb-3 flex items-center gap-1.5">
-                <Key size={14} /> API Keys
-              </h3>
-              <p className="text-xs text-muted-foreground mb-3">用于连接 MCP 客户端（如 Claude Code），让 AI 代你玩游戏</p>
-
-              {newKeyFull && (
-                <div className="mb-3 rounded-lg border border-uno-green/30 bg-uno-green/10 p-3">
-                  <p className="text-xs text-uno-green mb-2">Key 已生成，请立即复制（仅显示一次）：</p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 break-all rounded bg-black/30 px-2 py-1 text-xs">{newKeyFull}</code>
-                    <Button size="sm" variant="secondary" onClick={handleCopyKey} sound="click">
-                      <Copy size={12} /> {keyCopied ? '已复制' : ''}
-                    </Button>
-                  </div>
-                  {keyCopied && (
-                    <button onClick={handleDismissKey} className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                      我已保存，关闭此提示
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {keyError && (
-                <p className="text-xs text-destructive mb-2">{keyError}</p>
-              )}
-
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  placeholder="Key 名称（如：我的 Claude）"
-                  value={newKeyName}
-                  onChange={(e) => setNewKeyName(e.target.value)}
-                  maxLength={50}
-                  className="glass-input w-full text-sm flex-1"
-                />
-                <Button variant="primary" size="sm" onClick={handleCreateKey} disabled={creatingKey || !newKeyName.trim()} sound="click">
-                  生成
-                </Button>
-              </div>
-
-              {apiKeys.length > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  {apiKeys.map((k) => (
-                    <div key={k.id} className="flex items-center justify-between rounded-lg border border-white/5 px-3 py-2">
-                      <div>
-                        <span className="text-sm">{k.name}</span>
-                        <code className="ml-2 text-xs text-muted-foreground">{k.keyPreview}</code>
-                      </div>
-                      <button onClick={() => handleDeleteKey(k.id)} className="text-muted-foreground hover:text-destructive transition-colors" aria-label="删除 Key">
-                        <Trash2 size={14} />
-                      </button>
+            {apiKeys.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                {apiKeys.map((k) => (
+                  <div key={k.id} className="flex items-center justify-between rounded-lg border border-white/5 px-3 py-2">
+                    <div>
+                      <span className="text-sm">{k.name}</span>
+                      <code className="ml-2 text-xs text-muted-foreground">{k.keyPreview}</code>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-          </>
-        )}
-        <Button variant="ghost" onClick={() => navigate('/lobby')} sound="click">返回大厅</Button>
+                    <button onClick={() => handleDeleteKey(k.id)} className="text-muted-foreground hover:text-destructive transition-colors" aria-label="删除 Key">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </GamePageShell>
   );
 }
+
+/* ── Notification settings (inline, no glass-panel wrapper) ── */
 
 const NOTIFICATION_LABELS: { key: NotificationEventType; label: string }[] = [
   { key: 'gameStart', label: '游戏开始' },
@@ -243,7 +256,7 @@ const NOTIFICATION_LABELS: { key: NotificationEventType; label: string }[] = [
   { key: 'roomDissolved', label: '房间解散' },
 ];
 
-function NotificationSettings() {
+function NotificationSettingsInline() {
   const { preferences, setPreference } = useNotificationStore();
   const permission = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
 
@@ -254,7 +267,7 @@ function NotificationSettings() {
   };
 
   return (
-    <div className="glass-panel p-5 w-full">
+    <div>
       <h3 className="text-sm text-muted-foreground mb-3 flex items-center gap-1.5">
         <Bell size={14} /> 通知设置
       </h3>
