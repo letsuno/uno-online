@@ -12,7 +12,7 @@ import PlayerVoiceStatus from '@/shared/voice/PlayerVoiceStatus';
 import { useToastStore } from '@/shared/stores/toast-store';
 import PlayerActionMenu from '../components/PlayerActionMenu';
 import { useLeaveRoom } from '../hooks/useLeaveRoom';
-import { DEFAULT_HOUSE_RULES, HOUSE_RULES_PRESETS, HOUSE_RULE_DEFINITIONS } from '@uno-online/shared';
+import { DEFAULT_HOUSE_RULES, HOUSE_RULES_PRESETS, HOUSE_RULE_DEFINITIONS, MAX_PLAYERS } from '@uno-online/shared';
 import type { HouseRules, HouseRuleDefinition } from '@uno-online/shared';
 import { Button } from '@/shared/components/ui/Button';
 import { useBgm } from '@/shared/sound/useBgm';
@@ -84,6 +84,7 @@ export default function RoomPage() {
   const isOwner = room?.ownerId === user?.id;
   const myPlayer = players.find((p) => p.userId === user?.id);
   const activePlayers = players.filter((p) => !p.spectator);
+  const spectatorPlayers = players.filter((p) => p.spectator);
   const allReady = activePlayers.length >= 2 && activePlayers.every((p) => p.ready);
   const [houseRules, setHouseRules] = useState<HouseRules>(DEFAULT_HOUSE_RULES);
   const [menuTarget, setMenuTarget] = useState<{ player: RoomPlayer; position: { x: number; y: number } } | null>(null);
@@ -171,40 +172,80 @@ export default function RoomPage() {
 
         {/* Two-column layout */}
         <div className="flex flex-col md:flex-row gap-6 w-full max-w-[900px] flex-1 min-h-0">
-          {/* Left: Player list */}
-          <div className="flex-1 glass-panel p-6">
-            <h3 className="mb-4 text-sm text-muted-foreground font-game">
-              玩家 ({players.length}/10)
-            </h3>
-            <div className="flex flex-col gap-1">
-              {players.map((p) => {
-                const roleColor = getRoleColor(p.role);
-                const isMe = p.userId === user?.id;
-                return (
-                  <div
-                    key={p.userId}
-                    className={cn(
-                      'flex items-center justify-between py-3 px-3 rounded-lg border-b border-white/5 last:border-b-0',
-                      !isMe && 'cursor-pointer hover:bg-white/5'
-                    )}
-                    onClick={(e) => {
-                      if (isMe) return;
-                      setMenuTarget({ player: p, position: { x: e.clientX, y: e.clientY } });
-                    }}
-                  >
-                    <span className="flex min-w-0 flex-1 items-center gap-2" style={roleColor ? { color: roleColor } : undefined}>
-                      <span className="truncate text-base font-medium">{p.nickname}</span>
-                      {p.isBot && <AiBadge />}
-                      {room?.ownerId === p.userId && <Crown size={16} className="shrink-0 text-primary" />}
-                      <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={isMe} className="shrink-0" />
-                    </span>
-                    <span className={cn('text-xs font-medium', p.spectator ? 'text-blue-400' : p.ready ? 'text-uno-green' : 'text-muted-foreground')}>
-                      {p.spectator ? <><Eye size={14} className="inline-block align-middle" /> 观战</> : p.ready ? <><Check size={14} className="inline-block align-middle" /> 已准备</> : '未准备'}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+          {/* Left: Player + spectator lists */}
+          <div className="flex-1 glass-panel p-6 flex flex-col gap-4 min-h-0">
+            <section>
+              <h3 className="mb-4 text-sm text-muted-foreground font-game">
+                玩家 ({activePlayers.length}/{MAX_PLAYERS})
+              </h3>
+              <div className="flex flex-col gap-1">
+                {activePlayers.map((p) => {
+                  const roleColor = getRoleColor(p.role);
+                  const isMe = p.userId === user?.id;
+                  return (
+                    <div
+                      key={p.userId}
+                      className={cn(
+                        'flex items-center justify-between py-3 px-3 rounded-lg border-b border-white/5 last:border-b-0',
+                        !isMe && 'cursor-pointer hover:bg-white/5'
+                      )}
+                      onClick={(e) => {
+                        if (isMe) return;
+                        setMenuTarget({ player: p, position: { x: e.clientX, y: e.clientY } });
+                      }}
+                    >
+                      <span className="flex min-w-0 flex-1 items-center gap-2" style={roleColor ? { color: roleColor } : undefined}>
+                        <span className="truncate text-base font-medium">{p.nickname}</span>
+                        {p.isBot && <AiBadge />}
+                        {room?.ownerId === p.userId && <Crown size={16} className="shrink-0 text-primary" />}
+                        <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={isMe} className="shrink-0" />
+                      </span>
+                      <span className={cn('text-xs font-medium', p.ready ? 'text-uno-green' : 'text-muted-foreground')}>
+                        {p.ready ? <><Check size={14} className="inline-block align-middle" /> 已准备</> : '未准备'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {spectatorPlayers.length > 0 && (
+              <section>
+                <h3 className="mb-4 text-sm text-muted-foreground font-game flex items-center gap-1.5">
+                  <Eye size={14} className="text-blue-400" />
+                  观战 ({spectatorPlayers.length})
+                </h3>
+                <div className="flex flex-col gap-1">
+                  {spectatorPlayers.map((p) => {
+                    const roleColor = getRoleColor(p.role);
+                    const isMe = p.userId === user?.id;
+                    return (
+                      <div
+                        key={p.userId}
+                        className={cn(
+                          'flex items-center justify-between py-3 px-3 rounded-lg border-b border-white/5 last:border-b-0 opacity-70',
+                          !isMe && 'cursor-pointer hover:bg-white/5 hover:opacity-100'
+                        )}
+                        onClick={(e) => {
+                          if (isMe) return;
+                          setMenuTarget({ player: p, position: { x: e.clientX, y: e.clientY } });
+                        }}
+                      >
+                        <span className="flex min-w-0 flex-1 items-center gap-2" style={roleColor ? { color: roleColor } : undefined}>
+                          <span className="truncate text-base font-medium">{p.nickname}</span>
+                          {p.isBot && <AiBadge />}
+                          {room?.ownerId === p.userId && <Crown size={16} className="shrink-0 text-primary" />}
+                          <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={isMe} className="shrink-0" />
+                        </span>
+                        <span className="text-xs font-medium text-blue-400">
+                          <Eye size={14} className="inline-block align-middle" /> 观战
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
           </div>
 
           {/* Right: Settings (spectator + house rules in one panel) */}

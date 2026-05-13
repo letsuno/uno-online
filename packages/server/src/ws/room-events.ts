@@ -1,7 +1,7 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
 import type { GameAction, GameState, RoomSettings } from '@uno-online/shared';
-import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction } from '@uno-online/shared';
+import { MIN_PLAYERS, MAX_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager.js';
 import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, ensureNotInRoom } from '../plugins/core/room/store.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
@@ -234,6 +234,19 @@ export function registerRoomEvents(
     if (!roomCode) return callback?.({ success: false });
     const room = await getRoom(redis, roomCode);
     if (!room || room.status !== 'waiting') return callback?.({ success: false });
+
+    // When switching back from the spectator bench to a player seat, make
+    // sure we don't blow past the active-roster cap (e.g. 10 active + 1
+    // bench, where toggling back would yield 11 active).
+    if (!spectator) {
+      const players = await getRoomPlayers(redis, roomCode);
+      const me = players.find((p) => p.userId === data.user.userId);
+      const activeCount = players.filter((p) => !p.spectator).length;
+      if (me?.spectator && activeCount >= MAX_PLAYERS) {
+        return callback?.({ success: false, error: '玩家席位已满' });
+      }
+    }
+
     await roomManager.setSpectator(roomCode, data.user.userId, spectator);
     await touchRoomActivity(redis, roomCode);
     const players = await getRoomPlayers(redis, roomCode);
