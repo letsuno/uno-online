@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check } from 'lucide-react';
 import { useAuthStore } from '../stores/auth-store';
 import { apiPatch, apiPost } from '@/shared/api';
 import AvatarUpload from '../components/AvatarUpload';
 import { Button } from '@/shared/components/ui/Button';
+import GamePageShell from '@/shared/components/GamePageShell';
 
 export default function ProfileSetupPage() {
   const { user, setUser } = useAuthStore();
@@ -46,31 +46,38 @@ export default function ProfileSetupPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center p-5">
-      <h2 className="font-game text-[28px] text-primary mb-2">完善个人信息</h2>
-      <p className="text-muted-foreground text-sm mb-6">首次登录，请确认你的用户名和昵称</p>
+    <GamePageShell>
+      <div className="relative z-1 flex flex-col items-center justify-center text-center">
+        <h1 className="font-game text-[36px] text-primary text-shadow-bold">完善个人信息</h1>
+        <p className="mt-2 text-muted-foreground text-sm">首次登录，请确认你的用户名和昵称</p>
 
-      <div className="flex flex-col items-center gap-3.5 w-[300px]">
-        <AvatarUpload avatarUrl={avatar} size={80} onUpload={setAvatar} />
+        <div className="mt-8 flex flex-col items-center gap-4 w-[400px]">
+          <AvatarUpload avatarUrl={avatar} size={80} onUpload={setAvatar} />
 
-        <div className="w-full">
-          <label className="text-muted-foreground text-xs mb-1 block">用户名（登录用）</label>
-          <input value={username} onChange={(e) => setUsername(e.target.value)}
-            className="w-full rounded-xl border-2 border-white/15 bg-card px-3.5 py-2.5 text-base text-foreground" />
+          <div className="w-full">
+            <label className="text-muted-foreground text-xs mb-1.5 block text-left">用户名（登录用）</label>
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="glass-input w-full text-foreground"
+            />
+          </div>
+          <div className="w-full">
+            <label className="text-muted-foreground text-xs mb-1.5 block text-left">昵称（游戏中显示）</label>
+            <input
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              className="glass-input w-full text-foreground"
+            />
+          </div>
+
+          {error && <p className="text-sm text-destructive m-0">{error}</p>}
+
+          <Button variant="game" className="w-full" onClick={handleSave} disabled={submitting} sound="click">
+            {submitting ? '保存中...' : '确认'}
+          </Button>
         </div>
-        <div className="w-full">
-          <label className="text-muted-foreground text-xs mb-1 block">昵称（游戏中显示）</label>
-          <input value={nickname} onChange={(e) => setNickname(e.target.value)}
-            className="w-full rounded-xl border-2 border-white/15 bg-card px-3.5 py-2.5 text-base text-foreground" />
-        </div>
-
-        {error && <p className="text-sm text-destructive m-0">{error}</p>}
-
-        <Button variant="primary" className="w-full" onClick={handleSave} disabled={submitting} sound="click">
-          <Check size={18} className="inline-block align-middle mr-1.5" />
-          {submitting ? '保存中...' : '确认'}
-        </Button>
       </div>
-    </div>
+    </GamePageShell>
   );
 }
