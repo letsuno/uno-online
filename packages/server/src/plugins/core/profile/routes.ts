@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { PluginContext } from '../../../plugin-context.js';
 import { authPreHandler } from '../auth/service.js';
 import type { AuthenticatedRequest } from '../auth/service.js';
-import { getUserProfile, getUserById, updateNickname, updateAvatar, updateUsername, resolveAvatar } from '../../../db/user-repo.js';
+import { getUserById, updateNickname, updateAvatar, updateUsername, resolveAvatar } from '../../../db/user-repo.js';
 import { validateNickname, validateUsername } from '../../../auth/validation.js';
 
 export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginContext) {
@@ -40,20 +40,17 @@ export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginConte
 
   fastify.get('/profile', { preHandler }, async (request, reply) => {
     const { userId } = (request as AuthenticatedRequest).user;
-    const profile = await getUserProfile(userId);
-    if (!profile) return reply.code(401).send({ error: 'User not found' });
+    const user = await getUserById(userId);
+    if (!user) return reply.code(401).send({ error: 'User not found' });
     return {
       user: {
-        id: profile.user.id,
-        username: profile.user.username,
-        nickname: profile.user.nickname,
-        avatarUrl: resolveAvatar(profile.user),
-        totalGames: profile.user.totalGames,
-        totalWins: profile.user.totalWins,
-        githubId: profile.user.githubId ?? null,
-        role: profile.user.role ?? 'normal',
+        id: user.id,
+        username: user.username,
+        nickname: user.nickname,
+        avatarUrl: resolveAvatar(user),
+        githubId: user.githubId ?? null,
+        role: user.role ?? 'normal',
       },
-      recentGames: profile.recentGames,
     };
   });
 

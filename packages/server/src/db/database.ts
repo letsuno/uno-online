@@ -13,41 +13,8 @@ interface UserTable {
   avatarUrl: string | null;
   avatarData: string | null;
   role: Generated<string>;
-  totalGames: Generated<number>;
-  totalWins: Generated<number>;
   createdAt: Generated<string>;
   updatedAt: Generated<string>;
-}
-
-interface GameRecordTable {
-  id: Generated<string>;
-  roomCode: string;
-  playerCount: number;
-  winnerId: string | null;
-  rounds: number;
-  duration: number;
-  deckHash: string | null;
-  initialDeck: string | null;
-  createdAt: Generated<string>;
-}
-
-interface GamePlayerTable {
-  id: Generated<string>;
-  gameId: string;
-  userId: string;
-  finalScore: number;
-  placement: number;
-  createdAt: Generated<string>;
-}
-
-export interface GameEventTable {
-  id: Generated<number>;
-  gameId: string;
-  seq: number;
-  eventType: string;
-  payload: string;
-  playerId: string | null;
-  createdAt: string;
 }
 
 interface ApiKeyTable {
@@ -62,9 +29,6 @@ interface ApiKeyTable {
 
 export interface Database {
   users: UserTable;
-  gameRecords: GameRecordTable;
-  gamePlayers: GamePlayerTable;
-  gameEvents: GameEventTable;
   apiKeys: ApiKeyTable;
 }
 
@@ -142,50 +106,9 @@ export async function migrateDb(): Promise<void> {
     .addColumn('avatar_url', 'text')
     .addColumn('avatar_data', 'text')
     .addColumn('role', 'text', (c) => c.defaultTo('normal').notNull())
-    .addColumn('total_games', 'integer', (c) => c.defaultTo(0).notNull())
-    .addColumn('total_wins', 'integer', (c) => c.defaultTo(0).notNull())
     .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
     .addColumn('updated_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
     .execute();
-
-  await k.schema
-    .createTable('game_records')
-    .ifNotExists()
-    .addColumn('id', 'text', (c) => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
-    .addColumn('room_code', 'text', (c) => c.notNull())
-    .addColumn('player_count', 'integer', (c) => c.notNull())
-    .addColumn('winner_id', 'text')
-    .addColumn('rounds', 'integer', (c) => c.notNull())
-    .addColumn('duration', 'integer', (c) => c.notNull())
-    .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
-    .execute();
-
-  await k.schema
-    .createTable('game_players')
-    .ifNotExists()
-    .addColumn('id', 'text', (c) => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
-    .addColumn('game_id', 'text', (c) => c.references('game_records.id').notNull())
-    .addColumn('user_id', 'text', (c) => c.references('users.id').notNull())
-    .addColumn('final_score', 'integer', (c) => c.notNull())
-    .addColumn('placement', 'integer', (c) => c.notNull())
-    .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
-    .execute();
-
-  await k.schema
-    .createIndex('idx_game_players_game_id')
-    .ifNotExists()
-    .on('game_players')
-    .column('game_id')
-    .execute();
-
-  await k.schema
-    .createIndex('idx_game_players_user_id')
-    .ifNotExists()
-    .on('game_players')
-    .column('user_id')
-    .execute();
-
-  await sql`CREATE INDEX IF NOT EXISTS idx_game_records_created_at ON game_records(created_at DESC)`.execute(k);
 
   try {
     await k.schema
@@ -195,34 +118,6 @@ export async function migrateDb(): Promise<void> {
   } catch (err) {
     const msg = (err as Error).message ?? '';
     if (!msg.includes('duplicate column name')) {
-      throw err;
-    }
-  }
-
-  // Migration: make winner_id nullable for interrupted games
-  try {
-    const tableInfo = await sql<{ notnull: number; name: string }>`PRAGMA table_info('game_records')`.execute(k);
-    const winnerCol = tableInfo.rows.find(r => r.name === 'winner_id');
-    if (winnerCol && winnerCol.notnull === 1) {
-      await sql`ALTER TABLE game_records RENAME TO game_records_old`.execute(k);
-      await k.schema
-        .createTable('game_records')
-        .addColumn('id', 'text', (c) => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
-        .addColumn('room_code', 'text', (c) => c.notNull())
-        .addColumn('player_count', 'integer', (c) => c.notNull())
-        .addColumn('winner_id', 'text')
-        .addColumn('rounds', 'integer', (c) => c.notNull())
-        .addColumn('duration', 'integer', (c) => c.notNull())
-        .addColumn('deck_hash', 'text')
-        .addColumn('initial_deck', 'text')
-        .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
-        .execute();
-      await sql`INSERT INTO game_records SELECT id, room_code, player_count, winner_id, rounds, duration, deck_hash, initial_deck, created_at FROM game_records_old`.execute(k);
-      await sql`DROP TABLE game_records_old`.execute(k);
-    }
-  } catch (err) {
-    const msg = (err as Error).message ?? '';
-    if (!msg.includes('duplicate column name') && !msg.includes('no such table')) {
       throw err;
     }
   }

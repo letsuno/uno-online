@@ -25,7 +25,6 @@
 - **移动端适配** — 触摸滑动优化、响应式布局
 - **管理后台** — 用户管理、房间监控、数据看板
 - **观战模式** — 实时观看游戏，支持隐藏/可见手牌视角
-- **游戏回放** — 查看历史对局记录
 - **GitHub OAuth** + 密码登录
 - **MCP 支持** — AI 客户端（Claude Code、Cursor 等）可通过 MCP 协议操控游戏
 
@@ -173,9 +172,6 @@ docker push djkcyl/uno-online-caddy:latest
 | `PATCH` | `/api/profile` | 是 | 更新用户资料 |
 | `POST` | `/api/profile/avatar` | 是 | 上传头像 |
 | `GET` | `/api/rooms/active` | 是 | 获取活跃房间列表 |
-| `GET` | `/api/games` | 是 | 游戏记录列表 |
-| `GET` | `/api/games/:id` | 是 | 游戏记录详情 |
-| `GET` | `/api/games/:id/verify` | 是 | 验证游戏牌组完整性 |
 | `POST` | `/api/api-keys` | 是 | 创建 API Key |
 | `GET` | `/api/api-keys` | 是 | 列出用户的 API Key（脱敏） |
 | `DELETE` | `/api/api-keys/:id` | 是 | 删除 API Key |
@@ -186,8 +182,6 @@ docker push djkcyl/uno-online-caddy:latest
 | `PATCH` | `/api/admin/users/:id/profile` | 管理员 | 修改用户资料 |
 | `GET` | `/api/admin/rooms` | 管理员 | 所有房间列表 |
 | `DELETE` | `/api/admin/rooms/:code` | 管理员 | 强制解散房间 |
-| `GET` | `/api/admin/games` | 管理员 | 分页游戏记录 |
-| `GET` | `/api/admin/games/:id` | 管理员 | 游戏记录详情 |
 
 ## MCP（AI 玩游戏）
 

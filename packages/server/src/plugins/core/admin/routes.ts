@@ -4,7 +4,6 @@ import type { UserRole } from '@uno-online/shared';
 import type { AuthenticatedRequest } from '../auth/service.js';
 import { adminOnly } from './middleware.js';
 import { getRoom, getRoomPlayers, deleteRoom } from '../room/store.js';
-import { getGamesList, getGameDetail } from '../game-history/service.js';
 import { sql } from 'kysely';
 
 export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext) {
@@ -17,7 +16,6 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
       .selectFrom('users')
       .select([
         sql<number>`count(*)`.as('totalUsers'),
-        sql<number>`coalesce(sum(total_games), 0)`.as('totalGames'),
       ])
       .executeTakeFirstOrThrow();
 
@@ -30,7 +28,6 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
 
     return {
       totalUsers: Number(userStats.totalUsers),
-      totalGames: Number(userStats.totalGames),
       activeRooms: roomCodes.length,
     };
   });
@@ -45,7 +42,7 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
     const offset = (page - 1) * limit;
 
     let query = db.selectFrom('users').select([
-      'id', 'username', 'nickname', 'role', 'totalGames', 'totalWins', 'createdAt',
+      'id', 'username', 'nickname', 'role', 'createdAt',
     ]);
 
     let countQuery = db.selectFrom('users').select(sql<number>`count(*)`.as('count'));
@@ -189,19 +186,4 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
     return { success: true };
   });
 
-  // Game history list
-  fastify.get<{
-    Querystring: { page?: string; limit?: string };
-  }>('/admin/games', { preHandler }, async (request) => {
-    const page = Math.max(1, parseInt(request.query.page ?? '1', 10) || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(request.query.limit ?? '20', 10) || 20));
-    return getGamesList(db, page, limit);
-  });
-
-  // Game detail
-  fastify.get<{ Params: { id: string } }>('/admin/games/:id', { preHandler }, async (request, reply) => {
-    const detail = await getGameDetail(db, request.params.id);
-    if (!detail) return reply.code(404).send({ error: 'Game not found' });
-    return detail;
-  });
 }

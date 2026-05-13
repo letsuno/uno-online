@@ -1,9 +1,8 @@
 import { createHash } from 'node:crypto';
-import { initializeGame, applyActionWithHouseRules, GameEventType } from '@uno-online/shared';
+import { initializeGame, applyActionWithHouseRules } from '@uno-online/shared';
 import { initializeNextRound, serializeDecks } from '@uno-online/shared';
 import type { GameState, GameAction, RoomSettings, UserRole } from '@uno-online/shared';
 import type { Card } from '@uno-online/shared';
-import type { GameEvent, GameEventPayload, GameEventType as GameEventTypeValue } from '@uno-online/shared';
 import type { ChatMessage, PlayerView } from '@uno-online/shared';
 
 export type { PlayerView };
@@ -16,7 +15,6 @@ interface ActionResult {
 
 export class GameSession {
   private state: GameState;
-  private events: GameEvent[] = [];
   private initialDeckSerialized: string = '';
   private _spectatorMode: 'full' | 'hidden' = 'hidden';
 
@@ -221,30 +219,10 @@ export class GameSession {
     const deckHash = GameSession.computeDeckHash(fresh);
     this.state = { ...fresh, settings, deckHash, chatHistory: [] };
     this.initialDeckSerialized = serializeDecks(fresh.deckLeft, fresh.deckRight);
-    this.events = [];
-  }
-
-  recordEvent(eventType: GameEventTypeValue, payload: GameEventPayload, playerId: string | null): void {
-    this.events.push({
-      seq: this.events.length,
-      eventType,
-      payload,
-      playerId,
-      createdAt: new Date().toISOString(),
-    });
-  }
-
-  getEvents(): GameEvent[] {
-    return this.events;
-  }
-
-  clearEvents(): void {
-    this.events = [];
   }
 
   addChatMessage(message: ChatMessage): void {
     this.state = { ...this.state, chatHistory: [...(this.state.chatHistory ?? []), message].slice(-200) };
-    this.recordEvent(GameEventType.CHAT_MESSAGE, { message }, message.userId);
   }
 
   getChatHistory(): ChatMessage[] {

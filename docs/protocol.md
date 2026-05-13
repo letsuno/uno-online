@@ -153,17 +153,9 @@ GitHub OAuth 回调处理。
     username: string;
     nickname: string;
     avatarUrl: string | null;
-    totalGames: number;
-    totalWins: number;
     githubId: string | null;
     role: string;
   };
-  recentGames: Array<{
-    id: string;
-    game: { roomCode: string; createdAt: string };
-    finalScore: number;
-    placement: number;
-  }>;
 }
 ```
 
@@ -191,7 +183,7 @@ GitHub OAuth 回调处理。
 #### GET `/admin/dashboard`
 获取仪表盘统计。
 
-**响应**: `{ totalUsers: number; totalGames: number; activeRooms: number }`
+**响应**: `{ totalUsers: number; activeRooms: number }`
 
 #### GET `/admin/users`
 获取分页用户列表。
@@ -200,7 +192,7 @@ GitHub OAuth 回调处理。
 **响应**:
 ```typescript
 {
-  users: Array<{ id, username, nickname, role, totalGames, totalWins, createdAt }>;
+  users: Array<{ id, username, nickname, role, createdAt }>;
   total: number;
   page: number;
   limit: number;
@@ -235,40 +227,7 @@ GitHub OAuth 回调处理。
 
 **响应**: `{ success: true }`
 
-#### DELETE `/admin/games/:id`
-删除游戏记录。
-
-**响应**: `{ success: true }`
-
-### 2.6 游戏记录
-
-#### GET `/games`
-获取游戏记录列表（需要 JWT）。
-
-**查询参数**: `page?: string; limit?: string`
-**响应**:
-```typescript
-{
-  games: Array<{ id, roomCode, playerCount, winnerId, createdAt, duration }>;
-  total: number;
-}
-```
-
-#### GET `/games/:id`
-获取游戏记录详情（需要 JWT）。
-
-**响应**:
-```typescript
-{
-  game: { id, roomCode, playerCount, winnerId, createdAt, duration, settings };
-  players: Array<{ userId, nickname, finalScore, placement }>;
-}
-```
-
-#### GET `/games/:id/verify`
-验证游戏记录完整性（需要 JWT）。
-
-### 2.7 房间列表
+### 2.6 房间列表
 
 #### GET `/rooms/active`
 获取活跃房间列表（需要 JWT）。
@@ -280,7 +239,7 @@ GitHub OAuth 回调处理。
 }
 ```
 
-### 2.8 API Key 管理
+### 2.7 API Key 管理
 
 #### POST `/api-keys`
 创建 API Key（需要 JWT）。每用户最多 10 个，名称最长 50 字符。

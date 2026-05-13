@@ -12,7 +12,6 @@ import { loadGameState, GameStatePersister } from '../plugins/core/game/state-st
 import { checkRateLimit, clearRateLimit } from './rate-limiter.js';
 import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws.js';
 import { setupSpectateHandlers, getSpectatorNames } from '../plugins/core/spectate/ws.js';
-import { getDb } from '../db/database.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { registerVoicePresenceEvents, removeVoicePresence } from './voice-presence.js';
 import { VoiceChannelManager } from '../voice/channel-manager.js';
@@ -131,7 +130,7 @@ export function setupSocketHandlers(
       if (!Number.isFinite(lastActivityAt) || now - lastActivityAt < roomIdleTimeoutMs) continue;
 
       stopAutoPlayForRoom(roomCode);
-      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'idle_timeout', getDb(), voiceChannels);
+      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'idle_timeout', voiceChannels);
     }
   }
 
@@ -217,8 +216,8 @@ export function setupSocketHandlers(
       }
     });
 
-    registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions, getDb(), persister, voiceChannels);
-    registerGameEvents(socket, io, redis, turnTimer, sessions, getDb(), persister);
+    registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions, persister, voiceChannels);
+    registerGameEvents(socket, io, redis, turnTimer, sessions, persister);
     registerInteractionEvents(socket, io);
     registerVoicePresenceEvents(socket, io, (roomCode) => voiceChannels.getRoomChannel(roomCode));
 
@@ -308,7 +307,7 @@ export function setupSocketHandlers(
             if (!sessions.has(roomCode)) return;
             try {
               stopAutoPlayForRoom(roomCode);
-              await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'idle_timeout', getDb(), voiceChannels);
+              await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'idle_timeout', voiceChannels);
             } catch (err) {
               console.error(`[allDisconnect] Failed to dissolve room ${roomCode}:`, err);
             }
