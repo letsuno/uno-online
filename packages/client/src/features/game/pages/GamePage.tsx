@@ -35,6 +35,7 @@ import SpectatorActions from '../components/SpectatorActions';
 import AntiCheatToast from '../components/AntiCheatToast';
 import CheatOverlay from '../components/CheatOverlay';
 import { useSpectatorStore } from '../stores/spectator-store';
+import { useAuthStore } from '@/features/auth/stores/auth-store';
 import GameStartRulesModal from '../components/GameStartRulesModal';
 import ColorWave from '../components/ColorWave';
 import HotkeySettingsModal from '../components/HotkeySettingsModal';
@@ -57,7 +58,7 @@ export default function GamePage() {
   const isMyTurn = useIsMyTurn();
   const playableIds = usePlayableCardIds();
   const needsColorPick = phase === 'choosing_color' && isMyTurn;
-  const showScoreBoard = !isSpectator && (phase === 'round_end' || phase === 'game_over');
+  const showScoreBoard = phase === 'round_end' || phase === 'game_over';
 
   const connectionStatus = useGameSocket(roomCode);
   useGameLogTracker();
@@ -223,11 +224,13 @@ export default function GamePage() {
       {isSpectator && (
         <>
           <SpectatorActions onCatchUno={catchUno} />
-          <SpectatorBar
-            phase={phase}
-            onBackToLobby={backToLobby}
-            onJoined={() => { setSpectator(false); clearSpectators(); }}
-          />
+          {!showScoreBoard && (
+            <SpectatorBar
+              phase={phase}
+              onBackToLobby={backToLobby}
+              onJoined={() => { setSpectator(false); clearSpectators(); }}
+            />
+          )}
         </>
       )}
       <VoicePanel />
@@ -244,7 +247,15 @@ export default function GamePage() {
       {(phase === 'round_end' || phase === 'game_over') && <Confetti />}
       {needsColorPick && <ColorPicker onPick={chooseColor} />}
       {showScoreBoard && (
-        <ScoreBoard onPlayAgain={playAgain} onRematch={rematch} onBackToLobby={backToLobby} onKickPlayer={kickPlayer} onLeaveToSpectate={leaveToSpectate} />
+        <ScoreBoard
+          isSpectator={isSpectator}
+          onPlayAgain={playAgain}
+          onRematch={rematch}
+          onBackToLobby={backToLobby}
+          onKickPlayer={kickPlayer}
+          onLeaveToSpectate={leaveToSpectate}
+          onJoinedFromSpectator={() => { setSpectator(false); clearSpectators(); }}
+        />
       )}
       {cheatDetected && <CheatOverlay />}
       <BgmToast song={bgmSongName} />
@@ -255,6 +266,14 @@ export default function GamePage() {
 
 function SpectatorBar({ phase, onBackToLobby, onJoined }: { phase: string | null; onBackToLobby: () => void; onJoined: () => void }) {
   const [queued, setQueued] = useState(false);
+  const pendingJoinQueue = useSpectatorStore((s) => s.pendingJoinQueue);
+
+  useEffect(() => {
+    const nickname = useAuthStore.getState().user?.nickname;
+    if (nickname && pendingJoinQueue.includes(nickname)) {
+      setQueued(true);
+    }
+  }, [pendingJoinQueue]);
 
   useEffect(() => {
     const socket = getSocket();

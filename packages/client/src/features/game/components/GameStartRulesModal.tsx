@@ -33,7 +33,7 @@ export default function GameStartRulesModal({ open, houseRules, onClose }: GameS
       {open && (
         <div className="fixed inset-0 z-modal flex items-center justify-center px-4">
           <motion.div
-            className="absolute inset-0 bg-black/55"
+            className="absolute inset-0 glass-modal-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -41,13 +41,13 @@ export default function GameStartRulesModal({ open, houseRules, onClose }: GameS
             onClick={onClose}
           />
           <motion.div
-            className="relative w-full max-w-[460px] overflow-hidden rounded-panel-ui border border-white/10 bg-card shadow-2xl"
+            className="relative w-full max-w-[460px] overflow-hidden glass-panel"
             initial={{ opacity: 0, scale: 0.94, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.2 }}
           >
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+            <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
               <div className="flex items-center gap-2">
                 <BookOpen size={18} className="text-accent" />
                 <div>
@@ -66,7 +66,7 @@ export default function GameStartRulesModal({ open, houseRules, onClose }: GameS
 
             <div className="max-h-[52vh] overflow-y-auto p-5 scrollbar-thin">
               {activeRules.length === 0 ? (
-                <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-5 text-center">
+                <div className="rounded-lg border border-white/5 bg-white/5 px-4 py-5 text-center">
                   <div className="font-bold text-foreground">经典规则</div>
                   <div className="mt-1 text-sm text-muted-foreground">本局未启用额外村规。</div>
                 </div>
@@ -81,7 +81,7 @@ export default function GameStartRulesModal({ open, houseRules, onClose }: GameS
                       <div
                         key={rule.key}
                         className={cn(
-                          'rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2.5',
+                          'rounded-lg border border-white/5 bg-white/[0.04] px-3 py-2.5',
                           index < 3 && 'border-accent/25 bg-accent/5',
                         )}
                       >
@@ -101,10 +101,10 @@ export default function GameStartRulesModal({ open, houseRules, onClose }: GameS
               )}
             </div>
 
-            <div className="border-t border-white/10 px-5 py-3.5">
+            <div className="border-t border-white/5 px-5 py-3.5">
               <button
                 onClick={onClose}
-                className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90"
+                className="w-full rounded-lg bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] px-4 py-2 text-sm font-bold text-[#1a1a2e] transition-opacity hover:opacity-90"
               >
                 开始游戏
               </button>

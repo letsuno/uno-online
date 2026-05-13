@@ -26,6 +26,7 @@ interface PlayerNodeProps {
   isSpeaking?: boolean;
   voiceState?: PlayerVoicePresence;
   position: { x: number; y: number };
+  shufflePhase?: 'idle' | 'shuffling' | 'settling';
   turnEndTime?: number | null;
   turnTimeLimit?: number;
   lastPlayedCard?: CardType | null;
@@ -46,6 +47,7 @@ function PlayerNode({
   isSpeaking = false,
   voiceState,
   position,
+  shufflePhase = 'idle',
   turnEndTime,
   turnTimeLimit,
   lastPlayedCard,
@@ -106,15 +108,26 @@ function PlayerNode({
     player.hand.length > 0 && player.hand.length === player.handCount
       ? player.hand
       : [];
-  const shouldShowRevealedHand = !isMe && revealedHand.length > 0 && player.handCount <= 5;
+  const shouldShowRevealedHand = !isMe && revealedHand.length > 0;
   const roleColor = getRoleColor(player.role);
 
+  const positionTransition =
+    shufflePhase === 'shuffling'
+      ? { duration: 0.14, ease: 'easeOut' as const }
+      : shufflePhase === 'settling'
+        ? { type: 'spring' as const, stiffness: 120, damping: 14 }
+        : { duration: 0 };
+
   return (
-    <div
+    <motion.div
       className="absolute flex flex-col items-center gap-0.5 pointer-events-none"
-      style={{
+      initial={false}
+      animate={{
         left: position.x,
         top: position.y,
+      }}
+      transition={positionTransition}
+      style={{
         transform: `translate(-50%, -${avatarSize / 2}px)`,
         zIndex: showReaction || showThrowPicker ? 100 : undefined,
         ...(player.eliminated
@@ -289,20 +302,22 @@ function PlayerNode({
         >
           {player.handCount === 0 ? (
             <span className="h-card-mini-h min-w-card-mini-w rounded-sm border border-dashed border-white/20 bg-black/20" />
+          ) : shouldShowRevealedHand ? (
+            <div className="flex -space-x-2">
+              {revealedHand.map((card) => (
+                <Card
+                  key={card.id}
+                  card={card}
+                  mini
+                  className="!w-card-mini-w !h-card-mini-h !text-2xs !border !rounded-sm !shadow-none"
+                />
+              ))}
+            </div>
           ) : player.handCount <= 5 ? (
             <div className="flex -space-x-2">
-              {shouldShowRevealedHand
-                ? revealedHand.map((card) => (
-                    <Card
-                      key={card.id}
-                      card={card}
-                      mini
-                      className="!w-card-mini-w !h-card-mini-h !text-2xs !border !rounded-sm !shadow-none"
-                    />
-                  ))
-                : Array.from({ length: player.handCount }).map((_, i) => (
-                    <CardBack key={i} small />
-                  ))}
+              {Array.from({ length: player.handCount }).map((_, i) => (
+                <CardBack key={i} small />
+              ))}
             </div>
           ) : (
             <>
@@ -330,7 +345,7 @@ function PlayerNode({
           </AnimatePresence>
         </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -357,6 +372,7 @@ export default memo(PlayerNode, (prev, next) => {
     prev.voiceState?.micEnabled === next.voiceState?.micEnabled &&
     prev.position.x === next.position.x &&
     prev.position.y === next.position.y &&
+    prev.shufflePhase === next.shufflePhase &&
     prev.turnEndTime === next.turnEndTime &&
     prev.turnTimeLimit === next.turnTimeLimit &&
     prev.lastPlayedCard?.id === next.lastPlayedCard?.id &&

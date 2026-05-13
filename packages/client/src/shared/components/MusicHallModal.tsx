@@ -73,7 +73,7 @@ export default function MusicHallModal({ open, onClose, currentScene }: Props) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-modal bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-modal glass-modal-backdrop"
             onClick={close}
           />
           <motion.div
@@ -84,7 +84,7 @@ export default function MusicHallModal({ open, onClose, currentScene }: Props) {
             className="fixed inset-0 z-modal flex items-center justify-center pointer-events-none"
           >
             <div
-              className="pointer-events-auto flex flex-col bg-card border border-white/10 rounded-2xl shadow-2xl w-[90vw] max-w-xl max-h-[80vh]"
+              className="pointer-events-auto flex flex-col glass-panel w-[90vw] max-w-xl h-[min(80vh,36rem)]"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -121,7 +121,7 @@ export default function MusicHallModal({ open, onClose, currentScene }: Props) {
               </div>
 
               {/* Song list */}
-              <div className="flex-1 overflow-y-auto px-3 py-3 scrollbar-thin">
+              <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 scrollbar-thin">
                 <div className="flex flex-col gap-1">
                   {songs.map((song, i) => {
                     const key = `${tab}:${i}`;

@@ -204,7 +204,7 @@ export default function VoicePanel() {
             </>
           )}
           {expanded && otherUsers.length > 0 && (
-            <div className="bg-card/90 backdrop-blur-sm rounded-lg border border-white/10 p-2 flex flex-col gap-1.5 max-w-[160px]">
+            <div className="glass-panel !rounded-xl p-2 flex flex-col gap-1.5 max-w-[160px]">
               {otherUsers.map((user) => (
                 <div key={user.id} className="flex items-center gap-1.5">
                   <span className={cn(

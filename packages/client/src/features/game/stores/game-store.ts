@@ -94,7 +94,12 @@ export const useGameStore = create<GameState>((set) => ({
         lastAction?.type === 'DRAW_CARD' &&
         lastAction.playerId === currentPlayerId;
 
-      const becamePlayer = state.isSpectator && viewerId !== '__spectator__';
+      const isSpectatorView = viewerId === '__spectator__';
+      const spectatorChange = isSpectatorView
+        ? { isSpectator: true }
+        : state.isSpectator && !isSpectatorView
+          ? { isSpectator: false }
+          : {};
 
       return {
         phase,
@@ -118,7 +123,7 @@ export const useGameStore = create<GameState>((set) => ({
         lastDrawnCard: hasDrawnThisTurn ? state.lastDrawnCard : null,
         deckHash: view.deckHash ?? state.deckHash,
         nextRoundVote: phase === 'round_end' ? state.nextRoundVote : null,
-        ...(becamePlayer ? { isSpectator: false } : {}),
+        ...spectatorChange,
       };
     }),
   setNextRoundVote: (vote) => set({ nextRoundVote: vote }),

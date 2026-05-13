@@ -3,6 +3,7 @@ import ToastContainer from '@/shared/components/Toast';
 import ChangelogModal from '@/shared/components/ChangelogModal';
 import NotificationPermissionDialog from '@/shared/components/NotificationPermissionDialog';
 import ServerUpdateDialog from '@/shared/components/ServerUpdateDialog';
+import ProfileModal from '@/shared/components/ProfileModal';
 
 export default function App() {
 
@@ -13,6 +14,7 @@ export default function App() {
       <ChangelogModal />
       <NotificationPermissionDialog />
       <ServerUpdateDialog />
+      <ProfileModal />
     </div>
   );
 }

@@ -44,13 +44,13 @@ export default function HouseRulesPanel({ houseRules, onChange, disabled = false
   };
 
   return (
-    <div className="bg-muted rounded-xl p-4 max-w-houserules-max w-full max-h-houserules-max-h overflow-y-auto">
+    <div className="glass-panel p-5 max-w-houserules-max w-full max-h-houserules-max-h overflow-y-auto scrollbar-thin">
       <h3 className="text-sm text-accent mb-3 font-game">
         村规设置
       </h3>
       <div className="flex gap-2 mb-3 flex-wrap">
         {['classic', 'party', 'crazy'].map((p) => (
-          <Button key={p} variant="secondary" size="sm" onClick={() => applyPreset(p)} disabled={disabled} sound="click">
+          <Button key={p} variant="outline" size="sm" onClick={() => applyPreset(p)} disabled={disabled} sound="click">
             {p === 'classic' ? '经典' : p === 'party' ? '派对' : '疯狂'}
           </Button>
         ))}
@@ -68,7 +68,7 @@ export default function HouseRulesPanel({ houseRules, onChange, disabled = false
               className={cn(
                 'w-11 h-6 rounded-xl border-none relative transition-colors duration-200',
                 disabled ? 'cursor-default' : 'cursor-pointer',
-                houseRules[rule.key] ? 'bg-uno-green' : 'bg-switch-off'
+                houseRules[rule.key] ? 'bg-accent' : 'bg-switch-off'
               )}
             >
               <div className={cn(
@@ -84,7 +84,7 @@ export default function HouseRulesPanel({ houseRules, onChange, disabled = false
                 setValue(rule.key, v === 'null' ? null : Number(v));
               }}
               disabled={disabled}
-              className="bg-muted text-foreground border border-white/20 rounded-md px-2 py-0.5 text-xs"
+              className="bg-white/[0.06] text-foreground border border-white/10 rounded-xl px-3 py-1.5 text-xs outline-none cursor-pointer"
             >
               {rule.options?.map((opt) => (
                 <option key={String(opt.value)} value={String(opt.value ?? 'null')}>{opt.label}</option>
