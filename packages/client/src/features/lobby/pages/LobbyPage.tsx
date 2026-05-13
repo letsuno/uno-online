@@ -206,7 +206,7 @@ export default function LobbyPage() {
           className="bg-card text-foreground border border-white/20 rounded-lg px-2.5 py-1.5 text-sm cursor-pointer flex items-center gap-1"
           title={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
         >
-          {bgmEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+          {bgmEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />} {bgmEnabled ? '音乐' : '静音'}
         </button>
         <button
           onClick={() => setMusicHall(true)}
