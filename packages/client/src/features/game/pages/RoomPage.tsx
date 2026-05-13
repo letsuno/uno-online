@@ -18,6 +18,7 @@ import type { HouseRules } from '@uno-online/shared';
 import { Button } from '@/shared/components/ui/Button';
 import { useBgm } from '@/shared/sound/useBgm';
 import BgmToast from '@/shared/components/BgmToast';
+import GamePageShell from '@/shared/components/GamePageShell';
 
 export default function RoomPage() {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -95,106 +96,108 @@ export default function RoomPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6 p-5">
-      <h2 className="font-game text-primary flex items-center gap-2">
-        房间 {roomCode}
-        <button
-          onClick={() => {
-            const url = `${window.location.origin}/room/${roomCode}`;
-            navigator.clipboard.writeText(`来玩 UNO 吧！房间号：${roomCode}\n${url}`);
-            useToastStore.getState().addToast('房间链接已复制', 'success');
-          }}
-          className="bg-white/10 hover:bg-white/20 rounded-lg p-1.5 cursor-pointer transition-colors"
-          title="复制房间链接"
-        >
-          <Copy size={14} className="text-muted-foreground" />
-        </button>
-      </h2>
-      <div className="min-w-room-min rounded-2xl bg-card p-5">
-        <h3 className="mb-3 text-sm text-muted-foreground">
-          玩家 ({players.length}/10)
-        </h3>
-        {players.map((p) => {
-          const roleColor = getRoleColor(p.role);
-          const isMe = p.userId === user?.id;
-          return <div
-            key={p.userId}
-            className={cn('flex items-center justify-between border-b border-white/5 py-2', !isMe && 'cursor-pointer hover:bg-white/5 rounded')}
-            onClick={(e) => {
-              if (isMe) return;
-              setMenuTarget({ player: p, position: { x: e.clientX, y: e.clientY } });
+    <GamePageShell>
+      <div className="relative z-1 flex flex-col items-center gap-6 p-5 overflow-y-auto max-h-screen">
+        <h2 className="font-game text-[32px] text-primary text-shadow-bold flex items-center gap-2">
+          房间 {roomCode}
+          <button
+            onClick={() => {
+              const url = `${window.location.origin}/room/${roomCode}`;
+              navigator.clipboard.writeText(`来玩 UNO 吧！房间号：${roomCode}\n${url}`);
+              useToastStore.getState().addToast('房间链接已复制', 'success');
             }}
+            className="bg-white/10 hover:bg-white/20 rounded-lg p-1.5 cursor-pointer transition-colors"
+            title="复制房间链接"
           >
-            <span className="flex min-w-0 flex-1 items-center gap-1.5" style={roleColor ? { color: roleColor } : undefined}>
-              <span className="truncate">{p.nickname}</span>
-              {p.isBot && <AiBadge />}
-              {room?.ownerId === p.userId && <Crown size={14} className="shrink-0" />}
-              <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={isMe} className="shrink-0" />
-            </span>
-            <span className={cn('text-xs', p.ready ? 'text-uno-green' : 'text-muted-foreground')}>
-              {p.ready ? <><Check size={12} className="inline-block align-middle" /> 已准备</> : '未准备'}
-            </span>
-          </div>;
-        })}
-      </div>
-      {menuTarget && (
-        <PlayerActionMenu
-          target={menuTarget.player}
-          isOwner={isOwner}
-          roomStatus={room?.status ?? ''}
-          position={menuTarget.position}
-          onClose={() => setMenuTarget(null)}
-        />
-      )}
-      {/* Spectator settings */}
-      <div className="min-w-room-min rounded-2xl bg-card p-5 space-y-3">
-        <h3 className="mb-3 text-sm text-muted-foreground">观战设置</h3>
-        <div className="flex items-center justify-between">
-          <label className="text-sm">允许观战</label>
-          <input
-            type="checkbox"
-            checked={room?.settings?.allowSpectators ?? true}
-            onChange={(e) => getSocket().emit('room:update_settings', { allowSpectators: e.target.checked })}
-            className="accent-primary"
-            disabled={!isOwner}
-          />
-        </div>
-        {(room?.settings?.allowSpectators ?? true) && (
-          <div className="flex items-center justify-between">
-            <label className="text-sm">观战模式</label>
-            <select
-              value={room?.settings?.spectatorMode ?? 'hidden'}
-              onChange={(e) => getSocket().emit('room:update_settings', { spectatorMode: e.target.value as 'full' | 'hidden' })}
-              className="bg-card text-foreground border border-white/15 rounded px-2 py-1 text-sm"
-              disabled={!isOwner}
+            <Copy size={14} className="text-muted-foreground" />
+          </button>
+        </h2>
+        <div className="glass-panel p-5 min-w-[360px]">
+          <h3 className="mb-3 text-sm text-muted-foreground">
+            玩家 ({players.length}/10)
+          </h3>
+          {players.map((p) => {
+            const roleColor = getRoleColor(p.role);
+            const isMe = p.userId === user?.id;
+            return <div
+              key={p.userId}
+              className={cn('flex items-center justify-between border-b border-white/5 py-2', !isMe && 'cursor-pointer hover:bg-white/5 rounded')}
+              onClick={(e) => {
+                if (isMe) return;
+                setMenuTarget({ player: p, position: { x: e.clientX, y: e.clientY } });
+              }}
             >
-              <option value="hidden">只看出牌</option>
-              <option value="full">全透视</option>
-            </select>
+              <span className="flex min-w-0 flex-1 items-center gap-1.5" style={roleColor ? { color: roleColor } : undefined}>
+                <span className="truncate">{p.nickname}</span>
+                {p.isBot && <AiBadge />}
+                {room?.ownerId === p.userId && <Crown size={14} className="shrink-0" />}
+                <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={isMe} className="shrink-0" />
+              </span>
+              <span className={cn('text-xs', p.ready ? 'text-uno-green' : 'text-muted-foreground')}>
+                {p.ready ? <><Check size={12} className="inline-block align-middle" /> 已准备</> : '未准备'}
+              </span>
+            </div>;
+          })}
+        </div>
+        {menuTarget && (
+          <PlayerActionMenu
+            target={menuTarget.player}
+            isOwner={isOwner}
+            roomStatus={room?.status ?? ''}
+            position={menuTarget.position}
+            onClose={() => setMenuTarget(null)}
+          />
+        )}
+        {/* Spectator settings */}
+        <div className="glass-panel p-5 min-w-[360px] space-y-3">
+          <h3 className="mb-3 text-sm text-muted-foreground">观战设置</h3>
+          <div className="flex items-center justify-between">
+            <label className="text-sm">允许观战</label>
+            <input
+              type="checkbox"
+              checked={room?.settings?.allowSpectators ?? true}
+              onChange={(e) => getSocket().emit('room:update_settings', { allowSpectators: e.target.checked })}
+              className="accent-primary"
+              disabled={!isOwner}
+            />
           </div>
-        )}
-      </div>
-      <HouseRulesPanel
-        houseRules={houseRules}
-        onChange={(rules) => {
-          setHouseRules(rules);
-          getSocket().emit('room:update_settings', { houseRules: rules });
-        }}
-        disabled={!isOwner}
-      />
-      <div className="flex gap-3">
-        <Button variant="primary" onClick={toggleReady} sound="ready">
-          {myPlayer?.ready ? '取消准备' : '准备'}
-        </Button>
-        {isOwner && (
-          <Button variant="primary" className={cn(!allReady && 'opacity-50')} onClick={startGame} disabled={!allReady} sound="ready">
-            开始游戏
+          {(room?.settings?.allowSpectators ?? true) && (
+            <div className="flex items-center justify-between">
+              <label className="text-sm">观战模式</label>
+              <select
+                value={room?.settings?.spectatorMode ?? 'hidden'}
+                onChange={(e) => getSocket().emit('room:update_settings', { spectatorMode: e.target.value as 'full' | 'hidden' })}
+                className="bg-card text-foreground border border-white/15 rounded px-2 py-1 text-sm"
+                disabled={!isOwner}
+              >
+                <option value="hidden">只看出牌</option>
+                <option value="full">全透视</option>
+              </select>
+            </div>
+          )}
+        </div>
+        <HouseRulesPanel
+          houseRules={houseRules}
+          onChange={(rules) => {
+            setHouseRules(rules);
+            getSocket().emit('room:update_settings', { houseRules: rules });
+          }}
+          disabled={!isOwner}
+        />
+        <div className="flex gap-3">
+          <Button variant="game" onClick={toggleReady} sound="ready">
+            {myPlayer?.ready ? '取消准备' : '准备'}
           </Button>
-        )}
-        <Button variant="danger" onClick={leaveRoom} sound="danger">离开房间</Button>
+          {isOwner && (
+            <Button variant="game" className={cn(!allReady && 'opacity-50')} onClick={startGame} disabled={!allReady} sound="ready">
+              开始游戏
+            </Button>
+          )}
+          <Button variant="danger" onClick={leaveRoom} sound="danger">离开房间</Button>
+        </div>
+        <VoicePanel />
+        <BgmToast song={songName} />
       </div>
-      <VoicePanel />
-      <BgmToast song={songName} />
-    </div>
+    </GamePageShell>
   );
 }
