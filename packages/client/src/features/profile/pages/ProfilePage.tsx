@@ -7,6 +7,8 @@ import AvatarUpload from '@/features/auth/components/AvatarUpload';
 import { Edit3, Save, Lock, Key, Copy, Trash2, Bell } from 'lucide-react';
 import { Button } from '@/shared/components/ui/Button';
 import { useNotificationStore, type NotificationEventType } from '@/shared/stores/notification-store';
+import GamePageShell from '@/shared/components/GamePageShell';
+import GameTopBar from '@/shared/components/GameTopBar';
 
 interface ProfileData {
   user: { id: string; username: string; nickname: string; avatarUrl: string | null; githubId?: string | null; role?: string };
@@ -120,113 +122,116 @@ export default function ProfilePage() {
   const profileRoleColor = getRoleColor(profile?.user.role);
 
   return (
-    <div className="flex flex-1 flex-col items-center gap-6 p-10">
-      <h2 className="font-game text-primary">个人信息</h2>
-      {profile && (
-        <>
-          <AvatarUpload avatarUrl={profile.user.avatarUrl} size={96} onUpload={handleAvatarUpload} />
+    <GamePageShell showDecoCards={false}>
+      <GameTopBar />
+      <div className="relative z-1 flex flex-col items-center gap-6 w-full max-w-[480px] overflow-y-auto max-h-[calc(100vh-120px)] p-6">
+        <h2 className="font-game text-[32px] text-primary text-shadow-bold">个人信息</h2>
+        {profile && (
+          <>
+            <AvatarUpload avatarUrl={profile.user.avatarUrl} size={96} onUpload={handleAvatarUpload} />
 
-          <div className="text-center">
-            {editingNickname ? (
-              <div className="flex items-center gap-2">
-                <input value={nickname} onChange={(e) => setNickname(e.target.value)}
-                  className="w-40 rounded-lg border border-white/15 bg-card px-3 py-2 text-sm text-foreground" />
-                <Button variant="primary" size="sm" onClick={handleSaveNickname} disabled={saving} sound="click">
-                  <Save size={14} />
-                </Button>
-              </div>
-            ) : (
-              <p className="text-xl font-bold cursor-pointer" onClick={() => setEditingNickname(true)}
-                style={profileRoleColor ? { color: profileRoleColor } : undefined}>
-                {profile.user.nickname} <Edit3 size={14} className="inline-block align-middle text-muted-foreground" />
-              </p>
-            )}
-            <p className="text-muted-foreground text-sm mt-1">@{profile.user.username}</p>
-          </div>
-
-          {/* Notification settings */}
-          <NotificationSettings />
-
-          {/* Password section */}
-          <div className="bg-card rounded-xl p-4 w-full max-w-[360px]">
-            <h3 className="text-sm text-muted-foreground mb-3 flex items-center gap-1.5">
-              <Lock size={14} /> 设置密码
-            </h3>
-            <div className="flex flex-col gap-2">
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="新密码"
-                className="w-full rounded-lg border border-white/15 bg-card px-3 py-2 text-sm text-foreground" autoComplete="new-password" />
-              <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} placeholder="确认密码"
-                className="w-full rounded-lg border border-white/15 bg-card px-3 py-2 text-sm text-foreground" autoComplete="new-password" />
-              {passwordMsg && (
-                <p className={`text-xs m-0 ${passwordMsg.includes('成功') ? 'text-uno-green' : 'text-destructive'}`}>{passwordMsg}</p>
-              )}
-              <Button variant="primary" size="sm" onClick={handleSetPassword} sound="click">保存密码</Button>
-            </div>
-          </div>
-
-          {/* API Keys */}
-          <div className="bg-card rounded-xl p-4 w-full max-w-[360px]">
-            <h3 className="text-sm text-muted-foreground mb-3 flex items-center gap-1.5">
-              <Key size={14} /> API Keys
-            </h3>
-            <p className="text-xs text-muted-foreground mb-3">用于连接 MCP 客户端（如 Claude Code），让 AI 代你玩游戏</p>
-
-            {newKeyFull && (
-              <div className="mb-3 rounded-lg border border-uno-green/30 bg-uno-green/10 p-3">
-                <p className="text-xs text-uno-green mb-2">Key 已生成，请立即复制（仅显示一次）：</p>
+            <div className="text-center">
+              {editingNickname ? (
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 break-all rounded bg-black/30 px-2 py-1 text-xs">{newKeyFull}</code>
-                  <Button size="sm" variant="secondary" onClick={handleCopyKey} sound="click">
-                    <Copy size={12} /> {keyCopied ? '已复制' : ''}
+                  <input value={nickname} onChange={(e) => setNickname(e.target.value)}
+                    className="glass-input w-40 text-sm" />
+                  <Button variant="primary" size="sm" onClick={handleSaveNickname} disabled={saving} sound="click">
+                    <Save size={14} />
                   </Button>
                 </div>
-                {keyCopied && (
-                  <button onClick={handleDismissKey} className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                    我已保存，关闭此提示
-                  </button>
-                )}
-              </div>
-            )}
-
-            {keyError && (
-              <p className="text-xs text-destructive mb-2">{keyError}</p>
-            )}
-
-            <div className="flex gap-2 mb-3">
-              <input
-                type="text"
-                placeholder="Key 名称（如：我的 Claude）"
-                value={newKeyName}
-                onChange={(e) => setNewKeyName(e.target.value)}
-                maxLength={50}
-                className="flex-1 rounded-lg border border-white/15 bg-card px-3 py-2 text-sm text-foreground"
-              />
-              <Button variant="primary" size="sm" onClick={handleCreateKey} disabled={creatingKey || !newKeyName.trim()} sound="click">
-                生成
-              </Button>
+              ) : (
+                <p className="text-xl font-bold cursor-pointer" onClick={() => setEditingNickname(true)}
+                  style={profileRoleColor ? { color: profileRoleColor } : undefined}>
+                  {profile.user.nickname} <Edit3 size={14} className="inline-block align-middle text-muted-foreground" />
+                </p>
+              )}
+              <p className="text-muted-foreground text-sm mt-1">@{profile.user.username}</p>
             </div>
 
-            {apiKeys.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                {apiKeys.map((k) => (
-                  <div key={k.id} className="flex items-center justify-between rounded-lg border border-white/5 px-3 py-2">
-                    <div>
-                      <span className="text-sm">{k.name}</span>
-                      <code className="ml-2 text-xs text-muted-foreground">{k.keyPreview}</code>
-                    </div>
-                    <button onClick={() => handleDeleteKey(k.id)} className="text-muted-foreground hover:text-destructive transition-colors" aria-label="删除 Key">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+            {/* Notification settings */}
+            <NotificationSettings />
 
-        </>
-      )}
-      <Button variant="secondary" onClick={() => navigate('/lobby')} sound="click">返回大厅</Button>
-    </div>
+            {/* Password section */}
+            <div className="glass-panel p-5 w-full">
+              <h3 className="text-sm text-muted-foreground mb-3 flex items-center gap-1.5">
+                <Lock size={14} /> 设置密码
+              </h3>
+              <div className="flex flex-col gap-2">
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="新密码"
+                  className="glass-input w-full text-sm" autoComplete="new-password" />
+                <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} placeholder="确认密码"
+                  className="glass-input w-full text-sm" autoComplete="new-password" />
+                {passwordMsg && (
+                  <p className={`text-xs m-0 ${passwordMsg.includes('成功') ? 'text-uno-green' : 'text-destructive'}`}>{passwordMsg}</p>
+                )}
+                <Button variant="primary" size="sm" onClick={handleSetPassword} sound="click">保存密码</Button>
+              </div>
+            </div>
+
+            {/* API Keys */}
+            <div className="glass-panel p-5 w-full">
+              <h3 className="text-sm text-muted-foreground mb-3 flex items-center gap-1.5">
+                <Key size={14} /> API Keys
+              </h3>
+              <p className="text-xs text-muted-foreground mb-3">用于连接 MCP 客户端（如 Claude Code），让 AI 代你玩游戏</p>
+
+              {newKeyFull && (
+                <div className="mb-3 rounded-lg border border-uno-green/30 bg-uno-green/10 p-3">
+                  <p className="text-xs text-uno-green mb-2">Key 已生成，请立即复制（仅显示一次）：</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 break-all rounded bg-black/30 px-2 py-1 text-xs">{newKeyFull}</code>
+                    <Button size="sm" variant="secondary" onClick={handleCopyKey} sound="click">
+                      <Copy size={12} /> {keyCopied ? '已复制' : ''}
+                    </Button>
+                  </div>
+                  {keyCopied && (
+                    <button onClick={handleDismissKey} className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                      我已保存，关闭此提示
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {keyError && (
+                <p className="text-xs text-destructive mb-2">{keyError}</p>
+              )}
+
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  placeholder="Key 名称（如：我的 Claude）"
+                  value={newKeyName}
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                  maxLength={50}
+                  className="glass-input w-full text-sm flex-1"
+                />
+                <Button variant="primary" size="sm" onClick={handleCreateKey} disabled={creatingKey || !newKeyName.trim()} sound="click">
+                  生成
+                </Button>
+              </div>
+
+              {apiKeys.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  {apiKeys.map((k) => (
+                    <div key={k.id} className="flex items-center justify-between rounded-lg border border-white/5 px-3 py-2">
+                      <div>
+                        <span className="text-sm">{k.name}</span>
+                        <code className="ml-2 text-xs text-muted-foreground">{k.keyPreview}</code>
+                      </div>
+                      <button onClick={() => handleDeleteKey(k.id)} className="text-muted-foreground hover:text-destructive transition-colors" aria-label="删除 Key">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </>
+        )}
+        <Button variant="ghost" onClick={() => navigate('/lobby')} sound="click">返回大厅</Button>
+      </div>
+    </GamePageShell>
   );
 }
 
@@ -249,7 +254,7 @@ function NotificationSettings() {
   };
 
   return (
-    <div className="bg-card rounded-xl p-4 w-full max-w-[360px]">
+    <div className="glass-panel p-5 w-full">
       <h3 className="text-sm text-muted-foreground mb-3 flex items-center gap-1.5">
         <Bell size={14} /> 通知设置
       </h3>
