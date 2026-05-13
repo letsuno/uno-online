@@ -9,6 +9,7 @@ export interface NextRoundVoteState {
   votes: number;
   required: number;
   voters: string[];
+  roundEndAt: number;
 }
 
 interface GameState {

@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import type { Color } from '@uno-online/shared';
 import { getSocket } from '@/shared/socket';
 import { useToastStore } from '@/shared/stores/toast-store';
+import { useGameStore } from '../stores/game-store';
 
 export function useGameActions() {
   const playCard = useCallback((cardId: string, chosenColor?: Color) => {
@@ -73,6 +74,16 @@ export function useGameActions() {
     });
   }, []);
 
+  const leaveToSpectate = useCallback(() => {
+    getSocket().emit('game:leave_to_spectate', (res: { success?: boolean; error?: string }) => {
+      if (res?.success) {
+        useGameStore.getState().setSpectator(true);
+      } else {
+        useToastStore.getState().addToast(res?.error || '操作失败', 'error');
+      }
+    });
+  }, []);
+
   return {
     playCard,
     drawCard,
@@ -86,5 +97,6 @@ export function useGameActions() {
     playAgain,
     rematch,
     kickPlayer,
+    leaveToSpectate,
   };
 }

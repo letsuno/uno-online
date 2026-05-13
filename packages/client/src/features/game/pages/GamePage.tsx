@@ -52,10 +52,12 @@ export default function GamePage() {
   const clearSpectators = useSpectatorStore((s) => s.clearSpectators);
   const cheatDetected = useGameStore((s) => s.cheatDetected);
 
+  const isSpectator = useGameStore((s) => s.isSpectator);
+  const setSpectator = useGameStore((s) => s.setSpectator);
   const isMyTurn = useIsMyTurn();
   const playableIds = usePlayableCardIds();
   const needsColorPick = phase === 'choosing_color' && isMyTurn;
-  const showScoreBoard = phase === 'round_end' || phase === 'game_over';
+  const showScoreBoard = !isSpectator && (phase === 'round_end' || phase === 'game_over');
 
   const connectionStatus = useGameSocket(roomCode);
   useGameLogTracker();
@@ -103,13 +105,12 @@ export default function GamePage() {
     playAgain,
     rematch,
     kickPlayer,
+    leaveToSpectate,
   } = useGameActions();
 
   useAutoPlay();
 
   const [searchParams] = useSearchParams();
-  const isSpectator = useGameStore((s) => s.isSpectator);
-  const setSpectator = useGameStore((s) => s.setSpectator);
 
   useEffect(() => {
     if (searchParams.get('spectate') === 'true') {
@@ -243,7 +244,7 @@ export default function GamePage() {
       {(phase === 'round_end' || phase === 'game_over') && <Confetti />}
       {needsColorPick && <ColorPicker onPick={chooseColor} />}
       {showScoreBoard && (
-        <ScoreBoard onPlayAgain={playAgain} onRematch={rematch} onBackToLobby={backToLobby} onKickPlayer={kickPlayer} />
+        <ScoreBoard onPlayAgain={playAgain} onRematch={rematch} onBackToLobby={backToLobby} onKickPlayer={kickPlayer} onLeaveToSpectate={leaveToSpectate} />
       )}
       {cheatDetected && <CheatOverlay />}
       <BgmToast song={bgmSongName} />
