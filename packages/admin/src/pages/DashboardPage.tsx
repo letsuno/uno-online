@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 
 interface DashboardStats {
   totalUsers: number;
-  totalGames: number;
   activeRooms: number;
 }
 
@@ -35,7 +34,6 @@ export default function DashboardPage() {
 
   const cards = [
     { label: 'Total Users', value: stats.totalUsers, variant: 'default' as const },
-    { label: 'Total Games', value: stats.totalGames, variant: 'success' as const },
     { label: 'Active Rooms', value: stats.activeRooms, variant: 'secondary' as const },
   ];
 

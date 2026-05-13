@@ -35,7 +35,6 @@ packages/client/src/
       routes.tsx
     lobby/
     profile/
-    replay/               # 游戏回放
   shared/                 # 跨功能共享模块
     components/ui/        # 通用 UI 组件（Button, Input, GoogleRing）
     components/           # 共享布局组件（Toast, ProtectedRoute, ServerButton, ServerSelectModal, ChangelogModal）

@@ -1,15 +1,11 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
 import type { ChatMessage, Color, GameAction } from '@uno-online/shared';
-import { chooseAutopilotJumpInAction, GameEventType } from '@uno-online/shared';
-import type { Kysely } from 'kysely';
-import type { Database } from '../db/database.js';
+import { chooseAutopilotJumpInAction } from '@uno-online/shared';
 import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts } from './room-events.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
-import { recordGameResult } from '../db/user-repo.js';
-import { saveGameEvents, saveDeckInfo } from '../plugins/core/game-history/service.js';
 import { getRoom, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS } from '@uno-online/shared';
 import { removeSpectator, getSpectatorNames } from '../plugins/core/spectate/ws.js';
@@ -23,42 +19,6 @@ function getSession(socket: Socket, sessions: Map<string, GameSession>): { sessi
   const session = sessions.get(roomCode);
   if (!session) return null;
   return { session, roomCode };
-}
-
-const persistedGames = new Map<string, number>();
-
-let persistEnabled = true;
-export function setGamePersistence(enabled: boolean): void {
-  persistEnabled = enabled;
-}
-
-async function persistGameResult(roomCode: string, session: GameSession, startTime: number, db: Kysely<Database>): Promise<void> {
-  if (!persistEnabled) return;
-
-  const state = session.getFullState();
-  const key = `${roomCode}:${state.roundNumber}`;
-  if (persistedGames.has(key)) return;
-  persistedGames.set(key, Date.now());
-
-  const duration = Math.floor((Date.now() - startTime) / 1000);
-  const sorted = [...state.players].sort((a, b) => b.score - a.score);
-  const playerResults = sorted.map((p, i) => ({
-    userId: p.id,
-    finalScore: p.score,
-    placement: i + 1,
-  }));
-
-  try {
-    const gameId = await recordGameResult(roomCode, state.winnerId ?? null, state.roundNumber, duration, playerResults);
-    const events = session.getEvents();
-    await saveGameEvents(db, gameId, events);
-    await saveDeckInfo(db, gameId, state.deckHash, session.getInitialDeckSerialized());
-    session.clearEvents();
-    setTimeout(() => persistedGames.delete(key), 60_000);
-  } catch (err) {
-    console.error(`[persistGameResult] Failed to persist game ${key}:`, err);
-    persistedGames.delete(key);
-  }
 }
 
 const chatTimestamps = new Map<string, number[]>();
@@ -91,7 +51,6 @@ function buildChatMessage(user: SocketData['user'], text: string, isSpectator = 
   };
 }
 
-const gameStartTimes = new Map<string, number>();
 const nextRoundVotes = new Map<string, Set<string>>();
 const pendingSpectatorJoins = new Map<string, Map<string, { userId: string; nickname: string; avatarUrl?: string | null; role?: string; isBot?: boolean; socketId: string }>>();
 const AUTOPILOT_JUMP_IN_DELAY_MS = 2_000;
@@ -101,20 +60,6 @@ interface NextRoundVoteState {
   votes: number;
   required: number;
   voters: string[];
-}
-
-export function setGameStartTime(roomCode: string): void {
-  gameStartTimes.set(roomCode, Date.now());
-}
-
-export function getGameStartTime(roomCode: string): number | undefined {
-  return gameStartTimes.get(roomCode);
-}
-
-export async function persistGameOnDissolve(roomCode: string, session: GameSession, db: Kysely<Database>): Promise<void> {
-  const startTime = gameStartTimes.get(roomCode) ?? Date.now();
-  await persistGameResult(roomCode, session, startTime, db);
-  gameStartTimes.delete(roomCode);
 }
 
 export function addAutopilotVote(roomCode: string, playerId: string, session: GameSession, io: SocketIOServer): void {
@@ -142,34 +87,18 @@ function clearAutopilotJumpIn(roomCode: string): void {
   autopilotJumpInTimers.delete(roomCode);
 }
 
-function recordAutopilotAction(session: GameSession, action: GameAction): void {
-  if (action.type === 'PLAY_CARD') {
-    const playedCard = session.getFullState().discardPile.at(-1);
-    if (playedCard) {
-      session.recordEvent(GameEventType.PLAY_CARD, { cardId: action.cardId, card: playedCard, chosenColor: action.chosenColor }, action.playerId);
-    }
-    return;
-  }
-
-  if (action.type === 'CHOOSE_COLOR') {
-    session.recordEvent(GameEventType.CHOOSE_COLOR, { color: action.color }, action.playerId);
-  }
-}
-
 function handleAutopilotAction(
   io: SocketIOServer,
   redis: KvStore,
   roomCode: string,
   session: GameSession,
   turnTimer: TurnTimer,
-  db: Kysely<Database>,
   sessions: Map<string, GameSession>,
   action: GameAction,
   persister: GameStatePersister,
 ): void {
-  recordAutopilotAction(session, action);
   if (action.type === 'PLAY_CARD') {
-    scheduleAutopilotJumpIn(io, redis, roomCode, session, turnTimer, db, sessions, persister);
+    scheduleAutopilotJumpIn(io, redis, roomCode, session, turnTimer, sessions, persister);
   }
 }
 
@@ -179,7 +108,6 @@ function scheduleAutopilotJumpIn(
   roomCode: string,
   session: GameSession,
   turnTimer: TurnTimer,
-  db: Kysely<Database>,
   sessions: Map<string, GameSession>,
   persister: GameStatePersister,
 ): void {
@@ -215,7 +143,6 @@ function scheduleAutopilotJumpIn(
       const result = currentSession.applyAction(action);
       if (result.success) {
         acted = true;
-        recordAutopilotAction(currentSession, action);
       }
     }
     if (!acted) return;
@@ -226,8 +153,8 @@ function scheduleAutopilotJumpIn(
       emitGameUpdate(io, roomCode, currentSession, redis),
     ]);
 
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, currentSession, turnTimer, redis, db, sessions, persister))) {
-      scheduleAutopilotJumpIn(io, redis, roomCode, currentSession, turnTimer, db, sessions, persister);
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, currentSession, turnTimer, redis, sessions, persister))) {
+      scheduleAutopilotJumpIn(io, redis, roomCode, currentSession, turnTimer, sessions, persister);
       startTurnTimer(io, redis, roomCode, currentSession, turnTimer, sessions, persister);
     }
   }, AUTOPILOT_JUMP_IN_DELAY_MS);
@@ -330,7 +257,6 @@ async function emitTerminalStateIfNeeded(
   session: GameSession,
   turnTimer: TurnTimer,
   redis: KvStore,
-  db: Kysely<Database>,
   sessions: Map<string, GameSession>,
   persister: GameStatePersister,
 ): Promise<boolean> {
@@ -347,9 +273,7 @@ async function emitTerminalStateIfNeeded(
   });
 
   if (state.phase === 'round_end') {
-    const scores = Object.fromEntries(state.players.map((p) => [p.id, p.score]));
     nextRoundVotes.delete(roomCode);
-    session.recordEvent(GameEventType.ROUND_END, { winnerId: state.winnerId!, scores }, null);
 
     const connectedAutopilotIds = state.players.filter((p) => p.autopilot && p.connected).map((p) => p.id);
     if (connectedAutopilotIds.length > 0) {
@@ -364,18 +288,13 @@ async function emitTerminalStateIfNeeded(
   }
 
   if (state.phase === 'game_over') {
-    const finalScores = Object.fromEntries(state.players.map((p) => [p.id, p.score]));
-    session.recordEvent(GameEventType.GAME_OVER, { winnerId: state.winnerId!, finalScores }, null);
-    const startTime = gameStartTimes.get(roomCode) ?? Date.now();
     await Promise.all([
       setRoomStatus(redis, roomCode, 'finished'),
       touchRoomActivity(redis, roomCode),
-      persistGameResult(roomCode, session, startTime, db),
     ]);
     session.clearChatHistory();
     await persister.flushNow(roomCode);
     io.to(roomCode).emit('chat:cleared');
-    gameStartTimes.delete(roomCode);
   }
 
   return true;
@@ -389,13 +308,12 @@ export function registerGameEvents(
   redis: KvStore,
   turnTimer: TurnTimer,
   sessions: Map<string, GameSession>,
-  db: Kysely<Database>,
   persister: GameStatePersister,
 ) {
   if (!autopilotHandlerSet) {
     autopilotHandlerSet = true;
     setAutopilotActionHandler((roomCode, session, action) => {
-      handleAutopilotAction(io, redis, roomCode, session, turnTimer, db, sessions, action, persister);
+      handleAutopilotAction(io, redis, roomCode, session, turnTimer, sessions, action, persister);
     });
   }
 
@@ -420,19 +338,13 @@ export function registerGameEvents(
       return callback?.({ success: false, error: result.error });
     }
     resetPlayerTimeout(roomCode, data.user.userId);
-    const playedCard = session.getFullState().discardPile.at(-1);
-    session.recordEvent(GameEventType.PLAY_CARD, {
-      cardId: payload.cardId,
-      card: playedCard!,
-      chosenColor: payload.chosenColor,
-    }, data.user.userId);
     persister.markDirty(roomCode, session.getFullState());
     await Promise.all([
       touchRoomActivity(redis, roomCode),
       emitGameUpdate(io, roomCode, session, redis),
     ]);
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions, persister))) {
-      scheduleAutopilotJumpIn(io, redis, roomCode, session, turnTimer, db, sessions, persister);
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, sessions, persister))) {
+      scheduleAutopilotJumpIn(io, redis, roomCode, session, turnTimer, sessions, persister);
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
     }
     callback?.({ success: true });
@@ -453,9 +365,6 @@ export function registerGameEvents(
       return callback?.({ success: false, error: result.error });
     }
     resetPlayerTimeout(roomCode, data.user.userId);
-    if (result.drawnCard) {
-      session.recordEvent(GameEventType.DRAW_CARD, { card: result.drawnCard }, data.user.userId);
-    }
     const gameState = session.getFullState();
     if (result.drawnCard && !gameState.settings.houseRules.blindDraw) {
       socket.emit('game:card_drawn', { card: result.drawnCard });
@@ -469,7 +378,7 @@ export function registerGameEvents(
     if (
       (beforeState.pendingPenaltyDraws ?? 0) > 0 &&
       (afterState.pendingPenaltyDraws ?? 0) === 0 &&
-      !(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions, persister))
+      !(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, sessions, persister))
     ) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
     }
@@ -483,7 +392,6 @@ export function registerGameEvents(
     const result = session.applyAction({ type: 'PASS', playerId: data.user.userId });
     if (!result.success) return callback?.({ success: false, error: result.error });
     resetPlayerTimeout(roomCode, data.user.userId);
-    session.recordEvent(GameEventType.PASS, {}, data.user.userId);
     persister.markDirty(roomCode, session.getFullState());
     await Promise.all([
       touchRoomActivity(redis, roomCode),
@@ -499,13 +407,12 @@ export function registerGameEvents(
     const { session, roomCode } = ctx;
     const result = session.applyAction({ type: 'CALL_UNO', playerId: data.user.userId });
     if (!result.success) return callback?.({ success: false, error: result.error });
-    session.recordEvent(GameEventType.CALL_UNO, {}, data.user.userId);
     persister.markDirty(roomCode, session.getFullState());
     await Promise.all([
       touchRoomActivity(redis, roomCode),
       emitGameUpdate(io, roomCode, session, redis),
     ]);
-    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions, persister)) {
+    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, sessions, persister)) {
       return callback?.({ success: true });
     }
     callback?.({ success: true });
@@ -518,7 +425,6 @@ export function registerGameEvents(
     if (!session) return callback?.({ success: false });
     const result = session.applyAction({ type: 'CATCH_UNO', catcherId: data.user.userId, targetId: payload.targetPlayerId, catcherName: data.user.nickname });
     if (!result.success) return callback?.({ success: false, error: result.error });
-    session.recordEvent(GameEventType.CATCH_UNO, { targetPlayerId: payload.targetPlayerId }, data.user.userId);
     persister.markDirty(roomCode, session.getFullState());
     await Promise.all([
       touchRoomActivity(redis, roomCode),
@@ -534,17 +440,12 @@ export function registerGameEvents(
     const result = session.applyAction({ type: 'CHALLENGE', playerId: data.user.userId });
     if (!result.success) return callback?.({ success: false, error: result.error });
     resetPlayerTimeout(roomCode, data.user.userId);
-    const challengeState = session.getFullState();
-    session.recordEvent(GameEventType.CHALLENGE, {
-      success: challengeState.lastAction?.type === 'CHALLENGE' ? challengeState.lastAction.succeeded ?? false : false,
-      penaltyCards: [],
-    }, data.user.userId);
     persister.markDirty(roomCode, session.getFullState());
     await Promise.all([
       touchRoomActivity(redis, roomCode),
       emitGameUpdate(io, roomCode, session, redis),
     ]);
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions, persister))) {
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, sessions, persister))) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
     }
     callback?.({ success: true });
@@ -557,13 +458,12 @@ export function registerGameEvents(
     const result = session.applyAction({ type: 'ACCEPT', playerId: data.user.userId });
     if (!result.success) return callback?.({ success: false, error: result.error });
     resetPlayerTimeout(roomCode, data.user.userId);
-    session.recordEvent(GameEventType.ACCEPT, { drawnCards: [] }, data.user.userId);
     persister.markDirty(roomCode, session.getFullState());
     await Promise.all([
       touchRoomActivity(redis, roomCode),
       emitGameUpdate(io, roomCode, session, redis),
     ]);
-    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions, persister))) {
+    if (!(await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, sessions, persister))) {
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
     }
     callback?.({ success: true });
@@ -580,16 +480,15 @@ export function registerGameEvents(
     });
     if (!result.success) return callback?.({ success: false, error: result.error });
     resetPlayerTimeout(roomCode, data.user.userId);
-    session.recordEvent(GameEventType.CHOOSE_COLOR, { color: payload.color }, data.user.userId);
     persister.markDirty(roomCode, session.getFullState());
     await Promise.all([
       touchRoomActivity(redis, roomCode),
       emitGameUpdate(io, roomCode, session, redis),
     ]);
-    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, db, sessions, persister)) {
+    if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, sessions, persister)) {
       // terminal state already emitted
     } else {
-      scheduleAutopilotJumpIn(io, redis, roomCode, session, turnTimer, db, sessions, persister);
+      scheduleAutopilotJumpIn(io, redis, roomCode, session, turnTimer, sessions, persister);
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
     }
     callback?.({ success: true });
@@ -606,7 +505,6 @@ export function registerGameEvents(
     });
     if (!result.success) return callback?.({ success: false, error: result.error });
     resetPlayerTimeout(roomCode, data.user.userId);
-    session.recordEvent(GameEventType.CHOOSE_SWAP_TARGET, { targetId: payload.targetId }, data.user.userId);
     persister.markDirty(roomCode, session.getFullState());
     await Promise.all([
       touchRoomActivity(redis, roomCode),

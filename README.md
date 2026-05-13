@@ -27,7 +27,6 @@ Web-based multiplayer UNO card game with voice chat, 33 configurable house rules
 - **Mobile responsive** — touch-optimized hand scrolling, adaptive layout
 - **Admin panel** — user management, room monitoring, dashboard stats
 - **Spectator mode** — watch games in real-time, hidden or visible card view
-- **Game history** — replay past games, browse records in admin panel
 - **GitHub OAuth** + password login
 - **MCP support** — AI clients (Claude Code, Cursor, etc.) can play the game via Model Context Protocol
 
@@ -179,9 +178,6 @@ docker push djkcyl/uno-online-caddy:latest
 | `PATCH` | `/api/profile` | Yes | Update profile |
 | `POST` | `/api/profile/avatar` | Yes | Upload avatar |
 | `GET` | `/api/rooms/active` | Yes | List active rooms |
-| `GET` | `/api/games` | Yes | List game history |
-| `GET` | `/api/games/:id` | Yes | Get game record detail |
-| `GET` | `/api/games/:id/verify` | Yes | Verify game deck integrity |
 | `POST` | `/api/api-keys` | Yes | Create a new API key |
 | `GET` | `/api/api-keys` | Yes | List user's API keys (masked) |
 | `DELETE` | `/api/api-keys/:id` | Yes | Delete an API key |
@@ -192,8 +188,6 @@ docker push djkcyl/uno-online-caddy:latest
 | `PATCH` | `/api/admin/users/:id/profile` | Admin | Update user profile |
 | `GET` | `/api/admin/rooms` | Admin | List all rooms |
 | `DELETE` | `/api/admin/rooms/:code` | Admin | Force dissolve a room |
-| `GET` | `/api/admin/games` | Admin | Paginated game history |
-| `GET` | `/api/admin/games/:id` | Admin | Game record detail |
 
 ## MCP (AI Play)
 

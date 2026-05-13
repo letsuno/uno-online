@@ -1,16 +1,14 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
-import type { Kysely } from 'kysely';
 import type { KvStore } from '../kv/types.js';
 import type { GameAction, GameState, RoomSettings } from '@uno-online/shared';
-import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction, GameEventType } from '@uno-online/shared';
-import type { Database } from '../db/database.js';
+import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager.js';
 import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity } from '../plugins/core/room/store.js';
 import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import type { VoiceChannelManager } from '../voice/channel-manager.js';
-import { setGameStartTime, removePlayerVote, persistGameOnDissolve } from './game-events.js';
+import { removePlayerVote } from './game-events.js';
 import type { SocketData } from './types.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { removeVoicePresence, setForceMuted } from './voice-presence.js';
@@ -75,7 +73,6 @@ export function registerRoomEvents(
   roomManager: RoomManager,
   turnTimer: TurnTimer,
   sessions: Map<string, GameSession>,
-  db: Kysely<Database>,
   persister: GameStatePersister,
   voiceChannels?: VoiceChannelManager,
 ) {
@@ -143,7 +140,7 @@ export function registerRoomEvents(
     }
     const room = await getRoom(redis, roomCode);
     if (room?.ownerId === data.user.userId) {
-      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'host_closed', db, voiceChannels);
+      await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'host_closed', voiceChannels);
       return callback?.({ success: true, dissolved: true });
     }
     const { deleted } = await roomManager.leaveRoom(roomCode, data.user.userId);
@@ -161,9 +158,7 @@ export function registerRoomEvents(
         if (lastPlayer) {
           session.forceGameOver(lastPlayer.id);
           turnTimer.stop(roomCode);
-          // Persist before removing — game history needs the full player list
-          await persistGameOnDissolve(roomCode, session, db);
-          session.removePlayer(data.user.userId);
+            session.removePlayer(data.user.userId);
           io.to(roomCode).emit('game:over', {
             winnerId: lastPlayer.id,
             scores: Object.fromEntries(st.players.map((p) => [p.id, p.score])),
@@ -244,7 +239,7 @@ export function registerRoomEvents(
     if (!room || room.ownerId !== data.user.userId) {
       return callback?.({ success: false, error: 'Only room owner can dissolve' });
     }
-    await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'host_closed', db, voiceChannels);
+    await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'host_closed', voiceChannels);
     callback?.({ success: true });
   });
 
@@ -333,16 +328,6 @@ export function registerRoomEvents(
       { turnTimeLimit: room.settings?.turnTimeLimit ?? 30, targetScore: room.settings?.targetScore ?? 1000, houseRules: room.settings?.houseRules ?? DEFAULT_HOUSE_RULES, allowSpectators: room.settings?.allowSpectators ?? true, spectatorMode: room.settings?.spectatorMode ?? 'hidden' } as RoomSettings,
     );
     sessions.set(roomCode, session);
-    setGameStartTime(roomCode);
-    const fullState = session.getFullState();
-    session.recordEvent(GameEventType.GAME_START, {
-      initialDeck: [...fullState.deckLeft, ...fullState.deckRight],
-      deckHash: fullState.deckHash,
-      playerHands: Object.fromEntries(fullState.players.map(p => [p.id, p.hand])),
-      firstDiscard: fullState.discardPile[0]!,
-      direction: fullState.direction,
-      settings: fullState.settings,
-    }, null);
     persister.markDirty(roomCode, session.getFullState());
     await persister.flushNow(roomCode);
 
@@ -367,7 +352,6 @@ export function registerRoomEvents(
         const winner = state.players.find(p => p.hand.length === minCards);
         if (winner) {
           s.forceGameOver(winner.id);
-          await persistGameOnDissolve(roomCode, s, db);
           persister.markDirty(roomCode, s.getFullState());
           await persister.flushNow(roomCode);
           await emitGameUpdate(io, roomCode, s, redis);

@@ -9,8 +9,7 @@ import { Button } from '@/shared/components/ui/Button';
 import { useNotificationStore, type NotificationEventType } from '@/shared/stores/notification-store';
 
 interface ProfileData {
-  user: { id: string; username: string; nickname: string; avatarUrl: string | null; totalGames: number; totalWins: number; githubId?: string | null; role?: string };
-  recentGames: { id: string; game: { roomCode: string; createdAt: string }; finalScore: number; placement: number }[];
+  user: { id: string; username: string; nickname: string; avatarUrl: string | null; githubId?: string | null; role?: string };
 }
 
 export default function ProfilePage() {
@@ -143,10 +142,6 @@ export default function ProfilePage() {
               </p>
             )}
             <p className="text-muted-foreground text-sm mt-1">@{profile.user.username}</p>
-            <p className="mt-2 text-muted-foreground">
-              总场次: {profile.user.totalGames} | 胜场: {profile.user.totalWins} |
-              胜率: {profile.user.totalGames > 0 ? Math.round(profile.user.totalWins / profile.user.totalGames * 100) : 0}%
-            </p>
           </div>
 
           {/* Notification settings */}
@@ -228,17 +223,6 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {profile.recentGames.length > 0 && (
-            <div className="w-full max-w-profile-max rounded-xl bg-card p-4">
-              <h3 className="mb-3 text-sm text-muted-foreground">最近对局</h3>
-              {profile.recentGames.map((g) => (
-                <div key={g.id} className="flex justify-between border-b border-white/5 py-1.5 text-caption">
-                  <span>房间 {g.game.roomCode}</span>
-                  <span>第 {g.placement} 名 | {g.finalScore} 分</span>
-                </div>
-              ))}
-            </div>
-          )}
         </>
       )}
       <Button variant="secondary" onClick={() => navigate('/lobby')} sound="click">返回大厅</Button>
