@@ -5,8 +5,6 @@ import { useServerVersionStore } from '../stores/server-version-store';
 export default function ServerUpdateDialog() {
   const needsRefresh = useServerVersionStore((s) => s.needsRefresh);
 
-  if (!needsRefresh) return null;
-
   const handleRefresh = () => window.location.reload();
 
   return (
