@@ -417,9 +417,13 @@ export function setupSocketHandlers(
             ]);
             io.to(roomCode).emit('room:updated', { players, room });
           } else {
-            sessions.delete(roomCode);
-            turnTimer.stop(roomCode);
-            await voiceChannels.clearRoomChannelMapping(roomCode);
+            // Last player gone — route through dissolveRoom so every
+            // in-memory registry (spectators, pending joins, voice presence,
+            // room timeouts, persister) gets torn down, the Mumble channel
+            // is actually removed (not just unmapped), and any straggler
+            // sockets in the room get notified + ejected. The cached
+            // inline cleanup here used to forget all of that.
+            await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
           }
         }, RECONNECT_TIMEOUT_MS);
         disconnectTimers.set(userId, timer);

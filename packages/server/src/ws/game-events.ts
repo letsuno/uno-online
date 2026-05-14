@@ -256,8 +256,6 @@ async function processPendingSpectatorJoins(
       joined: true,
     });
   }
-  // No room:spectator_list emit here — startNextRound broadcasts it once
-  // after this function returns.
 }
 
 async function startNextRound(

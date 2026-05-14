@@ -82,11 +82,22 @@ describe('spectator registry', () => {
       const { io, emits } = makeIoStub();
       addSpectator(ROOM_A, 'u1', 'Alice');
       addSpectator(ROOM_A, 'u2', 'Bob');
-      broadcastSpectatorLeft(io, ROOM_A, 'u1');
+      broadcastSpectatorLeft(io, ROOM_A, 'u1', 'Alice');
       expect(emits).toEqual([
         { event: 'room:spectator_list', payload: { spectators: ['Bob'] } },
         { event: 'room:spectator_left', payload: { nickname: 'Alice', spectators: ['Bob'] } },
       ]);
+    });
+
+    // The room:spectator_left payload's `nickname` should come from the
+    // authoritative registry, not the caller — guards against a stale
+    // caller-supplied nickname after rename.
+    it('broadcastSpectatorLeft uses the registry nickname for room:spectator_left', () => {
+      const { io, emits } = makeIoStub();
+      addSpectator(ROOM_A, 'u1', 'RegistryName');
+      broadcastSpectatorLeft(io, ROOM_A, 'u1', 'StaleCallerName');
+      const left = emits.find((e) => e.event === 'room:spectator_left');
+      expect((left!.payload as { nickname: string }).nickname).toBe('RegistryName');
     });
 
     // The bug this whole refactor exists to fix: the server used to emit
@@ -95,7 +106,7 @@ describe('spectator registry', () => {
     it('broadcastSpectatorLeft always populates spectators on room:spectator_left (contract guard)', () => {
       const { io, emits } = makeIoStub();
       addSpectator(ROOM_A, 'u1', 'Alice');
-      broadcastSpectatorLeft(io, ROOM_A, 'u1');
+      broadcastSpectatorLeft(io, ROOM_A, 'u1', 'Alice');
       const left = emits.find((e) => e.event === 'room:spectator_left');
       expect(left).toBeDefined();
       expect((left!.payload as { spectators: unknown }).spectators).toEqual([]);
@@ -112,7 +123,7 @@ describe('spectator registry', () => {
 
       it('broadcastSpectatorLeft warns and does not emit when the user is untracked', () => {
         const { io, emits } = makeIoStub();
-        broadcastSpectatorLeft(io, ROOM_A, 'ghost');
+        broadcastSpectatorLeft(io, ROOM_A, 'ghost', 'Ghost');
         expect(emits).toEqual([]);
         expect(warnSpy).toHaveBeenCalledOnce();
         expect(warnSpy.mock.calls[0][0]).toMatch(/untracked user/);

@@ -35,10 +35,11 @@ export function addSpectator(roomCode: string, userId: string, nickname: string)
 /** Returns the removed nickname, or `null` if the user wasn't tracked. */
 export function removeSpectator(roomCode: string, userId: string): string | null {
   const room = roomSpectators.get(roomCode);
-  const nickname = room?.get(userId);
+  if (!room) return null;
+  const nickname = room.get(userId);
   if (nickname == null) return null;
-  room!.delete(userId);
-  if (room!.size === 0) roomSpectators.delete(roomCode);
+  room.delete(userId);
+  if (room.size === 0) roomSpectators.delete(roomCode);
   return nickname;
 }
 
@@ -48,30 +49,36 @@ export function broadcastSpectatorList(io: SocketIOServer, roomCode: string): vo
 }
 
 /**
- * Single entry point for every "a spectator left" path (disconnect,
- * room:leave, future flows). Removes the user from the registry and emits
- * the resulting authoritative state to the rest of the room.
+ * Single entry point for every "a spectator left" path. Drains the user
+ * from both the pending-join queue and the spectator registry, then emits
+ * the resulting authoritative state.
  *
- * When the user isn't tracked we *don't* broadcast (nothing changed), but
- * we do warn — every caller's precondition (`data.isSpectator === true` or
- * "user is in the pending-join queue") implies the user must be in the
- * registry, so a null here is the exact kind of state drift this refactor
- * was written to prevent. Logging gives operators a breadcrumb instead of
- * silently swallowing it the way the previous code did.
+ * Warns instead of silently no-op'ing when the user wasn't in the registry
+ * — every caller's precondition (`data.isSpectator === true`) implies the
+ * user must be tracked, so a null is exactly the kind of drift this
+ * refactor exists to surface.
  */
 export function broadcastSpectatorLeft(
   io: SocketIOServer,
   roomCode: string,
   userId: string,
+  nickname: string,
 ): void {
-  const nickname = removeSpectator(roomCode, userId);
-  if (nickname == null) {
+  if (removePendingSpectatorJoin(roomCode, userId)) {
+    io.to(roomCode).emit('game:spectator_queue', {
+      queue: getPendingSpectatorQueue(roomCode),
+      nickname,
+      joined: false,
+    });
+  }
+  const removed = removeSpectator(roomCode, userId);
+  if (removed == null) {
     console.warn('[spectate] broadcastSpectatorLeft called for untracked user', { roomCode, userId });
     return;
   }
   const spectators = getSpectatorNames(roomCode);
   io.to(roomCode).emit('room:spectator_list', { spectators });
-  io.to(roomCode).emit('room:spectator_left', { nickname, spectators });
+  io.to(roomCode).emit('room:spectator_left', { nickname: removed, spectators });
 }
 
 export function setupSpectateHandlers(
@@ -139,19 +146,9 @@ export function setupSpectateHandlers(
 
     socket.on('disconnect', () => {
       const data = socket.data as SocketData;
-      if (!data.isSpectator || !data.roomCode) return;
-      const roomCode = data.roomCode;
-      const userId = data.user?.userId;
-      if (!userId) return;
-
-      if (removePendingSpectatorJoin(roomCode, userId)) {
-        io.to(roomCode).emit('game:spectator_queue', {
-          queue: getPendingSpectatorQueue(roomCode),
-          nickname: data.user.nickname ?? '',
-          joined: false,
-        });
-      }
-      broadcastSpectatorLeft(io, roomCode, userId);
+      if (!data.isSpectator || !data.roomCode || !data.user) return;
+      const { userId, nickname } = data.user;
+      broadcastSpectatorLeft(io, data.roomCode, userId, nickname);
       clearUserRoom(kv, userId).catch((err) => {
         console.warn('[spectate] clearUserRoom on disconnect failed:', err);
       });

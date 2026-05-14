@@ -9,7 +9,7 @@ import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import type { VoiceChannelManager } from '../voice/channel-manager.js';
-import { removePlayerVote, removePendingSpectatorJoin, getPendingSpectatorQueue } from './game-events.js';
+import { removePlayerVote } from './game-events.js';
 import type { SocketData } from './types.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { removeVoicePresence, setForceMuted } from './voice-presence.js';
@@ -135,16 +135,7 @@ export function registerRoomEvents(
     const roomCode = data.roomCode;
     if (!roomCode) return callback?.({ success: false, error: 'Not in a room' });
     if (data.isSpectator) {
-      const userId = data.user.userId;
-      const nickname = data.user.nickname;
-
-      if (removePendingSpectatorJoin(roomCode, userId)) {
-        io.to(roomCode).emit('game:spectator_queue', {
-          queue: getPendingSpectatorQueue(roomCode),
-          nickname,
-          joined: false,
-        });
-      }
+      const { userId, nickname } = data.user;
 
       // If the owner is leaving while on the spectator bench (e.g. after
       // game:leave_to_spectate), transfer ownership before clearing socket
@@ -170,7 +161,7 @@ export function registerRoomEvents(
       // leaveRoomSocket first so the broadcast doesn't echo back to the
       // leaver themselves.
       await leaveRoomSocket(redis, socket, roomCode);
-      broadcastSpectatorLeft(io, roomCode, userId);
+      broadcastSpectatorLeft(io, roomCode, userId, nickname);
       return callback?.({ success: true });
     }
     const room = await getRoom(redis, roomCode);
