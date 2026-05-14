@@ -6,20 +6,22 @@ import { Button } from '@/shared/components/ui/Button';
 import { ServerSelectModal } from '@/shared/components/ServerSelectModal';
 import GamePageShell from '@/shared/components/GamePageShell';
 import ServerStatusBar from '@/shared/components/ServerStatusBar';
-import StartScreenGate from '../components/StartScreenGate';
 
 interface AuthConfig {
   devMode: boolean;
   githubClientId: string;
 }
 
-type Phase = 'gate' | 'auth';
-
+/**
+ * 登录页。仅当 RootSwitch 检测到未登录时被渲染。
+ *
+ * 不再处理「已登录跳转」的逻辑——RootSwitch 会自动渲染 LobbyPage 而不是来这里。
+ * 不再处理「按任意键继续」的启动屏——StartScreenOverlay 是全局浮层，与本页解耦。
+ */
 export default function HomePage() {
-  const { token, user, loading, loadUser, devLogin, passwordLogin, logout } = useAuthStore();
+  const { token, loading, loadUser, devLogin, passwordLogin } = useAuthStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [phase, setPhase] = useState<Phase>('gate');
   const [devUsername, setDevUsername] = useState('');
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -28,7 +30,7 @@ export default function HomePage() {
   const [loggingIn, setLoggingIn] = useState(false);
   const redirect = searchParams.get('redirect');
 
-  const getRedirectTarget = () => redirect || sessionStorage.getItem('loginRedirect') || '/lobby';
+  const getRedirectTarget = () => redirect || sessionStorage.getItem('loginRedirect') || '/';
 
   useEffect(() => {
     if (redirect) sessionStorage.setItem('loginRedirect', redirect);
@@ -39,24 +41,8 @@ export default function HomePage() {
       setError('登录已过期，请重新登录');
     }
     apiGet<AuthConfig>('/auth/config').then(setAuthConfig).catch(() => {});
-    // 拉用户信息以便 StartScreenGate 显示 greeting；不再自动跳转
     void loadUser();
   }, []);
-
-  const handleEnter = () => {
-    if (token && user) {
-      const target = getRedirectTarget();
-      sessionStorage.removeItem('loginRedirect');
-      navigate(target);
-    } else {
-      setPhase('auth');
-    }
-  };
-
-  const handleSwitchAccount = () => {
-    logout();
-    // 仍停在 phase = 'gate'；token / user 变 null 后 greeting 自动消失
-  };
 
   const loginUrl = authConfig
     ? `https://github.com/login/oauth/authorize?client_id=${authConfig.githubClientId}&scope=read:user`
@@ -92,22 +78,6 @@ export default function HomePage() {
     }
   };
 
-  // phase 'gate'：渲染启动屏
-  if (phase === 'gate') {
-    return (
-      <GamePageShell>
-        <StartScreenGate
-          greeting={user?.nickname}
-          onEnter={handleEnter}
-          onSwitchAccount={token && user ? handleSwitchAccount : undefined}
-        />
-        <ServerStatusBar />
-        <ServerSelectModal />
-      </GamePageShell>
-    );
-  }
-
-  // phase 'auth'：渲染登录表单（保留原有 JSX）
   return (
     <GamePageShell>
       <div className="relative z-1 flex flex-col items-center justify-center text-center">
