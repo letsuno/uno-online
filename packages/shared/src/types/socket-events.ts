@@ -51,7 +51,7 @@ export interface ServerToClientEvents {
   'game:spectator_queue': (data: { queue: string[]; nickname: string; joined: boolean }) => void;
   'game:cheat_detected': () => void;
   'voice:presence': (presence: Record<string, unknown>) => void;
-  'server:version': (data: { version: string }) => void;
+  'server:version': (data: { version: string; serverTime: number }) => void;
 }
 
 export interface ClientToServerEvents {

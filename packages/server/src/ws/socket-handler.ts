@@ -161,7 +161,7 @@ export function setupSocketHandlers(
   io.on('connection', async (socket) => {
     const userId = socket.data.user.userId;
 
-    socket.emit('server:version', { version: serverStartTime });
+    socket.emit('server:version', { version: serverStartTime, serverTime: Date.now() });
 
     // Multi-tab: kick existing connection for same user
     const existingSocketId = userSocketMap.get(userId);
