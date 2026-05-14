@@ -7,11 +7,16 @@ import { loadGameState } from '../game/state-store.js';
 import { removePendingSpectatorJoin, getPendingSpectatorQueue } from '../../../ws/game-events.js';
 import { joinRoomSocket } from '../../../ws/socket-room.js';
 
+interface SpectatorInfo {
+  nickname: string;
+  avatarUrl?: string | null;
+}
+
 // Keyed by userId — nicknames aren't enforced unique at signup. Single
 // socket per user is enforced at connection time, so no ref-counting.
-const roomSpectators = new Map<string, Map<string, string>>();
+const roomSpectators = new Map<string, Map<string, SpectatorInfo>>();
 
-export function getSpectatorNames(roomCode: string): string[] {
+export function getSpectatorNames(roomCode: string): SpectatorInfo[] {
   return [...(roomSpectators.get(roomCode)?.values() ?? [])];
 }
 
@@ -19,25 +24,25 @@ export function clearRoomSpectators(roomCode: string): void {
   roomSpectators.delete(roomCode);
 }
 
-/** Idempotent on `(roomCode, userId)`; refreshes the stored nickname. */
-export function addSpectator(roomCode: string, userId: string, nickname: string): void {
+/** Idempotent on `(roomCode, userId)`; refreshes the stored info. */
+export function addSpectator(roomCode: string, userId: string, nickname: string, avatarUrl?: string | null): void {
   let room = roomSpectators.get(roomCode);
   if (!room) {
     room = new Map();
     roomSpectators.set(roomCode, room);
   }
-  room.set(userId, nickname);
+  room.set(userId, { nickname, avatarUrl });
 }
 
 /** Returns the removed nickname, or `null` if the user wasn't tracked. */
 export function removeSpectator(roomCode: string, userId: string): string | null {
   const room = roomSpectators.get(roomCode);
   if (!room) return null;
-  const nickname = room.get(userId);
-  if (nickname == null) return null;
+  const info = room.get(userId);
+  if (info == null) return null;
   room.delete(userId);
   if (room.size === 0) roomSpectators.delete(roomCode);
-  return nickname;
+  return info.nickname;
 }
 
 export function broadcastSpectatorList(io: SocketIOServer, roomCode: string): void {
@@ -119,7 +124,7 @@ export function setupSpectateHandlers(
 
       await joinRoomSocket(kv, socket, roomCode, { asSpectator: true });
 
-      addSpectator(roomCode, data.user.userId, data.user.nickname);
+      addSpectator(roomCode, data.user.userId, data.user.nickname, data.user.avatarUrl);
 
       const view = session.getSpectatorView(room.settings.spectatorMode);
       socket.emit('game:state', view);

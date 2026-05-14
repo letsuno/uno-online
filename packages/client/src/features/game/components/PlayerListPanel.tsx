@@ -81,12 +81,12 @@ export default function PlayerListPanel() {
               观众 ({spectators.length})
             </div>
             <div className="py-1">
-              {spectators.map((name) => {
-                const queued = pendingJoinQueue.includes(name);
+              {spectators.map((s) => {
+                const queued = pendingJoinQueue.includes(s.nickname);
                 return (
-                  <div key={name} className="flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground">
+                  <div key={s.nickname} className="flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground">
                     {queued ? <UserPlus size={12} className="shrink-0 text-accent" /> : <Eye size={12} className="shrink-0" />}
-                    <span className={cn('truncate', queued && 'text-accent')}>{name}</span>
+                    <span className={cn('truncate', queued && 'text-accent')}>{s.nickname}</span>
                     {queued && <span className="text-2xs text-accent ml-auto shrink-0">加入中</span>}
                   </div>
                 );

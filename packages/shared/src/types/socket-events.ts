@@ -45,9 +45,9 @@ export interface ServerToClientEvents {
   'room:updated': (data: Record<string, unknown>) => void;
   'room:dissolved': (data?: { reason?: string }) => void;
   'room:rejoin_redirect': (data: { roomCode: string }) => void;
-  'room:spectator_joined': (data: { nickname: string; spectators: string[] }) => void;
-  'room:spectator_left': (data: { nickname: string; spectators: string[] }) => void;
-  'room:spectator_list': (data: { spectators: string[] }) => void;
+  'room:spectator_joined': (data: { nickname: string; spectators: { nickname: string; avatarUrl?: string | null }[] }) => void;
+  'room:spectator_left': (data: { nickname: string; spectators: { nickname: string; avatarUrl?: string | null }[] }) => void;
+  'room:spectator_list': (data: { spectators: { nickname: string; avatarUrl?: string | null }[] }) => void;
   'game:spectator_queue': (data: { queue: string[]; nickname: string; joined: boolean }) => void;
   'game:cheat_detected': () => void;
   'voice:presence': (presence: Record<string, unknown>) => void;
