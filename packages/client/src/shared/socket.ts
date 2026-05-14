@@ -160,29 +160,25 @@ export function getSocket(): TypedSocket {
       }
     });
 
+    // The three spectator events all carry the full authoritative
+    // `spectators` array per socket-events.ts; trust the contract — local
+    // fallbacks would just paper over future server-side regressions.
     socket.on('room:spectator_list', (data) => {
-      if (data.spectators) {
-        const store = useSpectatorStore.getState();
-        store.setSpectators(data.spectators);
-        const spectatorSet = new Set(data.spectators);
-        if (store.pendingJoinQueue.some((n) => !spectatorSet.has(n))) {
-          store.setPendingJoinQueue(store.pendingJoinQueue.filter((n) => spectatorSet.has(n)));
-        }
+      const store = useSpectatorStore.getState();
+      store.setSpectators(data.spectators);
+      const spectatorSet = new Set(data.spectators);
+      if (store.pendingJoinQueue.some((n) => !spectatorSet.has(n))) {
+        store.setPendingJoinQueue(store.pendingJoinQueue.filter((n) => spectatorSet.has(n)));
       }
     });
 
     socket.on('room:spectator_joined', (data) => {
       useToastStore.getState().addToast(`${data.nickname} 开始观战`, 'info');
-      if (data.spectators) useSpectatorStore.getState().setSpectators(data.spectators);
+      useSpectatorStore.getState().setSpectators(data.spectators);
     });
 
     socket.on('room:spectator_left', (data) => {
       useToastStore.getState().addToast(`${data.nickname} 离开观战`, 'info');
-      // The server contract (socket-events.ts) requires `spectators`. A
-      // previous local-only fallback existed to mask a server-side bug
-      // where room:leave omitted the array; that bug is fixed and the
-      // fallback would silently re-open the door to drift if a future
-      // regression broke the contract again.
       useSpectatorStore.getState().setSpectators(data.spectators);
     });
 

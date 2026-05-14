@@ -8,7 +8,7 @@ import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerT
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import { getRoom, getRoomPlayers, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom, resetAllPlayersReady, setUserRoom } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS } from '@uno-online/shared';
-import { addSpectator, getSpectatorNames, clearRoomSpectators, removeSpectatorFully } from '../plugins/core/spectate/ws.js';
+import { addSpectator, getSpectatorNames, clearRoomSpectators, removeSpectator } from '../plugins/core/spectate/ws.js';
 import type { SocketData } from './types.js';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
@@ -223,9 +223,9 @@ async function processPendingSpectatorJoins(
     const sock = io.sockets.sockets.get(info.socketId);
     if (sock) (sock.data as SocketData).isSpectator = false;
 
-    // Role transition (spectator → player) — yank the user entirely from
-    // the spectator registry regardless of how many sockets they have.
-    removeSpectatorFully(roomCode, userId);
+    // Role transition (spectator → player): no broadcast here — startNextRound
+    // ships a fresh room:spectator_list immediately after this returns.
+    removeSpectator(roomCode, userId);
     session.addPlayer({
       id: userId,
       name: info.nickname,
@@ -256,7 +256,8 @@ async function processPendingSpectatorJoins(
       joined: true,
     });
   }
-  io.to(roomCode).emit('room:spectator_list', { spectators: getSpectatorNames(roomCode) });
+  // No room:spectator_list emit here — startNextRound broadcasts it once
+  // after this function returns.
 }
 
 async function startNextRound(
@@ -712,15 +713,10 @@ export function registerGameEvents(
     for (const s of targetSockets) {
       if ((s.data as SocketData).user.userId === targetId) {
         (s.data as SocketData).isSpectator = true;
-        if (targetPlayer) {
-          // Track every one of the target's sockets — if the target is
-          // multi-tabbed, each tab needs its own ref so the user only
-          // appears to leave when their last spectator socket disconnects.
-          addSpectator(roomCode, targetId, targetPlayer.name, s.id);
-        }
         s.emit('game:kicked', { reason: '你已被房主移至观战席', toSpectator: true });
       }
     }
+    if (targetPlayer) addSpectator(roomCode, targetId, targetPlayer.name);
 
     voters.delete(targetId);
     const voteState = getNextRoundVoteState(roomCode, session);
@@ -755,7 +751,7 @@ export function registerGameEvents(
     await removePlayerFromRoom(redis, roomCode, data.user.userId);
 
     (socket.data as SocketData).isSpectator = true;
-    addSpectator(roomCode, data.user.userId, player.name, socket.id);
+    addSpectator(roomCode, data.user.userId, player.name);
 
     const voters = nextRoundVotes.get(roomCode) ?? new Set<string>();
     voters.delete(data.user.userId);
@@ -824,6 +820,9 @@ export function registerGameEvents(
     const updatedRoom = await getRoom(redis, roomCode);
     io.to(roomCode).emit('game:back_to_room', { players, room: updatedRoom });
     io.to(roomCode).emit('chat:cleared');
+    // The server-side spectator registry was just cleared; mirror that to
+    // every client so their spectator panel doesn't show last round's list.
+    io.to(roomCode).emit('room:spectator_list', { spectators: [] });
     callback?.({ success: true });
   });
 }

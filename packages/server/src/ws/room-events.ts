@@ -14,7 +14,7 @@ import type { SocketData } from './types.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { removeVoicePresence, setForceMuted } from './voice-presence.js';
 import { getAutopilotActionPlayerId } from './autopilot-action-player.js';
-import { addSpectator, broadcastSpectatorLeftIfLast } from '../plugins/core/spectate/ws.js';
+import { addSpectator, broadcastSpectatorLeft } from '../plugins/core/spectate/ws.js';
 
 const AUTOPILOT_MIN_ACTION_INTERVAL_MS = 500;
 const AUTO_AUTOPILOT_THRESHOLD = 2;
@@ -167,14 +167,10 @@ export function registerRoomEvents(
         }
       }
 
-      // Leave the socket.io room first so the broadcast below doesn't echo
-      // the "X 离开观战" toast back to the leaver themselves.
+      // leaveRoomSocket first so the broadcast doesn't echo back to the
+      // leaver themselves.
       await leaveRoomSocket(redis, socket, roomCode);
-      // Centralised cleanup: ref-counts this socket out of the spectator
-      // registry and, only when it was the user's last socket, emits both
-      // room:spectator_list (full state) and room:spectator_left (toast +
-      // full state) to the remaining room members.
-      broadcastSpectatorLeftIfLast(io, roomCode, userId, socket.id);
+      broadcastSpectatorLeft(io, roomCode, userId);
       return callback?.({ success: true });
     }
     const room = await getRoom(redis, roomCode);
@@ -406,7 +402,7 @@ export function registerRoomEvents(
       const sUserId = sData.user.userId;
       if (roomSpectatorPlayers.some((p) => p.userId === sUserId)) {
         sData.isSpectator = true;
-        addSpectator(roomCode, sUserId, sData.user.nickname, s.id);
+        addSpectator(roomCode, sUserId, sData.user.nickname);
         s.emit('game:state', session.getSpectatorView(spectatorMode));
       } else {
         s.emit('game:state', session.getPlayerView(sUserId));

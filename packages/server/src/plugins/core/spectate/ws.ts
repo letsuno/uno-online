@@ -7,123 +7,57 @@ import { loadGameState } from '../game/state-store.js';
 import { removePendingSpectatorJoin, getPendingSpectatorQueue } from '../../../ws/game-events.js';
 import { joinRoomSocket } from '../../../ws/socket-room.js';
 
-/**
- * Authoritative in-memory spectator registry, keyed by `userId` (not nickname
- * — nicknames can change between sessions and aren't unique on the wire) and
- * ref-counted by socket id so a user with multiple tabs only "leaves" when
- * their *last* spectator socket goes away.
- *
- * All mutation paths (room:spectate, room:leave, disconnect, promotion to
- * player, kick-to-spectate, round-start spectator marking) must funnel
- * through the helpers in this file. The previous bug was a path mutating
- * sockets directly (clearing `data.isSpectator`) while leaving this map
- * stale; centralising here is what prevents that class of drift.
- */
-interface SpectatorEntry {
-  nickname: string;
-  sockets: Set<string>;
-}
-const roomSpectators = new Map<string, Map<string, SpectatorEntry>>();
+// Authoritative in-memory spectator registry. Keyed by userId (nicknames can
+// change and aren't unique on the wire). Single socket per user is enforced
+// at the connection layer (socket-handler.ts kicks the prior socket on
+// reconnect), so no per-socket ref-counting is needed — mirrors the
+// voice-presence registry next door.
+const roomSpectators = new Map<string, Map<string, string>>();
 
 export function getSpectatorNames(roomCode: string): string[] {
-  const room = roomSpectators.get(roomCode);
-  if (!room) return [];
-  return [...room.values()].map((entry) => entry.nickname);
+  return [...(roomSpectators.get(roomCode)?.values() ?? [])];
 }
 
 export function clearRoomSpectators(roomCode: string): void {
   roomSpectators.delete(roomCode);
 }
 
-/**
- * Track a spectator socket. Multiple calls with the same `(roomCode, userId)`
- * accumulate refs; the user is only considered gone once every socket has
- * been removed via {@link removeSpectatorSocket}.
- *
- * If `nickname` changed since the last call (re-login with new nickname),
- * the stored nickname is refreshed so future broadcasts use the current one.
- */
-export function addSpectator(
-  roomCode: string,
-  userId: string,
-  nickname: string,
-  socketId: string,
-): void {
+/** Idempotent on `(roomCode, userId)`; refreshes the stored nickname. */
+export function addSpectator(roomCode: string, userId: string, nickname: string): void {
   let room = roomSpectators.get(roomCode);
   if (!room) {
     room = new Map();
     roomSpectators.set(roomCode, room);
   }
-  const existing = room.get(userId);
-  if (existing) {
-    existing.nickname = nickname;
-    existing.sockets.add(socketId);
-  } else {
-    room.set(userId, { nickname, sockets: new Set([socketId]) });
-  }
+  room.set(userId, nickname);
 }
 
-/**
- * Decrement a spectator's socket ref-count.
- *
- * Returns `{ removed: true, nickname }` if this was the last socket and the
- * user is now fully gone — caller should broadcast `room:spectator_left` in
- * that case. Returns `{ removed: false }` when the user still has other
- * sockets active (multi-tab) or wasn't tracked.
- */
-export function removeSpectatorSocket(
-  roomCode: string,
-  userId: string,
-  socketId: string,
-): { removed: boolean; nickname?: string } {
+/** Returns the removed nickname, or `null` if the user wasn't tracked. */
+export function removeSpectator(roomCode: string, userId: string): string | null {
   const room = roomSpectators.get(roomCode);
-  if (!room) return { removed: false };
-  const entry = room.get(userId);
-  if (!entry) return { removed: false };
-  entry.sockets.delete(socketId);
-  if (entry.sockets.size > 0) return { removed: false };
-  const nickname = entry.nickname;
-  room.delete(userId);
-  if (room.size === 0) roomSpectators.delete(roomCode);
-  return { removed: true, nickname };
+  const nickname = room?.get(userId);
+  if (nickname == null) return null;
+  room!.delete(userId);
+  if (room!.size === 0) roomSpectators.delete(roomCode);
+  return nickname;
 }
 
 /**
- * Forcibly remove a user from the spectator registry regardless of how many
- * sockets they have. Use this for *role transitions* (spectator → player),
- * never for "the user left" — leaves should go through
- * {@link removeSpectatorSocket} so multi-tab users don't get yanked.
+ * Single entry point for every "a spectator left" path (disconnect,
+ * room:leave, future flows). Removes the user from the registry and emits
+ * the resulting authoritative state to the rest of the room. A no-op (no
+ * broadcast) when the user wasn't tracked.
  */
-export function removeSpectatorFully(roomCode: string, userId: string): void {
-  const room = roomSpectators.get(roomCode);
-  if (!room) return;
-  room.delete(userId);
-  if (room.size === 0) roomSpectators.delete(roomCode);
-}
-
-/**
- * Single source of truth for "a spectator left the room". Removes the
- * socket from the registry and, *only if it was the user's last socket*,
- * broadcasts `room:spectator_list` + `room:spectator_left` (with the
- * up-to-date list) to the rest of the room.
- *
- * Call this from every leave path — disconnect, room:leave, and any future
- * one — so the in-memory map and every connected client stay in lockstep.
- */
-export function broadcastSpectatorLeftIfLast(
+export function broadcastSpectatorLeft(
   io: SocketIOServer,
   roomCode: string,
   userId: string,
-  socketId: string,
 ): void {
-  const result = removeSpectatorSocket(roomCode, userId, socketId);
-  if (!result.removed) return;
+  const nickname = removeSpectator(roomCode, userId);
+  if (nickname == null) return;
   const spectators = getSpectatorNames(roomCode);
   io.to(roomCode).emit('room:spectator_list', { spectators });
-  io.to(roomCode).emit('room:spectator_left', {
-    nickname: result.nickname ?? '',
-    spectators,
-  });
+  io.to(roomCode).emit('room:spectator_left', { nickname, spectators });
 }
 
 export function setupSpectateHandlers(
@@ -173,7 +107,7 @@ export function setupSpectateHandlers(
 
       await joinRoomSocket(kv, socket, roomCode, { asSpectator: true });
 
-      addSpectator(roomCode, data.user.userId, data.user.nickname, socket.id);
+      addSpectator(roomCode, data.user.userId, data.user.nickname);
 
       const view = session.getSpectatorView(room.settings.spectatorMode);
       socket.emit('game:state', view);
@@ -194,17 +128,16 @@ export function setupSpectateHandlers(
       if (!data.isSpectator || !data.roomCode) return;
       const roomCode = data.roomCode;
       const userId = data.user?.userId;
-      const nickname = data.user?.nickname ?? '';
       if (!userId) return;
 
       if (removePendingSpectatorJoin(roomCode, userId)) {
         io.to(roomCode).emit('game:spectator_queue', {
           queue: getPendingSpectatorQueue(roomCode),
-          nickname,
+          nickname: data.user.nickname ?? '',
           joined: false,
         });
       }
-      broadcastSpectatorLeftIfLast(io, roomCode, userId, socket.id);
+      broadcastSpectatorLeft(io, roomCode, userId);
       clearUserRoom(kv, userId).catch((err) => {
         console.warn('[spectate] clearUserRoom on disconnect failed:', err);
       });
