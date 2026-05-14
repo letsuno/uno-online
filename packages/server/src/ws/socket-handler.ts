@@ -12,7 +12,7 @@ import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
 import { loadGameState, GameStatePersister } from '../plugins/core/game/state-store.js';
 import { checkRateLimit, clearRateLimit } from './rate-limiter.js';
 import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws.js';
-import { setupSpectateHandlers, getSpectatorNames, addSpectator } from '../plugins/core/spectate/ws.js';
+import { setupSpectateHandlers, getSpectatorNames, addSpectator, broadcastSpectatorList } from '../plugins/core/spectate/ws.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { registerVoicePresenceEvents, removeVoicePresence } from './voice-presence.js';
 import { VoiceChannelManager } from '../voice/channel-manager.js';
@@ -219,13 +219,12 @@ export function setupSocketHandlers(
             return callback?.({ success: false, error: '无法观战该房间' });
           }
           await joinRoomSocket(redis, socket, roomCode, { asSpectator: true });
-          addSpectator(roomCode, socket.data.user.nickname);
+          addSpectator(roomCode, socket.data.user.userId, socket.data.user.nickname);
           const spectatorMode = (room.settings.spectatorMode as 'full' | 'hidden') ?? 'hidden';
           const view = session.getSpectatorView(spectatorMode);
           callback?.({ success: true, gameState: view, isSpectator: true });
           socket.emit('chat:history', session.getChatHistory());
-          const spectators = getSpectatorNames(roomCode);
-          io.to(roomCode).emit('room:spectator_list', { spectators });
+          broadcastSpectatorList(io, roomCode);
           const queue = getPendingSpectatorQueue(roomCode);
           if (queue.length > 0) {
             socket.emit('game:spectator_queue', { queue, nickname: '', joined: true });

@@ -14,7 +14,7 @@ import type { SocketData } from './types.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { removeVoicePresence, setForceMuted } from './voice-presence.js';
 import { getAutopilotActionPlayerId } from './autopilot-action-player.js';
-import { addSpectator } from '../plugins/core/spectate/ws.js';
+import { addSpectator, broadcastSpectatorLeft } from '../plugins/core/spectate/ws.js';
 
 const AUTOPILOT_MIN_ACTION_INTERVAL_MS = 500;
 const AUTO_AUTOPILOT_THRESHOLD = 2;
@@ -135,22 +135,22 @@ export function registerRoomEvents(
     const roomCode = data.roomCode;
     if (!roomCode) return callback?.({ success: false, error: 'Not in a room' });
     if (data.isSpectator) {
-      if (removePendingSpectatorJoin(roomCode, data.user.userId)) {
+      const userId = data.user.userId;
+      const nickname = data.user.nickname;
+
+      if (removePendingSpectatorJoin(roomCode, userId)) {
         io.to(roomCode).emit('game:spectator_queue', {
           queue: getPendingSpectatorQueue(roomCode),
-          nickname: data.user.nickname,
+          nickname,
           joined: false,
         });
       }
-      socket.to(roomCode).emit('room:spectator_left', {
-        nickname: data.user.nickname,
-      });
 
       // If the owner is leaving while on the spectator bench (e.g. after
       // game:leave_to_spectate), transfer ownership before clearing socket
       // state — otherwise the room is left with an offline owner.
       const room = await getRoom(redis, roomCode);
-      if (room?.ownerId === data.user.userId) {
+      if (room?.ownerId === userId) {
         const players = await getRoomPlayers(redis, roomCode);
         const nextOwner = players[0];
         if (nextOwner) {
@@ -158,14 +158,19 @@ export function registerRoomEvents(
           const updatedRoom = await getRoom(redis, roomCode);
           io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
         } else {
-          // No player left to inherit — fully dissolve the room.
+          // No player left to inherit — fully dissolve the room. The
+          // imminent room:dissolved broadcast subsumes any spectator_left
+          // signal, so skip the dedicated cleanup here.
           await leaveRoomSocket(redis, socket, roomCode);
           await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
           return callback?.({ success: true, dissolved: true });
         }
       }
 
+      // leaveRoomSocket first so the broadcast doesn't echo back to the
+      // leaver themselves.
       await leaveRoomSocket(redis, socket, roomCode);
+      broadcastSpectatorLeft(io, roomCode, userId);
       return callback?.({ success: true });
     }
     const room = await getRoom(redis, roomCode);
@@ -397,7 +402,7 @@ export function registerRoomEvents(
       const sUserId = sData.user.userId;
       if (roomSpectatorPlayers.some((p) => p.userId === sUserId)) {
         sData.isSpectator = true;
-        addSpectator(roomCode, sData.user.nickname);
+        addSpectator(roomCode, sUserId, sData.user.nickname);
         s.emit('game:state', session.getSpectatorView(spectatorMode));
       } else {
         s.emit('game:state', session.getPlayerView(sUserId));
