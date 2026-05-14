@@ -6,6 +6,7 @@ import { Button } from '@/shared/components/ui/Button';
 import { ServerSelectModal } from '@/shared/components/ServerSelectModal';
 import GamePageShell from '@/shared/components/GamePageShell';
 import ServerStatusBar from '@/shared/components/ServerStatusBar';
+import { useBgm } from '@/shared/sound/useBgm';
 
 interface AuthConfig {
   devMode: boolean;
@@ -29,6 +30,9 @@ export default function HomePage() {
   const [authConfig, setAuthConfig] = useState<AuthConfig | null>(null);
   const [loggingIn, setLoggingIn] = useState(false);
   const redirect = searchParams.get('redirect');
+
+  // 与 LobbyPage 共用 'lobby' scene，登录前后 BGM 续播不中断（bgm-engine 同 scene 不重启）
+  useBgm('lobby');
 
   const getRedirectTarget = () => redirect || sessionStorage.getItem('loginRedirect') || '/';
 
