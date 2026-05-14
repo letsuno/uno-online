@@ -315,7 +315,7 @@ export function registerRoomEvents(
     const room = await getRoom(redis, roomCode);
     if (!room) return callback?.({ success: false, error: '房间不存在' });
     if (room.ownerId !== data.user.userId) return callback?.({ success: false, error: '只有房主可以踢人' });
-    if (room.status !== 'waiting') return callback?.({ success: false, error: '游戏进行中无法踢人' });
+    if (room.status === 'playing') return callback?.({ success: false, error: '游戏进行中无法踢人' });
     if (payload.targetId === data.user.userId) return callback?.({ success: false, error: '不能踢自己' });
     const players = await getRoomPlayers(redis, roomCode);
     if (!players.some(p => p.userId === payload.targetId)) return callback?.({ success: false, error: '目标玩家不在房间中' });

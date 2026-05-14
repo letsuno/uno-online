@@ -6,9 +6,9 @@ import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts } from './room-events.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
-import { getRoom, getRoomPlayers, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom, resetAllPlayersReady, setUserRoom } from '../plugins/core/room/store.js';
+import { getRoom, getRoomPlayers, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom, resetAllPlayersReady, setUserRoom, setPlayerSpectator } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS } from '@uno-online/shared';
-import { addSpectator, clearRoomSpectators, removeSpectator, broadcastSpectatorList } from '../plugins/core/spectate/ws.js';
+import { addSpectator, removeSpectator, clearRoomSpectators, broadcastSpectatorList } from '../plugins/core/spectate/ws.js';
 import type { SocketData } from './types.js';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
@@ -808,11 +808,12 @@ export function registerGameEvents(
           role: sData.user.role,
           isBot: sData.user.isBot,
         });
+        await setPlayerSpectator(redis, roomCode, sData.user.userId, true);
       }
       sData.isSpectator = false;
     }
-
     clearRoomSpectators(roomCode);
+
     await touchRoomActivity(redis, roomCode);
     const players = await getRoomPlayers(redis, roomCode);
     const updatedRoom = await getRoom(redis, roomCode);
