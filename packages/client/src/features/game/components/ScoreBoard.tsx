@@ -51,7 +51,7 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
   const winnerId = useGameStore((s) => s.winnerId);
   const phase = useGameStore((s) => s.phase);
   const vote = useGameStore((s) => s.nextRoundVote);
-  const roundEndAt = vote?.roundEndAt ?? null;
+  const roundEndAt = useGameStore((s) => s.roundEndAt);
   const gameOverAt = useGameStore((s) => s.gameOverAt);
   const pendingJoinQueue = useSpectatorStore((s) => s.pendingJoinQueue);
   const [kickCountdown, setKickCountdown] = useState(() => {

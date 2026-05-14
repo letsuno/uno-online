@@ -80,7 +80,6 @@ interface NextRoundVoteState {
   votes: number;
   required: number;
   voters: string[];
-  roundEndAt: number;
 }
 
 export function addAutopilotVote(roomCode: string, playerId: string, session: GameSession, io: SocketIOServer): void {
@@ -191,8 +190,11 @@ function getNextRoundVoteState(roomCode: string, session: GameSession): NextRoun
     votes: voters.length,
     required: playerIds.size,
     voters,
-    roundEndAt: roundEndTimestamps.get(roomCode) ?? Date.now(),
   };
+}
+
+export function getRoundEndAt(roomCode: string): number | null {
+  return roundEndTimestamps.get(roomCode) ?? null;
 }
 
 export function getRoundEndVoteState(roomCode: string, session: GameSession): NextRoundVoteState | null {
@@ -304,15 +306,30 @@ async function emitTerminalStateIfNeeded(
 
   turnTimer.stop(roomCode);
   clearRoomTimeouts(roomCode);
-  io.to(roomCode).emit(state.phase === 'game_over' ? 'game:over' : 'game:round_end', {
-    winnerId: state.winnerId,
-    scores: Object.fromEntries(state.players.map((p) => [p.id, p.score])),
-    ...(state.phase === 'game_over' ? { gameOverAt: Date.now() } : {}),
-  });
+
+  // Capture a single timestamp for this terminal-state transition so the event
+  // payload and the in-memory cooldown anchor stay in sync. This is the
+  // authoritative "round ended at" / "game over at" moment.
+  const terminalAt = Date.now();
+  roundEndTimestamps.set(roomCode, terminalAt);
+
+  const baseScores = Object.fromEntries(state.players.map((p) => [p.id, p.score]));
+  if (state.phase === 'game_over') {
+    io.to(roomCode).emit('game:over', {
+      winnerId: state.winnerId,
+      scores: baseScores,
+      gameOverAt: terminalAt,
+    });
+  } else {
+    io.to(roomCode).emit('game:round_end', {
+      winnerId: state.winnerId,
+      scores: baseScores,
+      roundEndAt: terminalAt,
+    });
+  }
 
   if (state.phase === 'round_end') {
     nextRoundVotes.delete(roomCode);
-    roundEndTimestamps.set(roomCode, Date.now());
 
     const connectedAutopilotIds = state.players.filter((p) => p.autopilot && p.connected).map((p) => p.id);
     if (connectedAutopilotIds.length > 0) {
@@ -323,11 +340,9 @@ async function emitTerminalStateIfNeeded(
 
     const voteState = getNextRoundVoteState(roomCode, session);
     io.to(roomCode).emit('game:next_round_vote', voteState);
-
   }
 
   if (state.phase === 'game_over') {
-    roundEndTimestamps.set(roomCode, Date.now());
     await Promise.all([
       setRoomStatus(redis, roomCode, 'finished'),
       touchRoomActivity(redis, roomCode),

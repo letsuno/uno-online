@@ -9,7 +9,6 @@ export interface NextRoundVoteState {
   votes: number;
   required: number;
   voters: string[];
-  roundEndAt: number;
 }
 
 interface GameState {
@@ -35,6 +34,7 @@ interface GameState {
   isSpectator: boolean;
   deckHash: string | null;
   nextRoundVote: NextRoundVoteState | null;
+  roundEndAt: number | null;
   gameOverAt: number | null;
   cheatDetected: boolean;
   setCheatDetected: (value: boolean) => void;
@@ -46,6 +46,7 @@ interface GameState {
   setInfoDrawerTab: (tab: InfoDrawerTab) => void;
   setGameState: (view: PlayerView) => void;
   setNextRoundVote: (vote: NextRoundVoteState | null) => void;
+  setRoundEndAt: (t: number | null) => void;
   setGameOverAt: (t: number | null) => void;
   setDrawnCard: (card: Card | null) => void;
   setTurnEndTime: (t: number | null) => void;
@@ -75,6 +76,7 @@ export const useGameStore = create<GameState>((set) => ({
   isSpectator: false,
   deckHash: null,
   nextRoundVote: null,
+  roundEndAt: null,
   gameOverAt: null,
   cheatDetected: false,
   setCheatDetected: (value) => set({ cheatDetected: value }),
@@ -126,11 +128,13 @@ export const useGameStore = create<GameState>((set) => ({
         lastDrawnCard: hasDrawnThisTurn ? state.lastDrawnCard : null,
         deckHash: view.deckHash ?? state.deckHash,
         nextRoundVote: phase === 'round_end' ? state.nextRoundVote : null,
+        roundEndAt: phase === 'round_end' ? state.roundEndAt : null,
         gameOverAt: phase === 'game_over' ? state.gameOverAt : null,
         ...spectatorChange,
       };
     }),
   setNextRoundVote: (vote) => set({ nextRoundVote: vote }),
+  setRoundEndAt: (t) => set({ roundEndAt: t }),
   setGameOverAt: (t) => set({ gameOverAt: t }),
   setDrawnCard: (card) => set({ lastDrawnCard: card, hasDrawnThisTurn: true }),
   setTurnEndTime: (t) => set({ turnEndTime: t }),
@@ -158,6 +162,7 @@ export const useGameStore = create<GameState>((set) => ({
       isSpectator: false,
       deckHash: null,
       nextRoundVote: null,
+      roundEndAt: null,
       gameOverAt: null,
       cheatDetected: false,
       infoDrawerOpen: false,

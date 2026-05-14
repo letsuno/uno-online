@@ -27,10 +27,10 @@ export interface ServerToClientEvents {
   'game:update': (view: PlayerView) => void;
   'game:card_drawn': (data: { card: Card }) => void;
   'game:action_rejected': (data: { action?: string; reason: string }) => void;
-  'game:next_round_vote': (data: { votes: number; required: number; voters: string[]; roundEndAt: number }) => void;
-  'game:over': (data: { winnerId: string | null; scores: Record<string, number>; reason?: string; gameOverAt?: number }) => void;
+  'game:next_round_vote': (data: { votes: number; required: number; voters: string[] }) => void;
+  'game:over': (data: { winnerId: string | null; scores: Record<string, number>; reason?: string; gameOverAt: number }) => void;
   'game:back_to_room': (data: { players: Record<string, unknown>[]; room: Record<string, unknown> }) => void;
-  'game:round_end': (data: { winnerId: string | null; scores: Record<string, number> }) => void;
+  'game:round_end': (data: { winnerId: string | null; scores: Record<string, number>; roundEndAt: number }) => void;
   'game:kicked': (data: { reason: string; toSpectator?: boolean }) => void;
   'auth:kicked': (data: { reason: string }) => void;
   'player:timeout': (data: { playerId: string }) => void;

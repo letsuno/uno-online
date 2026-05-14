@@ -105,8 +105,14 @@ export function getSocket(): TypedSocket {
       useGameStore.getState().setNextRoundVote(vote.votes > 0 ? vote : null);
     });
 
-    socket.on('game:over', (data: { gameOverAt?: number }) => {
-      if (data.gameOverAt) {
+    socket.on('game:round_end', (data) => {
+      if (data?.roundEndAt) {
+        useGameStore.getState().setRoundEndAt(data.roundEndAt);
+      }
+    });
+
+    socket.on('game:over', (data) => {
+      if (data?.gameOverAt) {
         useGameStore.getState().setGameOverAt(data.gameOverAt);
       }
     });
