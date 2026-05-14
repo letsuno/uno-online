@@ -277,10 +277,6 @@ async function startNextRound(
     persister.flushNow(roomCode),
   ]);
   io.to(roomCode).emit('game:next_round_vote', { votes: 0, required: session.getFullState().players.length, voters: [] });
-  // Defense in depth: round transitions are natural state-sync checkpoints,
-  // so re-broadcast the authoritative spectator list every round in case
-  // some other path failed to.
-  broadcastSpectatorList(io, roomCode);
   const room = await getRoom(redis, roomCode);
   const spectatorMode = (room?.settings?.spectatorMode as 'full' | 'hidden') ?? 'hidden';
   const sockets = await io.in(roomCode).fetchSockets();
