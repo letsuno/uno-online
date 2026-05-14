@@ -255,9 +255,8 @@ async function processPendingSpectatorJoins(
     });
   }
 
-  // 升级后 roomSpectators 已经少了 joined.length 人，但 removeSpectator
-  // 是 silent 的，客户端的观战席列表此刻还停留在旧快照——必须广播一次
-  // 才会刷新。无人升级时不广播。
+  // removeSpectator above is silent; without this broadcast the client's
+  // spectator panel would keep showing the just-promoted users.
   if (joined.length > 0) {
     broadcastSpectatorList(io, roomCode);
   }
@@ -789,9 +788,8 @@ export function registerGameEvents(
     persister.cleanup(roomCode);
     turnTimer.stop(roomCode);
     clearRoomTimeouts(roomCode);
-    // Drop any spectator→player opt-ins left over from the previous game's
-    // queue. Without this, the next game's startNextRound would re-apply
-    // them using stale socket ids and could resurrect ghost players.
+    // Leftover opt-ins from the previous game would otherwise be re-applied
+    // with stale socket ids → ghost players.
     clearPendingSpectatorJoins(roomCode);
 
     await setRoomStatus(redis, roomCode, 'waiting');
@@ -820,8 +818,6 @@ export function registerGameEvents(
     const updatedRoom = await getRoom(redis, roomCode);
     io.to(roomCode).emit('game:back_to_room', { players, room: updatedRoom });
     io.to(roomCode).emit('chat:cleared');
-    // Mirror the just-cleared server registry to every client so their
-    // spectator panel doesn't show last round's list.
     broadcastSpectatorList(io, roomCode);
     callback?.({ success: true });
   });

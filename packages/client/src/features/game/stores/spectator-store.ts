@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 
-// Populated only via full snapshots from the server's spectator events.
-// No incremental add/remove — those would drift from the authoritative state.
+// Snapshot-only — incremental updates would drift from the server's list.
 interface SpectatorState {
   spectators: string[];
   pendingJoinQueue: string[];

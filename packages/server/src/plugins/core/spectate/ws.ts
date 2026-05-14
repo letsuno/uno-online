@@ -7,11 +7,8 @@ import { loadGameState } from '../game/state-store.js';
 import { removePendingSpectatorJoin, getPendingSpectatorQueue } from '../../../ws/game-events.js';
 import { joinRoomSocket } from '../../../ws/socket-room.js';
 
-// Authoritative in-memory spectator registry. Keyed by userId (nicknames can
-// change and aren't unique on the wire). Single socket per user is enforced
-// at the connection layer (socket-handler.ts kicks the prior socket on
-// reconnect), so no per-socket ref-counting is needed — mirrors the
-// voice-presence registry next door.
+// Keyed by userId — nicknames aren't enforced unique at signup. Single
+// socket per user is enforced at connection time, so no ref-counting.
 const roomSpectators = new Map<string, Map<string, string>>();
 
 export function getSpectatorNames(roomCode: string): string[] {
@@ -43,20 +40,14 @@ export function removeSpectator(roomCode: string, userId: string): string | null
   return nickname;
 }
 
-/** Broadcasts the room's current spectator list. */
 export function broadcastSpectatorList(io: SocketIOServer, roomCode: string): void {
   io.to(roomCode).emit('room:spectator_list', { spectators: getSpectatorNames(roomCode) });
 }
 
 /**
- * Single entry point for every "a spectator left" path. Drains the user
- * from both the pending-join queue and the spectator registry, then emits
- * the resulting authoritative state.
- *
- * Warns instead of silently no-op'ing when the user wasn't in the registry
- * — every caller's precondition (`data.isSpectator === true`) implies the
- * user must be tracked, so a null is exactly the kind of drift this
- * refactor exists to surface.
+ * Drains the user from both the pending-join queue and the registry, then
+ * broadcasts. Warns on untracked users — every caller's precondition
+ * (`data.isSpectator === true`) implies they must be tracked.
  */
 export function broadcastSpectatorLeft(
   io: SocketIOServer,

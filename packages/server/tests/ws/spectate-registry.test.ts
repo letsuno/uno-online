@@ -12,7 +12,6 @@ import {
 const ROOM_A = 'TESTAA';
 const ROOM_B = 'TESTBB';
 
-/** Reset every room the suite touches so tests can't leak state into each other. */
 function resetRegistry(): void {
   for (const code of [ROOM_A, ROOM_B]) clearRoomSpectators(code);
 }
@@ -89,9 +88,8 @@ describe('spectator registry', () => {
       ]);
     });
 
-    // The room:spectator_left payload's `nickname` should come from the
-    // authoritative registry, not the caller — guards against a stale
-    // caller-supplied nickname after rename.
+    // Authoritative nickname comes from the registry, not the caller — the
+    // caller's copy could be stale.
     it('broadcastSpectatorLeft uses the registry nickname for room:spectator_left', () => {
       const { io, emits } = makeIoStub();
       addSpectator(ROOM_A, 'u1', 'RegistryName');
@@ -100,9 +98,8 @@ describe('spectator registry', () => {
       expect((left!.payload as { nickname: string }).nickname).toBe('RegistryName');
     });
 
-    // The bug this whole refactor exists to fix: the server used to emit
-    // { nickname } without `spectators`. Lock the contract in a test so any
-    // future path that bypasses broadcastSpectatorLeft will get caught.
+    // Any future path that emits room:spectator_left without going through
+    // broadcastSpectatorLeft will fail this — that's the point.
     it('broadcastSpectatorLeft always populates spectators on room:spectator_left (contract guard)', () => {
       const { io, emits } = makeIoStub();
       addSpectator(ROOM_A, 'u1', 'Alice');

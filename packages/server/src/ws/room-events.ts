@@ -149,9 +149,7 @@ export function registerRoomEvents(
           const updatedRoom = await getRoom(redis, roomCode);
           io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
         } else {
-          // No player left to inherit — fully dissolve the room. The
-          // imminent room:dissolved broadcast subsumes any spectator_left
-          // signal, so skip the dedicated cleanup here.
+          // dissolveRoom's room:dissolved broadcast subsumes spectator_left.
           await leaveRoomSocket(redis, socket, roomCode);
           await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
           return callback?.({ success: true, dissolved: true });
