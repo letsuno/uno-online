@@ -85,14 +85,13 @@ export default function HomePage() {
   return (
     <GamePageShell>
       <div className="relative z-1 flex flex-col items-center justify-center text-center">
-        <h1 className="font-game text-[88px] leading-none text-primary" style={{ textShadow: '0 0 40px rgba(251,191,36,0.3), 0 2px 8px rgba(0,0,0,0.5)' }}>
+        {/* 标题块——尺寸有意小于 StartScreenOverlay 上的大 logo，避免视觉重复；
+            这里只承担"我现在在登录页"的标识作用，主角是下面的登录表单 */}
+        <h1 className="font-game text-[44px] leading-none text-primary/90" style={{ textShadow: '0 0 24px rgba(251,191,36,0.2)' }}>
           ♠ UNO
         </h1>
-        <p className="mt-2 text-sm tracking-[6px] text-white/40 font-medium uppercase">
+        <p className="mt-1 text-xs tracking-[5px] text-white/35 font-medium uppercase">
           Online Card Game
-        </p>
-        <p className="mt-4 max-w-[440px] text-base text-muted-foreground">
-          和朋友一起玩 UNO！支持 2-10 人在线对战、语音通话、自定义村规。
         </p>
 
         {!loading && !token && authConfig && (
