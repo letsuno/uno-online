@@ -105,8 +105,14 @@ export function getSocket(): TypedSocket {
       useGameStore.getState().setNextRoundVote(vote.votes > 0 ? vote : null);
     });
 
-    socket.on('game:over', (data: { gameOverAt?: number }) => {
-      if (data.gameOverAt) {
+    socket.on('game:round_end', (data) => {
+      if (data?.roundEndAt) {
+        useGameStore.getState().setRoundEndAt(data.roundEndAt);
+      }
+    });
+
+    socket.on('game:over', (data) => {
+      if (data?.gameOverAt) {
         useGameStore.getState().setGameOverAt(data.gameOverAt);
       }
     });
@@ -221,8 +227,8 @@ export function getSocket(): TypedSocket {
       resetClientRoomState();
       sendNotification('kicked', data.reason || '你已被移出房间');
       useToastStore.getState().addToast(data.reason || '你已被移出游戏', 'error');
-      if (window.location.pathname !== '/lobby') {
-        window.location.assign('/lobby');
+      if (window.location.pathname !== '/') {
+        window.location.assign('/');
       }
     });
 
@@ -238,8 +244,8 @@ export function getSocket(): TypedSocket {
         : '房间已被房主解散';
       sendNotification('roomDissolved', message);
       useToastStore.getState().addToast(message, 'info');
-      if (window.location.pathname !== '/lobby') {
-        window.location.assign('/lobby');
+      if (window.location.pathname !== '/') {
+        window.location.assign('/');
       }
     });
   }

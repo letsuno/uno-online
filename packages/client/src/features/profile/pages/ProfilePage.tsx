@@ -7,7 +7,7 @@ export default function ProfilePage() {
   const open = useProfileModalStore((s) => s.open);
 
   useEffect(() => {
-    navigate('/lobby', { replace: true });
+    navigate('/', { replace: true });
     open();
   }, []);
 

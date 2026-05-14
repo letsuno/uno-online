@@ -68,7 +68,7 @@ export default function RoomPage() {
             navigate(`/game/${roomCode}`);
           }
         } else {
-          navigate('/lobby');
+          navigate('/');
         }
       });
     }

@@ -3,14 +3,14 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from '@/shared/components/ProtectedRoute';
 import { authRoutes, authProtectedRoutes } from '@/features/auth/routes';
 import { gameProtectedRoutes } from '@/features/game/routes';
-import { lobbyProtectedRoutes } from '@/features/lobby/routes';
 import { profileProtectedRoutes } from '@/features/profile/routes';
 import CheatOverlayMount from '@/features/game/components/CheatOverlayMount';
+import RootSwitch from './RootSwitch';
+
 const allPublicRoutes = [...authRoutes];
 const allProtectedRoutes = [
   ...authProtectedRoutes,
   ...gameProtectedRoutes,
-  ...lobbyProtectedRoutes,
   ...profileProtectedRoutes,
 ];
 
@@ -25,6 +25,9 @@ export default function AppRouter() {
         }
       >
         <Routes>
+          {/* `/` 由 RootSwitch 智能分发：未登录 → HomePage，已登录 → LobbyPage */}
+          <Route path="/" element={<RootSwitch />} />
+
           {allPublicRoutes.map((r) => (
             <Route key={r.path} path={r.path} element={r.element} />
           ))}
