@@ -8,6 +8,7 @@ import { playSound } from './sound/sound-manager';
 import { useGatewayStore, type PlayerVoicePresence } from './voice/gateway-store';
 import { sendNotification } from './utils/notification';
 import { useServerVersionStore } from './stores/server-version-store';
+import { setServerTimeOffset } from './server-time';
 import { useSpectatorStore } from '@/features/game/stores/spectator-store';
 import { resetClientRoomState } from './stores/reset-room';
 
@@ -184,6 +185,7 @@ export function getSocket(): TypedSocket {
 
     socket.on('server:version', (data) => {
       useServerVersionStore.getState().setVersion(data.version);
+      if (data.serverTime) setServerTimeOffset(data.serverTime);
     });
 
     socket.on('connect', () => {
