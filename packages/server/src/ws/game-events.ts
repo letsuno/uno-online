@@ -788,6 +788,10 @@ export function registerGameEvents(
     persister.cleanup(roomCode);
     turnTimer.stop(roomCode);
     clearRoomTimeouts(roomCode);
+    // Drop any spectator→player opt-ins left over from the previous game's
+    // queue. Without this, the next game's startNextRound would re-apply
+    // them using stale socket ids and could resurrect ghost players.
+    clearPendingSpectatorJoins(roomCode);
 
     await setRoomStatus(redis, roomCode, 'waiting');
     await resetAllPlayersReady(redis, roomCode);
