@@ -178,8 +178,12 @@ export function getSocket(): TypedSocket {
 
     socket.on('room:spectator_left', (data) => {
       useToastStore.getState().addToast(`${data.nickname} 离开观战`, 'info');
-      if (data.spectators) useSpectatorStore.getState().setSpectators(data.spectators);
-      else if (data.nickname) useSpectatorStore.getState().removeSpectator(data.nickname);
+      // The server contract (socket-events.ts) requires `spectators`. A
+      // previous local-only fallback existed to mask a server-side bug
+      // where room:leave omitted the array; that bug is fixed and the
+      // fallback would silently re-open the door to drift if a future
+      // regression broke the contract again.
+      useSpectatorStore.getState().setSpectators(data.spectators);
     });
 
     socket.on('server:version', (data) => {

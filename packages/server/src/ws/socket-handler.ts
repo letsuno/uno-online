@@ -219,7 +219,7 @@ export function setupSocketHandlers(
             return callback?.({ success: false, error: '无法观战该房间' });
           }
           await joinRoomSocket(redis, socket, roomCode, { asSpectator: true });
-          addSpectator(roomCode, socket.data.user.nickname);
+          addSpectator(roomCode, socket.data.user.userId, socket.data.user.nickname, socket.id);
           const spectatorMode = (room.settings.spectatorMode as 'full' | 'hidden') ?? 'hidden';
           const view = session.getSpectatorView(spectatorMode);
           callback?.({ success: true, gameState: view, isSpectator: true });
