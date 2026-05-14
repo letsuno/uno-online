@@ -391,7 +391,7 @@ export function registerRoomEvents(
       const sUserId = sData.user.userId;
       if (roomSpectatorPlayers.some((p) => p.userId === sUserId)) {
         sData.isSpectator = true;
-        addSpectator(roomCode, sUserId, sData.user.nickname);
+        addSpectator(roomCode, sUserId, sData.user.nickname, sData.user.avatarUrl);
         s.emit('game:state', session.getSpectatorView(spectatorMode));
       } else {
         s.emit('game:state', session.getPlayerView(sUserId));

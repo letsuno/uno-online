@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Globe } from 'lucide-react';
 import { useServerStore } from '@/shared/stores/server-store';
 import { BUILD_VERSION } from '@/shared/build-info';
 
@@ -28,7 +29,7 @@ export default function ServerStatusBar() {
       className="absolute bottom-6 left-8 z-[5] flex items-center gap-3 px-3.5 py-2 rounded-[14px] bg-white/[0.02] border border-white/[0.04] cursor-pointer transition-all hover:bg-white/[0.04] hover:border-white/[0.08]"
     >
       <span className="flex items-center gap-1.5 text-xs text-[#64748b] font-medium">
-        🌐 {info?.name ?? current?.name ?? '服务器'}
+        <Globe size={12} /> {info?.name ?? current?.name ?? '服务器'}
       </span>
       <span className="w-px h-3.5 bg-white/[0.06]" />
       <span className="flex items-center gap-[5px] text-[11px]">

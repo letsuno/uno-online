@@ -713,7 +713,7 @@ export function registerGameEvents(
         s.emit('game:kicked', { reason: '你已被房主移至观战席', toSpectator: true });
       }
     }
-    if (targetPlayer) addSpectator(roomCode, targetId, targetPlayer.name);
+    if (targetPlayer) addSpectator(roomCode, targetId, targetPlayer.name, targetPlayer.avatarUrl);
 
     voters.delete(targetId);
     const voteState = getNextRoundVoteState(roomCode, session);
@@ -747,7 +747,7 @@ export function registerGameEvents(
     await removePlayerFromRoom(redis, roomCode, data.user.userId);
 
     (socket.data as SocketData).isSpectator = true;
-    addSpectator(roomCode, data.user.userId, player.name);
+    addSpectator(roomCode, data.user.userId, player.name, data.user.avatarUrl);
 
     const voters = nextRoundVotes.get(roomCode) ?? new Set<string>();
     voters.delete(data.user.userId);

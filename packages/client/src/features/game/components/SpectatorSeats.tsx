@@ -20,20 +20,22 @@ function SpectatorSeats({ top }: SpectatorSeatsProps) {
     >
       <Eye size={12} className="text-muted-foreground shrink-0" />
       <div className="flex items-center gap-1">
-        {spectators.map((name) => {
-          const queued = pendingJoinQueue.includes(name);
+        {spectators.map((s) => {
+          const queued = pendingJoinQueue.includes(s.nickname);
           return (
             <div
-              key={name}
+              key={s.nickname}
               className={cn(
-                'w-7 h-7 rounded-full flex items-center justify-center text-xs border-2 shrink-0',
+                'w-7 h-7 rounded-full flex items-center justify-center text-xs border-2 shrink-0 overflow-hidden',
                 queued
                   ? 'bg-accent/20 border-accent/40 text-accent'
                   : 'bg-white/10 border-white/10 text-muted-foreground',
               )}
-              title={name + (queued ? ' (下局加入)' : '')}
+              title={s.nickname + (queued ? ' (下局加入)' : '')}
             >
-              {name.charAt(0).toUpperCase()}
+              {s.avatarUrl
+                ? <img src={s.avatarUrl} alt={s.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                : s.nickname.charAt(0).toUpperCase()}
             </div>
           );
         })}
