@@ -1,10 +1,15 @@
 import { create } from 'zustand';
 
+export interface SpectatorInfo {
+  nickname: string;
+  avatarUrl?: string | null;
+}
+
 // Snapshot-only — incremental updates would drift from the server's list.
 interface SpectatorState {
-  spectators: string[];
+  spectators: SpectatorInfo[];
   pendingJoinQueue: string[];
-  setSpectators: (list: string[]) => void;
+  setSpectators: (list: SpectatorInfo[]) => void;
   setPendingJoinQueue: (list: string[]) => void;
   clearSpectators: () => void;
 }

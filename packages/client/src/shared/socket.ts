@@ -167,9 +167,9 @@ export function getSocket(): TypedSocket {
     socket.on('room:spectator_list', (data) => {
       const store = useSpectatorStore.getState();
       store.setSpectators(data.spectators);
-      const spectatorSet = new Set(data.spectators);
-      if (store.pendingJoinQueue.some((n) => !spectatorSet.has(n))) {
-        store.setPendingJoinQueue(store.pendingJoinQueue.filter((n) => spectatorSet.has(n)));
+      const nicknameSet = new Set(data.spectators.map((s) => s.nickname));
+      if (store.pendingJoinQueue.some((n) => !nicknameSet.has(n))) {
+        store.setPendingJoinQueue(store.pendingJoinQueue.filter((n) => nicknameSet.has(n)));
       }
     });
 

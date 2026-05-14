@@ -35,8 +35,10 @@ export default function UserCapsule() {
             {user?.nickname ?? user?.username}
           </span>
         </span>
-        <span className="w-9 h-9 rounded-full bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] flex items-center justify-center text-sm font-bold text-[#1a1a2e]">
-          {initial}
+        <span className="w-9 h-9 rounded-full bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] flex items-center justify-center text-sm font-bold text-[#1a1a2e] overflow-hidden">
+          {user?.avatarUrl
+            ? <img src={user.avatarUrl} alt={initial} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            : initial}
         </span>
         <ChevronDown size={12} className={`text-[#475569] transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>

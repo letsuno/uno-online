@@ -1,12 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Sparkles } from 'lucide-react';
 import { changelog } from '../data/changelog';
 
 const STORAGE_KEY = 'app-last-seen-version';
 
+let externalOpen: (() => void) | null = null;
+export function openChangelog() { externalOpen?.(); }
+
 export default function ChangelogModal() {
   const [open, setOpen] = useState(false);
+
+  const show = useCallback(() => setOpen(true), []);
+  useEffect(() => { externalOpen = show; return () => { externalOpen = null; }; }, [show]);
 
   useEffect(() => {
     const currentVersion = import.meta.env.BUILD_VERSION as string;
