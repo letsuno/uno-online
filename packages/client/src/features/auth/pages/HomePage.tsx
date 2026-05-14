@@ -6,16 +6,20 @@ import { Button } from '@/shared/components/ui/Button';
 import { ServerSelectModal } from '@/shared/components/ServerSelectModal';
 import GamePageShell from '@/shared/components/GamePageShell';
 import ServerStatusBar from '@/shared/components/ServerStatusBar';
+import StartScreenGate from '../components/StartScreenGate';
 
 interface AuthConfig {
   devMode: boolean;
   githubClientId: string;
 }
 
+type Phase = 'gate' | 'auth';
+
 export default function HomePage() {
-  const { token, loading, loadUser, devLogin, passwordLogin } = useAuthStore();
+  const { token, user, loading, loadUser, devLogin, passwordLogin, logout } = useAuthStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [phase, setPhase] = useState<Phase>('gate');
   const [devUsername, setDevUsername] = useState('');
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -35,15 +39,24 @@ export default function HomePage() {
       setError('登录已过期，请重新登录');
     }
     apiGet<AuthConfig>('/auth/config').then(setAuthConfig).catch(() => {});
-    loadUser().then(() => {
-      const u = useAuthStore.getState().user;
-      if (u) {
-        const target = getRedirectTarget();
-        sessionStorage.removeItem('loginRedirect');
-        navigate(target);
-      }
-    });
+    // 拉用户信息以便 StartScreenGate 显示 greeting；不再自动跳转
+    void loadUser();
   }, []);
+
+  const handleEnter = () => {
+    if (token && user) {
+      const target = getRedirectTarget();
+      sessionStorage.removeItem('loginRedirect');
+      navigate(target);
+    } else {
+      setPhase('auth');
+    }
+  };
+
+  const handleSwitchAccount = () => {
+    logout();
+    // 仍停在 phase = 'gate'；token / user 变 null 后 greeting 自动消失
+  };
 
   const loginUrl = authConfig
     ? `https://github.com/login/oauth/authorize?client_id=${authConfig.githubClientId}&scope=read:user`
@@ -79,6 +92,22 @@ export default function HomePage() {
     }
   };
 
+  // phase 'gate'：渲染启动屏
+  if (phase === 'gate') {
+    return (
+      <GamePageShell>
+        <StartScreenGate
+          greeting={user?.nickname}
+          onEnter={handleEnter}
+          onSwitchAccount={token && user ? handleSwitchAccount : undefined}
+        />
+        <ServerStatusBar />
+        <ServerSelectModal />
+      </GamePageShell>
+    );
+  }
+
+  // phase 'auth'：渲染登录表单（保留原有 JSX）
   return (
     <GamePageShell>
       <div className="relative z-1 flex flex-col items-center justify-center text-center">
