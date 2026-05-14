@@ -1,37 +1,73 @@
-{$CADDY_SITE_ADDRESS}
+# ---- Reusable snippets ----
 
-encode gzip
-
-handle /api/* {
-	reverse_proxy server:3001
-}
-
-handle /socket.io/* {
-	reverse_proxy server:3001
-}
-
-handle /mumble-ws* {
-	uri strip_prefix /mumble-ws
-	reverse_proxy mumble-gateway:64737
-}
-
-@admin_exact path /admin
-redir @admin_exact /admin/ permanent
-
-handle /admin/* {
-	root * /srv
-	try_files {path} /admin/index.html
+# SPA file serving with sensible cache headers.
+#   {args[0]} = web root directory
+#   {args[1]} = SPA fallback (e.g. /index.html)
+(spa) {
+	root * {args[0]}
+	try_files {path} {args[1]}
 	file_server
 
 	@static path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
 	header @static Cache-Control "public, max-age=2592000, immutable"
+
+	# Anything else served here is the SPA shell (try_files rewrites unknown
+	# paths to {args[1]}). Must not be long-cached or clients miss new releases.
+	@shell not path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+	header @shell Cache-Control "no-cache"
 }
 
-handle {
-	root * /srv
-	try_files {path} /index.html
-	file_server
+# Default response headers applied to every response.
+(common_headers) {
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
 
-	@static path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
-	header @static Cache-Control "public, max-age=2592000, immutable"
+# Upstream headers for reverse proxies. Caddy already sets X-Forwarded-*
+# and transparently upgrades WebSockets, so we only add X-Real-IP for
+# upstreams that look at it directly.
+(proxy_headers) {
+	header_up X-Real-IP {remote_host}
+}
+
+# ---- Site ----
+
+{$CADDY_SITE_ADDRESS} {
+	encode gzip
+	import common_headers
+
+	respond /healthz 200
+
+	handle /api/* {
+		reverse_proxy server:3001 {
+			import proxy_headers
+		}
+	}
+
+	handle /socket.io/* {
+		reverse_proxy server:3001 {
+			import proxy_headers
+		}
+	}
+
+	handle /mumble-ws* {
+		uri strip_prefix /mumble-ws
+		reverse_proxy mumble-gateway:64737 {
+			import proxy_headers
+		}
+	}
+
+	@admin_exact path /admin
+	redir @admin_exact /admin/ permanent
+
+	handle /admin/* {
+		import spa /srv /admin/index.html
+	}
+
+	handle {
+		import spa /srv /index.html
+	}
 }
