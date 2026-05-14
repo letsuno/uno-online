@@ -30,6 +30,7 @@ class BgmEngine {
   private step = 0;
   private nextTime = 0;
   private _playing = false;
+  private _currentScene: string | null = null;
   private _onSongChange: ((info: SongInfo) => void) | null = null;
 
   get isPlaying() { return this._playing; }
@@ -86,12 +87,15 @@ class BgmEngine {
   }
 
   start(scene: string) {
+    // 同 scene 已在播放则不重启——让 BGM 跨组件 mount/unmount 续播
+    if (this._playing && this._currentScene === scene) return;
     this.stop();
     const base = PLAYLISTS[scene] ?? PLAYLISTS.game!;
     this.playlist = shuffle(base);
     this.songIdx = 0;
     this.song = this.playlist[0]!;
     this._playing = true;
+    this._currentScene = scene;
     this.launch();
   }
 
@@ -104,6 +108,8 @@ class BgmEngine {
     this.songIdx = 0;
     this.song = song;
     this._playing = true;
+    // playSingle 不设 _currentScene——它是临时的"试听"，结束后下次 start 同 scene 应重启
+    this._currentScene = null;
     this.launch();
   }
 
@@ -137,6 +143,7 @@ class BgmEngine {
     }
     this.destroyVoices();
     this._playing = false;
+    this._currentScene = null;
   }
 
   private tick() {

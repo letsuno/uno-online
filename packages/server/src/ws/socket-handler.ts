@@ -1,4 +1,4 @@
-import type { Server as SocketIOServer } from 'socket.io';
+import type { Server as SocketIOServer, Socket } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
 import { authenticateSocketAsync } from '../auth/middleware.js';
 import { RoomManager } from '../plugins/core/room/manager.js';
@@ -6,7 +6,7 @@ import { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import { GameSession } from '../plugins/core/game/session.js';
 import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, notifyAutopilotAction, resetPlayerTimeout } from './room-events.js';
 import { getAutopilotActionPlayerId, canPlayerAutopilotOnce } from './autopilot-action-player.js';
-import { registerGameEvents, addAutopilotVote, clearChatTimestamps, getRoundEndVoteState, getPendingSpectatorQueue } from './game-events.js';
+import { registerGameEvents, addAutopilotVote, clearChatTimestamps, getRoundEndVoteState, getPendingSpectatorQueue, getRoundEndAt } from './game-events.js';
 import { getRoom, getRoomPlayers, setRoomOwner, clearUserRoom, getUserRoom } from '../plugins/core/room/store.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
 import { loadGameState, GameStatePersister } from '../plugins/core/game/state-store.js';
@@ -25,6 +25,22 @@ const AUTOPILOT_TOGGLE_COOLDOWN_MS = 3_000;
 const ALL_DISCONNECT_TIMEOUT_MS = 5 * 60_000;
 
 const autopilotToggleTimestamps = new Map<string, number>();
+
+// Re-emit the terminal-state event (round_end / game_over) to a reconnecting
+// socket so it can anchor cooldown timers to the original server timestamp,
+// instead of re-deriving them from "now".
+function replayTerminalEvent(socket: Socket, roomCode: string, session: GameSession): void {
+  const state = session.getFullState();
+  if (state.phase !== 'round_end' && state.phase !== 'game_over') return;
+  const endAt = getRoundEndAt(roomCode);
+  if (!endAt) return;
+  const scores = Object.fromEntries(state.players.map((p) => [p.id, p.score]));
+  if (state.phase === 'game_over') {
+    socket.emit('game:over', { winnerId: state.winnerId, scores, gameOverAt: endAt });
+  } else {
+    socket.emit('game:round_end', { winnerId: state.winnerId, scores, roundEndAt: endAt });
+  }
+}
 
 export function setupSocketHandlers(
   io: SocketIOServer,
@@ -216,6 +232,7 @@ export function setupSocketHandlers(
           }
           const voteState = getRoundEndVoteState(roomCode, session);
           if (voteState) socket.emit('game:next_round_vote', voteState);
+          replayTerminalEvent(socket, roomCode, session);
           return;
         }
 
@@ -235,6 +252,7 @@ export function setupSocketHandlers(
         socket.emit('room:spectator_list', { spectators: getSpectatorNames(roomCode) });
         const voteState = getRoundEndVoteState(roomCode, session);
         if (voteState) socket.emit('game:next_round_vote', voteState);
+        replayTerminalEvent(socket, roomCode, session);
         const state = session.getFullState();
         const connectedCount = state.players.filter(p => p.connected).length;
         if (connectedCount >= 2 && state.phase === 'playing') {

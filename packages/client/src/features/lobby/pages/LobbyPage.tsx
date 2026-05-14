@@ -8,7 +8,6 @@ import { getSocket, connectSocket } from '@/shared/socket';
 import { Button } from '@/shared/components/ui/Button';
 import { ServerSelectModal } from '@/shared/components/ServerSelectModal';
 import { useBgm } from '@/shared/sound/useBgm';
-import { getAudioContext } from '@/shared/sound/audio-context';
 import TutorialModal from '@/shared/components/TutorialModal';
 import BgmToast from '@/shared/components/BgmToast';
 import MusicHallModal from '@/shared/components/MusicHallModal';
@@ -30,10 +29,7 @@ export default function LobbyPage() {
   const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
-    const ctx = getAudioContext();
-    if (ctx.state === 'suspended') {
-      setShowTutorial(true);
-    } else if (!localStorage.getItem('tutorialShown')) {
+    if (!localStorage.getItem('tutorialShown')) {
       setShowTutorial(true);
     }
   }, []);
