@@ -13,7 +13,7 @@ docs/superpowers/
 .yarn/
 .omc/
 uno.db*
-data/
+/data/
 yarn.lock
 *.tsbuildinfo
 vite.config.js
