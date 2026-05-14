@@ -23,7 +23,7 @@ export default function RegisterPage() {
     setSubmitting(true);
     try {
       await register(username, password, nickname || username, avatar ?? undefined);
-      navigate('/lobby');
+      navigate('/');
     } catch (err) {
       setError((err as Error).message || '注册失败');
     } finally {

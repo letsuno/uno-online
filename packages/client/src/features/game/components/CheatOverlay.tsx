@@ -64,7 +64,7 @@ export default function CheatOverlay() {
 
   const handleContinue = () => {
     resetClientRoomState();
-    navigate('/lobby');
+    navigate('/');
   };
 
   return (

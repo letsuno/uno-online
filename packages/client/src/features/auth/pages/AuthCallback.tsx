@@ -16,7 +16,7 @@ export default function AuthCallback() {
   useEffect(() => {
     const code = params.get('code');
     if (!code) { navigate('/'); return; }
-    const savedTarget = sessionStorage.getItem('loginRedirect') || '/lobby';
+    const savedTarget = sessionStorage.getItem('loginRedirect') || '/';
     sessionStorage.removeItem('loginRedirect');
     login(code)
       .then((result) => {
@@ -38,7 +38,7 @@ export default function AuthCallback() {
     setSubmitting(true);
     try {
       await bindGithub(bindInfo.username, password, bindInfo.githubId, bindInfo.githubAvatarUrl);
-      navigate(sessionStorage.getItem('loginRedirect') || '/lobby');
+      navigate(sessionStorage.getItem('loginRedirect') || '/');
     } catch (err) {
       setError((err as Error).message || '绑定失败');
     } finally {

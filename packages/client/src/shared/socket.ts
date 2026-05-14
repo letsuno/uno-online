@@ -221,8 +221,8 @@ export function getSocket(): TypedSocket {
       resetClientRoomState();
       sendNotification('kicked', data.reason || '你已被移出房间');
       useToastStore.getState().addToast(data.reason || '你已被移出游戏', 'error');
-      if (window.location.pathname !== '/lobby') {
-        window.location.assign('/lobby');
+      if (window.location.pathname !== '/') {
+        window.location.assign('/');
       }
     });
 
@@ -238,8 +238,8 @@ export function getSocket(): TypedSocket {
         : '房间已被房主解散';
       sendNotification('roomDissolved', message);
       useToastStore.getState().addToast(message, 'info');
-      if (window.location.pathname !== '/lobby') {
-        window.location.assign('/lobby');
+      if (window.location.pathname !== '/') {
+        window.location.assign('/');
       }
     });
   }

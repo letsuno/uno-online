@@ -5,6 +5,7 @@ import NotificationPermissionDialog from '@/shared/components/NotificationPermis
 import ServerUpdateDialog from '@/shared/components/ServerUpdateDialog';
 import ProfileModal from '@/shared/components/ProfileModal';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
+import StartScreenOverlay from '@/shared/components/StartScreenOverlay';
 
 export default function App() {
 
@@ -17,6 +18,7 @@ export default function App() {
       <ServerUpdateDialog />
       <ProfileModal />
       <ConfirmDialog />
+      <StartScreenOverlay />
     </div>
   );
 }

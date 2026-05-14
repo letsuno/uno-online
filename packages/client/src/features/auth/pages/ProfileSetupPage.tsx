@@ -37,7 +37,7 @@ export default function ProfileSetupPage() {
         avatarUrl: finalAvatar ?? user!.avatarUrl,
         role: user!.role,
       });
-      navigate('/lobby');
+      navigate('/');
     } catch (err) {
       setError((err as Error).message || '保存失败');
     } finally {
