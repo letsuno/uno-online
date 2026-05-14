@@ -223,8 +223,6 @@ async function processPendingSpectatorJoins(
     const sock = io.sockets.sockets.get(info.socketId);
     if (sock) (sock.data as SocketData).isSpectator = false;
 
-    // Role transition (spectator → player): no broadcast here — startNextRound
-    // ships a fresh room:spectator_list immediately after this returns.
     removeSpectator(roomCode, userId);
     session.addPlayer({
       id: userId,
@@ -255,6 +253,13 @@ async function processPendingSpectatorJoins(
       nickname: '',
       joined: true,
     });
+  }
+
+  // 升级后 roomSpectators 已经少了 joined.length 人，但 removeSpectator
+  // 是 silent 的，客户端的观战席列表此刻还停留在旧快照——必须广播一次
+  // 才会刷新。无人升级时不广播。
+  if (joined.length > 0) {
+    broadcastSpectatorList(io, roomCode);
   }
 }
 
