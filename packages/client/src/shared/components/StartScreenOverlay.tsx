@@ -62,8 +62,11 @@ export default function StartScreenOverlay() {
   }, [visible]);
 
   const handleSwitchAccount = () => {
+    // 一步到位：清登录态 + 关 overlay。背后 RootSwitch 已切到登录页，
+    // 用户立即看到表单，不需要再按一次任意键。
     logout();
-    // overlay 仍可见，token / user 变 null 后用户身份卡片自动消失
+    sessionStorage.setItem(SESSION_KEY, '1');
+    setVisible(false);
   };
 
   const loggedIn = Boolean(token && user);
