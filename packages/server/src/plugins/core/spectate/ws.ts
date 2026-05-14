@@ -42,11 +42,22 @@ export function removeSpectator(roomCode: string, userId: string): string | null
   return nickname;
 }
 
+/** Broadcasts the room's current spectator list. */
+export function broadcastSpectatorList(io: SocketIOServer, roomCode: string): void {
+  io.to(roomCode).emit('room:spectator_list', { spectators: getSpectatorNames(roomCode) });
+}
+
 /**
  * Single entry point for every "a spectator left" path (disconnect,
  * room:leave, future flows). Removes the user from the registry and emits
- * the resulting authoritative state to the rest of the room. A no-op (no
- * broadcast) when the user wasn't tracked.
+ * the resulting authoritative state to the rest of the room.
+ *
+ * When the user isn't tracked we *don't* broadcast (nothing changed), but
+ * we do warn — every caller's precondition (`data.isSpectator === true` or
+ * "user is in the pending-join queue") implies the user must be in the
+ * registry, so a null here is the exact kind of state drift this refactor
+ * was written to prevent. Logging gives operators a breadcrumb instead of
+ * silently swallowing it the way the previous code did.
  */
 export function broadcastSpectatorLeft(
   io: SocketIOServer,
@@ -54,7 +65,10 @@ export function broadcastSpectatorLeft(
   userId: string,
 ): void {
   const nickname = removeSpectator(roomCode, userId);
-  if (nickname == null) return;
+  if (nickname == null) {
+    console.warn('[spectate] broadcastSpectatorLeft called for untracked user', { roomCode, userId });
+    return;
+  }
   const spectators = getSpectatorNames(roomCode);
   io.to(roomCode).emit('room:spectator_list', { spectators });
   io.to(roomCode).emit('room:spectator_left', { nickname, spectators });

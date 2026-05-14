@@ -1,8 +1,9 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Server as SocketIOServer } from 'socket.io';
 import {
   addSpectator,
   broadcastSpectatorLeft,
+  broadcastSpectatorList,
   clearRoomSpectators,
   getSpectatorNames,
   removeSpectator,
@@ -52,7 +53,7 @@ describe('spectator registry', () => {
     expect(getSpectatorNames(ROOM_B)).toEqual(['Alice']);
   });
 
-  describe('broadcastSpectatorLeft', () => {
+  describe('broadcast helpers', () => {
     function makeIoStub() {
       const emits: Array<{ event: string; payload: unknown }> = [];
       const io = {
@@ -67,7 +68,17 @@ describe('spectator registry', () => {
       return { io, emits };
     }
 
-    it('emits both room:spectator_list and room:spectator_left with the updated array', () => {
+    it('broadcastSpectatorList emits the current authoritative list', () => {
+      const { io, emits } = makeIoStub();
+      addSpectator(ROOM_A, 'u1', 'Alice');
+      addSpectator(ROOM_A, 'u2', 'Bob');
+      broadcastSpectatorList(io, ROOM_A);
+      expect(emits).toEqual([
+        { event: 'room:spectator_list', payload: { spectators: ['Alice', 'Bob'] } },
+      ]);
+    });
+
+    it('broadcastSpectatorLeft emits both events with the updated array', () => {
       const { io, emits } = makeIoStub();
       addSpectator(ROOM_A, 'u1', 'Alice');
       addSpectator(ROOM_A, 'u2', 'Bob');
@@ -78,22 +89,34 @@ describe('spectator registry', () => {
       ]);
     });
 
-    it('is a no-op when the user is not tracked', () => {
-      const { io, emits } = makeIoStub();
-      broadcastSpectatorLeft(io, ROOM_A, 'ghost');
-      expect(emits).toEqual([]);
-    });
-
     // The bug this whole refactor exists to fix: the server used to emit
     // { nickname } without `spectators`. Lock the contract in a test so any
     // future path that bypasses broadcastSpectatorLeft will get caught.
-    it('always populates the spectators array on room:spectator_left (contract guard)', () => {
+    it('broadcastSpectatorLeft always populates spectators on room:spectator_left (contract guard)', () => {
       const { io, emits } = makeIoStub();
       addSpectator(ROOM_A, 'u1', 'Alice');
       broadcastSpectatorLeft(io, ROOM_A, 'u1');
       const left = emits.find((e) => e.event === 'room:spectator_left');
       expect(left).toBeDefined();
       expect((left!.payload as { spectators: unknown }).spectators).toEqual([]);
+    });
+
+    describe('fail-loud on drift', () => {
+      let warnSpy: ReturnType<typeof vi.spyOn>;
+      beforeEach(() => {
+        warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      });
+      afterEach(() => {
+        warnSpy.mockRestore();
+      });
+
+      it('broadcastSpectatorLeft warns and does not emit when the user is untracked', () => {
+        const { io, emits } = makeIoStub();
+        broadcastSpectatorLeft(io, ROOM_A, 'ghost');
+        expect(emits).toEqual([]);
+        expect(warnSpy).toHaveBeenCalledOnce();
+        expect(warnSpy.mock.calls[0][0]).toMatch(/untracked user/);
+      });
     });
   });
 });
