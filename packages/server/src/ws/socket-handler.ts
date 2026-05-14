@@ -417,9 +417,10 @@ export function setupSocketHandlers(
             ]);
             io.to(roomCode).emit('room:updated', { players, room });
           } else {
-            sessions.delete(roomCode);
-            turnTimer.stop(roomCode);
-            await voiceChannels.clearRoomChannelMapping(roomCode);
+            // Route through dissolveRoom to stay in sync with the other
+            // dissolve sites — chiefly so the Mumble channel actually gets
+            // removed (the inline form only unmapped the kv key).
+            await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
           }
         }, RECONNECT_TIMEOUT_MS);
         disconnectTimers.set(userId, timer);

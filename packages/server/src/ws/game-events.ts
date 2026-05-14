@@ -223,8 +223,6 @@ async function processPendingSpectatorJoins(
     const sock = io.sockets.sockets.get(info.socketId);
     if (sock) (sock.data as SocketData).isSpectator = false;
 
-    // Role transition (spectator → player): no broadcast here — startNextRound
-    // ships a fresh room:spectator_list immediately after this returns.
     removeSpectator(roomCode, userId);
     session.addPlayer({
       id: userId,
@@ -256,8 +254,12 @@ async function processPendingSpectatorJoins(
       joined: true,
     });
   }
-  // No room:spectator_list emit here — startNextRound broadcasts it once
-  // after this function returns.
+
+  // removeSpectator above is silent; without this broadcast the client's
+  // spectator panel would keep showing the just-promoted users.
+  if (joined.length > 0) {
+    broadcastSpectatorList(io, roomCode);
+  }
 }
 
 async function startNextRound(
@@ -279,10 +281,6 @@ async function startNextRound(
     persister.flushNow(roomCode),
   ]);
   io.to(roomCode).emit('game:next_round_vote', { votes: 0, required: session.getFullState().players.length, voters: [] });
-  // Defense in depth: round transitions are natural state-sync checkpoints,
-  // so re-broadcast the authoritative spectator list every round in case
-  // some other path failed to.
-  broadcastSpectatorList(io, roomCode);
   const room = await getRoom(redis, roomCode);
   const spectatorMode = (room?.settings?.spectatorMode as 'full' | 'hidden') ?? 'hidden';
   const sockets = await io.in(roomCode).fetchSockets();
@@ -790,6 +788,9 @@ export function registerGameEvents(
     persister.cleanup(roomCode);
     turnTimer.stop(roomCode);
     clearRoomTimeouts(roomCode);
+    // Leftover opt-ins from the previous game would otherwise be re-applied
+    // with stale socket ids → ghost players.
+    clearPendingSpectatorJoins(roomCode);
 
     await setRoomStatus(redis, roomCode, 'waiting');
     await resetAllPlayersReady(redis, roomCode);
@@ -817,8 +818,6 @@ export function registerGameEvents(
     const updatedRoom = await getRoom(redis, roomCode);
     io.to(roomCode).emit('game:back_to_room', { players, room: updatedRoom });
     io.to(roomCode).emit('chat:cleared');
-    // Mirror the just-cleared server registry to every client so their
-    // spectator panel doesn't show last round's list.
     broadcastSpectatorList(io, roomCode);
     callback?.({ success: true });
   });

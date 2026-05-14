@@ -12,7 +12,6 @@ import {
 const ROOM_A = 'TESTAA';
 const ROOM_B = 'TESTBB';
 
-/** Reset every room the suite touches so tests can't leak state into each other. */
 function resetRegistry(): void {
   for (const code of [ROOM_A, ROOM_B]) clearRoomSpectators(code);
 }
@@ -82,20 +81,29 @@ describe('spectator registry', () => {
       const { io, emits } = makeIoStub();
       addSpectator(ROOM_A, 'u1', 'Alice');
       addSpectator(ROOM_A, 'u2', 'Bob');
-      broadcastSpectatorLeft(io, ROOM_A, 'u1');
+      broadcastSpectatorLeft(io, ROOM_A, 'u1', 'Alice');
       expect(emits).toEqual([
         { event: 'room:spectator_list', payload: { spectators: ['Bob'] } },
         { event: 'room:spectator_left', payload: { nickname: 'Alice', spectators: ['Bob'] } },
       ]);
     });
 
-    // The bug this whole refactor exists to fix: the server used to emit
-    // { nickname } without `spectators`. Lock the contract in a test so any
-    // future path that bypasses broadcastSpectatorLeft will get caught.
+    // Authoritative nickname comes from the registry, not the caller — the
+    // caller's copy could be stale.
+    it('broadcastSpectatorLeft uses the registry nickname for room:spectator_left', () => {
+      const { io, emits } = makeIoStub();
+      addSpectator(ROOM_A, 'u1', 'RegistryName');
+      broadcastSpectatorLeft(io, ROOM_A, 'u1', 'StaleCallerName');
+      const left = emits.find((e) => e.event === 'room:spectator_left');
+      expect((left!.payload as { nickname: string }).nickname).toBe('RegistryName');
+    });
+
+    // Any future path that emits room:spectator_left without going through
+    // broadcastSpectatorLeft will fail this — that's the point.
     it('broadcastSpectatorLeft always populates spectators on room:spectator_left (contract guard)', () => {
       const { io, emits } = makeIoStub();
       addSpectator(ROOM_A, 'u1', 'Alice');
-      broadcastSpectatorLeft(io, ROOM_A, 'u1');
+      broadcastSpectatorLeft(io, ROOM_A, 'u1', 'Alice');
       const left = emits.find((e) => e.event === 'room:spectator_left');
       expect(left).toBeDefined();
       expect((left!.payload as { spectators: unknown }).spectators).toEqual([]);
@@ -112,7 +120,7 @@ describe('spectator registry', () => {
 
       it('broadcastSpectatorLeft warns and does not emit when the user is untracked', () => {
         const { io, emits } = makeIoStub();
-        broadcastSpectatorLeft(io, ROOM_A, 'ghost');
+        broadcastSpectatorLeft(io, ROOM_A, 'ghost', 'Ghost');
         expect(emits).toEqual([]);
         expect(warnSpy).toHaveBeenCalledOnce();
         expect(warnSpy.mock.calls[0][0]).toMatch(/untracked user/);
