@@ -8,7 +8,7 @@ import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerT
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import { getRoom, getRoomPlayers, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom, resetAllPlayersReady, setUserRoom } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS } from '@uno-online/shared';
-import { removeSpectator, addSpectator, getSpectatorNames, clearRoomSpectators } from '../plugins/core/spectate/ws.js';
+import { addSpectator, clearRoomSpectators, removeSpectator, broadcastSpectatorList } from '../plugins/core/spectate/ws.js';
 import type { SocketData } from './types.js';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
@@ -223,7 +223,9 @@ async function processPendingSpectatorJoins(
     const sock = io.sockets.sockets.get(info.socketId);
     if (sock) (sock.data as SocketData).isSpectator = false;
 
-    removeSpectator(roomCode, info.nickname);
+    // Role transition (spectator → player): no broadcast here — startNextRound
+    // ships a fresh room:spectator_list immediately after this returns.
+    removeSpectator(roomCode, userId);
     session.addPlayer({
       id: userId,
       name: info.nickname,
@@ -254,7 +256,8 @@ async function processPendingSpectatorJoins(
       joined: true,
     });
   }
-  io.to(roomCode).emit('room:spectator_list', { spectators: getSpectatorNames(roomCode) });
+  // No room:spectator_list emit here — startNextRound broadcasts it once
+  // after this function returns.
 }
 
 async function startNextRound(
@@ -276,6 +279,10 @@ async function startNextRound(
     persister.flushNow(roomCode),
   ]);
   io.to(roomCode).emit('game:next_round_vote', { votes: 0, required: session.getFullState().players.length, voters: [] });
+  // Defense in depth: round transitions are natural state-sync checkpoints,
+  // so re-broadcast the authoritative spectator list every round in case
+  // some other path failed to.
+  broadcastSpectatorList(io, roomCode);
   const room = await getRoom(redis, roomCode);
   const spectatorMode = (room?.settings?.spectatorMode as 'full' | 'hidden') ?? 'hidden';
   const sockets = await io.in(roomCode).fetchSockets();
@@ -708,7 +715,7 @@ export function registerGameEvents(
         s.emit('game:kicked', { reason: '你已被房主移至观战席', toSpectator: true });
       }
     }
-    if (targetPlayer) addSpectator(roomCode, targetPlayer.name);
+    if (targetPlayer) addSpectator(roomCode, targetId, targetPlayer.name);
 
     voters.delete(targetId);
     const voteState = getNextRoundVoteState(roomCode, session);
@@ -719,8 +726,7 @@ export function registerGameEvents(
       persister.flushNow(roomCode),
       emitGameUpdate(io, roomCode, session, redis),
     ]);
-    const spectators = getSpectatorNames(roomCode);
-    io.to(roomCode).emit('room:spectator_list', { spectators });
+    broadcastSpectatorList(io, roomCode);
     io.to(roomCode).emit('room:updated', { players: state.players.filter((p) => p.id !== targetId).map((p) => ({ userId: p.id, name: p.name })) });
 
     callback?.({ success: true });
@@ -743,7 +749,7 @@ export function registerGameEvents(
     await removePlayerFromRoom(redis, roomCode, data.user.userId);
 
     (socket.data as SocketData).isSpectator = true;
-    addSpectator(roomCode, player.name);
+    addSpectator(roomCode, data.user.userId, player.name);
 
     const voters = nextRoundVotes.get(roomCode) ?? new Set<string>();
     voters.delete(data.user.userId);
@@ -755,8 +761,7 @@ export function registerGameEvents(
       persister.flushNow(roomCode),
       emitGameUpdate(io, roomCode, session, redis),
     ]);
-    const spectators = getSpectatorNames(roomCode);
-    io.to(roomCode).emit('room:spectator_list', { spectators });
+    broadcastSpectatorList(io, roomCode);
     io.to(roomCode).emit('room:updated', { players: state.players.filter((p) => p.id !== data.user.userId).map((p) => ({ userId: p.id, name: p.name })) });
 
     callback?.({ success: true });
@@ -812,6 +817,9 @@ export function registerGameEvents(
     const updatedRoom = await getRoom(redis, roomCode);
     io.to(roomCode).emit('game:back_to_room', { players, room: updatedRoom });
     io.to(roomCode).emit('chat:cleared');
+    // Mirror the just-cleared server registry to every client so their
+    // spectator panel doesn't show last round's list.
+    broadcastSpectatorList(io, roomCode);
     callback?.({ success: true });
   });
 }
