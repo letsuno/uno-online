@@ -196,8 +196,11 @@ export function getSocket(): TypedSocket {
 
     socket.on('connect', () => {
       connectionStatusCallback?.('connected');
-      (socket!.io.engine as any)?.on('pong', (latency: number) => {
-        useServerStore.getState().setSocketLatency(latency);
+      (socket!.io.engine as any)?.on('ping', () => {
+        const start = performance.now();
+        socket!.volatile.emit('ping:latency', () => {
+          useServerStore.getState().setSocketLatency(Math.round(performance.now() - start));
+        });
       });
     });
 

@@ -163,6 +163,8 @@ export function setupSocketHandlers(
 
     socket.emit('server:version', { version: serverStartTime, serverTime: Date.now() });
 
+    socket.on('ping:latency', (callback) => callback());
+
     if (!socket.data.roomCode) {
       getActiveRooms(redis, io).then(rooms => socket.emit('lobby:rooms', rooms));
     }
