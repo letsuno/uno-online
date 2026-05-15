@@ -586,7 +586,20 @@ export function startTurnTimer(
     const playableCount = (state.phase === 'playing' && topCard && state.currentColor)
       ? getPlayableCards(actingPlayer.hand, topCard, state.currentColor).length
       : 0;
-    const delayMs = calculateBotDelay(difficulty, playableCount);
+
+    // Fast draw: skip the full thinking delay when the bot has no decision to
+    // make and will just draw a card (penalty draws, draw-until-playable loop,
+    // or no playable cards at all).
+    const hr = state.settings.houseRules;
+    const isPenaltyDraw = (state.pendingPenaltyDraws ?? 0) > 0;
+    const isDrawLoop = state.phase === 'playing'
+      && playableCount === 0
+      && state.lastAction?.type === 'DRAW_CARD'
+      && state.lastAction.playerId === actingPlayerId
+      && (hr.drawUntilPlayable || hr.deathDraw);
+    const delayMs = (isPenaltyDraw || isDrawLoop)
+      ? 250 + Math.random() * 250
+      : calculateBotDelay(difficulty, playableCount);
 
     turnTimer.stop(roomCode);
     clearBotTurnTimer(roomCode);
