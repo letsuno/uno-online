@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
 import { initializeGame, applyActionWithHouseRules } from '@uno-online/shared';
 import { initializeNextRound, serializeDecks } from '@uno-online/shared';
-import type { GameState, GameAction, RoomSettings, UserRole } from '@uno-online/shared';
+import type { GameState, GameAction, RoomSettings, UserRole, BotConfig } from '@uno-online/shared';
 import type { Card } from '@uno-online/shared';
+import { INITIAL_HAND_SIZE } from '@uno-online/shared';
 import type { ChatMessage, PlayerView } from '@uno-online/shared';
 
 export type { PlayerView };
@@ -31,7 +32,7 @@ export class GameSession {
     return createHash('sha256').update(serialized).digest('hex');
   }
 
-  static create(players: { id: string; name: string; avatarUrl?: string | null; role?: UserRole; isBot?: boolean }[], settings?: RoomSettings): GameSession {
+  static create(players: { id: string; name: string; avatarUrl?: string | null; role?: UserRole; isBot?: boolean; botConfig?: BotConfig }[], settings?: RoomSettings): GameSession {
     const state = initializeGame(players, settings?.houseRules);
     const deckHash = GameSession.computeDeckHash(state);
     const stateWithExtras = {
@@ -84,6 +85,7 @@ export class GameSession {
           avatarUrl: p.avatarUrl,
           role: p.role,
           isBot: p.isBot,
+          botConfig: p.botConfig,
         };
       }),
       currentPlayerIndex: this.state.currentPlayerIndex,
@@ -155,16 +157,40 @@ export class GameSession {
     };
   }
 
-  addPlayer(data: { id: string; name: string; avatarUrl?: string | null; role?: UserRole; isBot?: boolean }): void {
-    if (this.state.players.some((p) => p.id === data.id)) return;
+  setPlayerBotConfig(playerId: string, botConfig: BotConfig): void {
     this.state = {
       ...this.state,
+      players: this.state.players.map((p) =>
+        p.id === playerId ? { ...p, botConfig } : p,
+      ),
+    };
+  }
+
+  addPlayer(data: { id: string; name: string; avatarUrl?: string | null; role?: UserRole; isBot?: boolean; botConfig?: BotConfig }, dealCards = false): void {
+    if (this.state.players.some((p) => p.id === data.id)) return;
+
+    let hand: Card[] = [];
+    let deckLeft = this.state.deckLeft;
+    let deckRight = this.state.deckRight;
+
+    if (dealCards) {
+      const combined = [...deckLeft, ...deckRight];
+      hand = combined.splice(0, Math.min(INITIAL_HAND_SIZE, combined.length));
+      const half = Math.ceil(combined.length / 2);
+      deckLeft = combined.slice(0, half);
+      deckRight = combined.slice(half);
+    }
+
+    this.state = {
+      ...this.state,
+      deckLeft,
+      deckRight,
       players: [
         ...this.state.players,
         {
           id: data.id,
           name: data.name,
-          hand: [],
+          hand,
           score: 0,
           roundWins: 0,
           connected: true,
@@ -175,16 +201,54 @@ export class GameSession {
           avatarUrl: data.avatarUrl ?? null,
           role: data.role,
           isBot: data.isBot ?? false,
+          botConfig: data.botConfig,
         },
       ],
     };
   }
 
   removePlayer(playerId: string): void {
-    this.state = {
-      ...this.state,
-      players: this.state.players.filter((p) => p.id !== playerId),
+    const removedIndex = this.state.players.findIndex(p => p.id === playerId);
+    if (removedIndex === -1) return;
+
+    const newPlayers = this.state.players.filter((p) => p.id !== playerId);
+    let newIndex = this.state.currentPlayerIndex;
+
+    if (newPlayers.length === 0) {
+      newIndex = 0;
+    } else if (removedIndex < this.state.currentPlayerIndex) {
+      // Player before current was removed, shift index back
+      newIndex = this.state.currentPlayerIndex - 1;
+    } else if (removedIndex === this.state.currentPlayerIndex) {
+      // Current player was removed, index now points to next player (or wraps)
+      newIndex = this.state.currentPlayerIndex % newPlayers.length;
+    }
+    // If removed after current, no adjustment needed (but clamp to be safe)
+    if (newIndex >= newPlayers.length) {
+      newIndex = newPlayers.length > 0 ? newPlayers.length - 1 : 0;
+    }
+
+    const updates: Partial<GameState> = {
+      players: newPlayers,
+      currentPlayerIndex: newIndex,
     };
+
+    if (this.state.pendingDrawPlayerId === playerId) {
+      updates.pendingDrawPlayerId = null;
+      updates.phase = 'playing';
+    }
+
+    if (this.state.phase === 'choosing_swap_target' &&
+        this.state.players[this.state.currentPlayerIndex]?.id === playerId) {
+      updates.phase = 'playing';
+    }
+
+    if (this.state.phase === 'choosing_color' &&
+        this.state.players[this.state.currentPlayerIndex]?.id === playerId) {
+      updates.phase = 'playing';
+    }
+
+    this.state = { ...this.state, ...updates };
   }
 
   getPlayerCount(): number {
@@ -218,7 +282,7 @@ export class GameSession {
   }
 
   resetForRematch(): void {
-    const players = this.state.players.map(p => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl, role: p.role, isBot: p.isBot }));
+    const players = this.state.players.map(p => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl, role: p.role, isBot: p.isBot, botConfig: p.botConfig }));
     const settings = this.state.settings;
     const fresh = initializeGame(players, settings.houseRules);
     const deckHash = GameSession.computeDeckHash(fresh);

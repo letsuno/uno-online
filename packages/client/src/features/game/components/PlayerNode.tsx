@@ -12,6 +12,7 @@ import QuickReaction from './QuickReaction';
 import ThrowItemPicker from './ThrowItemPicker';
 import { cn, getRoleColor } from '@/shared/lib/utils';
 import { AiBadge } from '@/shared/components/ui/AiBadge';
+import { BotPlayerBadge } from './BotPlayerBadge';
 import { useCountdown } from '../hooks/useCountdown';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import type { PlayerInfo } from '../stores/game-store';
@@ -288,7 +289,9 @@ function PlayerNode({
           : undefined}
       >
         {displayName}
-        {player.isBot && <AiBadge className="ml-1" />}
+        {player.isBot && player.botConfig
+          ? <BotPlayerBadge difficulty={player.botConfig.difficulty} />
+          : player.isBot && <AiBadge className="ml-1" />}
       </span>
 
       {/* Hand count */}

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { RoomSettings } from '@uno-online/shared';
+import type { RoomSettings, BotConfig } from '@uno-online/shared';
 
 export interface RoomPlayer {
   userId: string;
@@ -9,6 +9,7 @@ export interface RoomPlayer {
   spectator?: boolean;
   role?: string;
   isBot: boolean;
+  botConfig?: BotConfig;
 }
 
 export interface RoomData {

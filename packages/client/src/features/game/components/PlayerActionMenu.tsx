@@ -6,6 +6,8 @@ import { useGatewayStore } from '@/shared/voice/gateway-store';
 import { useToastStore } from '@/shared/stores/toast-store';
 import { showConfirm } from '@/shared/stores/confirm-store';
 import type { RoomPlayer } from '@/shared/stores/room-store';
+import { useBotManagement } from '../hooks/useBotManagement';
+import { DIFFICULTY_DISPLAY, DIFFICULTY_LIST } from '../constants/bot-difficulty';
 
 interface PlayerActionMenuProps {
   target: RoomPlayer;
@@ -21,6 +23,7 @@ function normalizeVoiceName(name: string): string {
 
 export default function PlayerActionMenu({ target, isOwner, roomStatus, position, onClose }: PlayerActionMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const { removeBot, setBotDifficulty } = useBotManagement();
   const playerVoicePresence = useGatewayStore((s) => s.playerVoicePresence);
   const usersById = useGatewayStore((s) => s.usersById);
   const voiceConnected = useGatewayStore((s) => s.status) === 'connected';
@@ -81,9 +84,10 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
   }, []);
 
   const hasOwnerItems = isOwner && isWaiting;
+  const hasBotItems = isOwner && target.isBot;
   const hasForceMute = isOwner && isTargetInVoice;
   const hasVolume = voiceConnected && isTargetInVoice;
-  if (!hasOwnerItems && !hasForceMute && !hasVolume) return null;
+  if (!hasOwnerItems && !hasBotItems && !hasForceMute && !hasVolume) return null;
 
   const clampedX = Math.min(position.x, window.innerWidth - 180);
   const clampedY = Math.min(position.y, window.innerHeight - 200);
@@ -97,7 +101,7 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
       <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-white/5 truncate">
         {target.nickname}
       </div>
-      {hasOwnerItems && (
+      {hasOwnerItems && !target.isBot && (
         <>
           <button onClick={transferOwner} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/10 cursor-pointer transition-colors">
             <Crown size={14} />
@@ -106,6 +110,27 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
           <button onClick={kickPlayer} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 cursor-pointer transition-colors">
             <UserX size={14} />
             踢出房间
+          </button>
+        </>
+      )}
+      {hasBotItems && (
+        <>
+          <div className="px-3 py-1 text-xs text-white/40">调整难度</div>
+          {DIFFICULTY_LIST.map((d) => (
+            <button
+              key={d.value}
+              onClick={() => { setBotDifficulty(target.userId, d.value); onClose(); }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-white/10 cursor-pointer transition-colors"
+            >
+              <span className={DIFFICULTY_DISPLAY[d.value].color}>●</span>
+              <span>{d.label}</span>
+            </button>
+          ))}
+          <button
+            onClick={() => { removeBot(target.userId); onClose(); }}
+            className="w-full px-3 py-1.5 text-left text-sm text-red-400 hover:bg-white/10 cursor-pointer transition-colors"
+          >
+            移除人机
           </button>
         </>
       )}

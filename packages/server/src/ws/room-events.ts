@@ -1,7 +1,7 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
-import type { GameAction, GameState, RoomSettings } from '@uno-online/shared';
-import { MIN_PLAYERS, MAX_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction } from '@uno-online/shared';
+import type { GameAction, GameState, RoomSettings, BotDifficulty } from '@uno-online/shared';
+import { MIN_PLAYERS, MAX_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction, chooseBotAction, getPlayableCards, DIFFICULTY_PARAMS, BOT_DIFFICULTIES } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager.js';
 import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, ensureNotInRoom } from '../plugins/core/room/store.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
@@ -9,22 +9,24 @@ import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import type { VoiceChannelManager } from '../voice/channel-manager.js';
-import { removePlayerVote } from './game-events.js';
+import { removePlayerVote, emitTerminalStateIfNeeded } from './game-events.js';
 import type { SocketData } from './types.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { removeVoicePresence, setForceMuted } from './voice-presence.js';
 import { broadcastLobbyRooms } from '../plugins/core/spectate/routes.js';
 import { getAutopilotActionPlayerId } from './autopilot-action-player.js';
 import { addSpectator, broadcastSpectatorLeft } from '../plugins/core/spectate/ws.js';
+import { addBot, removeBot, setBotDifficulty, calculateBotDelay } from './bot-manager.js';
+import { checkBotUnoCatch, checkBotJumpIn, clearBotTimers } from './bot-uno-watcher.js';
 
 const AUTOPILOT_MIN_ACTION_INTERVAL_MS = 500;
 const AUTO_AUTOPILOT_THRESHOLD = 2;
-const BOT_TURN_TIME_LIMIT = 120;
 type AutopilotActionHandler = (roomCode: string, session: GameSession, action: GameAction) => void;
 
 // Track consecutive timeouts per player per room
 const timeoutCounts = new Map<string, Map<string, number>>();
 const blitzTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const botTurnTimers = new Map<string, ReturnType<typeof setTimeout>>();
 let autopilotActionHandler: AutopilotActionHandler | null = null;
 
 export function setAutopilotActionHandler(handler: AutopilotActionHandler | null): void {
@@ -50,6 +52,16 @@ export function clearRoomTimeouts(roomCode: string): void {
   if (blitzTimer) {
     clearTimeout(blitzTimer);
     blitzTimers.delete(roomCode);
+  }
+  clearBotTurnTimer(roomCode);
+  clearBotTimers(roomCode);
+}
+
+function clearBotTurnTimer(roomCode: string): void {
+  const timer = botTurnTimers.get(roomCode);
+  if (timer) {
+    clearTimeout(timer);
+    botTurnTimers.delete(roomCode);
   }
 }
 
@@ -144,7 +156,7 @@ export function registerRoomEvents(
       const room = await getRoom(redis, roomCode);
       if (room?.ownerId === userId) {
         const players = await getRoomPlayers(redis, roomCode);
-        const nextOwner = players[0];
+        const nextOwner = players.find(p => !p.isBot) ?? players[0];
         if (nextOwner) {
           await setRoomOwner(redis, roomCode, nextOwner.userId);
           const updatedRoom = await getRoom(redis, roomCode);
@@ -338,6 +350,78 @@ export function registerRoomEvents(
     callback?.({ success: true });
   });
 
+  socket.on('room:add_bot', async (payload: { difficulty: BotDifficulty }, callback) => {
+    const roomCode = data.roomCode;
+    if (!roomCode) return callback({ success: false, error: '不在房间中' });
+    if (!BOT_DIFFICULTIES.includes(payload.difficulty)) return callback({ success: false, error: '无效的难度等级' });
+
+    const session = sessions.get(roomCode);
+    const result = await addBot(io, redis, roomManager, roomCode, data.user.userId, payload.difficulty, session);
+
+    if (result.success && session) {
+      persister.markDirty(roomCode, session.getFullState());
+      await emitGameUpdate(io, roomCode, session, redis);
+      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
+    }
+
+    broadcastLobbyRooms(redis, io);
+    callback(result);
+  });
+
+  socket.on('room:remove_bot', async (payload: { botId: string }, callback) => {
+    const roomCode = data.roomCode;
+    if (!roomCode) return callback({ success: false, error: '不在房间中' });
+
+    const room = await getRoom(redis, roomCode);
+    if (!room || room.ownerId !== data.user.userId) return callback({ success: false, error: '只有房主可以移除人机' });
+
+    const session = sessions.get(roomCode);
+
+    if (session && session.getPlayerCount() - 1 < MIN_PLAYERS) {
+      const st = session.getFullState();
+      const lastPlayer = st.players.find(p => p.id !== payload.botId);
+      if (lastPlayer) {
+        session.forceGameOver(lastPlayer.id);
+        turnTimer.stop(roomCode);
+        session.removePlayer(payload.botId);
+        io.to(roomCode).emit('game:over', {
+          winnerId: lastPlayer.id,
+          scores: Object.fromEntries(st.players.map(p => [p.id, p.score])),
+          gameOverAt: Date.now(),
+        });
+      } else {
+        turnTimer.stop(roomCode);
+        session.removePlayer(payload.botId);
+      }
+      await removeBot(io, redis, roomManager, roomCode, data.user.userId, payload.botId, undefined);
+      persister.markDirty(roomCode, session.getFullState());
+      await emitGameUpdate(io, roomCode, session, redis);
+      broadcastLobbyRooms(redis, io);
+      return callback({ success: true });
+    }
+
+    const result = await removeBot(io, redis, roomManager, roomCode, data.user.userId, payload.botId, session);
+
+    if (result.success && session) {
+      persister.markDirty(roomCode, session.getFullState());
+      await emitGameUpdate(io, roomCode, session, redis);
+      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
+    }
+
+    broadcastLobbyRooms(redis, io);
+    callback(result);
+  });
+
+  socket.on('room:set_bot_difficulty', async (payload: { botId: string; difficulty: BotDifficulty }, callback) => {
+    const roomCode = data.roomCode;
+    if (!roomCode) return callback({ success: false, error: '不在房间中' });
+    if (!BOT_DIFFICULTIES.includes(payload.difficulty)) return callback({ success: false, error: '无效的难度等级' });
+
+    const session = sessions.get(roomCode);
+    const result = await setBotDifficulty(io, redis, roomCode, data.user.userId, payload.botId, payload.difficulty, session);
+    callback(result);
+  });
+
   socket.on('voice:force_mute', async (payload: { targetId: string; muted: boolean }, callback) => {
     const roomCode = data.roomCode;
     if (!roomCode) return callback?.({ success: false, error: '不在房间中' });
@@ -378,7 +462,7 @@ export function registerRoomEvents(
     await setRoomStatus(redis, roomCode, 'playing');
     await touchRoomActivity(redis, roomCode);
     const session = GameSession.create(
-      activePlayers.map((p) => ({ id: p.userId, name: p.nickname, avatarUrl: p.avatarUrl ?? null, role: p.role as import('@uno-online/shared').UserRole | undefined, isBot: p.isBot })),
+      activePlayers.map((p) => ({ id: p.userId, name: p.nickname, avatarUrl: p.avatarUrl ?? null, role: p.role as import('@uno-online/shared').UserRole | undefined, isBot: p.isBot, botConfig: p.botConfig })),
       { turnTimeLimit: room.settings?.turnTimeLimit ?? 30, targetScore: room.settings?.targetScore ?? 1000, houseRules: room.settings?.houseRules ?? DEFAULT_HOUSE_RULES, allowSpectators: room.settings?.allowSpectators ?? true, spectatorMode: room.settings?.spectatorMode ?? 'hidden' } as RoomSettings,
     );
     sessions.set(roomCode, session);
@@ -496,21 +580,70 @@ export function startTurnTimer(
   const actingPlayerId = getAutopilotActionPlayerId(state);
   const actingPlayer = actingPlayerId ? state.players.find(p => p.id === actingPlayerId) : null;
   if (actingPlayer?.isBot && !actingPlayer.autopilot) {
-    turnTimer.start(roomCode, BOT_TURN_TIME_LIMIT, async (code) => {
-      const s = sessions.get(code);
+    const botConfig = actingPlayer.botConfig;
+    const difficulty = botConfig?.difficulty ?? 'easy';
+    const topCard = state.discardPile[state.discardPile.length - 1];
+    const playableCount = (state.phase === 'playing' && topCard && state.currentColor)
+      ? getPlayableCards(actingPlayer.hand, topCard, state.currentColor).length
+      : 0;
+    const delayMs = calculateBotDelay(difficulty, playableCount);
+
+    turnTimer.stop(roomCode);
+    clearBotTurnTimer(roomCode);
+    const timer = setTimeout(async () => {
+      botTurnTimers.delete(roomCode);
+      const s = sessions.get(roomCode);
       if (!s) return;
-      const pid = getAutopilotActionPlayerId(s.getFullState());
+      const fullState = s.getFullState();
+      const pid = getAutopilotActionPlayerId(fullState);
       if (!pid) {
-        startTurnTimer(io, redis, code, s, turnTimer, sessions, persister);
+        startTurnTimer(io, redis, roomCode, s, turnTimer, sessions, persister);
         return;
       }
-      await executeAutopilot(s, pid, async () => {
-        persister.markDirty(code, s.getFullState());
-      }, (action) => notifyAutopilotAction(code, s, action));
-      persister.markDirty(code, s.getFullState());
-      await emitGameUpdate(io, code, s, redis);
-      startTurnTimer(io, redis, code, s, turnTimer, sessions, persister);
-    });
+
+      const botPlayer = fullState.players.find(p => p.id === pid);
+      let actions: GameAction[];
+      if (botPlayer?.isBot && botPlayer.botConfig) {
+        actions = chooseBotAction(fullState, pid);
+      } else {
+        actions = chooseAutopilotAction(fullState, pid);
+      }
+
+      for (const action of actions) {
+        const result = s.applyAction(action);
+        if (!result.success) break;
+        notifyAutopilotAction(roomCode, s, action);
+      }
+
+      // Bot UNO call
+      if (botPlayer?.isBot && botPlayer.botConfig) {
+        const afterState = s.getFullState();
+        const afterPlayer = afterState.players.find(p => p.id === pid);
+        if (afterPlayer && afterPlayer.hand.length === 1 && !afterPlayer.calledUno) {
+          const params = DIFFICULTY_PARAMS[botPlayer.botConfig.difficulty];
+          if (Math.random() < params.unoCallRate) {
+            s.applyAction({ type: 'CALL_UNO', playerId: pid });
+          }
+        }
+      }
+
+      persister.markDirty(roomCode, s.getFullState());
+      await emitGameUpdate(io, roomCode, s, redis);
+
+      if (await emitTerminalStateIfNeeded(io, roomCode, s, turnTimer, redis, sessions, persister)) {
+        return;
+      }
+
+      checkBotUnoCatch(io, redis, roomCode, s, persister, emitGameUpdate, sessions);
+      const jumpInScheduled = checkBotJumpIn(io, redis, roomCode, s, persister, emitGameUpdate, () => {
+        startTurnTimer(io, redis, roomCode, s, turnTimer, sessions, persister);
+      }, sessions);
+      if (!jumpInScheduled) {
+        startTurnTimer(io, redis, roomCode, s, turnTimer, sessions, persister);
+      }
+    }, delayMs);
+    timer.unref?.();
+    botTurnTimers.set(roomCode, timer);
     return;
   }
 

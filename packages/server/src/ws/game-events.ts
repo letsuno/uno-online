@@ -185,11 +185,12 @@ function scheduleAutopilotJumpIn(
 }
 
 function getNextRoundVoteState(roomCode: string, session: GameSession): NextRoundVoteState {
-  const playerIds = new Set(session.getFullState().players.map((p) => p.id));
-  const voters = [...(nextRoundVotes.get(roomCode) ?? new Set<string>())].filter((id) => playerIds.has(id));
+  const players = session.getFullState().players;
+  const humanPlayerIds = new Set(players.filter((p) => !p.isBot).map((p) => p.id));
+  const voters = [...(nextRoundVotes.get(roomCode) ?? new Set<string>())].filter((id) => humanPlayerIds.has(id));
   return {
     votes: voters.length,
-    required: playerIds.size,
+    required: humanPlayerIds.size,
     voters,
   };
 }
@@ -296,7 +297,7 @@ async function startNextRound(
   startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
 }
 
-async function emitTerminalStateIfNeeded(
+export async function emitTerminalStateIfNeeded(
   io: SocketIOServer,
   roomCode: string,
   session: GameSession,

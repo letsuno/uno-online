@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Crown, Check, Copy, Eye, Trash2 } from 'lucide-react';
 import { cn, getRoleColor } from '@/shared/lib/utils';
-import { AiBadge } from '@/shared/components/ui/AiBadge';
+import { BotAddButton } from '../components/BotAddButton';
+import { BotPlayerBadge } from '../components/BotPlayerBadge';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useRoomStore, type RoomPlayer } from '@/shared/stores/room-store';
 import { useGameStore } from '../stores/game-store';
@@ -215,7 +216,7 @@ export default function RoomPage() {
                     >
                       <span className="flex min-w-0 flex-1 items-center gap-2" style={roleColor ? { color: roleColor } : undefined}>
                         <span className="truncate text-base font-medium">{p.nickname}</span>
-                        {p.isBot && <AiBadge />}
+                        {p.isBot && <BotPlayerBadge difficulty={p.botConfig?.difficulty} />}
                         {room?.ownerId === p.userId && <Crown size={16} className="shrink-0 text-primary" />}
                         <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={isMe} className="shrink-0" />
                       </span>
@@ -226,6 +227,7 @@ export default function RoomPage() {
                   );
                 })}
               </div>
+              {isOwner && <BotAddButton />}
             </section>
 
             {spectatorPlayers.length > 0 && (
@@ -252,7 +254,7 @@ export default function RoomPage() {
                       >
                         <span className="flex min-w-0 flex-1 items-center gap-2" style={roleColor ? { color: roleColor } : undefined}>
                           <span className="truncate text-base font-medium">{p.nickname}</span>
-                          {p.isBot && <AiBadge />}
+                          {p.isBot && <BotPlayerBadge difficulty={p.botConfig?.difficulty} />}
                           {room?.ownerId === p.userId && <Crown size={16} className="shrink-0 text-primary" />}
                           <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={isMe} className="shrink-0" />
                         </span>
