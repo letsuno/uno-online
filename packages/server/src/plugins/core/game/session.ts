@@ -55,8 +55,12 @@ export class GameSession {
     return this.state;
   }
 
+  private static readonly DISCARD_TRUNCATE = 10;
+
   private buildPlayerViews(viewerId: string, shouldReveal: (playerId: string) => boolean): PlayerView {
     const threshold = this.state.settings.houseRules.handRevealThreshold;
+    const fullPile = this.state.discardPile;
+    const truncated = fullPile.length > GameSession.DISCARD_TRUNCATE;
     return {
       viewerId,
       phase: this.state.phase,
@@ -84,7 +88,7 @@ export class GameSession {
       }),
       currentPlayerIndex: this.state.currentPlayerIndex,
       direction: this.state.direction,
-      discardPile: this.state.discardPile,
+      discardPile: truncated ? fullPile.slice(-GameSession.DISCARD_TRUNCATE) : fullPile,
       currentColor: this.state.currentColor,
       drawStack: this.state.drawStack,
       pendingPenaltyDraws: this.state.pendingPenaltyDraws ?? 0,
@@ -95,6 +99,7 @@ export class GameSession {
       settings: this.state.settings,
       pendingDrawPlayerId: this.state.pendingDrawPlayerId,
       lastAction: this.state.lastAction,
+      ...(truncated ? { discardPileCount: fullPile.length } : {}),
     };
   }
 
