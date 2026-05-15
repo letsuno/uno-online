@@ -2,314 +2,314 @@
 
 ## 概述
 
-UNO Online 的村规系统采用 **Rule 注册表** 模式，每条村规是一个独立的 `RuleDefinition` 对象，包含元数据（名称、描述、默认值）和行为逻辑（前置检查、后置处理）。社区开发者可以通过注册新的 `RuleDefinition` 来添加自定义村规，无需修改引擎核心代码。
+UNO Online 的村规系统当前采用 **插件数组 + 共享规则描述表** 的实现：
+
+- 规则开关和值定义在 `packages/shared/src/types/house-rules.ts`
+- 房间设置 UI 读取 `HOUSE_RULE_DEFINITIONS` 自动渲染规则列表
+- 引擎执行逻辑读取 `PRE_CHECK_PLUGINS` 和 `POST_PROCESS_PLUGINS`
+- 规则引擎插件实现 `HouseRulePlugin`，按数组顺序执行
+- 少数规则不需要引擎插件：例如 `wildFirstTurn` / `shuffleSeats` 在发牌设置中处理，`fastMode` / `blitzTimeLimit` / `handRevealThreshold` 在服务端会话与计时逻辑中处理，`noHints` 只影响客户端提示展示
+
+当前没有运行时 `registerRule()` API，也没有 `HouseRuleDefinition.ui` / `teaching` / `priority` 字段。新增村规时需要先判断它是否改变核心规则引擎；如果会改变出牌、摸牌、结算等逻辑，就同步更新类型、默认值、描述表、插件数组和测试；如果只影响发牌、计时、展示或服务端房间流程，则更新对应消费点和测试。
 
 ## 架构
 
 ```
-packages/shared/src/rules/
-  house-rule-registry.ts  # Rule 注册表（核心）
-  house-rule-types.ts     # RuleDefinition 接口定义
-  house-rules-engine.ts   # 引擎入口（遍历注册表执行规则）
-  house-rule-helpers.ts   # 规则辅助函数
-  game-engine.ts          # 核心游戏引擎
-  autopilot-strategy.ts   # 托管 AI 策略
-  rules/                  # 内置村规实现（每个文件一条规则）
-    stacking.ts           # stackDrawTwo, stackDrawFour, crossStack
-    deflection.ts         # reverseDeflectDrawTwo, reverseDeflectDrawFour, skipDeflect
-    zero-rotate.ts        # zeroRotateHands
-    seven-swap.ts         # sevenSwapHands
-    jump-in.ts            # jumpIn
-    multi-play.ts         # multiplePlaySameNumber, bombCard
-    draw-until-playable.ts # drawUntilPlayable
-    forced-play-after-draw.ts # forcedPlayAfterDraw
-    forced-play.ts        # forcedPlay
-    death-draw.ts         # deathDraw
-    hand-limit.ts         # handLimit, handRevealThreshold
-    uno-penalty.ts        # unoPenaltyCount
-    misplay-penalty.ts    # misplayPenalty
-    finish-restrictions.ts # noWildFinish, noFunctionCardFinish
-    double-score.ts       # doubleScore
-    elimination.ts        # elimination
-    revenge-mode.ts       # revengeMode
-    silent-uno.ts         # silentUno
-    no-challenge-wild-four.ts # noChallengeWildFour
-    team-mode.ts          # teamMode
+packages/shared/src/
+  types/
+    house-rules.ts          # HouseRules 接口、DEFAULT_HOUSE_RULES、HOUSE_RULES_PRESETS
+  constants/
+    house-rules.ts          # HOUSE_RULE_DEFINITIONS，供 UI 和说明使用
+  rules/
+    house-rule-types.ts     # HouseRulePlugin / RuleContext / PreCheckResult
+    house-rule-helpers.ts   # 构建 RuleContext
+    house-rules-engine.ts   # applyActionWithHouseRules 入口
+    house-rule-registry.ts  # getAllRuleMetadata()，从插件数组收集元数据
+    rules/
+      index.ts              # PRE_CHECK_PLUGINS / POST_PROCESS_PLUGINS
+      stacking.ts
+      deflection.ts
+      zero-rotate.ts
+      seven-swap.ts
+      jump-in.ts
+      multi-play.ts
+      draw-until-playable.ts
+      forced-play-after-draw.ts
+      forced-play.ts
+      death-draw.ts
+      hand-limit.ts
+      uno-penalty.ts
+      misplay-penalty.ts
+      finish-restrictions.ts
+      double-score.ts
+      elimination.ts
+      revenge-mode.ts
+      silent-uno.ts
+      no-challenge-wild-four.ts
+      team-mode.ts
 ```
 
-## RuleDefinition 接口
+## HouseRulePlugin 接口
+
+实际类型定义在 `packages/shared/src/rules/house-rule-types.ts`：
 
 ```typescript
-// packages/shared/src/rules/house-rule-types.ts
+export interface RuleMetadata {
+  id: string;
+  keys: (keyof HouseRules)[];
+  label: string;
+  description: string;
+}
+
+export type PreCheckResult =
+  | { handled: false }
+  | { handled: true; state: GameState };
 
 export interface RuleContext {
-  state: GameState;
-  action: GameAction;
-  houseRules: HouseRules;
-  // ... 以及多个辅助函数：
-  // applyAction, checkRoundEnd, drawCardsFromDeck, startPenaltyDraw,
-  // isWildCard, isFunctionCard, canPlayCard, getNextPlayerIndex 等
-  // 完整定义见 house-rule-types.ts
+  applyAction: (state: GameState, action: GameAction) => GameState;
+  checkRoundEnd: (state: GameState, playerId: string) => GameState;
+  drawCardsFromDeck: (state: GameState, playerId: string, count: number) => GameState;
+  startPenaltyDraw: (
+    state: GameState,
+    playerId: string,
+    count: number,
+    nextPlayerIndex: number,
+    sourcePlayerId?: string | null,
+  ) => GameState;
+  putAttackCardOnStack: (
+    state: GameState,
+    action: Extract<GameAction, { type: 'PLAY_CARD' }>,
+    card: Card,
+    stackAdd: number,
+  ) => GameState;
+  getCardDrawPenalty: (card: Card) => number;
+  canStartDrawStack: (state: GameState, card: Card) => boolean;
+  isLastCard: (state: GameState, playerId: string, cardId: string) => boolean;
+  isWildCard: (card: Card) => boolean;
+  isFunctionCard: (card: Card) => boolean;
+  handleDrawUntilPlayable: (state: GameState, action: Extract<GameAction, { type: 'DRAW_CARD' }>) => GameState;
+  handleForcedPlayAfterDraw: (state: GameState, action: Extract<GameAction, { type: 'DRAW_CARD' }>) => GameState;
+  applyDoubleScore: (before: GameState, after: GameState) => GameState;
+  canPlayCard: (card: Card, topCard: Card, currentColor: Color) => boolean;
+  getNextPlayerIndex: (current: number, total: number, direction: Direction, skip?: number) => number;
 }
 
-export interface PreCheckResult {
-  handled: true;
-  newState: GameState;
-} | {
-  handled: false;
+export interface HouseRulePlugin {
+  meta: RuleMetadata;
+  isEnabled: (hr: HouseRules) => boolean;
+  preCheck?: (state: GameState, action: GameAction, ctx: RuleContext) => PreCheckResult;
+  postProcess?: (before: GameState, after: GameState, action: GameAction, ctx: RuleContext) => GameState;
 }
-
-export interface PostProcessResult {
-  newState: GameState;
-} | null;
-
-export interface RuleDefinition {
-  /** 规则唯一标识，对应 HouseRules 接口的字段名 */
-  key: keyof HouseRules;
-
-  /** 显示信息 */
-  meta: {
-    label: string;           // 中文名称
-    description: string;     // 中文描述
-    category: RuleCategory;  // 分类
-  };
-
-  /** UI 控件类型 */
-  ui: {
-    type: 'boolean' | 'select' | 'number';
-    options?: { value: any; label: string }[];
-  };
-
-  /** 教学演示步骤（可选） */
-  teaching?: TeachingStep[];
-
-  /**
-   * 前置检查：在基础引擎处理 action 之前调用。
-   * - 返回 { handled: true, newState } 表示规则已处理该 action，跳过基础引擎
-   * - 返回 { handled: false } 表示规则不拦截，继续传递
-   * - 未定义则跳过
-   */
-  preCheck?: (ctx: RuleContext) => PreCheckResult;
-
-  /**
-   * 后置处理：基础引擎处理完 action 后调用。
-   * - 返回 { newState } 表示修改了状态
-   * - 返回 null 表示无修改
-   * - 未定义则跳过
-   */
-  postProcess?: (ctx: { prevState: GameState; newState: GameState; action: GameAction; houseRules: HouseRules }) => PostProcessResult;
-
-  /**
-   * 执行优先级（数字越小越先执行）。
-   * 默认 100。前置检查和后置处理分别独立排序。
-   * 内置规则使用 0-99，社区规则建议使用 100+。
-   */
-  priority?: number;
-}
-
-export type RuleCategory =
-  | 'stacking'       // 叠加
-  | 'deflection'     // 转移
-  | 'hand-swap'      // 换牌
-  | 'draw'           // 摸牌
-  | 'play'           // 出牌限制
-  | 'scoring'        // 计分
-  | 'mode'           // 模式
-  | 'multi-play'     // 连出
-  | 'limit'          // 限制
-  | 'team';          // 团队
 ```
 
-## 注册表 API
+### preCheck 与 postProcess
 
-```typescript
-// packages/shared/src/rules/rule-registry.ts
-
-/** 注册一条村规 */
-export function registerRule(rule: RuleDefinition): void;
-
-/** 批量注册 */
-export function registerRules(rules: RuleDefinition[]): void;
-
-/** 获取所有已注册规则（按 priority 排序） */
-export function getAllRules(): RuleDefinition[];
-
-/** 获取指定规则 */
-export function getRule(key: keyof HouseRules): RuleDefinition | undefined;
-
-/** 获取所有规则的元数据（用于 UI 渲染） */
-export function getRuleMetas(): RuleMeta[];
-```
+- `preCheck` 在基础引擎 `applyAction()` 之前执行。
+- 如果返回 `{ handled: true, state }`，基础引擎会被跳过，然后进入后处理阶段。
+- 返回 `{ handled: false }` 表示当前规则不拦截，继续执行后续规则或基础引擎。
+- `postProcess` 在基础引擎或已拦截的前置规则之后执行，返回新的 `GameState`。
 
 ## 引擎执行流程
 
 ```
 applyActionWithHouseRules(state, action)
   │
-  ├─ 1. 收集所有已注册规则，按 priority 排序
+  ├─ buildRuleContext()
   │
-  ├─ 2. 依次执行有 preCheck 的规则
-  │     ├─ 如果某规则返回 { handled: true, newState }
-  │     │   → 使用 newState，跳过基础引擎，进入后置处理
-  │     └─ 如果所有规则返回 { handled: false }
-  │         → 继续
+  ├─ 遍历 PRE_CHECK_PLUGINS
+  │    ├─ 跳过 isEnabled() 为 false 的插件
+  │    ├─ 执行 preCheck()
+  │    └─ 若 handled: true，使用返回 state 并跳过基础引擎
   │
-  ├─ 3. 调用基础引擎 applyAction(state, action)
+  ├─ 若未被 preCheck 处理，调用基础引擎 applyAction()
   │
-  └─ 4. 依次执行有 postProcess 的规则
-        ├─ 每个规则可修改 newState
-        └─ 最终返回累积后的 newState
+  ├─ 处理 pending penalty queue
+  │
+  └─ 遍历 POST_PROCESS_PLUGINS
+       ├─ 跳过 isEnabled() 为 false 的插件
+       └─ 执行 postProcess() 并累积新 state
 ```
 
-## 添加新村规（完整步骤）
+规则引擎插件的执行顺序由 `packages/shared/src/rules/rules/index.ts` 中数组顺序决定。新增插件型规则时要把顺序当成行为契约审查，尤其是出牌限制、叠加/转移、连出和结算类规则。
 
-### 第 1 步：定义类型
+## 当前村规清单
 
-在 `packages/shared/src/types/house-rules.ts` 的 `HouseRules` 接口中添加字段：
+当前 `HouseRules` 共 34 个字段：
+
+| 分类 | 字段 |
+|------|------|
+| 叠加/转移 | `stackDrawTwo`, `stackDrawFour`, `crossStack`, `reverseDeflectDrawTwo`, `reverseDeflectDrawFour`, `skipDeflect` |
+| 出牌/摸牌 | `jumpIn`, `multiplePlaySameNumber`, `wildFirstTurn`, `drawUntilPlayable`, `forcedPlayAfterDraw`, `forcedPlay`, `deathDraw`, `blindDraw`, `bombCard` |
+| 手牌/UNO | `zeroRotateHands`, `sevenSwapHands`, `handLimit`, `handRevealThreshold`, `unoPenaltyCount`, `strictUnoCall`, `silentUno`, `misplayPenalty` |
+| 终局/积分 | `noFunctionCardFinish`, `noWildFinish`, `doubleScore` |
+| 模式 | `elimination`, `blitzTimeLimit`, `revengeMode`, `teamMode`, `shuffleSeats`, `fastMode`, `noHints`, `noChallengeWildFour` |
+
+## 添加新村规
+
+### 第 1 步：更新类型与默认值
+
+在 `packages/shared/src/types/house-rules.ts` 中添加字段，并同步 `DEFAULT_HOUSE_RULES`：
 
 ```typescript
 export interface HouseRules {
-  // ... 现有字段
-  myNewRule: boolean;  // 新增
+  // ...
+  myNewRule: boolean;
 }
-```
 
-在 `DEFAULT_HOUSE_RULES` 中设置默认值：
-
-```typescript
 export const DEFAULT_HOUSE_RULES: HouseRules = {
-  // ... 现有默认值
+  // ...
   myNewRule: false,
 };
 ```
 
-### 第 2 步：实现规则逻辑
+如果预设需要启用新规则，也同步更新 `HOUSE_RULES_PRESETS`。
 
-在 `packages/shared/src/rules/rules/` 下创建新文件或添加到已有分类文件：
+### 第 2 步：更新 UI 描述表
+
+在 `packages/shared/src/constants/house-rules.ts` 中添加：
+
+```typescript
+export const HOUSE_RULE_DEFINITIONS: HouseRuleDefinition[] = [
+  // ...
+  {
+    key: 'myNewRule',
+    label: '我的新规则',
+    description: '这条规则的用户可见中文说明',
+  },
+];
+```
+
+房间页和村规面板会读取这张表。布尔规则默认自动渲染开关；如果是 `number | null` 或枚举值，需要在客户端的 `RULE_EXTRAS` 中补充 select 配置，目前相关位置包括：
+
+- `packages/client/src/features/game/pages/RoomPage.tsx`
+- `packages/client/src/features/game/components/HouseRulesPanel.tsx`
+
+### 第 3 步：实现规则插件
+
+在 `packages/shared/src/rules/rules/` 下创建新文件，或加入已有分类文件：
 
 ```typescript
 // packages/shared/src/rules/rules/my-new-rule.ts
-import type { RuleDefinition } from '../rule-types';
+import type { HouseRulePlugin } from '../house-rule-types.js';
 
-export const myNewRule: RuleDefinition = {
-  key: 'myNewRule',
+export const myNewRule: HouseRulePlugin = {
   meta: {
+    id: 'my-new-rule',
+    keys: ['myNewRule'],
     label: '我的新规则',
-    description: '当玩家出红色牌时，下一位玩家必须也出红色牌或摸牌',
-    category: 'play',
+    description: '这条规则的开发侧说明',
   },
-  ui: { type: 'boolean' },
-  teaching: [
-    { type: 'card', card: { type: 'number', color: 'red', value: 5 } },
-    { type: 'arrow' },
-    { type: 'text', text: '下家必须出红色' },
-  ],
-  priority: 110,  // 社区规则建议 100+
 
-  preCheck: ({ state, action, houseRules }) => {
-    if (!houseRules.myNewRule) return { handled: false };
+  isEnabled: (hr) => hr.myNewRule,
 
-    // 只处理出牌动作
+  preCheck: (state, action, ctx) => {
     if (action.type !== 'PLAY_CARD') return { handled: false };
 
-    // 检查上一张牌是否是红色...
-    // 返回 { handled: true, newState: ... } 来拦截
-    // 或 { handled: false } 来放行
-
+    // 根据 state/action 判断是否拦截。
+    // 如需完全接管动作，返回 { handled: true, state: nextState }。
+    // 如不接管，返回 { handled: false }。
     return { handled: false };
   },
 
-  postProcess: ({ prevState, newState, action, houseRules }) => {
-    if (!houseRules.myNewRule) return null;
-    // 出牌后的额外效果...
-    return null;
+  postProcess: (before, after, action, ctx) => {
+    if (action.type !== 'PLAY_CARD') return after;
+
+    // 基础引擎处理后可继续调整状态。
+    return after;
   },
 };
 ```
 
-### 第 3 步：注册规则
+如果规则只需要前置或后置处理，可以只实现其中一个函数。
 
-在规则注册入口文件中导入并注册：
+### 第 4 步：注册插件顺序
+
+在 `packages/shared/src/rules/rules/index.ts` 中导入并加入合适的数组：
 
 ```typescript
-// packages/shared/src/rules/rules/index.ts
-import { registerRule } from '../rule-registry';
-import { myNewRule } from './my-new-rule';
+import { myNewRule } from './my-new-rule.js';
 
-registerRule(myNewRule);
+export const PRE_CHECK_PLUGINS: HouseRulePlugin[] = [
+  // 出牌限制、拦截类规则放这里
+  myNewRule,
+];
+
+export const POST_PROCESS_PLUGINS: HouseRulePlugin[] = [
+  // 结算、换手牌、积分等后处理规则放这里
+];
 ```
 
-### 第 4 步：添加测试
+顺序建议：
+
+| 顺序 | 适合规则 |
+|------|----------|
+| 前置靠前 | 终局限制、禁止行为、必须行为 |
+| 前置中段 | 罚摸、叠加、转移、摸到能出为止 |
+| 前置靠后 | 抢出、交换目标选择等特殊动作 |
+| 后置靠前 | 0/7 换手牌、复仇、连出 |
+| 后置靠后 | 强制摸后出、积分翻倍、团队/淘汰结算 |
+
+## UI 展示与教学
+
+当前 UI 不读取 `HouseRuleDefinition.teaching`（目前也没有这个字段）。已有教学展示由 `RuleTeaching` 组件内部根据 `ruleKey` 维护。如果新规则需要教学演示，请更新：
+
+```
+packages/client/src/features/game/components/RuleTeaching.tsx
+```
+
+启用规则展示由这些组件读取 `HOUSE_RULE_DEFINITIONS` 和 `DEFAULT_HOUSE_RULES`：
+
+- `HouseRulesCard`
+- `HouseRulesPanel`
+- `GameStartRulesModal`
+- `RoomPage` 内联村规面板
+
+## 测试
+
+新增规则至少添加 shared 层测试：
 
 ```typescript
 // packages/shared/tests/house-rules-my-new-rule.test.ts
-import { describe, it, expect } from 'vitest';
-import { initializeGame, applyActionWithHouseRules } from '@uno-online/shared';
+import { describe, expect, it } from 'vitest';
+import { applyActionWithHouseRules } from '@uno-online/shared';
+import { makeCard, makeState } from './helpers/test-utils';
 
 describe('myNewRule', () => {
-  it('should enforce red-only play after red card', () => {
-    const state = initializeGame(
-      [{ id: 'p1', name: 'Alice' }, { id: 'p2', name: 'Bob' }],
-      { myNewRule: true },
-    );
-    // 设置测试场景...
-    // 执行动作...
-    // 验证结果...
+  it('applies when enabled', () => {
+    const state = makeState({
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 1000,
+        allowSpectators: true,
+        spectatorMode: 'hidden',
+        houseRules: { /* DEFAULT_HOUSE_RULES + myNewRule */ } as any,
+      },
+    });
+
+    const next = applyActionWithHouseRules(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: 'card-id',
+    });
+
+    expect(next).toBeDefined();
   });
 });
 ```
 
-### 第 5 步：验证
+验证命令：
 
 ```bash
-pnpm --filter shared test            # 运行测试
-pnpm --filter shared exec tsc --noEmit  # 类型检查
-pnpm --filter client exec tsc --noEmit  # 客户端类型检查（UI 自动生成）
-```
-
-## UI 自动生成
-
-**新村规的 UI 无需手动编写**。`HouseRulesPanel` 和 `HouseRulesCard` 组件从注册表动态获取规则列表：
-
-```typescript
-// HouseRulesPanel.tsx（伪代码）
-import { getAllRules } from '@uno-online/shared';
-
-const rules = getAllRules();
-// 自动渲染 toggle/select/number 控件
-```
-
-教学演示（RuleTeaching）同样从 `RuleDefinition.teaching` 字段自动生成。
-
-## 规则优先级指南
-
-| 范围 | 用途 |
-|------|------|
-| 0-19 | 基础限制（handLimit, forcedPlay） |
-| 20-39 | 出牌约束（noWildFinish, noFunctionCardFinish） |
-| 40-59 | 叠加/转移（stacking, deflection） |
-| 60-79 | 特殊出牌（jumpIn, multiplePlaySameNumber） |
-| 80-99 | 后处理（zeroRotateHands, doubleScore, elimination） |
-| 100+ | 社区自定义规则 |
-
-## 预设管理
-
-预设定义不变，仍然是 `Partial<HouseRules>` 对象。社区可以添加新预设：
-
-```typescript
-HOUSE_RULES_PRESETS['my-preset'] = {
-  myNewRule: true,
-  stackDrawTwo: true,
-  drawUntilPlayable: true,
-};
+pnpm --filter shared test
+pnpm --filter shared build
+pnpm --filter client exec tsc --noEmit
 ```
 
 ## 最佳实践
 
-1. **单一职责**：每个 `RuleDefinition` 只处理一条规则的逻辑
-2. **纯函数**：`preCheck` 和 `postProcess` 必须是纯函数，不产生副作用
-3. **不修改输入**：始终返回新的 state 对象，不要 mutate 传入的 state
-4. **优雅降级**：规则逻辑第一行检查 `if (!houseRules.myKey) return`
-5. **类型安全**：避免 `as any`，如需新的游戏阶段请扩展 `GamePhase` 类型
-6. **测试覆盖**：每条规则至少测试：启用时的正常行为、禁用时不生效、与其他规则的交互
-7. **优先级选择**：选择合适的优先级范围，避免与内置规则冲突
+1. **保持纯函数**：不要在规则插件里做 IO、计时器或随机副作用。
+2. **不要 mutate 输入 state**：返回新的 state 或沿用已复制的状态对象。
+3. **先写失效测试**：覆盖启用、禁用、与相邻规则的交互。
+4. **小心插件顺序**：顺序变化可能改变现有规则行为。
+5. **同步用户可见文案**：`HOUSE_RULE_DEFINITIONS`、中文描述、必要的教学组件一起更新。
+6. **同步 MCP/协议文档**：如果新增规则影响 Socket payload 或房间设置，需要更新 `docs/protocol.md`。

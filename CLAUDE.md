@@ -52,7 +52,7 @@ shared/   — 跨 Feature 共享的组件、工具、store
 
 ### 数据存储
 
-- **SQLite** (Kysely) — 持久数据：用户、游戏记录、商品
+- **SQLite** (Kysely) — 持久数据：用户、API Key
 - **KV Store** (内存/Redis) — 临时数据：房间状态、在线游戏
 
 ## 关键约束

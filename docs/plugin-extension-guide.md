@@ -2,7 +2,7 @@
 
 ## 概述
 
-UNO Online 使用 Fastify 原生插件系统（服务端）和 Feature 模块系统（客户端）实现功能解耦。新功能以"插件"形式开发，包含独立的路由、事件处理、数据迁移和前端页面。
+UNO Online 使用 Fastify 原生插件系统（服务端）和 Feature 模块系统（客户端）实现功能解耦。新功能以"插件"形式开发，按需包含独立的路由、事件处理、持久化变更和前端页面。
 
 ## 服务端插件开发
 
@@ -24,38 +24,32 @@ plugins/features/my-feature/
   routes.ts       # HTTP 路由（按需）
   ws.ts           # WebSocket 事件处理（按需）
   service.ts      # 业务逻辑（按需）
-  migration.ts    # 数据库迁移（按需）
 ```
 
 ### 插件入口 (index.ts)
 
 ```typescript
-import fp from 'fastify-plugin';
-import type { PluginContext } from '../../../plugin-context';
-import { registerRoutes } from './routes';
-import { migrate } from './migration';
+import type { FastifyInstance } from 'fastify';
+import type { PluginContext } from '../../../plugin-context.js';
+import { registerRoutes } from './routes.js';
 
-export default fp(async (fastify, opts: { ctx: PluginContext }) => {
+export default async function myFeaturePlugin(fastify: FastifyInstance, opts: { ctx: PluginContext }) {
   const { ctx } = opts;
 
-  // 1. 运行数据库迁移
-  await migrate(ctx.db);
-
-  // 2. 注册 HTTP 路由
+  // 1. 注册 HTTP 路由
   await registerRoutes(fastify, ctx);
 
-  // 3. 注册 WebSocket 事件（如需要）
+  // 2. 注册 WebSocket 事件（如需要）
   // setupWsHandlers(ctx);
-
-}, { name: 'my-feature' });
+}
 ```
 
 ### 路由文件 (routes.ts)
 
 ```typescript
 import type { FastifyInstance } from 'fastify';
-import type { PluginContext } from '../../../plugin-context';
-import { authPreHandler, type AuthenticatedRequest } from '../../core/auth/service';
+import type { PluginContext } from '../../../plugin-context.js';
+import { authPreHandler, type AuthenticatedRequest } from '../../core/auth/service.js';
 
 export async function registerRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const preHandler = authPreHandler(ctx.config.jwtSecret);
@@ -68,43 +62,24 @@ export async function registerRoutes(fastify: FastifyInstance, ctx: PluginContex
 }
 ```
 
-### 数据库迁移 (migration.ts)
+插件内部路由不写 `/api` 前缀；`plugin-loader.ts` 会统一加前缀。因此上例对外访问路径是 `/api/my-feature/data`。
 
-```typescript
-import type { Kysely } from 'kysely';
-import { sql } from 'kysely';
-import type { Database } from '../../../db/database';
+### 持久化数据变更
 
-export async function migrate(db: Kysely<Database>): Promise<void> {
-  // 新表
-  await db.schema
-    .createTable('my_table')
-    .ifNotExists()
-    .addColumn('id', 'text', (c) => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
-    .addColumn('user_id', 'text', (c) => c.references('users.id').notNull())
-    .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
-    .execute();
-
-  // 扩展现有表（用 try/catch 处理列已存在的情况）
-  try {
-    await db.schema
-      .alterTable('users')
-      .addColumn('my_field', 'integer', (c) => c.defaultTo(0).notNull())
-      .execute();
-  } catch { }
-}
-```
+当前 SQLite 表结构集中在 `packages/server/src/db/database.ts` 初始化，现有插件没有独立 `migration.ts`。新增功能如果需要持久化数据，优先更新 `Database` 类型与初始化逻辑；如果引入插件级迁移，需要同时在插件入口显式调用，并确保幂等（`CREATE TABLE IF NOT EXISTS`，新增列用 try/catch 处理已存在情况）。
 
 ### 注册插件
 
 在 `packages/server/src/plugin-loader.ts` 中添加：
 
 ```typescript
-import myFeaturePlugin from './plugins/features/my-feature/index';
+import myFeaturePlugin from './plugins/features/my-feature/index.js';
 
 export async function loadPlugins(fastify, ctx) {
-  // ... 核心插件
-  await fastify.register(myFeaturePlugin, { ctx });
+  await fastify.register(async (api) => {
+    // ... 核心插件
+    await api.register(myFeaturePlugin, { ctx });
+  }, { prefix: '/api' });
 }
 ```
 
@@ -112,8 +87,8 @@ export async function loadPlugins(fastify, ctx) {
 
 ```typescript
 import type { Socket, Server as SocketIOServer } from 'socket.io';
-import type { SocketData } from '../../../ws/types';
-import type { PluginContext } from '../../../plugin-context';
+import type { SocketData } from '../../../ws/types.js';
+import type { PluginContext } from '../../../plugin-context.js';
 
 export function setupWsHandlers(ctx: PluginContext) {
   const { io } = ctx;
@@ -134,11 +109,11 @@ export function setupWsHandlers(ctx: PluginContext) {
 
 ```typescript
 // 仅认证用户
-import { authPreHandler } from '../../core/auth/service';
+import { authPreHandler } from '../../core/auth/service.js';
 const preHandler = authPreHandler(ctx.config.jwtSecret);
 
 // 仅管理员
-import { adminOnly } from '../../core/admin/middleware';
+import { adminOnly } from '../../core/admin/middleware.js';
 const preHandler = adminOnly(ctx.config.jwtSecret);
 ```
 
@@ -248,11 +223,12 @@ export const useMyFeatureStore = create<MyFeatureState>((set) => ({
 新增一个完整功能时，按以下顺序操作：
 
 1. **定义共享类型** — 如有跨包类型，加到 `packages/shared/src/types/`
-2. **服务端插件** — 创建目录、迁移、路由、注册到 loader
+2. **服务端插件** — 创建目录、路由/事件处理、必要的持久化变更、注册到 loader
 3. **客户端 Feature** — 创建目录、store、页面、组件、注册路由
-4. **类型检查** — `pnpm --filter server exec tsc --noEmit` + `pnpm --filter client exec tsc --noEmit`
-5. **测试** — 添加测试并运行 `pnpm test`
-6. **提交** — Conventional Commits 格式：`feat(scope): description`
+4. **构建共享包** — `pnpm --filter shared build`
+5. **类型检查** — `pnpm --filter server exec tsc --noEmit` + `pnpm --filter client exec tsc --noEmit`
+6. **测试** — 添加测试并运行 `pnpm test`
+7. **提交** — Conventional Commits 格式：`feat(scope): description`
 
 ## Git 提交规范
 
