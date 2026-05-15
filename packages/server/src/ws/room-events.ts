@@ -156,13 +156,12 @@ export function registerRoomEvents(
       const room = await getRoom(redis, roomCode);
       if (room?.ownerId === userId) {
         const players = await getRoomPlayers(redis, roomCode);
-        const nextOwner = players.find(p => !p.isBot) ?? players[0];
+        const nextOwner = players.find(p => !p.isBot);
         if (nextOwner) {
           await setRoomOwner(redis, roomCode, nextOwner.userId);
           const updatedRoom = await getRoom(redis, roomCode);
           io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
         } else {
-          // dissolveRoom's room:dissolved broadcast subsumes spectator_left.
           await leaveRoomSocket(redis, socket, roomCode);
           await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
           return callback?.({ success: true, dissolved: true });
