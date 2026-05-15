@@ -69,7 +69,7 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
     const nickname = useAuthStore.getState().user?.nickname;
     return !!nickname && pendingJoinQueue.includes(nickname);
   });
-  const kickTimerRef = useRef<ReturnType<typeof setInterval>>();
+  const kickTimerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   useEffect(() => {
     if (phase !== 'round_end' || !roundEndAt) { setKickCountdown(KICK_DELAY_S); return; }

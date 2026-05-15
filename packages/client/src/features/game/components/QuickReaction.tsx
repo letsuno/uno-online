@@ -12,7 +12,7 @@ interface QuickReactionProps {
 }
 
 export default function QuickReaction({ onSelect, onClose, anchorX, anchorY }: QuickReactionProps) {
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     timerRef.current = setTimeout(onClose, 3000);

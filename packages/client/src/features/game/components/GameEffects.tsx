@@ -66,7 +66,7 @@ export default function GameEffects() {
   const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
   const drawStack = useGameStore((s) => s.drawStack);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
-  const prevTopCardRef = useRef<string | undefined>();
+  const prevTopCardRef = useRef<string | undefined>(undefined);
   const prevActionRef = useRef<typeof lastAction>(null);
   const prevPendingPenaltyRef = useRef(0);
 

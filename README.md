@@ -24,7 +24,7 @@
 
 ## 技术栈
 
-- **前端**：React 18、TypeScript、Vite、Tailwind CSS v4、Zustand
+- **前端**：React 19、TypeScript、Vite 8、Tailwind CSS v4、Zustand
 - **后端**：Fastify、Socket.IO、TypeScript
 - **共享逻辑**：`packages/shared` 内的纯 TypeScript 规则引擎
 - **存储**：SQLite + Kysely；Redis 可选，未配置时使用内存回退
