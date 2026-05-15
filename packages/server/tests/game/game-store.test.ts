@@ -1,20 +1,18 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
-import Redis from 'ioredis';
+import { MemoryKvStore } from '../../src/kv/memory';
 import { saveGameState, loadGameState } from '../../src/plugins/core/game/state-store';
 import { GameSession } from '../../src/plugins/core/game/session';
 
-const redis = new Redis(process.env['REDIS_URL'] ?? 'redis://localhost:6379');
+const kv = new MemoryKvStore();
 const TEST_CODE = 'GTEST1';
 
 beforeEach(async () => {
-  const keys = await redis.keys(`game:${TEST_CODE}*`);
-  if (keys.length > 0) await redis.del(...keys);
+  const keys = await kv.keys(`game:${TEST_CODE}*`);
+  if (keys.length > 0) await kv.del(...keys);
 });
 
 afterAll(async () => {
-  const keys = await redis.keys(`game:${TEST_CODE}*`);
-  if (keys.length > 0) await redis.del(...keys);
-  await redis.quit();
+  await kv.disconnect();
 });
 
 describe('game-store', () => {
@@ -23,15 +21,15 @@ describe('game-store', () => {
       { id: 'p1', name: 'Alice' },
       { id: 'p2', name: 'Bob' },
     ]);
-    await saveGameState(redis, TEST_CODE, session.getFullState());
-    const loaded = await loadGameState(redis, TEST_CODE);
+    await saveGameState(kv, TEST_CODE, session.getFullState());
+    const loaded = await loadGameState(kv, TEST_CODE);
     expect(loaded).not.toBeNull();
     expect(loaded!.players).toHaveLength(2);
     expect(loaded!.players[0]!.hand.length).toBeGreaterThanOrEqual(7);
   });
 
   it('returns null for non-existent game', async () => {
-    const loaded = await loadGameState(redis, 'NONEXIST');
+    const loaded = await loadGameState(kv, 'NONEXIST');
     expect(loaded).toBeNull();
   });
 
@@ -40,9 +38,9 @@ describe('game-store', () => {
       { id: 'p1', name: 'Alice' },
       { id: 'p2', name: 'Bob' },
     ]);
-    await saveGameState(redis, TEST_CODE, session.getFullState());
-    await redis.del(`game:${TEST_CODE}:state`);
-    const loaded = await loadGameState(redis, TEST_CODE);
+    await saveGameState(kv, TEST_CODE, session.getFullState());
+    await kv.del(`game:${TEST_CODE}:state`);
+    const loaded = await loadGameState(kv, TEST_CODE);
     expect(loaded).toBeNull();
   });
 });

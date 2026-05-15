@@ -23,9 +23,9 @@ interface ThrowItemPickerProps {
 
 export default function ThrowItemPicker({ onSelect, onClose, anchorX, anchorY }: ThrowItemPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
-  const maxTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const maxTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const stopRepeat = useCallback(() => {
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = undefined; }

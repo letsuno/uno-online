@@ -9,7 +9,7 @@
 - **KV 存储**: 内存 / Redis (ioredis)，用于房间和游戏临时状态
 - **认证**: JWT (jsonwebtoken) + bcryptjs
 - **语音**: Mumble + mumble-web-gateway（客户端直连网关，服务端可通过 Mumble ICE 管理房间频道）
-- **测试**: Vitest 3.2
+- **测试**: Vitest 4
 
 ## 目录结构
 

@@ -6,6 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.5.0',
+    date: '2026-05-15',
+    changes: [
+      '全量依赖升级：React 19、Vite 8、TypeScript 6 等',
+      '修复服务端测试不依赖外部 Redis',
+      'MCP 包已发布到 npm',
+    ],
+  },
+  {
     version: '0.4.0',
     date: '2026-05-14',
     changes: [

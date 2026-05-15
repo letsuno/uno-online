@@ -4,6 +4,22 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)。
 
+## [0.5.0] - 2026-05-15
+
+### 优化
+- 全量依赖升级：React 18→19、Vite 6→8、TypeScript 5→6、Vitest 3→4、Tailwind CSS 4.2→4.3、Zod 3→4、Kysely 0.28→0.29、@vitejs/plugin-react 4→5、@modelcontextprotocol/sdk ^1.12→^1.29。
+- 移除未使用的 `@octokit/oauth-app` 依赖。
+- 移除已废弃的 `@types/bcryptjs`（bcryptjs 3.x 自带类型）。
+- MCP 包发布到 npm（`@uno-online/mcp@0.4.0`），MCP 发包流程写入 CLAUDE.md。
+- 客户端更新日志补全、GitHub 链接、头像替换字母、图标替换 emoji。
+
+### 修复
+- React 19 类型适配：`useRef` 调用补充初始值参数。
+- TypeScript 6 适配：移除 tsconfig 中已废弃的 `baseUrl` 选项。
+- 服务端测试从直连 Redis 改为 `MemoryKvStore`，不再依赖外部 Redis 实例。
+- 观战测试断言同步适配 `getSpectatorNames()` 返回 `SpectatorInfo[]` 对象格式。
+- 文档版本号同步更新（README、前后端开发规范、CLAUDE.md）。
+
 ## [0.4.0] - 2026-05-14
 
 ### 新增

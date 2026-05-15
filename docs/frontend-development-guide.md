@@ -2,8 +2,8 @@
 
 ## 技术栈
 
-- **框架**: React 18 + TypeScript (strict)
-- **构建**: Vite 6 + @vitejs/plugin-react
+- **框架**: React 19 + TypeScript (strict)
+- **构建**: Vite 8 + @vitejs/plugin-react
 - **样式**: Tailwind CSS v4 (CSS-native 配置，无 tailwind.config.js)
 - **状态管理**: Zustand 5
 - **路由**: React Router DOM 7 + React.lazy 代码分割

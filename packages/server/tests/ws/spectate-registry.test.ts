@@ -16,19 +16,24 @@ function resetRegistry(): void {
   for (const code of [ROOM_A, ROOM_B]) clearRoomSpectators(code);
 }
 
+function info(nickname: string, avatarUrl?: string | null) {
+  return { nickname, avatarUrl: avatarUrl ?? undefined };
+}
+
 describe('spectator registry', () => {
   beforeEach(resetRegistry);
 
   it('lists nicknames added via addSpectator', () => {
     addSpectator(ROOM_A, 'u1', 'Alice');
     addSpectator(ROOM_A, 'u2', 'Bob');
-    expect(getSpectatorNames(ROOM_A).sort()).toEqual(['Alice', 'Bob']);
+    expect(getSpectatorNames(ROOM_A).sort((a, b) => a.nickname.localeCompare(b.nickname)))
+      .toEqual([info('Alice'), info('Bob')]);
   });
 
   it('refreshes the nickname when the same user re-adds with a new one', () => {
     addSpectator(ROOM_A, 'u1', 'OldName');
     addSpectator(ROOM_A, 'u1', 'NewName');
-    expect(getSpectatorNames(ROOM_A)).toEqual(['NewName']);
+    expect(getSpectatorNames(ROOM_A)).toEqual([info('NewName')]);
   });
 
   it('removeSpectator returns the removed nickname and drops the entry', () => {
@@ -41,7 +46,7 @@ describe('spectator registry', () => {
     expect(removeSpectator(ROOM_A, 'ghost')).toBeNull();
     addSpectator(ROOM_A, 'u1', 'Alice');
     expect(removeSpectator(ROOM_A, 'someone-else')).toBeNull();
-    expect(getSpectatorNames(ROOM_A)).toEqual(['Alice']);
+    expect(getSpectatorNames(ROOM_A)).toEqual([info('Alice')]);
   });
 
   it('keeps rooms isolated', () => {
@@ -49,7 +54,7 @@ describe('spectator registry', () => {
     addSpectator(ROOM_B, 'u1', 'Alice');
     removeSpectator(ROOM_A, 'u1');
     expect(getSpectatorNames(ROOM_A)).toEqual([]);
-    expect(getSpectatorNames(ROOM_B)).toEqual(['Alice']);
+    expect(getSpectatorNames(ROOM_B)).toEqual([info('Alice')]);
   });
 
   describe('broadcast helpers', () => {
@@ -73,7 +78,7 @@ describe('spectator registry', () => {
       addSpectator(ROOM_A, 'u2', 'Bob');
       broadcastSpectatorList(io, ROOM_A);
       expect(emits).toEqual([
-        { event: 'room:spectator_list', payload: { spectators: ['Alice', 'Bob'] } },
+        { event: 'room:spectator_list', payload: { spectators: [info('Alice'), info('Bob')] } },
       ]);
     });
 
@@ -83,8 +88,8 @@ describe('spectator registry', () => {
       addSpectator(ROOM_A, 'u2', 'Bob');
       broadcastSpectatorLeft(io, ROOM_A, 'u1', 'Alice');
       expect(emits).toEqual([
-        { event: 'room:spectator_list', payload: { spectators: ['Bob'] } },
-        { event: 'room:spectator_left', payload: { nickname: 'Alice', spectators: ['Bob'] } },
+        { event: 'room:spectator_list', payload: { spectators: [info('Bob')] } },
+        { event: 'room:spectator_left', payload: { nickname: 'Alice', spectators: [info('Bob')] } },
       ]);
     });
 

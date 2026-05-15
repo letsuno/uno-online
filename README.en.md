@@ -24,7 +24,7 @@ Web-based multiplayer UNO with real-time play, voice chat, spectator mode, confi
 
 ## Tech Stack
 
-- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS v4, Zustand
+- **Frontend**: React 19, TypeScript, Vite 8, Tailwind CSS v4, Zustand
 - **Backend**: Fastify, Socket.IO, TypeScript
 - **Shared logic**: pure TypeScript rules engine in `packages/shared`
 - **Storage**: SQLite via Kysely; Redis is optional with in-memory fallback
