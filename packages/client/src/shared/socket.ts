@@ -62,16 +62,16 @@ export function getSocket(): TypedSocket {
     const handleGameView = (view: PlayerView) => {
       const prevPhase = useGameStore.getState().phase;
       const prevCurrentIndex = useGameStore.getState().currentPlayerIndex;
-      useGameStore.getState().setGameState(view);
+
       const settings = view.settings;
-      if (!settings || view.phase === 'round_end' || view.phase === 'game_over') {
-        useGameStore.getState().setTurnEndTime(null);
-      } else {
+      let turnEndTime: number | null = null;
+      if (settings && view.phase !== 'round_end' && view.phase !== 'game_over') {
         const timeLimit = settings.houseRules?.fastMode
           ? Math.floor(settings.turnTimeLimit / 2)
           : settings.turnTimeLimit;
-        useGameStore.getState().setTurnEndTime(Date.now() + timeLimit * 1000);
+        turnEndTime = Date.now() + timeLimit * 1000;
       }
+      useGameStore.getState().setGameState(view, turnEndTime);
 
       const viewerId = view.viewerId ?? useGameStore.getState().viewerId;
       const currentPlayerId = view.players[view.currentPlayerIndex]?.id;

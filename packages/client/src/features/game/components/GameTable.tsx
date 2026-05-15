@@ -288,25 +288,16 @@ export default function GameTable({ onDraw }: GameTableProps) {
           }}
         >
           {/* Direction indicator */}
-          <motion.div
+          <div
             key={direction}
-            className="absolute w-32 h-32 md:w-40 md:h-40 border-2 border-dashed border-primary/30 rounded-full flex items-center justify-center pointer-events-none"
-            animate={{ rotate: isClockwise ? 360 : -360 }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+            className={`absolute w-32 h-32 md:w-40 md:h-40 border-2 border-dashed border-primary/30 rounded-full flex items-center justify-center pointer-events-none ${isClockwise ? 'animate-spin-cw' : 'animate-spin-ccw'}`}
           >
-            <motion.span
-              className="text-direction text-primary/50"
-              initial={{ scale: 1.6, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1, rotate: isClockwise ? -360 : 360 }}
-              transition={{
-                scale: { type: 'spring', stiffness: 300, damping: 15 },
-                opacity: { duration: 0.2 },
-                rotate: { duration: 3, repeat: Infinity, ease: 'linear' },
-              }}
+            <span
+              className={`text-direction text-primary/50 animate-fade-in ${isClockwise ? 'animate-spin-ccw' : 'animate-spin-cw'}`}
             >
               {isClockwise ? '↻' : '↺'}
-            </motion.span>
-          </motion.div>
+            </span>
+          </div>
 
           <DrawPile
             side="left"
