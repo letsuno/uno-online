@@ -6,6 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.5.1',
+    date: '2026-05-15',
+    changes: [
+      '性能优化：Bot 回合广播次数从 2-6 次降至 1 次',
+      '性能优化：弃牌堆传输截断 + 客户端 re-render 大幅减少',
+      '更新日志支持折叠，默认只显示最近 3 个版本',
+    ],
+  },
+  {
     version: '0.5.0',
     date: '2026-05-15',
     changes: [
