@@ -2,6 +2,7 @@ import type { Card, Color } from './card.js';
 import type { ChatMessage } from './chat.js';
 import type { HouseRules } from './house-rules.js';
 import type { UserRole } from './role.js';
+import type { BotConfig } from './bot.js';
 
 export type GamePhase =
   | 'waiting'
@@ -32,6 +33,7 @@ export interface Player {
   avatarUrl?: string | null;
   role?: UserRole;
   isBot: boolean;
+  botConfig?: BotConfig;
 }
 
 export interface RoomSettings {

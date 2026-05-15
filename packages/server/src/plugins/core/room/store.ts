@@ -1,5 +1,5 @@
 import type { KvStore } from '../../../kv/types.js';
-import type { RoomSettings } from '@uno-online/shared';
+import type { RoomSettings, BotConfig } from '@uno-online/shared';
 
 export interface RoomData {
   ownerId: string;
@@ -17,6 +17,7 @@ export interface RoomPlayer {
   spectator: boolean;
   role?: string;
   isBot: boolean;
+  botConfig?: BotConfig;
 }
 
 const roomPlayerLocks = new Map<string, Promise<void>>();
@@ -90,11 +91,11 @@ async function setRoomPlayers(kv: KvStore, roomCode: string, players: RoomPlayer
   }
 }
 
-export async function addPlayerToRoom(kv: KvStore, roomCode: string, player: { userId: string; nickname: string; avatarUrl?: string | null; role?: string; isBot?: boolean }): Promise<void> {
+export async function addPlayerToRoom(kv: KvStore, roomCode: string, player: { userId: string; nickname: string; avatarUrl?: string | null; role?: string; isBot?: boolean; botConfig?: BotConfig }): Promise<void> {
   await withRoomPlayerLock(roomCode, async () => {
     const existing = await getRoomPlayers(kv, roomCode);
     if (existing.some(p => p.userId === player.userId)) return;
-    existing.push({ userId: player.userId, nickname: player.nickname, avatarUrl: player.avatarUrl ?? null, ready: false, spectator: false, role: player.role ?? 'normal', isBot: player.isBot ?? false });
+    existing.push({ userId: player.userId, nickname: player.nickname, avatarUrl: player.avatarUrl ?? null, ready: false, spectator: false, role: player.role ?? 'normal', isBot: player.isBot ?? false, botConfig: player.botConfig });
     await setRoomPlayers(kv, roomCode, existing);
   });
 }
@@ -119,6 +120,14 @@ export async function setPlayerSpectator(kv: KvStore, roomCode: string, userId: 
   await withRoomPlayerLock(roomCode, async () => {
     const players = await getRoomPlayers(kv, roomCode);
     const updated = players.map((p) => p.userId === userId ? { ...p, spectator, ready: spectator ? false : p.ready } : p);
+    await setRoomPlayers(kv, roomCode, updated);
+  });
+}
+
+export async function setPlayerBotConfig(kv: KvStore, roomCode: string, userId: string, botConfig: BotConfig): Promise<void> {
+  await withRoomPlayerLock(roomCode, async () => {
+    const players = await getRoomPlayers(kv, roomCode);
+    const updated = players.map((p) => p.userId === userId ? { ...p, botConfig } : p);
     await setRoomPlayers(kv, roomCode, updated);
   });
 }

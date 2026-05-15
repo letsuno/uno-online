@@ -2,6 +2,7 @@ import type { Card, Color } from '../types/card.js';
 import type { GameState, Direction, Player } from '../types/game.js';
 import type { HouseRules } from '../types/house-rules.js';
 import type { UserRole } from '../types/role.js';
+import type { BotConfig } from '../types/bot.js';
 import { isColoredCard } from '../types/card.js';
 import { createDeck, shuffleDeck } from './deck.js';
 import { getNextPlayerIndex, reverseDirection } from './turn.js';
@@ -125,7 +126,7 @@ function applyFirstDiscardEffect(
 }
 
 export function initializeGame(
-  playerData: readonly { id: string; name: string; avatarUrl?: string | null; role?: UserRole; isBot?: boolean | undefined }[],
+  playerData: readonly { id: string; name: string; avatarUrl?: string | null; role?: UserRole; isBot?: boolean | undefined; botConfig?: BotConfig }[],
   houseRules?: HouseRules,
 ): GameState {
   const deck = shuffleDeck(createDeck());
@@ -150,6 +151,7 @@ export function initializeGame(
     avatarUrl: p.avatarUrl ?? null,
     role: p.role,
     isBot: p.isBot ?? false,
+    botConfig: p.botConfig,
   }));
 
   const currentColor: Color | null = isColoredCard(topCard) ? topCard.color : null;
@@ -194,6 +196,7 @@ export function initializeNextRound(prevState: GameState): GameState {
     roundWins: p.roundWins ?? 0,
     connected: p.connected,
     autopilot: p.autopilot,
+    botConfig: p.botConfig,
   }));
 
   if (hr.shuffleSeats) {
