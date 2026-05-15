@@ -22,7 +22,17 @@ export interface RoomJoinResult extends SocketCallbackResult {
   voiceChannelId?: number | null;
 }
 
+export interface ActiveRoomInfo {
+  roomCode: string;
+  players: { nickname: string; avatarUrl?: string | null }[];
+  playerCount: number;
+  startedAt: string;
+  spectatorCount: number;
+  spectatorMode: 'full' | 'hidden';
+}
+
 export interface ServerToClientEvents {
+  'lobby:rooms': (rooms: ActiveRoomInfo[]) => void;
   'game:state': (view: PlayerView) => void;
   'game:update': (view: PlayerView) => void;
   'game:card_drawn': (data: { card: Card }) => void;
