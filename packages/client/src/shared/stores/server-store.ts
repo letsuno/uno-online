@@ -146,6 +146,8 @@ export const useServerStore = create<ServerState>((set, get) => ({
     };
     if (!server.isDefault) {
       update.latencyMap = { ...get().latencyMap, [id]: await measureLatency(server.address) };
+    } else if (get().latencyMap[id] == null) {
+      update.latencyMap = { ...get().latencyMap, [id]: await measureLatency(server.address) };
     }
     set(update);
   },
