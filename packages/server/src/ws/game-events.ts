@@ -9,6 +9,7 @@ import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import { getRoom, getRoomPlayers, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom, resetAllPlayersReady, setUserRoom, setPlayerSpectator } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS } from '@uno-online/shared';
 import { addSpectator, removeSpectator, clearRoomSpectators, broadcastSpectatorList } from '../plugins/core/spectate/ws.js';
+import { broadcastLobbyRooms } from '../plugins/core/spectate/routes.js';
 import type { SocketData } from './types.js';
 
 function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
@@ -820,6 +821,7 @@ export function registerGameEvents(
     io.to(roomCode).emit('game:back_to_room', { players, room: updatedRoom });
     io.to(roomCode).emit('chat:cleared');
     broadcastSpectatorList(io, roomCode);
+    broadcastLobbyRooms(redis, io);
     callback?.({ success: true });
   });
 }

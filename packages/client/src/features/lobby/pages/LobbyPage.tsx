@@ -24,7 +24,7 @@ export default function LobbyPage() {
   const [joinCode, setJoinCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { activeRooms, fetchActiveRooms } = useLobbyStore();
+  const activeRooms = useLobbyStore((s) => s.activeRooms);
   const songName = useBgm('lobby');
   const [musicHall, setMusicHall] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
@@ -52,12 +52,6 @@ export default function LobbyPage() {
       cancelled = true;
       socket.off('connect', checkRoom);
     };
-  }, []);
-
-  useEffect(() => {
-    fetchActiveRooms();
-    const interval = setInterval(fetchActiveRooms, 30_000);
-    return () => clearInterval(interval);
   }, []);
 
   const handleCreate = () => {
@@ -277,7 +271,6 @@ export default function LobbyPage() {
                     if (res.success) navigate(`/game/${room.roomCode}?spectate=true`);
                     else {
                       setError(res.error || '无法观战');
-                      fetchActiveRooms();
                     }
                   });
                 }}

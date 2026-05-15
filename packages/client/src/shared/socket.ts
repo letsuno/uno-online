@@ -11,6 +11,7 @@ import { useServerVersionStore } from './stores/server-version-store';
 import { useServerStore } from './stores/server-store';
 import { setServerTimeOffset } from './server-time';
 import { useSpectatorStore } from '@/features/game/stores/spectator-store';
+import { useLobbyStore } from '@/features/lobby/stores/lobby-store';
 import { resetClientRoomState } from './stores/reset-room';
 
 type TypedSocket = SocketType<ServerToClientEvents, ClientToServerEvents>;
@@ -187,6 +188,10 @@ export function getSocket(): TypedSocket {
     socket.on('server:version', (data) => {
       useServerVersionStore.getState().setVersion(data.version);
       if (data.serverTime) setServerTimeOffset(data.serverTime);
+    });
+
+    socket.on('lobby:rooms', (rooms) => {
+      useLobbyStore.getState().setActiveRooms(rooms);
     });
 
     socket.on('connect', () => {

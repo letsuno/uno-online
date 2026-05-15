@@ -10,6 +10,7 @@ import { clearPendingSpectatorJoins } from './game-events.js';
 import { leaveRoomSocket } from './socket-room.js';
 import { clearVoicePresence } from './voice-presence.js';
 import { clearRoomSpectators } from '../plugins/core/spectate/ws.js';
+import { broadcastLobbyRooms } from '../plugins/core/spectate/routes.js';
 
 export async function dissolveRoom(
   io: SocketIOServer,
@@ -49,4 +50,6 @@ export async function dissolveRoom(
     voiceChannels?.deleteRoomChannel(roomCode),
     deleteRoom(kv, roomCode),
   ]);
+
+  broadcastLobbyRooms(kv, io);
 }
