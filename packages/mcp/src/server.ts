@@ -29,7 +29,7 @@ export class McpUnoServer {
   constructor(config: McpConfig) {
     this.config = config;
     this.mcp = new McpServer(
-      { name: 'UNO Online', version: '0.4.0' },
+      { name: 'UNO Online', version: '0.5.0' },
       { capabilities: { logging: {} } },
     );
     this.registerTools();

@@ -61,7 +61,7 @@ function PlayerNode({
   const [showReaction, setShowReaction] = useState(false);
   const [showThrowPicker, setShowThrowPicker] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState({ x: 0, y: 0 });
-  const longPressTimer = useRef<ReturnType<typeof setTimeout>>();
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const avatarRef = useRef<HTMLDivElement>(null);
 
   const getAnchor = useCallback(() => {
