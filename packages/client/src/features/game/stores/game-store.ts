@@ -23,6 +23,7 @@ interface GameState {
   pendingPenaltyDraws: number;
   deckLeftCount: number;
   deckRightCount: number;
+  discardPileCount: number;
   roundNumber: number;
   winnerId: string | null;
   pendingDrawPlayerId: string | null;
@@ -65,6 +66,7 @@ export const useGameStore = create<GameState>((set) => ({
   pendingPenaltyDraws: 0,
   deckLeftCount: 0,
   deckRightCount: 0,
+  discardPileCount: 0,
   roundNumber: 0,
   winnerId: null,
   pendingDrawPlayerId: null,
@@ -118,6 +120,7 @@ export const useGameStore = create<GameState>((set) => ({
         pendingPenaltyDraws: view.pendingPenaltyDraws ?? 0,
         deckLeftCount: view.deckLeftCount,
         deckRightCount: view.deckRightCount,
+        discardPileCount: view.discardPileCount ?? view.discardPile.length,
         roundNumber: view.roundNumber,
         winnerId: view.winnerId,
         pendingDrawPlayerId: view.pendingDrawPlayerId,
@@ -151,6 +154,7 @@ export const useGameStore = create<GameState>((set) => ({
       pendingPenaltyDraws: 0,
       deckLeftCount: 0,
       deckRightCount: 0,
+      discardPileCount: 0,
       roundNumber: 0,
       winnerId: null,
       pendingDrawPlayerId: null,

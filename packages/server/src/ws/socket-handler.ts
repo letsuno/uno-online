@@ -101,7 +101,6 @@ export function setupSocketHandlers(
 
       const acted = await executeAutopilot(session, userId, async () => {
         persister.markDirty(roomCode, session.getFullState());
-        await emitGameUpdate(io, roomCode, session, redis);
       }, (action) => notifyAutopilotAction(roomCode, session, action));
 
       if (acted) {
@@ -323,7 +322,6 @@ export function setupSocketHandlers(
 
       const acted = await executeAutopilot(session, userId, async () => {
         persister.markDirty(roomCode, session.getFullState());
-        await emitGameUpdate(io, roomCode, session, redis);
       }, (action) => notifyAutopilotAction(roomCode, session, action));
 
       if (acted) {

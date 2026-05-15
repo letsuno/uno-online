@@ -40,6 +40,7 @@ function getPlayOrigin(
 
 function DiscardPile() {
   const discardPile = useGameStore((s) => s.discardPile);
+  const discardPileCount = useGameStore((s) => s.discardPileCount);
   const drawStack = useGameStore((s) => s.drawStack);
   const phase = useGameStore((s) => s.phase);
   const currentColor = useGameStore((s) => s.currentColor);
@@ -159,7 +160,7 @@ function DiscardPile() {
           +{drawStack}
         </motion.div>
       )}
-      <span className="text-xs text-muted-foreground">弃牌堆 ({discardPile.length})</span>
+      <span className="text-xs text-muted-foreground">弃牌堆 ({discardPileCount || discardPile.length})</span>
     </div>
   );
 }

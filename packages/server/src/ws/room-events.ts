@@ -504,7 +504,6 @@ export function startTurnTimer(
       }
       await executeAutopilot(s, pid, async () => {
         persister.markDirty(code, s.getFullState());
-        await emitGameUpdate(io, code, s, redis);
       }, (action) => notifyAutopilotAction(code, s, action));
       persister.markDirty(code, s.getFullState());
       await emitGameUpdate(io, code, s, redis);
@@ -526,7 +525,6 @@ export function startTurnTimer(
       }
       await executeAutopilot(s, pid, async () => {
         persister.markDirty(code, s.getFullState());
-        await emitGameUpdate(io, code, s, redis);
       }, (action) => notifyAutopilotAction(code, s, action));
       persister.markDirty(code, s.getFullState());
       await emitGameUpdate(io, code, s, redis);
@@ -549,7 +547,6 @@ export function startTurnTimer(
       }
       await executeAutopilot(s, pid, async () => {
         persister.markDirty(code, s.getFullState());
-        await emitGameUpdate(io, code, s, redis);
       }, (action) => notifyAutopilotAction(code, s, action));
       persister.markDirty(code, s.getFullState());
       await emitGameUpdate(io, code, s, redis);
@@ -577,7 +574,6 @@ export function startTurnTimer(
     }
     await executeAutopilot(s, pid, async () => {
       persister.markDirty(code, s.getFullState());
-      await emitGameUpdate(io, code, s, redis);
     }, (action) => notifyAutopilotAction(code, s, action));
     persister.markDirty(code, s.getFullState());
     await emitGameUpdate(io, code, s, redis);
