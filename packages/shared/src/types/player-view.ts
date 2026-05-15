@@ -37,4 +37,5 @@ export interface PlayerView {
   pendingDrawPlayerId: string | null;
   lastAction: GameState['lastAction'];
   deckHash?: string;
+  discardPileCount?: number;
 }
