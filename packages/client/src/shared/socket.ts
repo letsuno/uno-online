@@ -194,19 +194,24 @@ export function getSocket(): TypedSocket {
       useLobbyStore.getState().setActiveRooms(rooms);
     });
 
+    let latencyInterval: ReturnType<typeof setInterval> | null = null;
+    const measureLatency = () => {
+      const start = performance.now();
+      socket!.volatile.emit('ping:latency', () => {
+        useServerStore.getState().setSocketLatency(Math.round(performance.now() - start));
+      });
+    };
+
     socket.on('connect', () => {
       connectionStatusCallback?.('connected');
-      (socket!.io.engine as any)?.on('ping', () => {
-        const start = performance.now();
-        socket!.volatile.emit('ping:latency', () => {
-          useServerStore.getState().setSocketLatency(Math.round(performance.now() - start));
-        });
-      });
+      measureLatency();
+      latencyInterval = setInterval(measureLatency, 10_000);
     });
 
     socket.on('disconnect', () => {
       connectionStatusCallback?.('disconnected');
       useServerStore.getState().setSocketLatency(null);
+      if (latencyInterval) { clearInterval(latencyInterval); latencyInterval = null; }
     });
 
     socket.io.on('reconnect_attempt', () => {
