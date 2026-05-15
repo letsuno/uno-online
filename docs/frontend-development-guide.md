@@ -2,7 +2,7 @@
 
 ## 技术栈
 
-- **框架**: React 19 + TypeScript (strict)
+- **框架**: React 18 + TypeScript (strict)
 - **构建**: Vite 6 + @vitejs/plugin-react
 - **样式**: Tailwind CSS v4 (CSS-native 配置，无 tailwind.config.js)
 - **状态管理**: Zustand 5
@@ -118,7 +118,7 @@ import type { PlayerInfo } from '../stores/game-store';
 - 全局事件（影响 store 的事件）在 `shared/socket.ts` 中统一监听
 - 组件级事件（仅影响单个组件状态）在组件内通过 `useEffect` 监听
 - 必须在 `useEffect` 的 cleanup 中 `socket.off()`
-- 玩家状态事件: `player:disconnected`, `player:reconnected`, `player:autopilot`（托管状态变更）
+- 玩家状态事件: `player:timeout`, `player:disconnected`, `player:reconnected`, `player:autopilot`（托管状态变更）
 - Socket 实例使用泛型参数绑定类型：`Socket<ServerToClientEvents, ClientToServerEvents>`，事件类型定义在 `@uno-online/shared` 的 `socket-events.ts`
 
 ## 样式主题
