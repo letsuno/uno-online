@@ -263,7 +263,7 @@ Array<{ id: string; name: string; keyPreview: string; createdAt: string; lastUse
 
 | 事件名 | 载荷 | 回调响应 |
 |--------|------|---------|
-| `user:current_room` | 无 | `{ roomCode: string | null }` |
+| `user:current_room` | 无 | `{ roomCode: string \| null }` |
 | `room:create` | `Partial<RoomSettings>` | `{ success, roomCode?, players?, room?, voiceChannelId?, error? }` |
 | `room:join` | `roomCode: string` | `{ success, players?, room?, rejoin?, voiceChannelId?, error? }` |
 | `room:rejoin` | `roomCode: string` | `{ success, gameState?, players?, room?, isSpectator?, error? }` |
@@ -282,7 +282,7 @@ Array<{ id: string; name: string; keyPreview: string; createdAt: string; lastUse
 |--------|------|---------|
 | `game:start` | 无 | `{ success, gameState?, error? }` |
 | `game:play_card` | `{ cardId: string; chosenColor?: Color }` | `{ success, error? }` |
-| `game:draw_card` | `{ side?: 'left' | 'right' }` | `{ success, error? }` |
+| `game:draw_card` | `{ side?: 'left' \| 'right' }` | `{ success, error? }` |
 | `game:pass` | 无 | `{ success, error? }` |
 | `game:call_uno` | 无 | `{ success, error? }` |
 | `game:catch_uno` | `{ targetPlayerId: string }` | `{ success, error? }` |
@@ -304,7 +304,7 @@ Array<{ id: string; name: string; keyPreview: string; createdAt: string; lastUse
 |--------|------|---------|
 | `chat:message` | `{ text: string }` | 无 |
 | `throw:item` | `{ targetId: string; item: string }` | `{ success, error? }` |
-| `voice:channel:get` | 无 | `{ success, voiceChannelId?: number | null }` |
+| `voice:channel:get` | 无 | `{ success, voiceChannelId?: number \| null }` |
 | `voice:presence:get` | 无 | `Record<string, VoicePresence>` |
 | `voice:presence` | `Partial<VoicePresence>` | `{ success, error? }` |
 | `voice:force_mute` | `{ targetId: string; muted: boolean }` | `{ success, error? }` |
@@ -322,12 +322,19 @@ Array<{ id: string; name: string; keyPreview: string; createdAt: string; lastUse
 | `game:card_drawn` | `{ card: Card }` | 仅发给摸牌者；暗牌模式不会发送 |
 | `game:action_rejected` | `{ action?: string; reason: string }` | 操作被拒绝 |
 | `game:next_round_vote` | `{ votes: number; required: number; voters: string[] }` | 下一轮投票状态 |
-| `game:over` | `{ winnerId: string | null; scores: Record<string, number>; reason?: string; gameOverAt: number }` | 游戏结束 |
-| `game:round_end` | `{ winnerId: string | null; scores: Record<string, number>; roundEndAt: number }` | 回合结束 |
+| `game:over` | `{ winnerId, scores, reason?, gameOverAt }` | 游戏结束；类型见下方 |
+| `game:round_end` | `{ winnerId, scores, roundEndAt }` | 回合结束；类型见下方 |
 | `game:kicked` | `{ reason: string; toSpectator?: boolean }` | 被房主移出或移至观战席 |
 | `game:back_to_room` | `{ players: Record<string, unknown>[]; room: Record<string, unknown> }` | game over 后房主返回房间 |
 | `game:spectator_queue` | `{ queue: string[]; nickname: string; joined: boolean }` | 观众申请加入下一轮队列 |
 | `game:cheat_detected` | 无 | 触发反作弊全屏警告 |
+
+`game:over` / `game:round_end` 载荷类型：
+
+```typescript
+{ winnerId: string | null; scores: Record<string, number>; reason?: string; gameOverAt: number }  // game:over
+{ winnerId: string | null; scores: Record<string, number>; roundEndAt: number }                    // game:round_end
+```
 
 #### 房间、玩家、认证
 
