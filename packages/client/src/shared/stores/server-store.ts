@@ -57,18 +57,14 @@ async function fetchServerInfo(address: string): Promise<ServerInfo | null> {
 
 async function measureLatency(address: string): Promise<number | null> {
   const base = buildServerUrl(address);
-  const times: number[] = [];
-  for (let i = 0; i < 3; i++) {
-    const start = performance.now();
-    try {
-      const res = await fetch(`${base}/api/server/info`, { cache: 'no-store' });
-      if (!res.ok) return null;
-      times.push(performance.now() - start);
-    } catch {
-      return null;
-    }
+  const start = performance.now();
+  try {
+    const res = await fetch(`${base}/api/server/info`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return Math.round(performance.now() - start);
+  } catch {
+    return null;
   }
-  return Math.round(times.reduce((a, b) => a + b, 0) / times.length);
 }
 
 interface ServerState {
@@ -81,6 +77,7 @@ interface ServerState {
   addServer: (address: string) => Promise<ServerInfo | null>;
   removeServer: (id: string) => void;
   selectServer: (id: string) => void;
+  setSocketLatency: (latency: number | null) => void;
   refreshServerInfo: (id: string) => Promise<void>;
   refreshAll: () => Promise<void>;
   openModal: () => void;
@@ -133,20 +130,24 @@ export const useServerStore = create<ServerState>((set, get) => ({
     saveCurrentServerId(id);
   },
 
+  setSocketLatency: (latency: number | null) => {
+    const { currentServerId } = get();
+    set({ latencyMap: { ...get().latencyMap, [currentServerId]: latency } });
+  },
+
   refreshServerInfo: async (id: string) => {
     const { servers } = get();
     const server = servers.find(s => s.id === id);
     if (!server) return;
 
-    const [info, latency] = await Promise.all([
-      fetchServerInfo(server.address),
-      measureLatency(server.address),
-    ]);
-
-    set({
+    const info = await fetchServerInfo(server.address);
+    const update: Partial<ServerState> = {
       serverInfoMap: { ...get().serverInfoMap, [id]: info },
-      latencyMap: { ...get().latencyMap, [id]: latency },
-    });
+    };
+    if (!server.isDefault) {
+      update.latencyMap = { ...get().latencyMap, [id]: await measureLatency(server.address) };
+    }
+    set(update);
   },
 
   refreshAll: async () => {

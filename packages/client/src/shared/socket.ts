@@ -8,6 +8,7 @@ import { playSound } from './sound/sound-manager';
 import { useGatewayStore, type PlayerVoicePresence } from './voice/gateway-store';
 import { sendNotification } from './utils/notification';
 import { useServerVersionStore } from './stores/server-version-store';
+import { useServerStore } from './stores/server-store';
 import { setServerTimeOffset } from './server-time';
 import { useSpectatorStore } from '@/features/game/stores/spectator-store';
 import { resetClientRoomState } from './stores/reset-room';
@@ -190,10 +191,14 @@ export function getSocket(): TypedSocket {
 
     socket.on('connect', () => {
       connectionStatusCallback?.('connected');
+      (socket!.io.engine as any)?.on('pong', (latency: number) => {
+        useServerStore.getState().setSocketLatency(latency);
+      });
     });
 
     socket.on('disconnect', () => {
       connectionStatusCallback?.('disconnected');
+      useServerStore.getState().setSocketLatency(null);
     });
 
     socket.io.on('reconnect_attempt', () => {

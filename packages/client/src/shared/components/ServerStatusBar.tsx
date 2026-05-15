@@ -19,8 +19,6 @@ export default function ServerStatusBar() {
 
   useEffect(() => {
     refreshServerInfo(currentServerId);
-    const id = setInterval(() => refreshServerInfo(currentServerId), 30_000);
-    return () => clearInterval(id);
   }, [currentServerId, refreshServerInfo]);
 
   return (
