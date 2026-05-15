@@ -10,6 +10,7 @@ import { registerGameEvents, addAutopilotVote, clearChatTimestamps, getRoundEndV
 import { getRoom, getRoomPlayers, setRoomOwner, clearUserRoom, getUserRoom } from '../plugins/core/room/store.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
 import { loadGameState, GameStatePersister } from '../plugins/core/game/state-store.js';
+import { getActiveRooms } from '../plugins/core/spectate/routes.js';
 import { checkRateLimit, clearRateLimit } from './rate-limiter.js';
 import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws.js';
 import { setupSpectateHandlers, getSpectatorNames, addSpectator, broadcastSpectatorList } from '../plugins/core/spectate/ws.js';
@@ -161,6 +162,10 @@ export function setupSocketHandlers(
     const userId = socket.data.user.userId;
 
     socket.emit('server:version', { version: serverStartTime, serverTime: Date.now() });
+
+    if (!socket.data.roomCode) {
+      getActiveRooms(redis, io).then(rooms => socket.emit('lobby:rooms', rooms));
+    }
 
     // Multi-tab: kick existing connection for same user
     const existingSocketId = userSocketMap.get(userId);

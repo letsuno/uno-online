@@ -13,6 +13,7 @@ import { removePlayerVote } from './game-events.js';
 import type { SocketData } from './types.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { removeVoicePresence, setForceMuted } from './voice-presence.js';
+import { broadcastLobbyRooms } from '../plugins/core/spectate/routes.js';
 import { getAutopilotActionPlayerId } from './autopilot-action-player.js';
 import { addSpectator, broadcastSpectatorLeft } from '../plugins/core/spectate/ws.js';
 
@@ -430,6 +431,7 @@ export function registerRoomEvents(
     }
 
     callback?.({ success: true, gameState: session.getPlayerView(data.user.userId) });
+    broadcastLobbyRooms(redis, io);
   });
 }
 
