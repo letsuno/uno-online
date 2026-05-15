@@ -205,7 +205,7 @@ export function getSocket(): TypedSocket {
     socket.on('connect', () => {
       connectionStatusCallback?.('connected');
       measureLatency();
-      latencyInterval = setInterval(measureLatency, 10_000);
+      latencyInterval = setInterval(measureLatency, 30_000);
     });
 
     socket.on('disconnect', () => {
