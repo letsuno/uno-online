@@ -1,5 +1,6 @@
 import type { Card } from './card.js';
 import type { GameState } from './game.js';
+import type { BotConfig } from './bot.js';
 
 export interface PlayerViewPlayer {
   id: string;
@@ -17,6 +18,7 @@ export interface PlayerViewPlayer {
   avatarUrl?: string | null;
   role?: string;
   isBot: boolean;
+  botConfig?: BotConfig;
 }
 
 export interface PlayerView {

@@ -53,7 +53,8 @@ export class RoomManager {
     }
     const room = await getRoom(this.redis, roomCode);
     if (room && room.ownerId === userId) {
-      await setRoomOwner(this.redis, roomCode, players[0]!.userId);
+      const nextOwner = players.find((p) => !p.isBot) ?? players[0]!;
+      await setRoomOwner(this.redis, roomCode, nextOwner.userId);
     }
     return { deleted: false };
   }

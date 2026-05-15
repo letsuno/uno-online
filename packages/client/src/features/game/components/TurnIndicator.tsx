@@ -5,6 +5,7 @@ import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import GoogleRing from '@/shared/components/ui/GoogleRing';
 import { cn } from '@/shared/lib/utils';
 import { AiBadge } from '@/shared/components/ui/AiBadge';
+import { BotThinkingIndicator } from './BotThinkingIndicator';
 
 interface TurnIndicatorProps {
   playerName: string;
@@ -67,6 +68,7 @@ function TurnIndicator({ playerName, avatarUrl, playerIndex, isMe, turnEndTime, 
         )}>
           {label}
           {isBot && <AiBadge className="ml-1.5" />}
+          {isBot && <BotThinkingIndicator />}
         </span>
       </div>
       {secondsLeft !== null && (
