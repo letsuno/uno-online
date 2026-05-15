@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Sparkles } from 'lucide-react';
+import { X, Sparkles, ChevronDown } from 'lucide-react';
 import { changelog } from '../data/changelog';
 
 const STORAGE_KEY = 'app-last-seen-version';
+const VISIBLE_COUNT = 3;
 
 let externalOpen: (() => void) | null = null;
 export function openChangelog() { externalOpen?.(); }
 
 export default function ChangelogModal() {
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const show = useCallback(() => setOpen(true), []);
   useEffect(() => { externalOpen = show; return () => { externalOpen = null; }; }, [show]);
@@ -24,8 +26,12 @@ export default function ChangelogModal() {
 
   const close = () => {
     setOpen(false);
+    setExpanded(false);
     localStorage.setItem(STORAGE_KEY, import.meta.env.BUILD_VERSION as string);
   };
+
+  const hasMore = changelog.length > VISIBLE_COUNT;
+  const visibleEntries = expanded ? changelog : changelog.slice(0, VISIBLE_COUNT);
 
   return (
     <AnimatePresence>
@@ -57,7 +63,7 @@ export default function ChangelogModal() {
             </div>
 
             <div className="max-h-[400px] overflow-y-auto p-5 scrollbar-thin">
-              {changelog.map((entry) => (
+              {visibleEntries.map((entry) => (
                 <div key={entry.version} className="mb-5 last:mb-0">
                   <div className="mb-2 flex items-baseline gap-2">
                     <span className="text-base font-bold text-accent">v{entry.version}</span>
@@ -73,6 +79,16 @@ export default function ChangelogModal() {
                   </ul>
                 </div>
               ))}
+
+              {hasMore && !expanded && (
+                <button
+                  onClick={() => setExpanded(true)}
+                  className="flex w-full items-center justify-center gap-1 rounded-lg border border-white/10 py-2 text-sm text-muted-foreground transition-colors hover:border-white/20 hover:text-foreground"
+                >
+                  查看更早的 {changelog.length - VISIBLE_COUNT} 个版本
+                  <ChevronDown size={14} />
+                </button>
+              )}
             </div>
 
             <div className="border-t border-white/5 px-5 py-3.5">
