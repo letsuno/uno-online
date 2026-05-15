@@ -150,26 +150,24 @@ export function registerRoomEvents(
     if (data.isSpectator) {
       const { userId, nickname } = data.user;
 
-      // If the owner is leaving while on the spectator bench (e.g. after
-      // game:leave_to_spectate), transfer ownership before clearing socket
-      // state — otherwise the room is left with an offline owner.
-      const room = await getRoom(redis, roomCode);
-      if (room?.ownerId === userId) {
-        const players = await getRoomPlayers(redis, roomCode);
-        const nextOwner = players.find(p => !p.isBot);
-        if (nextOwner) {
-          await setRoomOwner(redis, roomCode, nextOwner.userId);
-          const updatedRoom = await getRoom(redis, roomCode);
-          io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
-        } else {
-          await leaveRoomSocket(redis, socket, roomCode);
-          await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
-          return callback?.({ success: true, dissolved: true });
-        }
+      const players = await getRoomPlayers(redis, roomCode);
+      const remainingHumans = players.filter(p => !p.isBot && p.userId !== userId);
+
+      // No humans will remain after this spectator leaves — dissolve
+      if (remainingHumans.length === 0) {
+        await leaveRoomSocket(redis, socket, roomCode);
+        await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
+        return callback?.({ success: true, dissolved: true });
       }
 
-      // leaveRoomSocket first so the broadcast doesn't echo back to the
-      // leaver themselves.
+      // Transfer ownership if the leaving spectator was the owner
+      const room = await getRoom(redis, roomCode);
+      if (room?.ownerId === userId) {
+        await setRoomOwner(redis, roomCode, remainingHumans[0]!.userId);
+        const updatedRoom = await getRoom(redis, roomCode);
+        io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
+      }
+
       await leaveRoomSocket(redis, socket, roomCode);
       broadcastSpectatorLeft(io, roomCode, userId, nickname);
       return callback?.({ success: true });
