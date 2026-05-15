@@ -3,7 +3,6 @@ import type { Server as SocketIOServer } from 'socket.io';
 import type { ActiveRoomInfo } from '@uno-online/shared';
 import type { PluginContext } from '../../../plugin-context.js';
 import type { KvStore } from '../../../kv/types.js';
-import { authPreHandler } from '../auth/service.js';
 import { getRoom, getRoomPlayers } from '../room/store.js';
 
 export async function getActiveRooms(kv: KvStore, io: SocketIOServer): Promise<ActiveRoomInfo[]> {
@@ -49,10 +48,5 @@ export async function broadcastLobbyRooms(kv: KvStore, io: SocketIOServer): Prom
   }
 }
 
-export async function registerRoutes(fastify: FastifyInstance, ctx: PluginContext) {
-  const preHandler = authPreHandler(ctx.config.jwtSecret);
-
-  fastify.get('/rooms/active', { preHandler }, async () => {
-    return getActiveRooms(ctx.kv, ctx.io);
-  });
+export async function registerRoutes(_fastify: FastifyInstance, _ctx: PluginContext) {
 }
