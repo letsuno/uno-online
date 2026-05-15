@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
+import pkg from './package.json' with { type: 'json' };
 
 export default defineConfig({
   build: {
@@ -9,7 +10,7 @@ export default defineConfig({
   },
   plugins: [react(), tailwindcss()],
   define: {
-    'import.meta.env.BUILD_VERSION': JSON.stringify(process.env.npm_package_version ?? '0.5.0'),
+    'import.meta.env.BUILD_VERSION': JSON.stringify(pkg.version),
     'import.meta.env.BUILD_TIME': JSON.stringify(new Date().toISOString()),
   },
   resolve: {

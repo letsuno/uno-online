@@ -137,15 +137,15 @@ cd packages/mcp && npm publish --access public       # 3. 发布到 npm
 
 1. **确定新版本号**：根据变更范围决定（patch/minor/major）
 2. **查 git log**：`git log --oneline --since="<上次版本日期>"` 收集所有变更
-3. **更新所有版本引用**（共 8 处）：
-   - `packages/client/package.json` → `version`
-   - `packages/server/package.json` → `version`
-   - `packages/shared/package.json` → `version`
-   - `packages/admin/package.json` → `version`
-   - `packages/mcp/package.json` → `version`
-   - `packages/mcp/src/server.ts` → `McpServer` 构造参数中的 `version`
-   - `packages/client/vite.config.ts` → `BUILD_VERSION` fallback
-   - `packages/client/src/shared/build-info.ts` → `BUILD_VERSION` fallback
+3. **更新版本号**（改一处，自动同步）：
+   ```bash
+   # 修改根目录 package.json 的 version 字段，然后：
+   pnpm run version:sync
+   ```
+   子包 package.json 自动同步，其余 3 处自动读取 package.json：
+   - `packages/mcp/src/server.ts` → tsup define 注入 `__PKG_VERSION__`
+   - `packages/client/vite.config.ts` → 读取 `pkg.version`
+   - `packages/client/src/shared/build-info.ts` → fallback 为 `'dev'`，构建时由 Vite 注入
 4. **更新 CHANGELOG.md**：在最前面添加新版本条目，按 新增/优化/修复 分类
 5. **更新客户端更新弹窗**：`packages/client/src/shared/data/changelog.ts` 在数组最前面添加新条目（精选用户可感知的亮点）
 6. **验证**：确认没有遗留旧版本号 `grep -rn '<旧版本>' --include='*.json' --include='*.ts' --include='*.tsx' . | grep -v node_modules | grep -v dist | grep -v CHANGELOG.md | grep -i version`

@@ -1,3 +1,4 @@
+declare const __PKG_VERSION__: string;
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { UnoSocketClient } from './socket-client.js';
 import { registerRoomTools } from './tools/room.js';
@@ -29,7 +30,7 @@ export class McpUnoServer {
   constructor(config: McpConfig) {
     this.config = config;
     this.mcp = new McpServer(
-      { name: 'UNO Online', version: '0.5.0' },
+      { name: 'UNO Online', version: __PKG_VERSION__ },
       { capabilities: { logging: {} } },
     );
     this.registerTools();

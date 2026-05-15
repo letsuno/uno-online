@@ -1,5 +1,6 @@
 {
   "name": "uno-online",
+  "version": "0.5.1",
   "private": true,
   "repository": {
     "type": "git",
@@ -21,6 +22,7 @@
   "scripts": {
     "test": "pnpm -r test",
     "build": "pnpm -r build",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "version:sync": "node -e \"const v=require('./package.json').version;require('child_process').execSync('pnpm -r exec npm pkg set version='+v,{stdio:'inherit'})\""
   }
 }
