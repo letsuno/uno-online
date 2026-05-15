@@ -47,13 +47,16 @@ export class RoomManager {
   async leaveRoom(roomCode: string, userId: string): Promise<{ deleted: boolean }> {
     await removePlayerFromRoom(this.redis, roomCode, userId);
     const players = await getRoomPlayers(this.redis, roomCode);
-    if (players.length === 0) {
+    if (players.length === 0 || players.every(p => p.isBot)) {
+      for (const bot of players) {
+        await removePlayerFromRoom(this.redis, roomCode, bot.userId);
+      }
       await deleteRoom(this.redis, roomCode);
       return { deleted: true };
     }
     const room = await getRoom(this.redis, roomCode);
     if (room && room.ownerId === userId) {
-      const nextOwner = players.find((p) => !p.isBot) ?? players[0]!;
+      const nextOwner = players.find((p) => !p.isBot)!;
       await setRoomOwner(this.redis, roomCode, nextOwner.userId);
     }
     return { deleted: false };
