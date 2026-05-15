@@ -338,10 +338,12 @@ export async function emitTerminalStateIfNeeded(
   if (state.phase === 'round_end') {
     nextRoundVotes.delete(roomCode);
 
-    const connectedAutopilotIds = state.players.filter((p) => p.autopilot && p.connected).map((p) => p.id);
-    if (connectedAutopilotIds.length > 0) {
+    const autoVoteIds = state.players
+      .filter((p) => (p.autopilot && p.connected) || p.isBot)
+      .map((p) => p.id);
+    if (autoVoteIds.length > 0) {
       const votes = nextRoundVotes.get(roomCode) ?? new Set<string>();
-      for (const id of connectedAutopilotIds) votes.add(id);
+      for (const id of autoVoteIds) votes.add(id);
       nextRoundVotes.set(roomCode, votes);
     }
 
@@ -694,28 +696,32 @@ export function registerGameEvents(
       return callback?.({ success: false, error: '不能踢自己' });
     }
 
-    const voters = nextRoundVotes.get(roomCode) ?? new Set<string>();
-    if (voters.has(targetId)) {
-      return callback?.({ success: false, error: '该玩家已准备，无法踢出' });
-    }
-
     const state = session.getFullState();
-    if (!state.players.some((p) => p.id === targetId)) {
+    const targetPlayer = state.players.find((p) => p.id === targetId);
+    if (!targetPlayer) {
       return callback?.({ success: false, error: '玩家不在游戏中' });
     }
 
-    const targetPlayer = state.players.find((p) => p.id === targetId);
+    const voters = nextRoundVotes.get(roomCode) ?? new Set<string>();
+    // Bots can always be removed; human players cannot be kicked after voting
+    if (!targetPlayer.isBot && voters.has(targetId)) {
+      return callback?.({ success: false, error: '该玩家已准备，无法踢出' });
+    }
+
     session.removePlayer(targetId);
     await removePlayerFromRoom(redis, roomCode, targetId);
 
-    const targetSockets = await io.in(roomCode).fetchSockets();
-    for (const s of targetSockets) {
-      if ((s.data as SocketData).user.userId === targetId) {
-        (s.data as SocketData).isSpectator = true;
-        s.emit('game:kicked', { reason: '你已被房主移至观战席', toSpectator: true });
+    // Bots are fully removed; human players become spectators
+    if (!targetPlayer.isBot) {
+      const targetSockets = await io.in(roomCode).fetchSockets();
+      for (const s of targetSockets) {
+        if ((s.data as SocketData).user.userId === targetId) {
+          (s.data as SocketData).isSpectator = true;
+          s.emit('game:kicked', { reason: '你已被房主移至观战席', toSpectator: true });
+        }
       }
+      addSpectator(roomCode, targetId, targetPlayer.name, targetPlayer.avatarUrl);
     }
-    if (targetPlayer) addSpectator(roomCode, targetId, targetPlayer.name, targetPlayer.avatarUrl);
 
     voters.delete(targetId);
     const voteState = getNextRoundVoteState(roomCode, session);
