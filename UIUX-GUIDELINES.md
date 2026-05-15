@@ -6,16 +6,16 @@ Design system and UI/UX standards for UNO Online.
 
 ## 1. TailwindCSS Usage Rules
 
-### MANDATORY: No Bracket Syntax
+### Token-First Tailwind
 
-**All values MUST use named theme tokens.** The arbitrary bracket syntax `[...]` is strictly forbidden.
+Prefer named theme tokens for reusable values, design-system colors, z-indexes, card sizes, shadows, radii, and repeated layout dimensions. Arbitrary bracket syntax `[...]` is allowed for isolated one-off values or CSS features that Tailwind does not expose cleanly, but do not hard-code colors, z-indexes, or repeated dimensions when an existing token fits.
 
 ```diff
-- className="text-[#ff3366] p-[12px] w-[80px]"
-+ className="text-uno-red p-3 w-20"
+- className="text-[#ff3366] z-[100] w-[52px]"
++ className="text-uno-red z-modal w-card-w"
 ```
 
-If a value does not have a corresponding token, add a new one to the theme before using it.
+If a value appears in more than one component, add a token to the theme before reusing it.
 
 ### Adding New Tokens
 
@@ -34,10 +34,10 @@ Add tokens to `@theme inline` in `packages/client/src/index.css`, following the 
 
 ### Conditional Class Merging
 
-Always use `cn()` from `@/lib/utils` for conditional class merging:
+Always use `cn()` for conditional class merging. In the client app import it from `@/shared/lib/utils`; in the admin app import it from `@/lib/utils`.
 
 ```tsx
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 <div className={cn(
   "rounded-lg p-4 bg-card",
@@ -59,6 +59,9 @@ const buttonVariants = cva("rounded-lg font-game transition-colors", {
       primary: "bg-primary text-primary-foreground hover:opacity-90",
       danger: "bg-destructive text-destructive-foreground",
       secondary: "bg-secondary text-secondary-foreground",
+      ghost: "bg-transparent text-foreground hover:bg-white/10",
+      outline: "bg-transparent text-primary border-2 border-primary/50",
+      game: "bg-primary text-primary-foreground font-game",
     },
     size: {
       sm: "px-3 py-1 text-sm",
@@ -179,10 +182,11 @@ Use the `@utility` directive for custom utility classes:
 
 | Token | Size | Context |
 |-------|------|---------|
-| `card-w` / `card-h` | Mobile card dimensions | Default card size |
-| `card-w-md` / `card-h-md` | Desktop card dimensions | Applied via `md:` prefix |
-| `card-mini-w` / `card-mini-h` | 18 x 26px | Last-played card on player node |
-| `card-log-w` / `card-log-h` | 16 x 22px | Inline card icons in game log |
+| `card-w` / `card-h` | 52 x 76px | Default mobile card size |
+| `card-w-md` / `card-h-md` | 70 x 100px | Desktop card size via `md:` prefix |
+| `card-mini-w` / `card-mini-h` | 22 x 32px | Last-played card on player node |
+| `card-log-w` / `card-log-h` | 20 x 28px | Inline card icons in game log |
+| `card-sm-w` / `card-sm-h` | 28 x 40px | Compact card previews |
 
 ### Standard Padding
 
@@ -322,7 +326,7 @@ const prefersReducedMotion = window.matchMedia(
 All components must use `cn()` for conditional className merging:
 
 ```tsx
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 function Card({ color, isPlayable, className }: CardProps) {
   return (
@@ -346,6 +350,9 @@ Use the CVA `Button` component for all buttons. Available variants:
 | `primary` | Main actions (play card, start game, confirm) |
 | `danger` | Destructive actions (leave room, cancel) |
 | `secondary` | Secondary actions (toggle panels, settings) |
+| `ghost` | Low-emphasis inline actions |
+| `outline` | Secondary outlined actions |
+| `game` | Prominent game-themed actions |
 
 ### Card Component
 

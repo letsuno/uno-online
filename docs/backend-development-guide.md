@@ -8,7 +8,7 @@
 - **数据库**: SQLite (node:sqlite) + Kysely 查询构建器
 - **KV 存储**: 内存 / Redis (ioredis)，用于房间和游戏临时状态
 - **认证**: JWT (jsonwebtoken) + bcryptjs
-- **语音**: mumble-web gateway（客户端直连外部语音服务）
+- **语音**: Mumble + mumble-web-gateway（客户端直连网关，服务端可通过 Mumble ICE 管理房间频道）
 - **测试**: Vitest 3.2
 
 ## 目录结构
@@ -17,7 +17,7 @@
 packages/server/src/
   plugins/core/           # Fastify 插件（按功能域组织）
     auth/
-      index.ts            # 插件入口（fp 包装）
+      index.ts            # 插件入口
       routes.ts           # HTTP 路由处理
       service.ts          # 业务逻辑 / 共享工具
     profile/
@@ -93,25 +93,28 @@ interface PluginContext {
 ### 插件入口模板
 
 ```typescript
-import fp from 'fastify-plugin';
-import type { PluginContext } from '../../../plugin-context';
-import { registerRoutes } from './routes';
+import type { FastifyInstance } from 'fastify';
+import type { PluginContext } from '../../../plugin-context.js';
+import { registerRoutes } from './routes.js';
 
-export default fp(async (fastify, opts: { ctx: PluginContext }) => {
+export default async function pluginName(fastify: FastifyInstance, opts: { ctx: PluginContext }) {
   await registerRoutes(fastify, opts.ctx);
-}, { name: 'plugin-name' });
+}
 ```
 
 ### 注册插件
 
-在 `plugin-loader.ts` 中按依赖顺序注册：
+在 `plugin-loader.ts` 中按依赖顺序注册。所有 HTTP 路由统一包在 `/api` 前缀下，插件内部路径写 `/auth/login`、`/server/info` 这类相对路径，对外路径是 `/api/auth/login`、`/api/server/info`。
 
 ```typescript
 export async function loadPlugins(fastify, ctx) {
-  await fastify.register(authPlugin, { ctx });     // 先注册 auth（其他插件依赖）
-  await fastify.register(profilePlugin, { ctx });
-  await fastify.register(adminPlugin, { ctx });
-  // ... 更多插件
+  await fastify.register(async (api) => {
+    await api.register(authPlugin, { ctx });       // 先注册 auth（其他插件依赖）
+    await api.register(profilePlugin, { ctx });
+    await api.register(adminPlugin, { ctx });
+    // ... 更多插件
+    api.get('/health', async () => ({ status: 'ok' }));
+  }, { prefix: '/api' });
 }
 ```
 
@@ -137,10 +140,10 @@ export async function loadPlugins(fastify, ctx) {
 ## 数据存储
 
 ### SQLite（持久数据）
-- 用户信息、游戏记录、商品等持久化数据
+- 用户信息、头像数据、密码哈希、API Key 哈希等持久化数据
 - 通过 Kysely 查询构建器操作
 - 使用 `CamelCasePlugin`：代码用 camelCase，SQL 自动转 snake_case
-- 迁移在各插件的 `migration.ts` 中定义，使用 `CREATE TABLE IF NOT EXISTS` + `ALTER TABLE` try/catch
+- 当前表结构集中在 `db/database.ts` 初始化，新增持久数据时同步更新 `Database` 类型与初始化逻辑
 
 ### KV 存储（临时数据）
 - 房间状态、在线游戏状态等临时数据
@@ -148,6 +151,9 @@ export async function loadPlugins(fastify, ctx) {
 - 所有函数接受 `KvStore` 参数（依赖注入）
 
 ## HTTP 路由规范
+
+- 插件内部注册路径不带 `/api` 前缀，`plugin-loader.ts` 会统一加前缀
+- 客户端、README 和外部文档必须使用完整路径，例如 `/api/auth/login`
 
 ### 认证
 - 使用 `authPreHandler(jwtSecret)` 作为 Fastify `preHandler`
@@ -203,6 +209,7 @@ interface SocketData {
 - 结构: `describe` / `it` 块 + `expect` 断言
 - 测试工具函数放在 `tests/helpers/`
 - 文件命名: `{module-name}.test.ts`
+- Redis 可选；未启动 Redis 时，依赖真实 Redis 行为的 `room-store`、`room-manager`、`game-store` 测试失败属于预期，纯规则和认证测试不依赖 Redis
 
 ## 环境变量
 
@@ -220,3 +227,10 @@ interface SocketData {
 | `ROOM_IDLE_TIMEOUT_MS` | 否 | 7200000 | 房间闲置自动解散（毫秒） |
 | `SERVER_NAME` | 否 | UNO Online | 服务器显示名称 |
 | `SERVER_MOTD` | 否 | 欢迎来到 UNO Online！ | 服务器欢迎信息 |
+| `MUMBLE_ICE_ENABLED` | 否 | false | 是否启用 Mumble ICE 频道管理 |
+| `MUMBLE_ICE_HOST` | 否 | mumble | Mumble ICE 主机 |
+| `MUMBLE_ICE_PORT` | 否 | 6502 | Mumble ICE 端口 |
+| `MUMBLE_ICE_SECRET` | 否 | — | Mumble ICE 写入密钥 |
+| `MUMBLE_ICE_SERVER_ID` | 否 | 1 | Mumble 虚拟服务器 ID |
+| `MUMBLE_ICE_PARENT_CHANNEL_ID` | 否 | 0 | 自动创建房间频道的父频道 ID |
+| `MUMBLE_CHANNEL_PREFIX` | 否 | `UNO ` | 自动创建 Mumble 频道的名称前缀 |

@@ -17,5 +17,5 @@ See `CLAUDE.md` and `README.md` for full docs, commands, and architecture detail
 - `DEV_MODE=true` bypasses GitHub OAuth — login with any username. `JWT_SECRET` env var is **required**.
 - Redis is **optional**; the server falls back to an in-memory KV store. Without Redis, some server tests (`room-store`, `room-manager`, `game-store`) will fail — this is expected. Core game-engine and auth tests pass without Redis.
 - SQLite uses Node.js 22 built-in `node:sqlite` (zero native deps). Database tables are auto-created on startup.
-- The Vite dev server proxies `/api`, `/auth`, `/profile`, `/health`, `/server`, `/socket.io` to `localhost:3001`. The `/api` proxy must **not** rewrite the path (the server expects the `/api` prefix).
+- The client Vite dev server proxies `/api` and `/socket.io` to `localhost:3001`; the admin dev server proxies `/api`. The `/api` proxy must **not** rewrite the path (the server expects the `/api` prefix).
 - `pnpm test` runs vitest across all packages. `pnpm --filter shared test` is the fastest validation (pure logic, no IO deps).
