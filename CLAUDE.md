@@ -155,4 +155,20 @@ cd packages/mcp && npm publish --access public       # 3. 发布到 npm
    git tag v<版本号>
    git push origin v<版本号>
    ```
-9. **Docker 镜像打 tag**（如用户要求）：`docker tag djkcyl/uno-online-server:latest djkcyl/uno-online-server:v<版本号>` + push
+9. **Docker 镜像打 tag 并推送**：
+   ```bash
+   docker tag djkcyl/uno-online-server:latest djkcyl/uno-online-server:v<版本号>
+   docker tag djkcyl/uno-online-caddy:latest djkcyl/uno-online-caddy:v<版本号>
+   docker push djkcyl/uno-online-server:v<版本号>
+   docker push djkcyl/uno-online-caddy:v<版本号>
+   ```
+10. **发布 MCP 包到 npm**：
+    ```bash
+    pnpm --filter shared build
+    pnpm --filter @uno-online/mcp build
+    cd packages/mcp && npm publish --access public
+    ```
+11. **创建 GitHub Release**：
+    ```bash
+    gh release create v<版本号> --title "v<版本号> — <简短标题>" --notes "<从 CHANGELOG 复制，末尾加安装说明>"
+    ```
