@@ -6,7 +6,7 @@ import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts } from './room-events.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
-import { getRoom, setRoomStatus, touchRoomActivity, removePlayerFromRoom, setUserRoom, getRoomSeats, getRoomSpectators, getSeatedPlayers, addSpectatorToRoom, resetAllSeatsReady, takeSeat, getFirstEmptySeatIndex } from '../plugins/core/room/store.js';
+import { getRoom, setRoomStatus, touchRoomActivity, clearSeatByUserId, setUserRoom, getRoomSeats, getRoomSpectators, getSeatedPlayers, addSpectatorToRoom, resetAllSeatsReady, takeSeat, getFirstEmptySeatIndex, clearUserRoom } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS } from '@uno-online/shared';
 import { addSpectator, removeSpectator, clearRoomSpectators, broadcastSpectatorList } from '../plugins/core/spectate/ws.js';
 import { broadcastLobbyRooms } from '../plugins/core/spectate/routes.js';
@@ -241,7 +241,7 @@ async function processPendingSpectatorJoins(
         nickname: info.nickname,
         avatarUrl: info.avatarUrl,
         role: info.role,
-        isBot: info.isBot,
+        isBot: info.isBot ?? false,
         ready: false,
         connected: true,
       });
@@ -715,7 +715,8 @@ export function registerGameEvents(
     }
 
     session.removePlayer(targetId);
-    await removePlayerFromRoom(redis, roomCode, targetId);
+    await clearSeatByUserId(redis, roomCode, targetId);
+    await clearUserRoom(redis, targetId);
 
     // Bots are fully removed; human players become spectators
     if (!targetPlayer.isBot) {
@@ -758,7 +759,8 @@ export function registerGameEvents(
     if (!player) return callback?.({ success: false, error: '玩家不在游戏中' });
 
     session.removePlayer(data.user.userId);
-    await removePlayerFromRoom(redis, roomCode, data.user.userId);
+    await clearSeatByUserId(redis, roomCode, data.user.userId);
+    await clearUserRoom(redis, data.user.userId);
 
     (socket.data as SocketData).isSpectator = true;
     addSpectator(roomCode, data.user.userId, player.name, data.user.avatarUrl);

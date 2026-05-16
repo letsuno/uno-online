@@ -3,7 +3,7 @@ import type { PluginContext } from '../../../plugin-context.js';
 import type { UserRole } from '@uno-online/shared';
 import type { AuthenticatedRequest } from '../auth/service.js';
 import { adminOnly } from './middleware.js';
-import { getRoom, getRoomPlayers, deleteRoom } from '../room/store.js';
+import { getRoom, getRoomSeats, getSeatedPlayers, deleteRoom } from '../room/store.js';
 import { sql } from 'kysely';
 
 export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext) {
@@ -159,13 +159,14 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
       roomCodes.map(async (code) => {
         const room = await getRoom(kv, code);
         if (!room) return null;
-        const players = await getRoomPlayers(kv, code);
+        const seats = await getRoomSeats(kv, code);
+        const players = getSeatedPlayers(seats);
         return {
           code,
           ownerId: room.ownerId,
           status: room.status,
           playerCount: players.length,
-          players: players.map(p => ({ userId: p.userId, nickname: p.nickname })),
+          players: players.map((p: { userId: string; nickname: string }) => ({ userId: p.userId, nickname: p.nickname })),
           createdAt: room.createdAt,
         };
       })

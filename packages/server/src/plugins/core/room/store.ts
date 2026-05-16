@@ -178,7 +178,7 @@ export async function swapSeats(
     const seat2 = seats.findIndex(s => s?.userId === userId2);
     if (seat1 === -1) throw new Error(`用户 ${userId1} 未就座`);
     if (seat2 === -1) throw new Error(`用户 ${userId2} 未就座`);
-    [seats[seat1], seats[seat2]] = [seats[seat2], seats[seat1]];
+    [seats[seat1], seats[seat2]] = [seats[seat2]!, seats[seat1]!];
     await setRoomSeats(kv, roomCode, seats);
     return { seat1, seat2 };
   });
