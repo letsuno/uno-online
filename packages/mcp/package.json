@@ -1,6 +1,6 @@
 {
   "name": "@uno-online/mcp",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "MCP Server for UNO Online — let AI clients play UNO via MCP tools",
   "type": "module",
   "bin": {

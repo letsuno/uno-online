@@ -6,6 +6,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.7.0',
+    date: '2026-05-16',
+    changes: [
+      '房间座位系统：圆桌布局，10 个固定座位决定上下家顺序',
+      '选座与换座：点击空位入座，支持玩家间请求换座、与 Bot 直接换座',
+      '座位右键菜单：空位可入座或添加 Bot，Bot 位可换座、调难度、移除',
+      '设置面板改为右侧滑出抽屉，移动端自适应缩放',
+      '断线标记：断线玩家显示图标并自动取消准备',
+    ],
+  },
+  {
     version: '0.6.0',
     date: '2026-05-16',
     changes: [
