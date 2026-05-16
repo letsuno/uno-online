@@ -348,7 +348,7 @@ export function registerRoomEvents(
     if (!BOT_DIFFICULTIES.includes(payload.difficulty)) return callback({ success: false, error: '无效的难度等级' });
 
     const session = sessions.get(roomCode);
-    const result = await addBot(io, redis, roomManager, roomCode, data.user.userId, payload.difficulty, session);
+    const result = await addBot(io, redis, roomCode, data.user.userId, payload.difficulty, session);
 
     if (result.success && session) {
       persister.markDirty(roomCode, session.getFullState());
@@ -385,14 +385,14 @@ export function registerRoomEvents(
         turnTimer.stop(roomCode);
         session.removePlayer(payload.botId);
       }
-      await removeBot(io, redis, roomManager, roomCode, data.user.userId, payload.botId, undefined);
+      await removeBot(io, redis, roomCode, data.user.userId, payload.botId, undefined);
       persister.markDirty(roomCode, session.getFullState());
       await emitGameUpdate(io, roomCode, session, redis);
       broadcastLobbyRooms(redis, io);
       return callback({ success: true });
     }
 
-    const result = await removeBot(io, redis, roomManager, roomCode, data.user.userId, payload.botId, session);
+    const result = await removeBot(io, redis, roomCode, data.user.userId, payload.botId, session);
 
     if (result.success && session) {
       persister.markDirty(roomCode, session.getFullState());
