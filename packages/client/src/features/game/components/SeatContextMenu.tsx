@@ -11,7 +11,7 @@ interface SeatContextMenuProps {
   position: { x: number; y: number };
   onClose: () => void;
   onTakeSeat: () => void;
-  onAddBot: (difficulty: BotDifficulty) => void;
+  onAddBot: (difficulty: BotDifficulty, seatIndex: number) => void;
   onSwapRequest: (targetUserId: string) => void;
   onSetBotDifficulty: (botId: string, difficulty: BotDifficulty) => void;
   onRemoveBot: (botId: string) => void;
@@ -56,7 +56,7 @@ export function SeatContextMenu({
               <button
                 key={d.value}
                 className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm hover:bg-white/8 cursor-pointer"
-                onClick={() => { onAddBot(d.value); onClose(); }}
+                onClick={() => { onAddBot(d.value, seatIndex); onClose(); }}
               >
                 <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: d.avatarBg }}>
                   <Bot size={10} className="text-white" />

@@ -342,13 +342,13 @@ export function registerRoomEvents(
     callback?.({ success: true });
   });
 
-  socket.on('room:add_bot', async (payload: { difficulty: BotDifficulty }, callback) => {
+  socket.on('room:add_bot', async (payload: { difficulty: BotDifficulty; seatIndex?: number }, callback) => {
     const roomCode = data.roomCode;
     if (!roomCode) return callback({ success: false, error: '不在房间中' });
     if (!BOT_DIFFICULTIES.includes(payload.difficulty)) return callback({ success: false, error: '无效的难度等级' });
 
     const session = sessions.get(roomCode);
-    const result = await addBot(io, redis, roomCode, data.user.userId, payload.difficulty, session);
+    const result = await addBot(io, redis, roomCode, data.user.userId, payload.difficulty, session, payload.seatIndex);
 
     if (result.success && session) {
       persister.markDirty(roomCode, session.getFullState());

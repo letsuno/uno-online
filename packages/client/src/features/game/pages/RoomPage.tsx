@@ -214,8 +214,8 @@ export default function RoomPage() {
     });
   };
 
-  const handleAddBot = (difficulty: BotDifficulty) => {
-    getSocket().emit('room:add_bot', { difficulty }, (res: { success?: boolean; error?: string }) => {
+  const handleAddBot = (difficulty: BotDifficulty, seatIndex: number) => {
+    getSocket().emit('room:add_bot', { difficulty, seatIndex }, (res: { success?: boolean; error?: string }) => {
       if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
     });
   };

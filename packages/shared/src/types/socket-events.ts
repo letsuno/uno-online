@@ -85,7 +85,7 @@ export interface ClientToServerEvents {
   'room:dissolve': (callback?: (res: SocketCallbackResult) => void) => void;
   'room:transfer_owner': (payload: { targetId: string }, callback?: (res: SocketCallbackResult) => void) => void;
   'room:kick': (payload: { targetId: string }, callback?: (res: SocketCallbackResult) => void) => void;
-  'room:add_bot': (payload: { difficulty: BotDifficulty }, callback: (res: SocketCallbackResult & { botId?: string }) => void) => void;
+  'room:add_bot': (payload: { difficulty: BotDifficulty; seatIndex?: number }, callback: (res: SocketCallbackResult & { botId?: string }) => void) => void;
   'room:remove_bot': (payload: { botId: string }, callback: (res: SocketCallbackResult) => void) => void;
   'room:set_bot_difficulty': (payload: { botId: string; difficulty: BotDifficulty }, callback: (res: SocketCallbackResult) => void) => void;
   'seat:take': (seatIndex: number, callback: (res: SocketCallbackResult) => void) => void;

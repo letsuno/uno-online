@@ -32,13 +32,16 @@ export async function addBot(
   requesterId: string,
   difficulty: BotDifficulty,
   session?: GameSession,
+  targetSeatIndex?: number,
 ): Promise<{ success: true; botId: string } | { success: false; error: string }> {
   const room = await getRoom(redis, roomCode);
   if (!room) return { success: false, error: '房间不存在' };
   if (room.ownerId !== requesterId) return { success: false, error: '只有房主可以添加机器人' };
 
   const seats = await getRoomSeats(redis, roomCode);
-  const seatIndex = getFirstEmptySeatIndex(seats);
+  const seatIndex = targetSeatIndex !== undefined && targetSeatIndex >= 0 && targetSeatIndex < seats.length && seats[targetSeatIndex] === null
+    ? targetSeatIndex
+    : getFirstEmptySeatIndex(seats);
   if (seatIndex === -1) return { success: false, error: '没有空座位' };
 
   const botId = `bot_${randomUUID()}`;
