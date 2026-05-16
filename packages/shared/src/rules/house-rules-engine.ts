@@ -32,6 +32,15 @@ export function applyActionWithHouseRules(state: GameState, action: GameAction):
     }
   }
 
+  if (
+    action.type === 'DRAW_CARD' &&
+    (state.pendingPenaltyDraws ?? 0) === 0 &&
+    state.lastAction?.type === 'DRAW_CARD' &&
+    state.lastAction.playerId === action.playerId
+  ) {
+    return state;
+  }
+
   let next = applyAction(state, action);
   return runPostProcess(state, next, action, hr);
 }
