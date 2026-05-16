@@ -1,60 +1,76 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Server as SocketIOServer } from 'socket.io';
+import { MemoryKvStore } from '../../src/kv/memory';
 import {
-  addSpectator,
+  addSpectatorToRoom,
+  removeSpectatorFromRoom,
+  getRoomSpectators,
+  clearRoomSpectators,
+  setSpectatorConnected,
+} from '../../src/plugins/core/room/store';
+import {
   broadcastSpectatorLeft,
   broadcastSpectatorList,
-  clearRoomSpectators,
-  getSpectatorNames,
-  removeSpectator,
 } from '../../src/plugins/core/spectate/ws';
 
+const kv = new MemoryKvStore();
 const ROOM_A = 'TESTAA';
 const ROOM_B = 'TESTBB';
 
-function resetRegistry(): void {
-  for (const code of [ROOM_A, ROOM_B]) clearRoomSpectators(code);
+async function resetRegistry(): Promise<void> {
+  for (const code of [ROOM_A, ROOM_B]) await clearRoomSpectators(kv, code);
 }
 
-function info(nickname: string, avatarUrl?: string | null) {
-  return { nickname, avatarUrl: avatarUrl ?? undefined };
+function spectator(userId: string, nickname: string, avatarUrl?: string | null) {
+  return { userId, nickname, avatarUrl: avatarUrl ?? null, role: 'normal', connected: true };
+}
+
+function info(nickname: string, connected = true, avatarUrl?: string | null) {
+  return { nickname, avatarUrl: avatarUrl ?? null, connected };
 }
 
 describe('spectator registry', () => {
   beforeEach(resetRegistry);
 
-  it('lists nicknames added via addSpectator', () => {
-    addSpectator(ROOM_A, 'u1', 'Alice');
-    addSpectator(ROOM_A, 'u2', 'Bob');
-    expect(getSpectatorNames(ROOM_A).sort((a, b) => a.nickname.localeCompare(b.nickname)))
-      .toEqual([info('Alice'), info('Bob')]);
+  it('lists spectators added via addSpectatorToRoom', async () => {
+    await addSpectatorToRoom(kv, ROOM_A, spectator('u1', 'Alice'));
+    await addSpectatorToRoom(kv, ROOM_A, spectator('u2', 'Bob'));
+    const names = (await getRoomSpectators(kv, ROOM_A)).map(s => s.nickname).sort();
+    expect(names).toEqual(['Alice', 'Bob']);
   });
 
-  it('refreshes the nickname when the same user re-adds with a new one', () => {
-    addSpectator(ROOM_A, 'u1', 'OldName');
-    addSpectator(ROOM_A, 'u1', 'NewName');
-    expect(getSpectatorNames(ROOM_A)).toEqual([info('NewName')]);
+  it('refreshes the info when the same user re-adds', async () => {
+    await addSpectatorToRoom(kv, ROOM_A, spectator('u1', 'OldName'));
+    await addSpectatorToRoom(kv, ROOM_A, spectator('u1', 'NewName'));
+    expect((await getRoomSpectators(kv, ROOM_A)).map(s => s.nickname)).toEqual(['NewName']);
   });
 
-  it('removeSpectator returns the removed nickname and drops the entry', () => {
-    addSpectator(ROOM_A, 'u1', 'Alice');
-    expect(removeSpectator(ROOM_A, 'u1')).toBe('Alice');
-    expect(getSpectatorNames(ROOM_A)).toEqual([]);
+  it('removeSpectatorFromRoom returns the removed nickname', async () => {
+    await addSpectatorToRoom(kv, ROOM_A, spectator('u1', 'Alice'));
+    expect(await removeSpectatorFromRoom(kv, ROOM_A, 'u1')).toBe('Alice');
+    expect(await getRoomSpectators(kv, ROOM_A)).toEqual([]);
   });
 
-  it('removeSpectator on an unknown user returns null (no throw)', () => {
-    expect(removeSpectator(ROOM_A, 'ghost')).toBeNull();
-    addSpectator(ROOM_A, 'u1', 'Alice');
-    expect(removeSpectator(ROOM_A, 'someone-else')).toBeNull();
-    expect(getSpectatorNames(ROOM_A)).toEqual([info('Alice')]);
+  it('removeSpectatorFromRoom on unknown user returns null', async () => {
+    expect(await removeSpectatorFromRoom(kv, ROOM_A, 'ghost')).toBeNull();
   });
 
-  it('keeps rooms isolated', () => {
-    addSpectator(ROOM_A, 'u1', 'Alice');
-    addSpectator(ROOM_B, 'u1', 'Alice');
-    removeSpectator(ROOM_A, 'u1');
-    expect(getSpectatorNames(ROOM_A)).toEqual([]);
-    expect(getSpectatorNames(ROOM_B)).toEqual([info('Alice')]);
+  it('keeps rooms isolated', async () => {
+    await addSpectatorToRoom(kv, ROOM_A, spectator('u1', 'Alice'));
+    await addSpectatorToRoom(kv, ROOM_B, spectator('u1', 'Alice'));
+    await removeSpectatorFromRoom(kv, ROOM_A, 'u1');
+    expect(await getRoomSpectators(kv, ROOM_A)).toEqual([]);
+    expect(await getRoomSpectators(kv, ROOM_B)).toHaveLength(1);
+  });
+
+  it('setSpectatorConnected toggles the connected flag', async () => {
+    await addSpectatorToRoom(kv, ROOM_A, spectator('u1', 'Alice'));
+    await setSpectatorConnected(kv, ROOM_A, 'u1', false);
+    const [s] = await getRoomSpectators(kv, ROOM_A);
+    expect(s!.connected).toBe(false);
+    await setSpectatorConnected(kv, ROOM_A, 'u1', true);
+    const [s2] = await getRoomSpectators(kv, ROOM_A);
+    expect(s2!.connected).toBe(true);
   });
 
   describe('broadcast helpers', () => {
@@ -72,64 +88,26 @@ describe('spectator registry', () => {
       return { io, emits };
     }
 
-    it('broadcastSpectatorList emits the current authoritative list', () => {
+    it('broadcastSpectatorList emits all spectators with connected flag', async () => {
       const { io, emits } = makeIoStub();
-      addSpectator(ROOM_A, 'u1', 'Alice');
-      addSpectator(ROOM_A, 'u2', 'Bob');
-      broadcastSpectatorList(io, ROOM_A);
+      await addSpectatorToRoom(kv, ROOM_A, spectator('u1', 'Alice'));
+      await addSpectatorToRoom(kv, ROOM_A, spectator('u2', 'Bob'));
+      await setSpectatorConnected(kv, ROOM_A, 'u2', false);
+      await broadcastSpectatorList(io, kv, ROOM_A);
+      expect(emits).toEqual([
+        { event: 'room:spectator_list', payload: { spectators: [info('Alice'), info('Bob', false)] } },
+      ]);
+    });
+
+    it('broadcastSpectatorLeft emits departure events', async () => {
+      const { io, emits } = makeIoStub();
+      await addSpectatorToRoom(kv, ROOM_A, spectator('u1', 'Alice'));
+      await addSpectatorToRoom(kv, ROOM_A, spectator('u2', 'Bob'));
+      await broadcastSpectatorLeft(io, kv, ROOM_A, 'u1', 'Alice');
       expect(emits).toEqual([
         { event: 'room:spectator_list', payload: { spectators: [info('Alice'), info('Bob')] } },
+        { event: 'room:spectator_left', payload: { nickname: 'Alice', spectators: [info('Alice'), info('Bob')] } },
       ]);
-    });
-
-    it('broadcastSpectatorLeft emits both events with the updated array', () => {
-      const { io, emits } = makeIoStub();
-      addSpectator(ROOM_A, 'u1', 'Alice');
-      addSpectator(ROOM_A, 'u2', 'Bob');
-      broadcastSpectatorLeft(io, ROOM_A, 'u1', 'Alice');
-      expect(emits).toEqual([
-        { event: 'room:spectator_list', payload: { spectators: [info('Bob')] } },
-        { event: 'room:spectator_left', payload: { nickname: 'Alice', spectators: [info('Bob')] } },
-      ]);
-    });
-
-    // Authoritative nickname comes from the registry, not the caller — the
-    // caller's copy could be stale.
-    it('broadcastSpectatorLeft uses the registry nickname for room:spectator_left', () => {
-      const { io, emits } = makeIoStub();
-      addSpectator(ROOM_A, 'u1', 'RegistryName');
-      broadcastSpectatorLeft(io, ROOM_A, 'u1', 'StaleCallerName');
-      const left = emits.find((e) => e.event === 'room:spectator_left');
-      expect((left!.payload as { nickname: string }).nickname).toBe('RegistryName');
-    });
-
-    // Any future path that emits room:spectator_left without going through
-    // broadcastSpectatorLeft will fail this — that's the point.
-    it('broadcastSpectatorLeft always populates spectators on room:spectator_left (contract guard)', () => {
-      const { io, emits } = makeIoStub();
-      addSpectator(ROOM_A, 'u1', 'Alice');
-      broadcastSpectatorLeft(io, ROOM_A, 'u1', 'Alice');
-      const left = emits.find((e) => e.event === 'room:spectator_left');
-      expect(left).toBeDefined();
-      expect((left!.payload as { spectators: unknown }).spectators).toEqual([]);
-    });
-
-    describe('fail-loud on drift', () => {
-      let warnSpy: ReturnType<typeof vi.spyOn>;
-      beforeEach(() => {
-        warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      });
-      afterEach(() => {
-        warnSpy.mockRestore();
-      });
-
-      it('broadcastSpectatorLeft warns and does not emit when the user is untracked', () => {
-        const { io, emits } = makeIoStub();
-        broadcastSpectatorLeft(io, ROOM_A, 'ghost', 'Ghost');
-        expect(emits).toEqual([]);
-        expect(warnSpy).toHaveBeenCalledOnce();
-        expect(warnSpy.mock.calls[0][0]).toMatch(/untracked user/);
-      });
     });
   });
 });

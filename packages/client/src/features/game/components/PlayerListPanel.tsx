@@ -1,6 +1,7 @@
-import { Bot, Eye, UserPlus } from 'lucide-react';
+import { Bot, Crown, Eye, UserPlus } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
 import { useSpectatorStore } from '../stores/spectator-store';
+import { useRoomStore } from '@/shared/stores/room-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import { DIFFICULTY_DISPLAY } from '../constants/bot-difficulty';
@@ -14,6 +15,7 @@ export default function PlayerListPanel() {
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
   const spectators = useSpectatorStore((s) => s.spectators);
   const pendingJoinQueue = useSpectatorStore((s) => s.pendingJoinQueue);
+  const ownerId = useRoomStore((s) => s.room?.ownerId);
   const userId = useEffectiveUserId();
 
   if (players.length === 0) return null;
@@ -88,7 +90,7 @@ export default function PlayerListPanel() {
                     isMe && !isActive && 'text-primary',
                     !isActive && !isMe && 'text-foreground',
                   )} style={(!isActive && !isMe && roleColor) ? { color: roleColor } : undefined}>
-                    {p.name}{isMe ? ' (你)' : ''}{p.isBot && <AiBadge className="ml-1" />}
+                    {p.name}{isMe ? ' (你)' : ''}{p.id === ownerId && <Crown size={10} className="inline align-middle ml-1 text-yellow-500" />}{p.isBot && <AiBadge className="ml-1" />}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -110,9 +112,10 @@ export default function PlayerListPanel() {
               {spectators.map((s) => {
                 const queued = pendingJoinQueue.includes(s.nickname);
                 return (
-                  <div key={s.nickname} className="flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground">
+                  <div key={s.nickname} className={cn('flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground', !s.connected && 'opacity-50')}>
                     {queued ? <UserPlus size={12} className="shrink-0 text-accent" /> : <Eye size={12} className="shrink-0" />}
                     <span className={cn('truncate', queued && 'text-accent')}>{s.nickname}</span>
+                    {!s.connected && <span className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0 ml-auto" />}
                     {queued && <span className="text-2xs text-accent ml-auto shrink-0">加入中</span>}
                   </div>
                 );

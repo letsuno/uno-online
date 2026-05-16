@@ -265,7 +265,7 @@ export function getSeatedPlayers(seats: RoomSeats): RoomSeatPlayer[] {
   return seats.filter((s): s is RoomSeatPlayer => s !== null);
 }
 
-// ─── Spectator CRUD ────────────────────────────────────────────────────────
+// ─── Spectator CRUD (KV-persisted, mirrors seat lifecycle) ────────────────
 
 export async function getRoomSpectators(kv: KvStore, roomCode: string): Promise<RoomSpectator[]> {
   const raw = await kv.get(`room:${roomCode}:spectators`);
@@ -284,16 +284,43 @@ async function setRoomSpectators(kv: KvStore, roomCode: string, spectators: Room
 export async function addSpectatorToRoom(kv: KvStore, roomCode: string, spectator: RoomSpectator): Promise<void> {
   await withRoomSeatLock(roomCode, async () => {
     const spectators = await getRoomSpectators(kv, roomCode);
-    if (spectators.some(s => s.userId === spectator.userId)) return;
-    spectators.push(spectator);
+    const idx = spectators.findIndex(s => s.userId === spectator.userId);
+    if (idx !== -1) {
+      spectators[idx] = spectator;
+    } else {
+      spectators.push(spectator);
+    }
     await setRoomSpectators(kv, roomCode, spectators);
   });
 }
 
-export async function removeSpectatorFromRoom(kv: KvStore, roomCode: string, userId: string): Promise<void> {
+export async function removeSpectatorFromRoom(kv: KvStore, roomCode: string, userId: string): Promise<string | null> {
+  return withRoomSeatLock(roomCode, async () => {
+    const spectators = await getRoomSpectators(kv, roomCode);
+    const idx = spectators.findIndex(s => s.userId === userId);
+    if (idx === -1) return null;
+    const nickname = spectators[idx]!.nickname;
+    spectators.splice(idx, 1);
+    await setRoomSpectators(kv, roomCode, spectators);
+    return nickname;
+  });
+}
+
+export async function setSpectatorConnected(kv: KvStore, roomCode: string, userId: string, connected: boolean): Promise<void> {
   await withRoomSeatLock(roomCode, async () => {
     const spectators = await getRoomSpectators(kv, roomCode);
-    const remaining = spectators.filter(s => s.userId !== userId);
-    await setRoomSpectators(kv, roomCode, remaining);
+    const idx = spectators.findIndex(s => s.userId === userId);
+    if (idx !== -1) {
+      spectators[idx] = {
+        ...spectators[idx]!,
+        connected,
+        disconnectedAt: connected ? undefined : Date.now(),
+      };
+      await setRoomSpectators(kv, roomCode, spectators);
+    }
   });
+}
+
+export async function clearRoomSpectators(kv: KvStore, roomCode: string): Promise<void> {
+  await kv.del(`room:${roomCode}:spectators`);
 }

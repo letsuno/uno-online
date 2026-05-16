@@ -7,7 +7,7 @@ import {
   resetAllSeatsReady, setRoomOwner, getSeatedPlayers, getFirstEmptySeatIndex,
   getRoomSpectators, addSpectatorToRoom, removeSpectatorFromRoom,
 } from './store.js';
-import type { RoomSeatPlayer, RoomSpectator } from './store.js';
+import type { RoomSeatPlayer } from './store.js';
 
 function generateRoomCode(): string {
   let code = '';
@@ -53,26 +53,24 @@ export class RoomManager {
     const alreadySeated = seats.some(s => s !== null && s.userId === userId);
     const alreadySpectating = spectators.some(s => s.userId === userId);
     if (alreadySeated || alreadySpectating) throw new Error('Already in room');
-    const spectator: RoomSpectator = {
-      userId, nickname, avatarUrl: avatarUrl ?? null, role: role ?? 'normal',
-    };
-    await addSpectatorToRoom(this.redis, roomCode, spectator);
+    await addSpectatorToRoom(this.redis, roomCode, {
+      userId, nickname, avatarUrl: avatarUrl ?? null, role: role ?? 'normal', connected: true,
+    });
   }
 
   async leaveRoom(roomCode: string, userId: string): Promise<{ deleted: boolean }> {
     await clearSeatByUserId(this.redis, roomCode, userId);
     await removeSpectatorFromRoom(this.redis, roomCode, userId);
     const seats = await getRoomSeats(this.redis, roomCode);
-    const spectators = await getRoomSpectators(this.redis, roomCode);
     const seatedPlayers = getSeatedPlayers(seats);
-    const allParticipants = [...seatedPlayers, ...spectators];
-    const hasHumans = allParticipants.some(p => !('isBot' in p && p.isBot));
-    if (allParticipants.length === 0 || !hasHumans) {
+    const hasHumanPlayers = seatedPlayers.some(p => !p.isBot);
+    if (seatedPlayers.length === 0 || !hasHumanPlayers) {
       await deleteRoom(this.redis, roomCode);
       return { deleted: true };
     }
     const room = await getRoom(this.redis, roomCode);
     if (room && room.ownerId === userId) {
+      const spectators = await getRoomSpectators(this.redis, roomCode);
       const nextOwner = seatedPlayers.find(p => !p.isBot) ?? spectators[0];
       if (nextOwner) {
         await setRoomOwner(this.redis, roomCode, nextOwner.userId);

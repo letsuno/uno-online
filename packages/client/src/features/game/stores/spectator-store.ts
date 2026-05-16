@@ -3,6 +3,7 @@ import { create } from 'zustand';
 export interface SpectatorInfo {
   nickname: string;
   avatarUrl?: string | null;
+  connected: boolean;
 }
 
 // Snapshot-only — incremental updates would drift from the server's list.

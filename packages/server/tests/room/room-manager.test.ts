@@ -48,6 +48,7 @@ describe('RoomManager', () => {
     const spectators = await getRoomSpectators(kv, code);
     expect(spectators).toHaveLength(1);
     expect(spectators[0]!.userId).toBe('p2');
+    expect(spectators[0]!.connected).toBe(true);
   });
 
   it('rejects joining a non-existent room', async () => {

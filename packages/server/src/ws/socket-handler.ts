@@ -6,16 +6,17 @@ import { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import { GameSession } from '../plugins/core/game/session.js';
 import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, notifyAutopilotAction, resetPlayerTimeout } from './room-events.js';
 import { getAutopilotActionPlayerId, canPlayerAutopilotOnce } from './autopilot-action-player.js';
-import { registerGameEvents, addAutopilotVote, clearChatTimestamps, getRoundEndVoteState, getPendingSpectatorQueue, getRoundEndAt } from './game-events.js';
-import { getRoom, setRoomOwner, clearUserRoom, getUserRoom, setSeatPlayerConnected, getRoomSeats, getRoomSpectators, getSeatedPlayers } from '../plugins/core/room/store.js';
+import { registerGameEvents, emitTerminalStateIfNeeded, addAutopilotVote, clearChatTimestamps, getRoundEndVoteState, getPendingSpectatorQueue, getRoundEndAt } from './game-events.js';
+import { getRoom, setRoomOwner, clearUserRoom, getUserRoom, setSeatPlayerConnected, getRoomSeats, getRoomSpectators, addSpectatorToRoom, removeSpectatorFromRoom, setSpectatorConnected, getSeatedPlayers } from '../plugins/core/room/store.js';
 import { registerSeatEvents, clearPendingSwapRequests, clearUserSwapRequests } from './seat-events.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
 import { loadGameState, GameStatePersister } from '../plugins/core/game/state-store.js';
 import { getActiveRooms } from '../plugins/core/spectate/routes.js';
 import { checkRateLimit, clearRateLimit } from './rate-limiter.js';
 import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws.js';
-import { setupSpectateHandlers, getSpectatorNames, addSpectator, broadcastSpectatorList } from '../plugins/core/spectate/ws.js';
+import { setupSpectateHandlers, broadcastSpectatorList, broadcastSpectatorLeft, toSpectatorView } from '../plugins/core/spectate/ws.js';
 import { dissolveRoom } from './room-lifecycle.js';
+import { cancelOwnerTransfer, hasOwnerTransferPending, scheduleOwnerTransfer, configureOwnerTransfer } from './owner-transfer.js';
 import { registerVoicePresenceEvents, removeVoicePresence } from './voice-presence.js';
 import { VoiceChannelManager } from '../voice/channel-manager.js';
 import type { MumbleIceConfig } from '../config.js';
@@ -25,7 +26,6 @@ const AUTOPILOT_THINK_MS = 2_000;
 const ROOM_IDLE_SWEEP_MS = 60_000;
 const AUTOPILOT_TOGGLE_COOLDOWN_MS = 3_000;
 const ALL_DISCONNECT_TIMEOUT_MS = 5 * 60_000;
-const OWNER_TRANSFER_DELAY_S = 10;
 
 const autopilotToggleTimestamps = new Map<string, number>();
 
@@ -57,7 +57,6 @@ export function setupSocketHandlers(
   const sessions = new Map<string, GameSession>();
   const disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const allDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
-  const ownerTransferTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const autoPlayIntervals = new Map<string, ReturnType<typeof setInterval>>();
   const userSocketMap = new Map<string, string>();
   const persister = new GameStatePersister(redis);
@@ -110,6 +109,9 @@ export function setupSocketHandlers(
       if (acted) {
         persister.markDirty(roomCode, session.getFullState());
         await emitGameUpdate(io, roomCode, session, redis);
+        if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, sessions, persister)) {
+          return;
+        }
         io.to(roomCode).emit('player:timeout', { playerId: userId });
         startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
       }
@@ -125,13 +127,6 @@ export function setupSocketHandlers(
     }
   }
 
-  function cancelOwnerTransferTimer(roomCode: string) {
-    const timer = ownerTransferTimers.get(roomCode);
-    if (timer) {
-      clearTimeout(timer);
-      ownerTransferTimers.delete(roomCode);
-    }
-  }
 
   function stopAutoPlayForRoom(roomCode: string) {
     const session = sessions.get(roomCode);
@@ -145,14 +140,22 @@ export function setupSocketHandlers(
       }
     }
     cancelDissolutionTimer(roomCode);
-    cancelOwnerTransferTimer(roomCode);
+    cancelOwnerTransfer(roomCode);
+  }
+
+  configureOwnerTransfer(io, redis, sessions, turnTimer, persister, voiceChannels, stopAutoPlayForRoom);
+
+  async function getRoomCodes(): Promise<string[]> {
+    const keys = await redis.keys('room:*');
+    return keys
+      .filter(k => !k.includes(':players') && !k.includes(':state') && !k.includes(':spectators') && !k.includes(':seats'))
+      .map(k => k.replace('room:', ''));
   }
 
   async function cleanupIdleRooms() {
-    const roomKeys = (await redis.keys('room:*')).filter(k => !k.includes(':players') && !k.includes(':state'));
+    const roomCodes = await getRoomCodes();
     const now = Date.now();
-    for (const key of roomKeys) {
-      const roomCode = key.replace('room:', '');
+    for (const roomCode of roomCodes) {
       const room = await getRoom(redis, roomCode);
       if (!room) continue;
       const lastActivityAt = Date.parse(room.lastActivityAt);
@@ -163,10 +166,56 @@ export function setupSocketHandlers(
     }
   }
 
+  async function sweepDisconnectedSpectators() {
+    const roomCodes = await getRoomCodes();
+    const now = Date.now();
+    for (const roomCode of roomCodes) {
+      const spectators = await getRoomSpectators(redis, roomCode);
+      const stale = spectators.filter(s => !s.connected && s.disconnectedAt && now - s.disconnectedAt >= RECONNECT_TIMEOUT_MS);
+      if (stale.length === 0) continue;
+
+      for (const s of stale) {
+        await removeSpectatorFromRoom(redis, roomCode, s.userId);
+        await clearUserRoom(redis, s.userId);
+      }
+      await broadcastSpectatorList(io, redis, roomCode);
+
+      const room = await getRoom(redis, roomCode);
+      if (!room) continue;
+      const [seats, remaining] = await Promise.all([
+        getRoomSeats(redis, roomCode),
+        getRoomSpectators(redis, roomCode),
+      ]);
+      io.to(roomCode).emit('seat:updated', { seats, spectators: remaining });
+
+      const seatedPlayers = getSeatedPlayers(seats);
+      const hasHuman = seatedPlayers.some(p => !p.isBot && p.connected) || remaining.some(sp => sp.connected);
+      if (!hasHuman) {
+        stopAutoPlayForRoom(roomCode);
+        await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
+        continue;
+      }
+
+      if (stale.some(s => s.userId === room.ownerId)) {
+        const nextOwner = seatedPlayers.find(p => !p.isBot && p.connected) ?? remaining.find(sp => sp.connected);
+        if (nextOwner) {
+          await setRoomOwner(redis, roomCode, nextOwner.userId);
+          const updatedRoom = await getRoom(redis, roomCode);
+          io.to(roomCode).emit('room:updated', { room: updatedRoom });
+        }
+      }
+    }
+  }
+
   const idleCleanupInterval = setInterval(() => {
     cleanupIdleRooms().catch(() => {});
   }, ROOM_IDLE_SWEEP_MS);
   idleCleanupInterval.unref?.();
+
+  const spectatorSweepInterval = setInterval(() => {
+    sweepDisconnectedSpectators().catch(() => {});
+  }, 5_000);
+  spectatorSweepInterval.unref?.();
 
   const serverStartTime = new Date().toISOString();
 
@@ -237,12 +286,18 @@ export function setupSocketHandlers(
             return callback?.({ success: false, error: '无法观战该房间' });
           }
           await joinRoomSocket(redis, socket, roomCode, { asSpectator: true });
-          addSpectator(roomCode, socket.data.user.userId, socket.data.user.nickname, socket.data.user.avatarUrl);
+          await addSpectatorToRoom(redis, roomCode, {
+            userId: socket.data.user.userId,
+            nickname: socket.data.user.nickname,
+            avatarUrl: socket.data.user.avatarUrl,
+            role: socket.data.user.role,
+            connected: true,
+          });
           const spectatorMode = (room.settings.spectatorMode as 'full' | 'hidden') ?? 'hidden';
           const view = session.getSpectatorView(spectatorMode);
           callback?.({ success: true, gameState: view, isSpectator: true });
           socket.emit('chat:history', session.getChatHistory());
-          broadcastSpectatorList(io, roomCode);
+          await broadcastSpectatorList(io, redis, roomCode);
           const queue = getPendingSpectatorQueue(roomCode);
           if (queue.length > 0) {
             socket.emit('game:spectator_queue', { queue, nickname: '', joined: true });
@@ -255,9 +310,9 @@ export function setupSocketHandlers(
 
         await joinRoomSocket(redis, socket, roomCode);
         cancelDissolutionTimer(roomCode);
-        if (ownerTransferTimers.has(roomCode)) {
+        if (hasOwnerTransferPending(roomCode)) {
           if (room.ownerId === userId) {
-            cancelOwnerTransferTimer(roomCode);
+            cancelOwnerTransfer(roomCode);
             io.to(roomCode).emit('room:owner_transfer_cancelled');
           }
         }
@@ -275,7 +330,7 @@ export function setupSocketHandlers(
         ]);
         callback?.({ success: true, gameState: session.getPlayerView(userId), seats, spectators, room });
         socket.emit('chat:history', session.getChatHistory());
-        socket.emit('room:spectator_list', { spectators: getSpectatorNames(roomCode) });
+        socket.emit('room:spectator_list', { spectators: toSpectatorView(await getRoomSpectators(redis, roomCode)) });
         const voteState = getRoundEndVoteState(roomCode, session);
         if (voteState) socket.emit('game:next_round_vote', voteState);
         replayTerminalEvent(socket, roomCode, session);
@@ -301,9 +356,15 @@ export function setupSocketHandlers(
 
         if (isSeated) {
           await setSeatPlayerConnected(redis, roomCode, userId, true);
+        } else if (isSpectator) {
+          await setSpectatorConnected(redis, roomCode, userId, true);
         }
 
         await joinRoomSocket(redis, socket, roomCode);
+        if (hasOwnerTransferPending(roomCode) && room.ownerId === userId) {
+          cancelOwnerTransfer(roomCode);
+          io.to(roomCode).emit('room:owner_transfer_cancelled');
+        }
         const [updatedSeats, updatedSpectators] = await Promise.all([
           getRoomSeats(redis, roomCode),
           getRoomSpectators(redis, roomCode),
@@ -387,6 +448,16 @@ export function setupSocketHandlers(
       if (!roomCode) return;
       removeVoicePresence(io, roomCode, userId);
 
+      if (socket.data.isSpectator) {
+        await setSpectatorConnected(redis, roomCode, userId, false);
+        const [dcSeats, dcSpectators] = await Promise.all([
+          getRoomSeats(redis, roomCode),
+          getRoomSpectators(redis, roomCode),
+        ]);
+        io.to(roomCode).emit('seat:updated', { seats: dcSeats, spectators: dcSpectators });
+        return;
+      }
+
       const session = sessions.get(roomCode);
       if (session) {
         session.setPlayerConnected(userId, false);
@@ -416,45 +487,11 @@ export function setupSocketHandlers(
           allDisconnectTimers.set(roomCode, dissolutionTimer);
         }
 
-        // Host transfer: if disconnected player is room owner
         const room = await getRoom(redis, roomCode);
         if (room && room.ownerId === userId) {
           const phase = state.phase;
           if (phase === 'round_end' || phase === 'game_over') {
-            cancelOwnerTransferTimer(roomCode);
-            io.to(roomCode).emit('room:owner_transfer_pending', { transferAt: Date.now() + OWNER_TRANSFER_DELAY_S * 1000 });
-            const timer = setTimeout(async () => {
-              ownerTransferTimers.delete(roomCode);
-              const s = sessions.get(roomCode);
-              if (!s) return;
-              const st = s.getFullState();
-              if (st.players.find(p => p.id === userId && p.connected)) return;
-              const nextOwner = st.players.find(p => p.id !== userId && p.connected && !p.isBot);
-              if (!nextOwner) {
-                stopAutoPlayForRoom(roomCode);
-                await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
-                return;
-              }
-              await setRoomOwner(redis, roomCode, nextOwner.id);
-              const updatedRoom = await getRoom(redis, roomCode);
-              const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
-              io.to(roomCode).emit('seat:updated', { seats, spectators });
-              io.to(roomCode).emit('room:updated', { room: updatedRoom });
-            }, OWNER_TRANSFER_DELAY_S * 1000);
-            timer.unref?.();
-            ownerTransferTimers.set(roomCode, timer);
-          } else if (phase !== 'playing') {
-            const nextOwner = state.players.find(p => p.id !== userId && p.connected && !p.isBot);
-            if (nextOwner) {
-              await setRoomOwner(redis, roomCode, nextOwner.id);
-              const updatedRoom = await getRoom(redis, roomCode);
-              const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
-              io.to(roomCode).emit('seat:updated', { seats, spectators });
-              io.to(roomCode).emit('room:updated', { room: updatedRoom });
-            } else {
-              stopAutoPlayForRoom(roomCode);
-              await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
-            }
+            scheduleOwnerTransfer(roomCode, userId);
           }
         }
 
@@ -470,6 +507,7 @@ export function setupSocketHandlers(
             persister.markDirty(roomCode, s.getFullState());
             await emitGameUpdate(io, roomCode, s, redis);
             io.to(roomCode).emit('player:autopilot', { playerId: userId, enabled: true });
+            addAutopilotVote(roomCode, userId, s, io);
             startAutoPlay(userId, roomCode);
 
             const hasConnectedHuman = s.getFullState().players.some(p => p.connected && !p.isBot);

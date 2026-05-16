@@ -30,8 +30,9 @@ function SpectatorSeats({ top }: SpectatorSeatsProps) {
                 queued
                   ? 'bg-accent/20 border-accent/40 text-accent'
                   : 'bg-white/10 border-white/10 text-muted-foreground',
+                !s.connected && 'opacity-40',
               )}
-              title={s.nickname + (queued ? ' (下局加入)' : '')}
+              title={s.nickname + (queued ? ' (下局加入)' : '') + (!s.connected ? ' (已断线)' : '')}
             >
               {s.avatarUrl
                 ? <img src={s.avatarUrl} alt={s.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />

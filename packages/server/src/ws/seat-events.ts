@@ -12,7 +12,7 @@ import {
   addSpectatorToRoom,
   touchRoomActivity,
 } from '../plugins/core/room/store.js';
-import type { RoomSeatPlayer, RoomSpectator } from '../plugins/core/room/store.js';
+import type { RoomSeatPlayer } from '../plugins/core/room/store.js';
 import type { SocketData } from './types.js';
 
 // ─── In-memory state ──────────────────────────────────────────────────────────
@@ -192,13 +192,13 @@ export function registerSeatEvents(
 
       await leaveSeat(redis, roomCode, userId);
 
-      const spectator: RoomSpectator = {
+      await addSpectatorToRoom(redis, roomCode, {
         userId: data.user.userId,
         nickname: data.user.nickname,
         avatarUrl: data.user.avatarUrl ?? null,
         role: data.user.role,
-      };
-      await addSpectatorToRoom(redis, roomCode, spectator);
+        connected: true,
+      });
 
       // Clear any pending swap requests where this user is the requester
       clearUserSwapRequests(roomCode, userId);
