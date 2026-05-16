@@ -14,7 +14,7 @@ import { loadGameState, GameStatePersister } from '../plugins/core/game/state-st
 import { getActiveRooms } from '../plugins/core/spectate/routes.js';
 import { checkRateLimit, clearRateLimit } from './rate-limiter.js';
 import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws.js';
-import { setupSpectateHandlers, broadcastSpectatorList, broadcastSpectatorLeft, toSpectatorView } from '../plugins/core/spectate/ws.js';
+import { broadcastSpectatorList, broadcastSpectatorLeft, toSpectatorView } from '../plugins/core/spectate/ws.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { cancelOwnerTransfer, hasOwnerTransferPending, scheduleOwnerTransfer, configureOwnerTransfer } from './owner-transfer.js';
 import { registerVoicePresenceEvents, removeVoicePresence } from './voice-presence.js';
@@ -297,7 +297,12 @@ export function setupSocketHandlers(
           const view = session.getSpectatorView(spectatorMode);
           callback?.({ success: true, gameState: view, isSpectator: true });
           socket.emit('chat:history', session.getChatHistory());
-          await broadcastSpectatorList(io, redis, roomCode);
+          const updatedSpectators = toSpectatorView(await getRoomSpectators(redis, roomCode));
+          io.to(roomCode).emit('room:spectator_list', { spectators: updatedSpectators });
+          socket.to(roomCode).emit('room:spectator_joined', {
+            nickname: socket.data.user.nickname,
+            spectators: updatedSpectators,
+          });
           const queue = getPendingSpectatorQueue(roomCode);
           if (queue.length > 0) {
             socket.emit('game:spectator_queue', { queue, nickname: '', joined: true });
@@ -557,8 +562,6 @@ export function setupSocketHandlers(
       }
     });
   });
-
-  setupSpectateHandlers(io, redis, sessions);
 
   return { roomManager, turnTimer, sessions, persister, voiceChannels };
 }

@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { motion } from 'framer-motion';
 import { Eye } from 'lucide-react';
 import { useSpectatorStore } from '../stores/spectator-store';
 import { cn } from '@/shared/lib/utils';
@@ -15,32 +16,39 @@ function SpectatorSeats({ top }: SpectatorSeatsProps) {
 
   return (
     <div
-      className="absolute left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-card/60 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/5"
+      className="absolute left-0 right-0 z-10 flex justify-center"
       style={top != null ? { top } : { bottom: 8 }}
     >
-      <Eye size={12} className="text-muted-foreground shrink-0" />
-      <div className="flex items-center gap-1">
-        {spectators.map((s) => {
-          const queued = pendingJoinQueue.includes(s.nickname);
-          return (
-            <div
-              key={s.nickname}
-              className={cn(
-                'w-7 h-7 rounded-full flex items-center justify-center text-xs border-2 shrink-0 overflow-hidden',
-                queued
-                  ? 'bg-accent/20 border-accent/40 text-accent'
-                  : 'bg-white/10 border-white/10 text-muted-foreground',
-                !s.connected && 'opacity-40',
-              )}
-              title={s.nickname + (queued ? ' (下局加入)' : '') + (!s.connected ? ' (已断线)' : '')}
-            >
-              {s.avatarUrl
-                ? <img src={s.avatarUrl} alt={s.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                : s.nickname.charAt(0).toUpperCase()}
-            </div>
-          );
-        })}
-      </div>
+      <motion.div
+        drag
+        dragMomentum={false}
+        dragElastic={0}
+        className="flex items-center gap-2 bg-card/60 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/5 cursor-grab active:cursor-grabbing select-none"
+      >
+        <Eye size={12} className="text-muted-foreground shrink-0" />
+        <div className="flex items-center gap-1">
+          {spectators.map((s) => {
+            const queued = pendingJoinQueue.includes(s.nickname);
+            return (
+              <div
+                key={s.nickname}
+                className={cn(
+                  'w-7 h-7 rounded-full flex items-center justify-center text-xs border-2 shrink-0 overflow-hidden',
+                  queued
+                    ? 'bg-accent/20 border-accent/40 text-accent'
+                    : 'bg-white/10 border-white/10 text-muted-foreground',
+                  !s.connected && 'opacity-40',
+                )}
+                title={s.nickname + (queued ? ' (下局加入)' : '') + (!s.connected ? ' (已断线)' : '')}
+              >
+                {s.avatarUrl
+                  ? <img src={s.avatarUrl} alt={s.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  : s.nickname.charAt(0).toUpperCase()}
+              </div>
+            );
+          })}
+        </div>
+      </motion.div>
     </div>
   );
 }

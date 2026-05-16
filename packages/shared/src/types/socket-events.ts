@@ -93,7 +93,6 @@ export interface ClientToServerEvents {
   'seat:swap_request': (targetUserId: string, callback: (res: SocketCallbackResult) => void) => void;
   'seat:swap_respond': (payload: { requesterId: string; accept: boolean }, callback: (res: SocketCallbackResult) => void) => void;
   'voice:force_mute': (payload: { targetId: string; muted: boolean }, callback?: (res: SocketCallbackResult) => void) => void;
-  'room:spectate': (roomCode: string, callback?: (res: SocketCallbackResult) => void) => void;
   'game:start': (callback: (res: SocketCallbackResult & { gameState?: PlayerView }) => void) => void;
   'game:play_card': (payload: { cardId: string; chosenColor?: Color }, callback?: (res: SocketCallbackResult) => void) => void;
   'game:draw_card': (payload: { side?: string }, callback?: (res: SocketCallbackResult) => void) => void;
