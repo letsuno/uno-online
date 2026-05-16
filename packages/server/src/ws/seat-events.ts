@@ -90,7 +90,7 @@ export function registerSeatEvents(
   socket.on(
     'seat:take',
     async (
-      payload: { seatIndex: number },
+      seatIndex: number,
       callback: (res: { success: boolean; error?: string }) => void,
     ) => {
       const roomCode = data.roomCode;
@@ -100,7 +100,6 @@ export function registerSeatEvents(
       if (!room) return callback({ success: false, error: '房间不存在' });
       if (room.status !== 'waiting') return callback({ success: false, error: '游戏进行中无法换座' });
 
-      const { seatIndex } = payload;
       if (typeof seatIndex !== 'number' || seatIndex < 0 || seatIndex >= SEAT_COUNT) {
         return callback({ success: false, error: '无效座位编号' });
       }
