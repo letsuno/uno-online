@@ -213,7 +213,7 @@ export function registerSeatEvents(
   socket.on(
     'seat:swap_request',
     async (
-      payload: { targetUserId: string },
+      targetUserId: string,
       callback: (res: { success: boolean; error?: string }) => void,
     ) => {
       const roomCode = data.roomCode;
@@ -231,7 +231,7 @@ export function registerSeatEvents(
 
       const seats = await getRoomSeats(redis, roomCode);
       const requesterSeatIndex = seats.findIndex(s => s?.userId === requesterId);
-      const targetSeatIndex = seats.findIndex(s => s?.userId === payload.targetUserId);
+      const targetSeatIndex = seats.findIndex(s => s?.userId === targetUserId);
 
       if (requesterSeatIndex === -1) return callback({ success: false, error: '你没有在座位上' });
       if (targetSeatIndex === -1) return callback({ success: false, error: '目标玩家没有在座位上' });
@@ -244,7 +244,7 @@ export function registerSeatEvents(
       // If target is a bot: immediately swap
       if (targetSeat.isBot) {
         try {
-          await swapSeats(redis, roomCode, requesterId, payload.targetUserId);
+          await swapSeats(redis, roomCode, requesterId, targetUserId);
         } catch (err) {
           return callback({ success: false, error: (err as Error).message });
         }
@@ -253,25 +253,24 @@ export function registerSeatEvents(
         io.to(roomCode).emit('seat:swap_resolved', {
           accepted: true,
           requesterId,
-          targetUserId: payload.targetUserId,
+          targetUserId,
         });
         callback({ success: true });
         return;
       }
 
       // Target is a human player
-      const pendingKey = `${roomCode}:${payload.targetUserId}`;
+      const pendingKey = `${roomCode}:${targetUserId}`;
       if (pendingSwapRequests.has(pendingKey)) {
         return callback({ success: false, error: '该玩家已有待处理的换座请求' });
       }
 
       const timer = setTimeout(() => {
         pendingSwapRequests.delete(pendingKey);
-        // Notify requester that the request timed out (auto-reject)
         io.to(roomCode).emit('seat:swap_resolved', {
           accepted: false,
           requesterId,
-          targetUserId: payload.targetUserId,
+          targetUserId,
           reason: 'timeout',
         });
       }, SWAP_REQUEST_TIMEOUT_MS);
@@ -284,10 +283,9 @@ export function registerSeatEvents(
         timer,
       });
 
-      // Notify the target player's sockets
       const targetSockets = await io.in(roomCode).fetchSockets();
       for (const s of targetSockets) {
-        if ((s.data as SocketData).user.userId === payload.targetUserId) {
+        if ((s.data as SocketData).user.userId === targetUserId) {
           s.emit('seat:swap_requested', {
             requesterId,
             requesterName: data.user.nickname,
@@ -305,7 +303,7 @@ export function registerSeatEvents(
   socket.on(
     'seat:swap_respond',
     async (
-      payload: { accept: boolean },
+      payload: { requesterId: string; accept: boolean },
       callback: (res: { success: boolean; error?: string }) => void,
     ) => {
       const roomCode = data.roomCode;
@@ -315,7 +313,9 @@ export function registerSeatEvents(
       const pendingKey = `${roomCode}:${responderId}`;
       const pending = pendingSwapRequests.get(pendingKey);
 
-      if (!pending) return callback({ success: false, error: '没有待处理的换座请求' });
+      if (!pending || pending.requesterId !== payload.requesterId) {
+        return callback({ success: false, error: '没有待处理的换座请求' });
+      }
 
       clearTimeout(pending.timer);
       pendingSwapRequests.delete(pendingKey);

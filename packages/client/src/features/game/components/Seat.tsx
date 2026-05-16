@@ -11,7 +11,7 @@ interface SeatProps {
   isMe: boolean;
   isOwnerSeat: boolean;
   compact?: boolean;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 export default function Seat({ index, player, isMe, isOwnerSeat, compact = false, onClick }: SeatProps) {

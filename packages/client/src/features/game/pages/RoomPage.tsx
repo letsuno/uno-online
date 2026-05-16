@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Copy, Eye, Settings, Trash2 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { BotAddButton } from '../components/BotAddButton';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useRoomStore } from '@/shared/stores/room-store';
 import type { RoomSeatPlayer } from '@/shared/stores/room-store';
@@ -23,6 +22,8 @@ import SeatCircle from '../components/SeatCircle';
 import SpectatorBar from '../components/SpectatorBar';
 import SettingsDrawer from '../components/SettingsDrawer';
 import SwapRequestDialog from '../components/SwapRequestDialog';
+import { SeatContextMenu } from '../components/SeatContextMenu';
+import type { BotDifficulty } from '@uno-online/shared';
 
 /* ── Component ── */
 
@@ -45,6 +46,11 @@ export default function RoomPage() {
   const [menuTarget, setMenuTarget] = useState<{
     player: RoomSeatPlayer;
     seatIndex: number;
+    position: { x: number; y: number };
+  } | null>(null);
+  const [seatMenu, setSeatMenu] = useState<{
+    seatIndex: number;
+    player: RoomSeatPlayer | null;
     position: { x: number; y: number };
   } | null>(null);
 
@@ -178,38 +184,58 @@ export default function RoomPage() {
   };
 
   /* Seat click handler */
-  const handleSeatClick = (seatIndex: number) => {
+  const handleSeatClick = (seatIndex: number, e?: React.MouseEvent) => {
     const seat = seats[seatIndex];
+    const pos = e ? { x: e.clientX, y: e.clientY } : { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+
     if (!seat) {
-      // Empty seat: take it
-      getSocket().emit(
-        'seat:take',
-        seatIndex,
-        (res: { success?: boolean; error?: string }) => {
-          if (!res?.success && res?.error)
-            useToastStore.getState().addToast(res.error, 'error');
-        },
-      );
+      // Empty seat: if spectator, take directly; if seated/owner, show context menu
+      if (isSpectator) {
+        getSocket().emit('seat:take', seatIndex, (res: { success?: boolean; error?: string }) => {
+          if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
+        });
+      } else {
+        setSeatMenu({ seatIndex, player: null, position: pos });
+      }
     } else if (seat.userId === user?.id) {
       // My seat: no action
     } else if (seat.isBot) {
-      // Bot: swap directly (no confirmation needed)
-      getSocket().emit(
-        'seat:swap_request',
-        seat.userId,
-        (res: { success?: boolean; error?: string }) => {
-          if (!res?.success && res?.error)
-            useToastStore.getState().addToast(res.error, 'error');
-        },
-      );
+      // Bot: show context menu (swap, difficulty, remove)
+      setSeatMenu({ seatIndex, player: seat, position: pos });
     } else {
       // Other player: show action menu
-      setMenuTarget({
-        player: seat,
-        seatIndex,
-        position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-      });
+      setMenuTarget({ player: seat, seatIndex, position: pos });
     }
+  };
+
+  const handleTakeSeat = (seatIndex: number) => {
+    getSocket().emit('seat:take', seatIndex, (res: { success?: boolean; error?: string }) => {
+      if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
+    });
+  };
+
+  const handleAddBot = (difficulty: BotDifficulty) => {
+    getSocket().emit('room:add_bot', { difficulty }, (res: { success?: boolean; error?: string }) => {
+      if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
+    });
+  };
+
+  const handleSwapWithBot = (targetUserId: string) => {
+    getSocket().emit('seat:swap_request', targetUserId, (res: { success?: boolean; error?: string }) => {
+      if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
+    });
+  };
+
+  const handleSetBotDifficulty = (botId: string, difficulty: BotDifficulty) => {
+    getSocket().emit('room:set_bot_difficulty', { botId, difficulty }, (res: { success?: boolean; error?: string }) => {
+      if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
+    });
+  };
+
+  const handleRemoveBot = (botId: string) => {
+    getSocket().emit('room:remove_bot', { botId }, (res: { success?: boolean; error?: string }) => {
+      if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
+    });
   };
 
   /* Swap respond handler */
@@ -308,7 +334,6 @@ export default function RoomPage() {
                 观战
               </Button>
             )}
-            {isOwner && seatedPlayers.length < 10 && <BotAddButton />}
             <Button
               variant="secondary"
               onClick={leaveRoom}
@@ -357,6 +382,21 @@ export default function RoomPage() {
           requesterName={swapRequest.requesterName}
           requesterSeatIndex={swapRequest.requesterSeatIndex}
           onRespond={handleSwapRespond}
+        />
+      )}
+      {seatMenu && (
+        <SeatContextMenu
+          seatIndex={seatMenu.seatIndex}
+          player={seatMenu.player}
+          isOwner={isOwner}
+          isMeSeated={!!myPlayer}
+          position={seatMenu.position}
+          onClose={() => setSeatMenu(null)}
+          onTakeSeat={() => handleTakeSeat(seatMenu.seatIndex)}
+          onAddBot={handleAddBot}
+          onSwapRequest={handleSwapWithBot}
+          onSetBotDifficulty={handleSetBotDifficulty}
+          onRemoveBot={handleRemoveBot}
         />
       )}
       {menuTarget && (

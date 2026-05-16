@@ -6,7 +6,7 @@ import Seat from './Seat';
 
 interface SeatCircleProps {
   seats: RoomSeats;
-  onSeatClick: (seatIndex: number) => void;
+  onSeatClick: (seatIndex: number, e?: React.MouseEvent) => void;
   compact?: boolean;
 }
 
@@ -60,7 +60,7 @@ export default function SeatCircle({ seats, onSeatClick, compact = false }: Seat
               isMe={!!userId && player?.userId === userId}
               isOwnerSeat={!!ownerId && player?.userId === ownerId}
               compact={compact}
-              onClick={() => onSeatClick(index)}
+              onClick={(e) => onSeatClick(index, e)}
             />
           </div>
         );
