@@ -1,5 +1,6 @@
 import type { RoomSeats } from '@uno-online/shared';
 import { SEAT_COUNT } from '@uno-online/shared';
+import { Layers } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useRoomStore } from '@/shared/stores/room-store';
 import Seat from './Seat';
@@ -36,7 +37,7 @@ export default function SeatCircle({ seats, onSeatClick, compact = false }: Seat
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center rounded-[50%] border-2 border-green-700/60 bg-green-950/40"
         style={{ width: rx * 1.1, height: ry * 1.1 }}
       >
-        <span className="text-3xl select-none opacity-60" aria-hidden>🃏</span>
+        <Layers size={compact ? 24 : 32} className="text-green-500/50" strokeWidth={1.5} />
       </div>
 
       {/* Seats positioned around the ellipse */}
