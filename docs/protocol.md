@@ -264,17 +264,20 @@ Array<{ id: string; name: string; keyPreview: string; createdAt: string; lastUse
 | 事件名 | 载荷 | 回调响应 |
 |--------|------|---------|
 | `user:current_room` | 无 | `{ roomCode: string \| null }` |
-| `room:create` | `Partial<RoomSettings>` | `{ success, roomCode?, players?, room?, voiceChannelId?, error? }` |
-| `room:join` | `roomCode: string` | `{ success, players?, room?, rejoin?, voiceChannelId?, error? }` |
-| `room:rejoin` | `roomCode: string` | `{ success, gameState?, players?, room?, isSpectator?, error? }` |
+| `room:create` | `Partial<RoomSettings>` | `{ success, roomCode?, seats?, spectators?, room?, voiceChannelId?, error? }` |
+| `room:join` | `roomCode: string` | `{ success, seats?, spectators?, room?, rejoin?, voiceChannelId?, error? }` |
+| `room:rejoin` | `roomCode: string` | `{ success, gameState?, seats?, spectators?, room?, isSpectator?, error? }` |
 | `room:leave` | 无 | `{ success, dissolved?, error? }` |
 | `room:ready` | `ready: boolean` | `{ success, error? }` |
-| `room:toggle_spectator` | `spectator: boolean` | `{ success, error? }` |
 | `room:update_settings` | `Partial<RoomSettings>` | `{ success, room?, error? }` |
 | `room:dissolve` | 无 | `{ success, error? }` |
 | `room:transfer_owner` | `{ targetId: string }` | `{ success, error? }` |
 | `room:kick` | `{ targetId: string }` | `{ success, error? }` |
 | `room:spectate` | `roomCode: string` | `{ success, error? }`，成功时会额外推送 `game:state` |
+| `seat:take` | `(seatIndex: number, callback)` | `{ success, error? }` — 入座指定座位（0-9） |
+| `seat:leave` | `(callback)` | `{ success, error? }` — 离开座位回到观战席 |
+| `seat:swap_request` | `(targetUserId: string, callback)` | `{ success, error? }` — 请求与目标玩家交换座位（Bot 目标直接交换） |
+| `seat:swap_respond` | `({ requesterId, accept }, callback)` | `{ success, error? }` — 响应换座请求 |
 
 #### 游戏操作
 
@@ -325,7 +328,7 @@ Array<{ id: string; name: string; keyPreview: string; createdAt: string; lastUse
 | `game:over` | `{ winnerId, scores, reason?, gameOverAt }` | 游戏结束；类型见下方 |
 | `game:round_end` | `{ winnerId, scores, roundEndAt }` | 回合结束；类型见下方 |
 | `game:kicked` | `{ reason: string; toSpectator?: boolean }` | 被房主移出或移至观战席 |
-| `game:back_to_room` | `{ players: Record<string, unknown>[]; room: Record<string, unknown> }` | game over 后房主返回房间 |
+| `game:back_to_room` | `{ seats: (RoomSeatPlayer \| null)[]; spectators: RoomSpectator[]; room: RoomData }` | game over 后房主返回房间 |
 | `game:spectator_queue` | `{ queue: string[]; nickname: string; joined: boolean }` | 观众申请加入下一轮队列 |
 | `game:cheat_detected` | 无 | 触发反作弊全屏警告 |
 
@@ -340,7 +343,10 @@ Array<{ id: string; name: string; keyPreview: string; createdAt: string; lastUse
 
 | 事件名 | 载荷 | 说明 |
 |--------|------|------|
-| `room:updated` | `Record<string, unknown>` | 房间状态或玩家列表更新 |
+| `room:updated` | `{ room: RoomData }` | 房间设置变更（不含座位/玩家变化，座位变化通过 `seat:updated` 推送） |
+| `seat:updated` | `{ seats: (RoomSeatPlayer \| null)[], spectators: RoomSpectator[] }` | 座位或观战席变更 |
+| `seat:swap_requested` | `{ requesterId, requesterName, requesterSeatIndex }` | 收到换座请求 |
+| `seat:swap_resolved` | `{ accepted, seat1, seat2 }` | 换座结果 |
 | `room:dissolved` | `{ reason?: string }` | 房间被解散 |
 | `room:rejoin_redirect` | `{ roomCode: string }` | 已在进行中房间，提示客户端跳转 |
 | `room:spectator_joined` | `{ nickname: string; spectators: SpectatorInfo[] }` | 观众加入 |
@@ -392,7 +398,7 @@ interface RoomSettings {
 }
 ```
 
-### 4.3 RoomData / RoomPlayer
+### 4.3 RoomData / RoomSeatPlayer / RoomSpectator
 
 ```typescript
 interface RoomData {
@@ -403,14 +409,24 @@ interface RoomData {
   lastActivityAt: string;
 }
 
-interface RoomPlayer {
+interface RoomSeatPlayer {
   userId: string;
   nickname: string;
   avatarUrl?: string | null;
   ready: boolean;
-  spectator: boolean;
+  connected: boolean;
   role?: string;
   isBot: boolean;
+  botConfig?: BotConfig;
+}
+
+type RoomSeats = (RoomSeatPlayer | null)[];  // 固定长度 10
+
+interface RoomSpectator {
+  userId: string;
+  nickname: string;
+  avatarUrl?: string | null;
+  role?: string;
 }
 ```
 
@@ -516,6 +532,9 @@ interface VoicePresence {
 | `DEFAULT_TARGET_SCORE` | 1000 | `packages/shared/src/constants/scoring.ts` | 默认目标分数 |
 | `DEFAULT_TURN_TIME_LIMIT` | 30 | `packages/shared/src/constants/scoring.ts` | 默认回合时限（秒） |
 | `UNO_PENALTY_CARDS` | 2 | `packages/shared/src/constants/scoring.ts` | UNO 惩罚抽牌数 |
+| `SEAT_COUNT` | 10 | `packages/shared/src/constants/deck.ts` | 座位总数（固定） |
+| `SWAP_COOLDOWN_MS` | 5000 | `packages/server/src/plugins/core/room.ts` | 换座冷却时间 |
+| `SWAP_REQUEST_TIMEOUT_MS` | 15000 | `packages/server/src/plugins/core/room.ts` | 换座请求超时时间 |
 | `RECONNECT_TIMEOUT_MS` | 60000 | `packages/server/src/ws/socket-handler.ts` | 掉线重连窗口 |
 | `AUTOPILOT_THINK_MS` | 2000 | `packages/server/src/ws/socket-handler.ts` | 托管循环间隔 |
 | `MAX_MESSAGES_PER_SECOND` | 20 | `packages/server/src/ws/rate-limiter.ts` | Socket 全局频率限制 |
