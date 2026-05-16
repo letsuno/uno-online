@@ -28,7 +28,7 @@ export interface ActiveRoomInfo {
   roomCode: string;
   players: { nickname: string; avatarUrl?: string | null }[];
   playerCount: number;
-  startedAt: string;
+  gameStartedAt: number;
   spectatorCount: number;
   spectatorMode: 'full' | 'hidden';
 }

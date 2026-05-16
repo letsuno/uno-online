@@ -190,7 +190,7 @@ export default function RoomPage() {
 
     if (!seat) {
       // Empty seat: if spectator, take directly; if seated/owner, show context menu
-      if (isSpectator) {
+      if (isSpectator && !isOwner) {
         getSocket().emit('seat:take', seatIndex, (res: { success?: boolean; error?: string }) => {
           if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
         });

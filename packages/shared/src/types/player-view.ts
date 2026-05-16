@@ -40,4 +40,6 @@ export interface PlayerView {
   lastAction: GameState['lastAction'];
   deckHash?: string;
   discardPileCount?: number;
+  gameStartedAt?: number;
+  turnStartedAt?: number;
 }

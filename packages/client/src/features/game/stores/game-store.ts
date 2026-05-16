@@ -56,8 +56,12 @@ interface GameState {
   roundEndAt: number | null;
   gameOverAt: number | null;
   cheatDetected: boolean;
+  dissolvedReason: string | null;
   ownerTransferAt: number | null;
+  gameStartedAt: number | null;
+  turnStartedAt: number | null;
   setCheatDetected: (value: boolean) => void;
+  setDissolvedReason: (reason: string | null) => void;
   setOwnerTransferAt: (transferAt: number | null) => void;
   setSpectator: (value: boolean) => void;
   infoDrawerOpen: boolean;
@@ -101,8 +105,12 @@ export const useGameStore = create<GameState>((set) => ({
   roundEndAt: null,
   gameOverAt: null,
   cheatDetected: false,
+  dissolvedReason: null,
   ownerTransferAt: null,
+  gameStartedAt: null,
+  turnStartedAt: null,
   setCheatDetected: (value) => set({ cheatDetected: value }),
+  setDissolvedReason: (reason) => set({ dissolvedReason: reason }),
   setOwnerTransferAt: (transferAt) => set({ ownerTransferAt: transferAt }),
   setSpectator: (value) => set({ isSpectator: value }),
   infoDrawerOpen: false,
@@ -133,6 +141,8 @@ export const useGameStore = create<GameState>((set) => ({
       return {
         phase,
         viewerId,
+        gameStartedAt: view.gameStartedAt ?? state.gameStartedAt,
+        turnStartedAt: view.turnStartedAt ?? state.turnStartedAt,
         players: shallowPlayersEqual(state.players, players) ? state.players : players,
         currentPlayerIndex,
         direction: view.direction,
@@ -191,7 +201,10 @@ export const useGameStore = create<GameState>((set) => ({
       roundEndAt: null,
       gameOverAt: null,
       cheatDetected: false,
+      dissolvedReason: null,
       ownerTransferAt: null,
+      gameStartedAt: null,
+      turnStartedAt: null,
       infoDrawerOpen: false,
       infoDrawerTab: 'rules' as InfoDrawerTab,
     }),

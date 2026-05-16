@@ -89,10 +89,12 @@ export function useGameSocket(roomCode: string | undefined) {
     return () => onConnectionStatus(() => {});
   }, [roomCode, setGameState, setRoom]);
 
-  // Warn before page unload during active game
+  // Warn before page unload during active game (not for spectators)
   useEffect(() => {
     if (!phase || phase === 'game_over') return;
     const handler = (e: BeforeUnloadEvent) => {
+      const { phase: p, isSpectator: s } = useGameStore.getState();
+      if (!p || p === 'game_over' || s) return;
       e.preventDefault();
     };
     window.addEventListener('beforeunload', handler);

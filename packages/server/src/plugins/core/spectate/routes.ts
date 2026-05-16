@@ -4,6 +4,7 @@ import type { ActiveRoomInfo } from '@uno-online/shared';
 import type { PluginContext } from '../../../plugin-context.js';
 import type { KvStore } from '../../../kv/types.js';
 import { getRoom, getRoomSeats, getSeatedPlayers } from '../room/store.js';
+import { loadGameState } from '../game/state-store.js';
 
 export async function getActiveRooms(kv: KvStore, io: SocketIOServer): Promise<ActiveRoomInfo[]> {
   const allKeys = await kv.keys('room:*');
@@ -24,11 +25,13 @@ export async function getActiveRooms(kv: KvStore, io: SocketIOServer): Promise<A
     const spectatorSockets = await io.in(roomCode).fetchSockets();
     const spectatorCount = spectatorSockets.filter(s => (s.data as { isSpectator?: boolean }).isSpectator).length;
 
+    const gameState = await loadGameState(kv, roomCode);
+
     activeRooms.push({
       roomCode,
       players: players.map((p: { nickname: string; avatarUrl?: string | null }) => ({ nickname: p.nickname, avatarUrl: p.avatarUrl })),
       playerCount: players.length,
-      startedAt: room.createdAt,
+      gameStartedAt: gameState?.gameStartedAt ?? Date.now(),
       spectatorCount,
       spectatorMode: settings.spectatorMode,
     });

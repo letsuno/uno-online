@@ -7,7 +7,13 @@ const DURATION = 500;
 const TICK = 35;
 const MAX_OFFSET = 80;
 
-export default function CheatOverlay() {
+const DISSOLVE_REASON_LABEL: Record<string, string> = {
+  host_closed: '房主解散了房间',
+  idle_timeout: '房间长时间没有活动，已自动解散',
+  empty: '所有玩家已离开，房间已解散',
+};
+
+export default function CheatOverlay({ dissolvedReason }: { dissolvedReason?: string | null }) {
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLDivElement>(null);
   const realRef = useRef<HTMLDivElement>(null);
@@ -80,6 +86,11 @@ export default function CheatOverlay() {
       </div>
       <div className="cheat-glitch-canvas" ref={canvasRef} />
       <div className="cheat-flash" />
+      {dissolvedReason && (
+        <div className="fixed bottom-6 right-8 text-xs text-white/30 select-text pointer-events-auto">
+          {DISSOLVE_REASON_LABEL[dissolvedReason] ?? dissolvedReason}
+        </div>
+      )}
     </div>
   );
 }

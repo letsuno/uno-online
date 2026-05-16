@@ -1,11 +1,17 @@
 import { Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import ProtectedRoute from '@/shared/components/ProtectedRoute';
 import { authRoutes, authProtectedRoutes } from '@/features/auth/routes';
 import { gameProtectedRoutes } from '@/features/game/routes';
 import { profileProtectedRoutes } from '@/features/profile/routes';
 import CheatOverlayMount from '@/features/game/components/CheatOverlayMount';
+import { setGlobalNavigate } from '@/shared/utils/global-navigate';
 import RootSwitch from './RootSwitch';
+
+function NavigateRegistrar() {
+  setGlobalNavigate(useNavigate());
+  return null;
+}
 
 const allPublicRoutes = [...authRoutes];
 const allProtectedRoutes = [
@@ -17,6 +23,7 @@ const allProtectedRoutes = [
 export default function AppRouter() {
   return (
     <BrowserRouter>
+      <NavigateRegistrar />
       <Suspense
         fallback={
           <div className="flex items-center justify-center h-screen text-muted-foreground">

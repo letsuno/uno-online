@@ -13,6 +13,7 @@ import { setServerTimeOffset } from './server-time';
 import { useSpectatorStore } from '@/features/game/stores/spectator-store';
 import { useLobbyStore } from '@/features/lobby/stores/lobby-store';
 import { resetClientRoomState } from './stores/reset-room';
+import { globalNavigate } from './utils/global-navigate';
 
 type TypedSocket = SocketType<ServerToClientEvents, ClientToServerEvents>;
 
@@ -264,7 +265,7 @@ export function getSocket(): TypedSocket {
       sendNotification('kicked', data.reason || '你已被移出房间');
       useToastStore.getState().addToast(data.reason || '你已被移出游戏', 'error');
       if (window.location.pathname !== '/') {
-        window.location.assign('/');
+        globalNavigate('/');
       }
     });
 
@@ -274,15 +275,7 @@ export function getSocket(): TypedSocket {
 
     socket.on('room:dissolved', (data) => {
       if (useGameStore.getState().cheatDetected) return;
-      resetClientRoomState();
-      const message = data?.reason === 'idle_timeout'
-        ? '房间长时间没有活动，已自动解散'
-        : '房间已被房主解散';
-      sendNotification('roomDissolved', message);
-      useToastStore.getState().addToast(message, 'info');
-      if (window.location.pathname !== '/') {
-        window.location.assign('/');
-      }
+      useGameStore.getState().setDissolvedReason(data?.reason ?? 'host_closed');
     });
   }
   return socket;
