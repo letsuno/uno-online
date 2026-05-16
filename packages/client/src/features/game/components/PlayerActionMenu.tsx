@@ -15,13 +15,14 @@ interface PlayerActionMenuProps {
   roomStatus: string;
   position: { x: number; y: number };
   onClose: () => void;
+  onSwapRequest?: (targetUserId: string) => void;
 }
 
 function normalizeVoiceName(name: string): string {
   return name.trim().replace(/[^\p{L}\p{N}_ .-]/gu, '').slice(0, 32).toLocaleLowerCase();
 }
 
-export default function PlayerActionMenu({ target, isOwner, roomStatus, position, onClose }: PlayerActionMenuProps) {
+export default function PlayerActionMenu({ target, isOwner, roomStatus, position, onClose, onSwapRequest }: PlayerActionMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const { removeBot, setBotDifficulty } = useBotManagement();
   const playerVoicePresence = useGatewayStore((s) => s.playerVoicePresence);
@@ -87,7 +88,8 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
   const hasBotItems = isOwner && target.isBot;
   const hasForceMute = isOwner && isTargetInVoice;
   const hasVolume = voiceConnected && isTargetInVoice;
-  if (!hasOwnerItems && !hasBotItems && !hasForceMute && !hasVolume) return null;
+  const hasSwapRequest = !target.isBot && onSwapRequest;
+  if (!hasOwnerItems && !hasBotItems && !hasForceMute && !hasVolume && !hasSwapRequest) return null;
 
   const clampedX = Math.min(position.x, window.innerWidth - 180);
   const clampedY = Math.min(position.y, window.innerHeight - 200);
@@ -101,6 +103,14 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
       <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-white/5 truncate">
         {target.nickname}
       </div>
+      {hasSwapRequest && (
+        <button
+          className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 rounded-lg flex items-center gap-2 text-foreground cursor-pointer"
+          onClick={() => { onSwapRequest(target.userId); onClose(); }}
+        >
+          🔄 请求换座
+        </button>
+      )}
       {hasOwnerItems && !target.isBot && (
         <>
           <button onClick={transferOwner} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/10 cursor-pointer transition-colors">
