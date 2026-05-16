@@ -9,6 +9,7 @@ import { usePlayableCardIds } from '../hooks/usePlayableCardIds';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { useGameLogTracker } from '../hooks/useGameLogTracker';
 import { useAutoPlay } from '../hooks/useAutoPlay';
+import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useGameActions } from '../hooks/useGameActions';
 import { useGameHotkeys } from '../hooks/useGameHotkeys';
 import { playSound } from '@/shared/sound/sound-manager';
@@ -38,6 +39,12 @@ import GameStartRulesModal from '../components/GameStartRulesModal';
 import ColorWave from '../components/ColorWave';
 import HotkeySettingsModal from '../components/HotkeySettingsModal';
 import OwnerTransferBanner from '../components/OwnerTransferBanner';
+import AutopilotOverlay from '../components/AutopilotOverlay';
+import MobileStatusBar from '../components/MobileStatusBar';
+import MobilePlayerStrip from '../components/MobilePlayerStrip';
+import MobileGameCenter from '../components/MobileGameCenter';
+import MobileMenuSheet from '../components/MobileMenuSheet';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export default function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -52,9 +59,13 @@ export default function GamePage() {
 
   const isSpectator = useGameStore((s) => s.isSpectator);
   const setSpectator = useGameStore((s) => s.setSpectator);
+  const players = useGameStore((s) => s.players);
+  const userId = useEffectiveUserId();
+  const myAutopilot = players.find((p) => p.id === userId)?.autopilot ?? false;
   const isMyTurn = useIsMyTurn();
   const playableIds = usePlayableCardIds();
-  const needsColorPick = phase === 'choosing_color' && isMyTurn;
+  const noop = () => {};
+  const needsColorPick = phase === 'choosing_color' && isMyTurn && !myAutopilot;
   const showScoreBoard = phase === 'round_end' || phase === 'game_over';
 
   const connectionStatus = useGameSocket(roomCode);
@@ -70,8 +81,10 @@ export default function GamePage() {
 
   useGameLogTracker();
   const bgmSongName = useBgm('game');
+  const isMobile = useIsMobile();
   const [showStartRules, setShowStartRules] = useState(false);
   const [showHotkeys, setShowHotkeys] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const shownStartRulesRef = useRef<string | null>(null);
   const [antiCheatKey, setAntiCheatKey] = useState<string | null>(null);
   const shownAntiCheatRef = useRef<string | null>(null);
@@ -186,47 +199,97 @@ export default function GamePage() {
           </p>
         </div>
       )}
-      <TopBar roomCode={roomCode ?? ''} onOpenHotkeys={() => setShowHotkeys(true)} />
-      <PlayerListPanel />
-      <LayoutGroup>
-      <div className="relative flex flex-col flex-1 min-h-0">
-      <GameTable onDraw={drawCard} />
-      <DanmakuLayer />
-      </div>
-      <AnimatePresence>
-        {showTurnBanner && isMyTurn && phase === 'playing' && (
-          <motion.div
-            className="absolute left-1/2 top-turn-top -translate-x-1/2 -translate-y-1/2 z-actions pointer-events-none font-game text-title-responsive font-black text-white text-shadow-bold"
-            initial={{ opacity: 0, scale: 0.92, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: -8 }}
-            transition={{ duration: 0.22, ease: 'easeOut' }}
-          >
-            轮到你了
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {!isSpectator && (
-        <GameActions
-          onCallUno={callUno}
-          onCatchUno={catchUno}
-          onChallenge={challenge}
-          onAccept={accept}
-          onPass={pass}
-          onSwapTarget={swapTarget}
-        />
-      )}
-      {!isSpectator && <PlayerHand onPlayCard={playCard} />}
-      </LayoutGroup>
-      {isSpectator && (
+      {isMobile ? (
         <>
-          <SpectatorActions onCatchUno={catchUno} />
-          {!showScoreBoard && (
-            <SpectatorBar
-              phase={phase}
-              onBackToLobby={backToLobby}
-              onJoined={() => { setSpectator(false); clearSpectators(); }}
+          <MobileStatusBar onOpenMenu={() => setShowMobileMenu(true)} />
+          <MobilePlayerStrip />
+          <div className="relative flex flex-col flex-1 min-h-0">
+            <MobileGameCenter onDraw={myAutopilot ? noop : drawCard} />
+            <DanmakuLayer />
+            <AnimatePresence>
+              {showTurnBanner && isMyTurn && phase === 'playing' && (
+                <motion.div
+                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-actions pointer-events-none font-game text-4xl font-black text-white text-shadow-bold"
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
+                >
+                  轮到你了
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          {!isSpectator && !myAutopilot && (
+            <GameActions
+              onCallUno={callUno}
+              onCatchUno={catchUno}
+              onChallenge={challenge}
+              onAccept={accept}
+              onPass={pass}
+              onSwapTarget={swapTarget}
             />
+          )}
+          {!isSpectator && <PlayerHand onPlayCard={myAutopilot ? noop : playCard} />}
+          {isSpectator && (
+            <>
+              <SpectatorActions onCatchUno={catchUno} />
+              {!showScoreBoard && (
+                <SpectatorBar
+                  phase={phase}
+                  onBackToLobby={backToLobby}
+                  onJoined={() => { setSpectator(false); clearSpectators(); }}
+                />
+              )}
+            </>
+          )}
+          <MobileMenuSheet open={showMobileMenu} onClose={() => setShowMobileMenu(false)} />
+        </>
+      ) : (
+        <>
+          <TopBar roomCode={roomCode ?? ''} onOpenHotkeys={() => setShowHotkeys(true)} />
+          <PlayerListPanel />
+          <LayoutGroup>
+          <div className="relative flex flex-col flex-1 min-h-0">
+          <GameTable onDraw={myAutopilot ? noop : drawCard} />
+          <DanmakuLayer />
+          </div>
+          <AnimatePresence>
+            {showTurnBanner && isMyTurn && phase === 'playing' && (
+              <motion.div
+                className="absolute left-1/2 top-turn-top -translate-x-1/2 -translate-y-1/2 z-actions pointer-events-none font-game text-title-responsive font-black text-white text-shadow-bold"
+                initial={{ opacity: 0, scale: 0.92, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: -8 }}
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+              >
+                轮到你了
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {!isSpectator && !myAutopilot && (
+            <GameActions
+              onCallUno={callUno}
+              onCatchUno={catchUno}
+              onChallenge={challenge}
+              onAccept={accept}
+              onPass={pass}
+              onSwapTarget={swapTarget}
+            />
+          )}
+          {!isSpectator && <PlayerHand onPlayCard={myAutopilot ? noop : playCard} />}
+          </LayoutGroup>
+          {isSpectator && (
+            <>
+              <SpectatorActions onCatchUno={catchUno} />
+              {!showScoreBoard && (
+                <SpectatorBar
+                  phase={phase}
+                  onBackToLobby={backToLobby}
+                  onJoined={() => { setSpectator(false); clearSpectators(); }}
+                />
+              )}
+            </>
           )}
         </>
       )}
@@ -242,6 +305,7 @@ export default function GamePage() {
       <ColorWave />
       {antiCheatKey && <AntiCheatToast key={antiCheatKey} />}
       <OwnerTransferBanner />
+      {!isSpectator && <AutopilotOverlay />}
       {(phase === 'round_end' || phase === 'game_over') && <Confetti />}
       {needsColorPick && <ColorPicker onPick={chooseColor} />}
       {showScoreBoard && (

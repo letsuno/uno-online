@@ -24,12 +24,10 @@ interface HandLayout {
 
 const CARD_WIDTH = 70;
 const CARD_HEIGHT = 100;
-const CARD_WIDTH_SM = 52;
-const CARD_HEIGHT_SM = 76;
+const CARD_WIDTH_SM = 64;
+const CARD_HEIGHT_SM = 92;
 const HAND_SIDE_PADDING = 20;
-const MIN_VISIBLE_STRIDE = 18;
 const COMFORTABLE_STRIDE = 78;
-const ACTIVE_LIFT = 34;
 const ACTIVE_SCALE = 1.12;
 const NEAR_EXPAND = 16;
 const TOUCH_DRAG_THRESHOLD = 5;
@@ -52,18 +50,20 @@ function isColorBoundary(sorted: CardType[], index: number): boolean {
 }
 
 function calculateHandLayout(count: number, containerWidth: number): HandLayout {
-  const compactViewport = containerWidth > 0 && containerWidth < 768;
-  const cardWidth = compactViewport ? CARD_WIDTH_SM : CARD_WIDTH;
-  const cardHeight = compactViewport ? CARD_HEIGHT_SM : CARD_HEIGHT;
+  const isMobile = containerWidth > 0 && containerWidth < 768;
+  const cardWidth = isMobile ? CARD_WIDTH_SM : CARD_WIDTH;
+  const cardHeight = isMobile ? CARD_HEIGHT_SM : CARD_HEIGHT;
+  const minStride = isMobile ? 18 : 10;
+
   if (count <= 0 || containerWidth <= 0) {
     return { cardWidth, cardHeight, stride: cardWidth, baseWidth: cardWidth, padX: HAND_SIDE_PADDING, scrollable: false };
   }
 
   const available = Math.max(cardWidth, containerWidth - HAND_SIDE_PADDING * 2);
   const fitStride = count === 1 ? cardWidth : (available - cardWidth) / (count - 1);
-  const stride = Math.min(COMFORTABLE_STRIDE, Math.max(MIN_VISIBLE_STRIDE, fitStride));
+  const stride = Math.min(COMFORTABLE_STRIDE, Math.max(minStride, fitStride));
   const baseWidth = cardWidth + stride * (count - 1);
-  const scrollable = baseWidth > available;
+  const scrollable = isMobile && baseWidth > available;
   const padX = scrollable ? HAND_SIDE_PADDING : Math.max(HAND_SIDE_PADDING, (containerWidth - baseWidth) / 2);
 
   return { cardWidth, cardHeight, stride, baseWidth, padX, scrollable };
@@ -118,6 +118,9 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   const [containerWidth, setContainerWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [isDraggingHand, setIsDraggingHand] = useState(false);
+
+  const isMobile = containerWidth > 0 && containerWidth < 768;
+  const activeLift = isMobile ? 34 : 20;
 
   const layout = useMemo(
     () => calculateHandLayout(sorted.length, containerWidth),
@@ -187,17 +190,15 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
     if (Math.abs(deltaX) > TOUCH_DRAG_THRESHOLD) {
       drag.hasDragged = true;
       drag.suppressClick = true;
-      setIsDraggingHand(true);
-      if (!scrollEl.hasPointerCapture(event.pointerId)) {
-        scrollEl.setPointerCapture(event.pointerId);
+      if (layout.scrollable) {
+        setIsDraggingHand(true);
+        if (!scrollEl.hasPointerCapture(event.pointerId)) {
+          scrollEl.setPointerCapture(event.pointerId);
+        }
+        event.preventDefault();
+        scrollEl.scrollLeft = drag.scrollLeft - deltaX;
+        setActiveFromPointer(event.clientX);
       }
-    }
-    if (!drag.hasDragged) return;
-
-    event.preventDefault();
-    if (layout.scrollable) {
-      scrollEl.scrollLeft = drag.scrollLeft - deltaX;
-      setActiveFromPointer(event.clientX);
     }
   };
 
@@ -211,9 +212,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
     if (scrollEl?.hasPointerCapture(event.pointerId)) {
       scrollEl.releasePointerCapture(event.pointerId);
     }
-    window.setTimeout(() => {
-      handDragRef.current.suppressClick = false;
-    }, 0);
+    window.setTimeout(() => { handDragRef.current.suppressClick = false; }, 0);
   };
 
   const handleHandPointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -248,7 +247,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
     onPlayCard(card.id);
   };
 
-  const handHeight = layout.cardHeight + ACTIVE_LIFT + 28;
+  const handHeight = layout.cardHeight + activeLift + (isMobile ? 28 : 8);
   const spreadAngle = getSpreadAngle(sorted.length);
   const center = (sorted.length - 1) / 2;
   const boundaryGap = Math.min(10, Math.max(3, layout.stride * 0.35));
@@ -267,7 +266,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   if (!me) return null;
 
   return (
-    <div className="relative z-actions overflow-visible pt-12 -mt-12 pointer-events-none">
+    <div className="relative z-actions overflow-visible pt-8 -mt-8 pointer-events-none">
       {pendingColorCardId && (
         <ColorPicker
           onPick={(color) => {
@@ -278,9 +277,11 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
       )}
       <div
         ref={handViewportRef}
-        className={`relative rounded-t-2xl px-0 pt-8 pb-hand-pb overflow-x-auto overflow-y-visible scrollbar-hidden pointer-events-auto touch-none ${
-          isDraggingHand ? 'cursor-grabbing' : 'cursor-default'
-        }`}
+        className={
+          isMobile
+            ? `relative px-0 pt-2 pb-hand-pb overflow-x-auto overflow-y-hidden scrollbar-hidden pointer-events-auto touch-none ${isDraggingHand ? 'cursor-grabbing' : 'cursor-default'}`
+            : 'relative px-0 overflow-visible pointer-events-auto touch-none'
+        }
         style={{ height: handHeight }}
         onPointerDown={handleHandPointerDown}
         onPointerMove={handleHandPointerMove}
@@ -292,11 +293,8 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
         onClickCapture={handleHandClickCapture}
         onClick={playSelectedCard}
       >
-        <span className="absolute top-1 left-1/2 -translate-x-1/2 text-2xs text-muted-foreground whitespace-nowrap pointer-events-none">
-          我的手牌 · {sorted.length}张
-        </span>
         <div
-          className="relative overflow-visible"
+          className="relative overflow-visible pointer-events-none"
           style={{ width: contentWidth, height: handHeight }}
         >
           <AnimatePresence mode="popLayout">
@@ -317,7 +315,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
               const boundaryOffset = boundaryOffsets[i] ?? 0;
               const x = layout.padX + i * layout.stride + boundaryOffset + localExpand;
               const angle = isActive ? 0 : (i - center) * spreadAngle * Math.min(1, layout.stride / 36);
-              const y = isActive ? 0 : (isPlayable ? ACTIVE_LIFT - 10 : ACTIVE_LIFT);
+              const y = isActive ? 0 : (isPlayable ? activeLift - 10 : activeLift);
 
               return (
                 <AnimatedCard
@@ -327,7 +325,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
                   playable={hintedIds.has(card.id)}
                   clickable={false}
                   dimmed={isDimmed}
-                  className="absolute left-0 top-8 pointer-events-none"
+                  className={`absolute left-0 ${isMobile ? 'top-2' : 'top-0'} pointer-events-none`}
                   cardClassName="!transition-none pointer-events-none"
                   forceCornerLabel
                   disableHoverLift
