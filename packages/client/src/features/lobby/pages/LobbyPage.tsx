@@ -17,6 +17,13 @@ import GameTopBar from '@/shared/components/GameTopBar';
 import ServerStatusBar from '@/shared/components/ServerStatusBar';
 import { openChangelog } from '@/shared/components/ChangelogModal';
 import { useLobbyStore } from '../stores/lobby-store';
+import { useElapsedTimer, formatElapsed } from '@/features/game/hooks/useElapsedTimer';
+
+function GameDuration({ startedAt }: { startedAt: number }) {
+  const elapsed = useElapsedTimer(startedAt);
+  if (elapsed === null) return null;
+  return <span>{formatElapsed(elapsed)}</span>;
+}
 
 export default function LobbyPage() {
   const setRoom = useRoomStore((s) => s.setRoom);
@@ -280,7 +287,7 @@ export default function LobbyPage() {
                   {room.players.map(p => p.nickname).join(' vs ')}
                 </div>
                 <div className="text-xs text-[#475569] mt-1 flex justify-between items-center">
-                  <span>{room.playerCount} 人 · {room.spectatorCount} 人观战</span>
+                  <span>{room.playerCount} 人 · {room.spectatorCount} 人观战 · <GameDuration startedAt={room.gameStartedAt} /></span>
                   <span className="text-[#fbbf24] text-xs font-semibold opacity-0 -translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-x-0">
                     观战 ›
                   </span>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, Volume2, VolumeX, Music, Spade, DoorOpen, LogOut, Bot, HelpCircle, Keyboard, Trash2 } from 'lucide-react';
+import { Eye, Volume2, VolumeX, Music, Spade, DoorOpen, LogOut, Bot, HelpCircle, Keyboard, Trash2, Wifi, Clock, RotateCw } from 'lucide-react';
 import type { Card, Color } from '@uno-online/shared';
 import TurnTimer from './TurnTimer';
 import { useSettingsStore } from '@/shared/stores/settings-store';
@@ -7,7 +7,9 @@ import { useRoomStore } from '@/shared/stores/room-store';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useLeaveRoom } from '../hooks/useLeaveRoom';
+import { useElapsedTimer, formatElapsed } from '../hooks/useElapsedTimer';
 import { getSocket } from '@/shared/socket';
+import { useServerStore } from '@/shared/stores/server-store';
 import { showConfirm } from '@/shared/stores/confirm-store';
 import { cn } from '@/shared/lib/utils';
 import { BUILD_VERSION } from '@/shared/build-info';
@@ -40,6 +42,51 @@ function getCardLabel(card: Card): string {
     case 'wild': return '变色';
     case 'wild_draw_four': return '+4';
   }
+}
+
+function getPingColor(ms: number | null | undefined) {
+  if (ms == null) return { dot: '#666', text: 'text-muted-foreground' };
+  if (ms < 50) return { dot: '#22c55e', text: 'text-green-400' };
+  if (ms <= 150) return { dot: '#fbbf24', text: 'text-yellow-400' };
+  return { dot: '#ef4444', text: 'text-red-400' };
+}
+
+function LatencyIndicator() {
+  const currentServerId = useServerStore((s) => s.currentServerId);
+  const latency = useServerStore((s) => s.latencyMap[currentServerId]);
+  const ping = getPingColor(latency);
+
+  return (
+    <span className={cn('hidden sm:inline-flex items-center gap-1 text-xs', ping.text)} title="网络延迟">
+      <Wifi size={12} />
+      <span
+        className="w-1.5 h-1.5 rounded-full"
+        style={{ background: ping.dot, boxShadow: `0 0 4px ${ping.dot}60` }}
+      />
+      {latency != null ? `${latency}ms` : '--'}
+    </span>
+  );
+}
+
+function ElapsedTimers() {
+  const gameStartedAt = useGameStore((s) => s.gameStartedAt);
+  const turnStartedAt = useGameStore((s) => s.turnStartedAt);
+  const phase = useGameStore((s) => s.phase);
+  const gameElapsed = useElapsedTimer(gameStartedAt);
+  const turnElapsed = useElapsedTimer(turnStartedAt);
+  const showTurn = turnElapsed !== null && phase !== 'round_end' && phase !== 'game_over';
+
+  if (gameElapsed === null) return null;
+
+  return (
+    <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground" title="全局计时 | 回合计时">
+      <Clock size={12} />
+      <span>{formatElapsed(gameElapsed)}</span>
+      <span className="opacity-40">|</span>
+      <RotateCw size={10} className="opacity-60" />
+      <span>{showTurn ? formatElapsed(turnElapsed) : '--:--'}</span>
+    </span>
+  );
 }
 
 function GameStatus() {
@@ -132,6 +179,8 @@ export default function TopBar({ roomCode, onOpenHotkeys }: TopBarProps) {
         <span className="font-bold text-primary font-game"><Spade size={18} className="inline align-middle" /> UNO Online</span>
         <span className="text-muted-foreground">房间: {roomCode}</span>
         <span className="text-muted-foreground/50 text-xs hidden md:inline">v{BUILD_VERSION}</span>
+        <LatencyIndicator />
+        <ElapsedTimers />
       </div>
       <GameStatus />
       <div className="flex items-center gap-3 justify-end">

@@ -35,9 +35,12 @@ export class GameSession {
   static create(players: { id: string; name: string; avatarUrl?: string | null; role?: UserRole; isBot?: boolean; botConfig?: BotConfig }[], settings?: RoomSettings): GameSession {
     const state = initializeGame(players, settings?.houseRules);
     const deckHash = GameSession.computeDeckHash(state);
+    const now = Date.now();
     const stateWithExtras = {
       ...state,
       deckHash,
+      gameStartedAt: now,
+      turnStartedAt: now,
       ...(settings ? { settings } : {}),
     };
     const session = new GameSession(stateWithExtras);
@@ -102,6 +105,8 @@ export class GameSession {
       pendingDrawPlayerId: this.state.pendingDrawPlayerId,
       lastAction: this.state.lastAction,
       ...(truncated ? { discardPileCount: fullPile.length } : {}),
+      gameStartedAt: this.state.gameStartedAt,
+      turnStartedAt: this.state.turnStartedAt,
     };
   }
 
@@ -135,7 +140,9 @@ export class GameSession {
       }
     }
 
-    this.state = newState;
+    this.state = newState.currentPlayerIndex !== prevState.currentPlayerIndex
+      ? { ...newState, turnStartedAt: Date.now() }
+      : newState;
     return { success: true, drawnCard };
   }
 
@@ -276,8 +283,9 @@ export class GameSession {
   }
 
   startNextRound(): void {
+    const gameStartedAt = this.state.gameStartedAt;
     this.state = initializeNextRound(this.state);
-    this.state = { ...this.state, deckHash: GameSession.computeDeckHash(this.state) };
+    this.state = { ...this.state, deckHash: GameSession.computeDeckHash(this.state), gameStartedAt, turnStartedAt: Date.now() };
     this.initialDeckSerialized = serializeDecks(this.state.deckLeft, this.state.deckRight);
   }
 
@@ -286,7 +294,8 @@ export class GameSession {
     const settings = this.state.settings;
     const fresh = initializeGame(players, settings.houseRules);
     const deckHash = GameSession.computeDeckHash(fresh);
-    this.state = { ...fresh, settings, deckHash, chatHistory: [] };
+    const now = Date.now();
+    this.state = { ...fresh, settings, deckHash, chatHistory: [], gameStartedAt: now, turnStartedAt: now };
     this.initialDeckSerialized = serializeDecks(fresh.deckLeft, fresh.deckRight);
   }
 
