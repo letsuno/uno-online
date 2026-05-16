@@ -7,7 +7,8 @@ import { GameSession } from '../plugins/core/game/session.js';
 import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, notifyAutopilotAction, resetPlayerTimeout } from './room-events.js';
 import { getAutopilotActionPlayerId, canPlayerAutopilotOnce } from './autopilot-action-player.js';
 import { registerGameEvents, addAutopilotVote, clearChatTimestamps, getRoundEndVoteState, getPendingSpectatorQueue, getRoundEndAt } from './game-events.js';
-import { getRoom, getRoomPlayers, setRoomOwner, clearUserRoom, getUserRoom } from '../plugins/core/room/store.js';
+import { getRoom, setRoomOwner, clearUserRoom, getUserRoom, setSeatPlayerConnected, getRoomSeats, getRoomSpectators, getSeatedPlayers } from '../plugins/core/room/store.js';
+import { registerSeatEvents, clearPendingSwapRequests, clearUserSwapRequests } from './seat-events.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
 import { loadGameState, GameStatePersister } from '../plugins/core/game/state-store.js';
 import { getActiveRooms } from '../plugins/core/spectate/routes.js';
@@ -268,8 +269,11 @@ export function setupSocketHandlers(
         await emitGameUpdate(io, roomCode, session, redis);
         io.to(roomCode).emit('player:reconnected', { playerId: userId });
         io.to(roomCode).emit('player:autopilot', { playerId: userId, enabled: false });
-        const players = await getRoomPlayers(redis, roomCode);
-        callback?.({ success: true, gameState: session.getPlayerView(userId), players, room });
+        const [seats, spectators] = await Promise.all([
+          getRoomSeats(redis, roomCode),
+          getRoomSpectators(redis, roomCode),
+        ]);
+        callback?.({ success: true, gameState: session.getPlayerView(userId), seats, spectators, room });
         socket.emit('chat:history', session.getChatHistory());
         socket.emit('room:spectator_list', { spectators: getSpectatorNames(roomCode) });
         const voteState = getRoundEndVoteState(roomCode, session);
@@ -281,23 +285,36 @@ export function setupSocketHandlers(
           startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
         }
       } else {
-        const players = await getRoomPlayers(redis, roomCode);
-        const alreadyInRoom = players.some(p => p.userId === userId);
-        if (!alreadyInRoom) {
+        const seats = await getRoomSeats(redis, roomCode);
+        const spectators = await getRoomSpectators(redis, roomCode);
+        const isSeated = seats.some(s => s !== null && s.userId === userId);
+        const isSpectator = spectators.some(s => s.userId === userId);
+
+        if (!isSeated && !isSpectator) {
+          // Re-add as spectator
           try {
             await roomManager.joinRoom(roomCode, userId, socket.data.user.nickname, socket.data.user.avatarUrl, socket.data.user.role, socket.data.user.isBot);
           } catch {
             return callback?.({ success: false, error: 'Cannot rejoin room' });
           }
         }
+
+        if (isSeated) {
+          await setSeatPlayerConnected(redis, roomCode, userId, true);
+        }
+
         await joinRoomSocket(redis, socket, roomCode);
-        const updatedPlayers = await getRoomPlayers(redis, roomCode);
-        io.to(roomCode).emit('room:updated', { players: updatedPlayers, room });
-        callback?.({ success: true, players: updatedPlayers, room });
+        const [updatedSeats, updatedSpectators] = await Promise.all([
+          getRoomSeats(redis, roomCode),
+          getRoomSpectators(redis, roomCode),
+        ]);
+        io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators: updatedSpectators });
+        callback?.({ success: true, seats: updatedSeats, spectators: updatedSpectators, room });
       }
     });
 
     registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions, persister, voiceChannels);
+    registerSeatEvents(socket, io, redis);
     registerGameEvents(socket, io, redis, turnTimer, sessions, persister);
     registerInteractionEvents(socket, io);
     registerVoicePresenceEvents(socket, io, (roomCode) => voiceChannels.getRoomChannel(roomCode));
@@ -415,8 +432,9 @@ export function setupSocketHandlers(
               if (!nextOwner) return;
               await setRoomOwner(redis, roomCode, nextOwner.id);
               const updatedRoom = await getRoom(redis, roomCode);
-              const rp = await getRoomPlayers(redis, roomCode);
-              io.to(roomCode).emit('room:updated', { players: rp, room: updatedRoom });
+              const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
+              io.to(roomCode).emit('seat:updated', { seats, spectators });
+              io.to(roomCode).emit('room:updated', { room: updatedRoom });
             }, OWNER_TRANSFER_DELAY_S * 1000);
             timer.unref?.();
             ownerTransferTimers.set(roomCode, timer);
@@ -425,8 +443,9 @@ export function setupSocketHandlers(
             if (nextOwner) {
               await setRoomOwner(redis, roomCode, nextOwner.id);
               const updatedRoom = await getRoom(redis, roomCode);
-              const rp = await getRoomPlayers(redis, roomCode);
-              io.to(roomCode).emit('room:updated', { players: rp, room: updatedRoom });
+              const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
+              io.to(roomCode).emit('seat:updated', { seats, spectators });
+              io.to(roomCode).emit('room:updated', { room: updatedRoom });
             }
           }
         }
@@ -448,6 +467,15 @@ export function setupSocketHandlers(
         }, RECONNECT_TIMEOUT_MS);
         disconnectTimers.set(userId, timer);
       } else {
+        // Mark player as disconnected in seat (also cancels ready)
+        await setSeatPlayerConnected(redis, roomCode, userId, false);
+        clearUserSwapRequests(roomCode, userId);
+        const [disconnectSeats, disconnectSpectators] = await Promise.all([
+          getRoomSeats(redis, roomCode),
+          getRoomSpectators(redis, roomCode),
+        ]);
+        io.to(roomCode).emit('seat:updated', { seats: disconnectSeats, spectators: disconnectSpectators });
+
         // Start reconnect window before removing from room
         const timer = setTimeout(async () => {
           disconnectTimers.delete(userId);
@@ -456,11 +484,16 @@ export function setupSocketHandlers(
             clearUserRoom(redis, userId),
           ]);
           if (!deleted) {
-            const [room, players] = await Promise.all([
+            const [room, seats, spectators] = await Promise.all([
               getRoom(redis, roomCode),
-              getRoomPlayers(redis, roomCode),
+              getRoomSeats(redis, roomCode),
+              getRoomSpectators(redis, roomCode),
             ]);
-            io.to(roomCode).emit('room:updated', { players, room });
+            io.to(roomCode).emit('seat:updated', { seats, spectators });
+            // If leaver was owner, room:updated already emitted by leaveRoom's transfer
+            if (room) {
+              io.to(roomCode).emit('room:updated', { room });
+            }
           } else {
             // Route through dissolveRoom to stay in sync with the other
             // dissolve sites — chiefly so the Mumble channel actually gets

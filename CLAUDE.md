@@ -77,7 +77,7 @@ src/
 ├── socket-client.ts      # Socket.IO 客户端封装
 ├── notifications.ts      # Socket.IO 事件 → MCP 通知
 ├── tools/
-│   ├── room.ts           # 8 个房间管理工具
+│   ├── room.ts           # 10 个房间管理工具
 │   ├── game.ts           # 11 个游戏操作工具
 │   └── query.ts          # 4 个查询工具
 └── types.ts

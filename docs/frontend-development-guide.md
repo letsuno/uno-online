@@ -29,7 +29,10 @@ packages/client/src/
       pages/
       stores/             # game-store, game-log-store, chat-store
       components/         # GameTable, PlayerNode, DrawPile, DiscardPile,
-                          # DirectionIndicator, TurnIndicator, HandSwapAnimation 等
+                          # DirectionIndicator, TurnIndicator, HandSwapAnimation,
+                          # Seat（空位/已入座/Bot/断线状态）, SeatCircle（圆桌座位环形布局）,
+                          # SpectatorBar（观战席横排）, SettingsDrawer（右侧滑出设置面板）,
+                          # SwapRequestDialog（换座请求确认弹窗）等
       hooks/              # usePlayableCardIds, usePlayerLayout, useDrawAnimation,
                           # useChatBubbles 等
       routes.tsx
@@ -39,7 +42,7 @@ packages/client/src/
     components/ui/        # 通用 UI 组件（Button, Input, GoogleRing）
     components/           # 共享布局组件（Toast, ProtectedRoute, ServerButton, ServerSelectModal, ChangelogModal）
     lib/                  # 工具函数（cn, getRoleColor）
-    stores/               # 全局 store（toast, settings, room, server）
+    stores/               # 全局 store（toast, settings, room, server）；room store 包含 `seats: RoomSeats`、`spectators: RoomSpectator[]`（替代原 `players: RoomPlayer[]`）
     utils/                # 工具函数（card-images, playable-cards, image-compress）
     data/                 # 静态数据（changelog）
     sound/                # 音效管理

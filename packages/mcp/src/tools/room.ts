@@ -72,4 +72,17 @@ export function registerRoomTools(server: McpUnoServer): void {
     { targetId: z.string().describe('目标玩家 ID') },
     (args) => wrapTool(() => server.getClient().kickPlayer({ targetId: args.targetId })),
   );
+
+  mcp.tool(
+    'take_seat',
+    '入座指定座位（0-9），加入房间后默认在观战席',
+    { seatIndex: z.number().min(0).max(9).describe('座位号（0-9）') },
+    (args) => wrapTool(() => server.getClient().takeSeat(args.seatIndex)),
+  );
+
+  mcp.tool(
+    'leave_seat',
+    '离开座位回到观战席',
+    () => wrapTool(() => server.getClient().leaveSeat()),
+  );
 }

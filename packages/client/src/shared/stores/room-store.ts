@@ -1,55 +1,46 @@
 import { create } from 'zustand';
-import type { RoomSettings, BotConfig } from '@uno-online/shared';
+import type { RoomSeatPlayer, RoomSpectator, RoomSeats } from '@uno-online/shared';
+import { SEAT_COUNT } from '@uno-online/shared';
 
-export interface RoomPlayer {
-  userId: string;
-  nickname: string;
-  avatarUrl?: string | null;
-  ready: boolean;
-  spectator?: boolean;
-  role?: string;
-  isBot: boolean;
-  botConfig?: BotConfig;
-}
+export type { RoomSeatPlayer, RoomSpectator, RoomSeats };
+export type RoomPlayer = RoomSeatPlayer;
 
-export interface RoomData {
+interface RoomData {
   ownerId: string;
   status: string;
-  settings: RoomSettings;
+  settings: Record<string, unknown>;
 }
 
 interface RoomState {
   roomCode: string | null;
-  players: RoomPlayer[];
+  seats: RoomSeats;
+  spectators: RoomSpectator[];
   room: RoomData | null;
-  setRoom: (roomCode: string, players: RoomPlayer[], room: RoomData | null) => void;
-  updateRoom: (data: { players?: RoomPlayer[]; room?: RoomData }) => void;
+  setRoom: (roomCode: string, seats: RoomSeats, spectators: RoomSpectator[], room: RoomData) => void;
+  updateSeats: (data: { seats: RoomSeats; spectators: RoomSpectator[] }) => void;
+  updateRoom: (data: { room?: RoomData }) => void;
   clearRoom: () => void;
 }
 
-function dedup(players: RoomPlayer[]): RoomPlayer[] {
-  const seen = new Set<string>();
-  return players.filter((p) => {
-    if (seen.has(p.userId)) return false;
-    seen.add(p.userId);
-    return true;
-  });
+function emptySeats(): RoomSeats {
+  return Array.from({ length: SEAT_COUNT }, () => null);
 }
 
 export const useRoomStore = create<RoomState>((set) => ({
-  roomCode: localStorage.getItem('roomCode'),
-  players: [],
+  roomCode: null,
+  seats: emptySeats(),
+  spectators: [],
   room: null,
-  setRoom: (roomCode, players, room) => {
-    localStorage.setItem('roomCode', roomCode);
-    set({ roomCode, players: dedup(players), room });
+  setRoom: (roomCode, seats, spectators, room) => {
+    localStorage.setItem('lastRoomCode', roomCode);
+    set({ roomCode, seats, spectators, room: room as RoomData });
   },
+  updateSeats: (data) => set({ seats: data.seats, spectators: data.spectators }),
   updateRoom: (data) => set((state) => ({
-    players: dedup(data.players ?? state.players),
-    room: data.room ?? state.room,
+    room: data.room ? data.room as RoomData : state.room,
   })),
   clearRoom: () => {
-    localStorage.removeItem('roomCode');
-    set({ roomCode: null, players: [], room: null });
+    localStorage.removeItem('lastRoomCode');
+    set({ roomCode: null, seats: emptySeats(), spectators: [], room: null });
   },
 }));

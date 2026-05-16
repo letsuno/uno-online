@@ -26,8 +26,8 @@ export function useGameSocket(roomCode: string | undefined) {
     if (!phase && roomCode) {
       socket.emit('room:rejoin', roomCode, (res: any) => {
         if (res.success && res.gameState) {
-          if (roomCode && res.players && res.room) {
-            setRoom(roomCode, res.players, res.room);
+          if (roomCode && res.seats && res.room) {
+            setRoom(roomCode, res.seats, res.spectators ?? [], res.room);
           }
           if (res.isSpectator) {
             useGameStore.getState().setSpectator(true);
@@ -74,8 +74,8 @@ export function useGameSocket(roomCode: string | undefined) {
         const socket = getSocket();
         socket.emit('room:rejoin', roomCode, (res: any) => {
           if (res.success && res.gameState) {
-            if (res.players && res.room) {
-              setRoom(roomCode, res.players, res.room);
+            if (res.seats && res.room) {
+              setRoom(roomCode, res.seats, res.spectators ?? [], res.room);
             }
             if (res.isSpectator) {
               useGameStore.getState().setSpectator(true);

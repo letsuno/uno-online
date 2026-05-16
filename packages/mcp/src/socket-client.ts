@@ -173,6 +173,14 @@ export class UnoSocketClient {
     return this.request('game:kick_player', payload);
   }
 
+  takeSeat(seatIndex: number): Promise<Record<string, unknown>> {
+    return this.request('seat:take', seatIndex);
+  }
+
+  leaveSeat(): Promise<Record<string, unknown>> {
+    return this.request('seat:leave');
+  }
+
   rematch(): Promise<Record<string, unknown>> {
     return this.request('game:rematch');
   }

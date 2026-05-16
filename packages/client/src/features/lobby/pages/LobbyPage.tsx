@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, X, ClipboardPaste, Music, Volume2, VolumeX, ArrowRight, BookOpen, Sparkles } from 'lucide-react';
 import { useRoomStore } from '@/shared/stores/room-store';
+import { SEAT_COUNT } from '@uno-online/shared';
 import { useSettingsStore } from '@/shared/stores/settings-store';
 import { loadCardPack, clearCardPack, isPackLoaded } from '@/shared/utils/card-images';
 import { getSocket, connectSocket } from '@/shared/socket';
@@ -42,7 +43,7 @@ export default function LobbyPage() {
     const checkRoom = () => {
       socket.emit('user:current_room', (res) => {
         if (cancelled || !res.roomCode) return;
-        setRoom(res.roomCode, [], null);
+        localStorage.setItem('lastRoomCode', res.roomCode);
         navigate(`/room/${res.roomCode}`);
       });
     };
@@ -59,8 +60,8 @@ export default function LobbyPage() {
     connectSocket();
     getSocket().emit('room:create', {}, (res: any) => {
       setLoading(false);
-      if (res.success) {
-        setRoom(res.roomCode, res.players, res.room);
+      if (res.success && res.roomCode) {
+        setRoom(res.roomCode, Array.from({ length: SEAT_COUNT }, () => null), [], res.room as any ?? { ownerId: '', status: 'waiting', settings: {} });
         navigate(`/room/${res.roomCode}`);
       }
     });
@@ -92,7 +93,7 @@ export default function LobbyPage() {
     getSocket().emit('room:join', code, (res: any) => {
       setLoading(false);
       if (res.success) {
-        setRoom(code, res.players, res.room);
+        setRoom(code, Array.from({ length: SEAT_COUNT }, () => null), [], res.room as any ?? { ownerId: '', status: 'waiting', settings: {} });
         navigate(res.rejoin ? `/game/${code}` : `/room/${code}`);
       } else {
         setError(res.error || '加入失败');

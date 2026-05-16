@@ -3,15 +3,21 @@ import { MemoryKvStore } from '../../src/kv/memory';
 import {
   createRoom,
   getRoom,
-  addPlayerToRoom,
-  removePlayerFromRoom,
-  getRoomPlayers,
-  setPlayerReady,
   deleteRoom,
+  getRoomSeats,
+  takeSeat,
+  leaveSeat,
+  setSeatPlayerReady,
+  getSeatedPlayers,
 } from '../../src/plugins/core/room/store';
+import type { RoomSeatPlayer } from '../../src/plugins/core/room/store';
 
 const kv = new MemoryKvStore();
 const TEST_CODE = 'TEST01';
+
+function makePlayer(userId: string, username: string): RoomSeatPlayer {
+  return { userId, nickname: username, avatarUrl: null, ready: false, connected: true, role: 'normal', isBot: false };
+}
 
 beforeEach(async () => {
   const keys = await kv.keys(`room:${TEST_CODE}*`);
@@ -31,40 +37,43 @@ describe('room-store', () => {
     expect(room!.status).toBe('waiting');
   });
 
-  it('adds and lists players', async () => {
+  it('adds and lists players via seats', async () => {
     await createRoom(kv, TEST_CODE, 'owner-1', { turnTimeLimit: 30, targetScore: 500 });
-    await addPlayerToRoom(kv, TEST_CODE, { userId: 'p1', username: 'Alice' });
-    await addPlayerToRoom(kv, TEST_CODE, { userId: 'p2', username: 'Bob' });
+    await takeSeat(kv, TEST_CODE, 0, makePlayer('p1', 'Alice'));
+    await takeSeat(kv, TEST_CODE, 1, makePlayer('p2', 'Bob'));
 
-    const players = await getRoomPlayers(kv, TEST_CODE);
+    const seats = await getRoomSeats(kv, TEST_CODE);
+    const players = getSeatedPlayers(seats);
     expect(players).toHaveLength(2);
     expect(players[0]!.userId).toBe('p1');
     expect(players[1]!.userId).toBe('p2');
   });
 
-  it('removes a player', async () => {
+  it('removes a player from their seat', async () => {
     await createRoom(kv, TEST_CODE, 'owner-1', { turnTimeLimit: 30, targetScore: 500 });
-    await addPlayerToRoom(kv, TEST_CODE, { userId: 'p1', username: 'Alice' });
-    await addPlayerToRoom(kv, TEST_CODE, { userId: 'p2', username: 'Bob' });
+    await takeSeat(kv, TEST_CODE, 0, makePlayer('p1', 'Alice'));
+    await takeSeat(kv, TEST_CODE, 1, makePlayer('p2', 'Bob'));
 
-    await removePlayerFromRoom(kv, TEST_CODE, 'p1');
-    const players = await getRoomPlayers(kv, TEST_CODE);
+    await leaveSeat(kv, TEST_CODE, 'p1');
+    const seats = await getRoomSeats(kv, TEST_CODE);
+    const players = getSeatedPlayers(seats);
     expect(players).toHaveLength(1);
     expect(players[0]!.userId).toBe('p2');
   });
 
   it('sets player ready', async () => {
     await createRoom(kv, TEST_CODE, 'owner-1', { turnTimeLimit: 30, targetScore: 500 });
-    await addPlayerToRoom(kv, TEST_CODE, { userId: 'p1', username: 'Alice' });
+    await takeSeat(kv, TEST_CODE, 0, makePlayer('p1', 'Alice'));
 
-    await setPlayerReady(kv, TEST_CODE, 'p1', true);
-    const players = await getRoomPlayers(kv, TEST_CODE);
+    await setSeatPlayerReady(kv, TEST_CODE, 'p1', true);
+    const seats = await getRoomSeats(kv, TEST_CODE);
+    const players = getSeatedPlayers(seats);
     expect(players[0]!.ready).toBe(true);
   });
 
   it('deletes a room and its players', async () => {
     await createRoom(kv, TEST_CODE, 'owner-1', { turnTimeLimit: 30, targetScore: 500 });
-    await addPlayerToRoom(kv, TEST_CODE, { userId: 'p1', username: 'Alice' });
+    await takeSeat(kv, TEST_CODE, 0, makePlayer('p1', 'Alice'));
 
     await deleteRoom(kv, TEST_CODE);
     const room = await getRoom(kv, TEST_CODE);

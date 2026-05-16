@@ -52,6 +52,7 @@ packages/server/src/
     room-events.ts        # 房间 WS 事件
     room-lifecycle.ts     # 房间生命周期（闲置清理）
     game-events.ts        # 游戏 WS 事件
+    seat-events.ts        # 座位事件处理（入座、离座、换座）
     rate-limiter.ts       # WS 速率限制
     types.ts              # SocketData 等共享类型
   auth/                   # 认证基础设施
@@ -126,7 +127,7 @@ export async function loadPlugins(fastify, ctx) {
 | 函数/变量 | camelCase | `createRoom`, `getRoomPlayers` |
 | 类 | PascalCase | `GameSession`, `RoomManager` |
 | 接口 | PascalCase | `PluginContext`, `SocketData` |
-| 常量 | UPPER_SNAKE_CASE | `MAX_PLAYERS`, `THROW_COOLDOWN_MS` |
+| 常量 | UPPER_SNAKE_CASE | `MAX_PLAYERS`, `THROW_COOLDOWN_MS`, `SEAT_COUNT`, `SWAP_COOLDOWN_MS`, `SWAP_REQUEST_TIMEOUT_MS` |
 | 路由路径 | kebab-case | `/auth/dev-login`, `/admin/users/:id/role` |
 
 ## 类型定义
@@ -173,8 +174,9 @@ export async function loadPlugins(fastify, ctx) {
 
 ### 事件命名
 - 格式: `domain:action`（如 `room:create`, `game:play_card`, `chat:message`）
-- 域: `room`, `game`, `voice`, `chat`, `throw`, `player`
+- 域: `room`, `game`, `voice`, `chat`, `throw`, `player`, `seat`
 - `player` 域事件: `player:disconnected`, `player:reconnected`, `player:timeout`, `player:autopilot`, `player:toggle-autopilot`
+- `seat` 域事件（客户端→服务端）: `seat:take`, `seat:leave`, `seat:swap_request`, `seat:swap_respond`；（服务端→客户端）: `seat:updated`, `seat:swap_requested`, `seat:swap_resolved`
 
 ### 事件处理模式
 ```typescript
