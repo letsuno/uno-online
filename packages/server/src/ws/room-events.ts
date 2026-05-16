@@ -3,19 +3,19 @@ import type { KvStore } from '../kv/types.js';
 import type { GameAction, GameState, RoomSettings, BotDifficulty } from '@uno-online/shared';
 import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction, chooseBotAction, getPlayableCards, DIFFICULTY_PARAMS, BOT_DIFFICULTIES } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager.js';
-import { getRoom, getRoomSeats, getRoomSpectators, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, ensureNotInRoom, removeSpectatorFromRoom, getSeatedPlayers } from '../plugins/core/room/store.js';
+import { getRoom, getRoomSeats, getRoomSpectators, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, ensureNotInRoom, removeSpectatorFromRoom, clearRoomSpectators, getSeatedPlayers } from '../plugins/core/room/store.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
 import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import type { VoiceChannelManager } from '../voice/channel-manager.js';
-import { removePlayerVote, emitTerminalStateIfNeeded } from './game-events.js';
+import { removePlayerVote, emitTerminalStateIfNeeded, addAutopilotVote } from './game-events.js';
 import type { SocketData } from './types.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { removeVoicePresence, setForceMuted } from './voice-presence.js';
 import { broadcastLobbyRooms } from '../plugins/core/spectate/routes.js';
 import { getAutopilotActionPlayerId } from './autopilot-action-player.js';
-import { addSpectator, broadcastSpectatorLeft } from '../plugins/core/spectate/ws.js';
+import { broadcastSpectatorLeft, broadcastSpectatorList } from '../plugins/core/spectate/ws.js';
 import { addBot, removeBot, setBotDifficulty, calculateBotDelay } from './bot-manager.js';
 import { checkBotUnoCatch, checkBotJumpIn, clearBotTimers } from './bot-uno-watcher.js';
 
@@ -152,17 +152,16 @@ export function registerRoomEvents(
     if (!roomCode) return callback?.({ success: false, error: 'Not in a room' });
 
     const spectators = await getRoomSpectators(redis, roomCode);
-    const isRoomSpectator = spectators.some(s => s.userId === data.user.userId);
+    const isRoomSpectator = spectators.some(s => s.userId === data.user.userId) || data.isSpectator;
 
     if (isRoomSpectator) {
       const { userId, nickname } = data.user;
 
       const seats = await getRoomSeats(redis, roomCode);
       const seatedPlayers = getSeatedPlayers(seats);
-      const remainingHumans = [...seatedPlayers.filter(p => !p.isBot), ...spectators.filter(s => s.userId !== userId)];
+      const hasHumanPlayers = seatedPlayers.some(p => !p.isBot);
 
-      // No humans will remain after this spectator leaves — dissolve
-      if (remainingHumans.length === 0) {
+      if (seatedPlayers.length === 0 || !hasHumanPlayers) {
         await leaveRoomSocket(redis, socket, roomCode);
         await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
         return callback?.({ success: true, dissolved: true });
@@ -181,56 +180,43 @@ export function registerRoomEvents(
 
       await removeSpectatorFromRoom(redis, roomCode, userId);
       await leaveRoomSocket(redis, socket, roomCode);
-      broadcastSpectatorLeft(io, roomCode, userId, nickname);
+      await broadcastSpectatorLeft(io, redis, roomCode, userId, nickname);
       const [updatedSeats, updatedSpectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
       io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators: updatedSpectators });
       return callback?.({ success: true });
     }
+    const session = sessions.get(roomCode);
+
+    // During an active game, treat "leave" as a disconnect — mark offline and
+    // let the normal timeout → autopilot → removal flow handle it, instead of
+    // ripping the player out mid-game.
+    if (session) {
+      session.setPlayerConnected(data.user.userId, false);
+      session.setPlayerAutopilot(data.user.userId, true);
+      persister.markDirty(roomCode, session.getFullState());
+      await persister.flushNow(roomCode);
+      await emitGameUpdate(io, roomCode, session, redis);
+      io.to(roomCode).emit('player:disconnected', { playerId: data.user.userId });
+      io.to(roomCode).emit('player:autopilot', { playerId: data.user.userId, enabled: true });
+      removeVoicePresence(io, roomCode, data.user.userId);
+      await leaveRoomSocket(redis, socket, roomCode);
+      addAutopilotVote(roomCode, data.user.userId, session, io);
+      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
+      return callback?.({ success: true });
+    }
+
+    // No active game — normal leave flow (waiting room)
     const room = await getRoom(redis, roomCode);
     const wasOwner = room?.ownerId === data.user.userId;
     const { deleted } = await roomManager.leaveRoom(roomCode, data.user.userId);
     removeVoicePresence(io, roomCode, data.user.userId);
     await leaveRoomSocket(redis, socket, roomCode);
 
-    // Room is now empty — do full cleanup (notify any external spectators,
-    // tear down session/timers/voice/chat).
     if (deleted) {
       await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
       return callback?.({ success: true, dissolved: true });
     }
 
-    const session = sessions.get(roomCode);
-    if (session) {
-      const willEndGame = session.getPlayerCount() - 1 < MIN_PLAYERS;
-
-      if (willEndGame) {
-        const st = session.getFullState();
-        const lastPlayer = st.players.find(p => p.id !== data.user.userId);
-        if (lastPlayer) {
-          session.forceGameOver(lastPlayer.id);
-          turnTimer.stop(roomCode);
-            session.removePlayer(data.user.userId);
-          io.to(roomCode).emit('game:over', {
-            winnerId: lastPlayer.id,
-            scores: Object.fromEntries(st.players.map((p) => [p.id, p.score])),
-            gameOverAt: Date.now(),
-          });
-        } else {
-          turnTimer.stop(roomCode);
-          session.removePlayer(data.user.userId);
-        }
-      } else {
-        session.removePlayer(data.user.userId);
-        removePlayerVote(roomCode, data.user.userId, session, io);
-      }
-
-      persister.markDirty(roomCode, session.getFullState());
-      await persister.flushNow(roomCode);
-      await emitGameUpdate(io, roomCode, session, redis);
-    }
-
-    // If the leaver was the owner, manager.leaveRoom has just transferred
-    // ownership to players[0]; the cached `room` still has the stale ownerId.
     const updatedRoom = wasOwner ? await getRoom(redis, roomCode) : room;
     const [seats, updatedSpectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
     io.to(roomCode).emit('seat:updated', { seats, spectators: updatedSpectators });
@@ -462,7 +448,6 @@ export function registerRoomEvents(
       const sData = s.data as SocketData;
       if (spectators.some(sp => sp.userId === sData.user.userId)) {
         sData.isSpectator = true;
-        addSpectator(roomCode, sData.user.userId, sData.user.nickname, sData.user.avatarUrl);
         s.emit('game:state', session.getSpectatorView(spectatorMode));
       } else {
         s.emit('game:state', session.getPlayerView(sData.user.userId));

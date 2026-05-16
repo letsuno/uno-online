@@ -1,65 +1,28 @@
 import type { Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../../../kv/types.js';
 import type { SocketData } from '../../../ws/types.js';
-import { deleteRoom, getRoom, clearUserRoom, ensureNotInRoom } from '../room/store.js';
+import { deleteRoom, getRoom, clearUserRoom, ensureNotInRoom, getRoomSpectators, addSpectatorToRoom } from '../room/store.js';
 import { GameSession } from '../game/session.js';
 import { loadGameState } from '../game/state-store.js';
 import { removePendingSpectatorJoin, getPendingSpectatorQueue } from '../../../ws/game-events.js';
 import { joinRoomSocket } from '../../../ws/socket-room.js';
 
-interface SpectatorInfo {
-  nickname: string;
-  avatarUrl?: string | null;
+function toSpectatorView(spectators: import('../room/store.js').RoomSpectator[]) {
+  return spectators.map(s => ({ nickname: s.nickname, avatarUrl: s.avatarUrl, connected: s.connected }));
 }
 
-// Keyed by userId — nicknames aren't enforced unique at signup. Single
-// socket per user is enforced at connection time, so no ref-counting.
-const roomSpectators = new Map<string, Map<string, SpectatorInfo>>();
-
-export function getSpectatorNames(roomCode: string): SpectatorInfo[] {
-  return [...(roomSpectators.get(roomCode)?.values() ?? [])];
+export async function broadcastSpectatorList(io: SocketIOServer, kv: KvStore, roomCode: string): Promise<void> {
+  const spectators = toSpectatorView(await getRoomSpectators(kv, roomCode));
+  io.to(roomCode).emit('room:spectator_list', { spectators });
 }
 
-export function clearRoomSpectators(roomCode: string): void {
-  roomSpectators.delete(roomCode);
-}
-
-/** Idempotent on `(roomCode, userId)`; refreshes the stored info. */
-export function addSpectator(roomCode: string, userId: string, nickname: string, avatarUrl?: string | null): void {
-  let room = roomSpectators.get(roomCode);
-  if (!room) {
-    room = new Map();
-    roomSpectators.set(roomCode, room);
-  }
-  room.set(userId, { nickname, avatarUrl });
-}
-
-/** Returns the removed nickname, or `null` if the user wasn't tracked. */
-export function removeSpectator(roomCode: string, userId: string): string | null {
-  const room = roomSpectators.get(roomCode);
-  if (!room) return null;
-  const info = room.get(userId);
-  if (info == null) return null;
-  room.delete(userId);
-  if (room.size === 0) roomSpectators.delete(roomCode);
-  return info.nickname;
-}
-
-export function broadcastSpectatorList(io: SocketIOServer, roomCode: string): void {
-  io.to(roomCode).emit('room:spectator_list', { spectators: getSpectatorNames(roomCode) });
-}
-
-/**
- * Drains the user from both the pending-join queue and the registry, then
- * broadcasts. Warns on untracked users — every caller's precondition
- * (`data.isSpectator === true`) implies they must be tracked.
- */
-export function broadcastSpectatorLeft(
+export async function broadcastSpectatorLeft(
   io: SocketIOServer,
+  kv: KvStore,
   roomCode: string,
   userId: string,
   nickname: string,
-): void {
+): Promise<void> {
   if (removePendingSpectatorJoin(roomCode, userId)) {
     io.to(roomCode).emit('game:spectator_queue', {
       queue: getPendingSpectatorQueue(roomCode),
@@ -67,14 +30,9 @@ export function broadcastSpectatorLeft(
       joined: false,
     });
   }
-  const removed = removeSpectator(roomCode, userId);
-  if (removed == null) {
-    console.warn('[spectate] broadcastSpectatorLeft called for untracked user', { roomCode, userId });
-    return;
-  }
-  const spectators = getSpectatorNames(roomCode);
+  const spectators = toSpectatorView(await getRoomSpectators(kv, roomCode));
   io.to(roomCode).emit('room:spectator_list', { spectators });
-  io.to(roomCode).emit('room:spectator_left', { nickname: removed, spectators });
+  io.to(roomCode).emit('room:spectator_left', { nickname, spectators });
 }
 
 export function setupSpectateHandlers(
@@ -124,13 +82,19 @@ export function setupSpectateHandlers(
 
       await joinRoomSocket(kv, socket, roomCode, { asSpectator: true });
 
-      addSpectator(roomCode, data.user.userId, data.user.nickname, data.user.avatarUrl);
+      await addSpectatorToRoom(kv, roomCode, {
+        userId: data.user.userId,
+        nickname: data.user.nickname,
+        avatarUrl: data.user.avatarUrl,
+        role: data.user.role,
+        connected: true,
+      });
 
       const view = session.getSpectatorView(room.settings.spectatorMode);
       socket.emit('game:state', view);
       socket.emit('chat:history', session.getChatHistory());
 
-      const spectators = getSpectatorNames(roomCode);
+      const spectators = toSpectatorView(await getRoomSpectators(kv, roomCode));
       io.to(roomCode).emit('room:spectator_list', { spectators });
       socket.to(roomCode).emit('room:spectator_joined', {
         nickname: data.user.nickname,
@@ -140,14 +104,7 @@ export function setupSpectateHandlers(
       callback?.({ success: true });
     });
 
-    socket.on('disconnect', () => {
-      const data = socket.data as SocketData;
-      if (!data.isSpectator || !data.roomCode || !data.user) return;
-      const { userId, nickname } = data.user;
-      broadcastSpectatorLeft(io, data.roomCode, userId, nickname);
-      clearUserRoom(kv, userId).catch((err) => {
-        console.warn('[spectate] clearUserRoom on disconnect failed:', err);
-      });
-    });
+    // Spectator disconnect is handled by the unified disconnect handler in
+    // socket-handler.ts — same timeout/reconnect flow as seated players.
   });
 }

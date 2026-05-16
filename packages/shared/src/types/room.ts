@@ -18,4 +18,6 @@ export interface RoomSpectator {
   nickname: string;
   avatarUrl?: string | null;
   role?: string;
+  connected: boolean;
+  disconnectedAt?: number;
 }

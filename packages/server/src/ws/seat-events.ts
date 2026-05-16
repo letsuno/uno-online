@@ -12,7 +12,7 @@ import {
   addSpectatorToRoom,
   touchRoomActivity,
 } from '../plugins/core/room/store.js';
-import type { RoomSeatPlayer, RoomSpectator } from '../plugins/core/room/store.js';
+import type { RoomSeatPlayer } from '../plugins/core/room/store.js';
 import type { SocketData } from './types.js';
 
 // ─── In-memory state ──────────────────────────────────────────────────────────
@@ -70,10 +70,8 @@ export function clearUserSwapRequests(roomCode: string, userId: string): void {
 }
 
 async function emitSeatUpdate(io: SocketIOServer, kv: KvStore, roomCode: string): Promise<void> {
-  const [seats, spectators] = await Promise.all([
-    getRoomSeats(kv, roomCode),
-    getRoomSpectators(kv, roomCode),
-  ]);
+  const seats = await getRoomSeats(kv, roomCode);
+  const spectators = await getRoomSpectators(kv, roomCode);
   io.to(roomCode).emit('seat:updated', { seats, spectators });
 }
 
@@ -108,10 +106,8 @@ export function registerSeatEvents(
         return callback({ success: false, error: '操作太频繁，请稍后再试' });
       }
 
-      const [seats, spectators] = await Promise.all([
-        getRoomSeats(redis, roomCode),
-        getRoomSpectators(redis, roomCode),
-      ]);
+      const seats = await getRoomSeats(redis, roomCode);
+      const spectators = await getRoomSpectators(redis, roomCode);
 
       if (seats[seatIndex] !== null) {
         return callback({ success: false, error: '该座位已被占用' });
@@ -192,13 +188,13 @@ export function registerSeatEvents(
 
       await leaveSeat(redis, roomCode, userId);
 
-      const spectator: RoomSpectator = {
+      await addSpectatorToRoom(redis, roomCode, {
         userId: data.user.userId,
         nickname: data.user.nickname,
         avatarUrl: data.user.avatarUrl ?? null,
         role: data.user.role,
-      };
-      await addSpectatorToRoom(redis, roomCode, spectator);
+        connected: true,
+      });
 
       // Clear any pending swap requests where this user is the requester
       clearUserSwapRequests(roomCode, userId);
