@@ -1,19 +1,22 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, X } from 'lucide-react';
+import { useAuthStore } from '@/features/auth/stores/auth-store';
 
 export default function NotificationPermissionDialog() {
   const [open, setOpen] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>('default');
+  const token = useAuthStore((s) => s.token);
 
   useEffect(() => {
+    if (!token) return;
     if (typeof Notification === 'undefined') return;
     const current = Notification.permission;
     setPermission(current);
     if (current !== 'granted') {
       setOpen(true);
     }
-  }, []);
+  }, [token]);
 
   const handleRequest = async () => {
     if (typeof Notification === 'undefined') return;
