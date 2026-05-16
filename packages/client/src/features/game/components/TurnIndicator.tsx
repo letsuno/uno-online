@@ -1,7 +1,10 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
+import { Bot } from 'lucide-react';
+import type { BotDifficulty } from '@uno-online/shared';
 import { useCountdown } from '../hooks/useCountdown';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
+import { DIFFICULTY_DISPLAY } from '../constants/bot-difficulty';
 import GoogleRing from '@/shared/components/ui/GoogleRing';
 import { cn } from '@/shared/lib/utils';
 import { AiBadge } from '@/shared/components/ui/AiBadge';
@@ -16,9 +19,10 @@ interface TurnIndicatorProps {
   phase: string | null;
   cy: number;
   isBot?: boolean;
+  botDifficulty?: BotDifficulty;
 }
 
-function TurnIndicator({ playerName, avatarUrl, playerIndex, isMe, turnEndTime, phase, cy, isBot }: TurnIndicatorProps) {
+function TurnIndicator({ playerName, avatarUrl, playerIndex, isMe, turnEndTime, phase, cy, isBot, botDifficulty }: TurnIndicatorProps) {
   const secondsLeft = useCountdown(turnEndTime);
 
   let label: string;
@@ -46,21 +50,40 @@ function TurnIndicator({ playerName, avatarUrl, playerIndex, isMe, turnEndTime, 
       <div className="flex items-center gap-2">
         <div
           className="relative w-7 h-7 rounded-full flex items-center justify-center text-xs overflow-hidden"
-          style={{ background: AVATAR_COLORS[playerIndex % AVATAR_COLORS.length] }}
+          style={{
+            background: botDifficulty
+              ? DIFFICULTY_DISPLAY[botDifficulty].avatarBg
+              : AVATAR_COLORS[playerIndex % AVATAR_COLORS.length],
+          }}
         >
-          <span>{AVATAR_EMOJIS[playerIndex % AVATAR_EMOJIS.length]}</span>
-          {avatarUrl && (
-            <img
-              src={avatarUrl}
-              alt={playerName}
-              className="absolute inset-0 w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
+          {botDifficulty ? (
+            <Bot size={15} className="text-white drop-shadow-sm" />
+          ) : (
+            <>
+              <span>{AVATAR_EMOJIS[playerIndex % AVATAR_EMOJIS.length]}</span>
+              {avatarUrl && (
+                <img
+                  src={avatarUrl}
+                  alt={playerName}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              )}
+            </>
+          )}
+          {botDifficulty ? (
+            <div
+              className="absolute inset-0 rounded-full pointer-events-none"
+              style={{
+                border: `1.5px solid ${DIFFICULTY_DISPLAY[botDifficulty].ringColor}`,
               }}
             />
+          ) : (
+            <GoogleRing size={0} className="w-full h-full" />
           )}
-          <GoogleRing size={0} className="w-full h-full" />
         </div>
         <span className={cn(
           'font-game text-lg',

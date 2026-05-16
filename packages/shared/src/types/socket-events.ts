@@ -62,6 +62,8 @@ export interface ServerToClientEvents {
   'room:bot_added': (data: { botId: string; name: string; difficulty: BotDifficulty; personality: BotPersonality }) => void;
   'room:bot_removed': (data: { botId: string }) => void;
   'room:bot_updated': (data: { botId: string; difficulty: BotDifficulty }) => void;
+  'room:owner_transfer_pending': (data: { transferAt: number }) => void;
+  'room:owner_transfer_cancelled': () => void;
   'game:spectator_queue': (data: { queue: string[]; nickname: string; joined: boolean }) => void;
   'game:cheat_detected': () => void;
   'voice:presence': (presence: Record<string, unknown>) => void;

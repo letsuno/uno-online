@@ -337,6 +337,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
             phase={phase}
             cy={dimensions.height / 2}
             isBot={actingPlayer.isBot}
+            botDifficulty={actingPlayer.botConfig?.difficulty}
           />
         );
       })()}

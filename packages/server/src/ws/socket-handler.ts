@@ -24,6 +24,7 @@ const AUTOPILOT_THINK_MS = 2_000;
 const ROOM_IDLE_SWEEP_MS = 60_000;
 const AUTOPILOT_TOGGLE_COOLDOWN_MS = 3_000;
 const ALL_DISCONNECT_TIMEOUT_MS = 5 * 60_000;
+const OWNER_TRANSFER_DELAY_S = 10;
 
 const autopilotToggleTimestamps = new Map<string, number>();
 
@@ -55,6 +56,7 @@ export function setupSocketHandlers(
   const sessions = new Map<string, GameSession>();
   const disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const allDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  const ownerTransferTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const autoPlayIntervals = new Map<string, ReturnType<typeof setInterval>>();
   const userSocketMap = new Map<string, string>();
   const persister = new GameStatePersister(redis);
@@ -122,6 +124,14 @@ export function setupSocketHandlers(
     }
   }
 
+  function cancelOwnerTransferTimer(roomCode: string) {
+    const timer = ownerTransferTimers.get(roomCode);
+    if (timer) {
+      clearTimeout(timer);
+      ownerTransferTimers.delete(roomCode);
+    }
+  }
+
   function stopAutoPlayForRoom(roomCode: string) {
     const session = sessions.get(roomCode);
     if (!session) return;
@@ -134,6 +144,7 @@ export function setupSocketHandlers(
       }
     }
     cancelDissolutionTimer(roomCode);
+    cancelOwnerTransferTimer(roomCode);
   }
 
   async function cleanupIdleRooms() {
@@ -243,6 +254,13 @@ export function setupSocketHandlers(
 
         await joinRoomSocket(redis, socket, roomCode);
         cancelDissolutionTimer(roomCode);
+        if (ownerTransferTimers.has(roomCode)) {
+          const r = await getRoom(redis, roomCode);
+          if (r && r.ownerId === userId) {
+            cancelOwnerTransferTimer(roomCode);
+            io.to(roomCode).emit('room:owner_transfer_cancelled');
+          }
+        }
         session.setPlayerConnected(userId, true);
         session.setPlayerAutopilot(userId, false);
         resetPlayerTimeout(roomCode, userId);
@@ -329,11 +347,13 @@ export function setupSocketHandlers(
 
       const acted = await executeAutopilot(session, userId, async () => {
         persister.markDirty(roomCode, session.getFullState());
-      }, (action) => notifyAutopilotAction(roomCode, session, action));
-
-      if (acted) {
+      }, async (action) => {
+        notifyAutopilotAction(roomCode, session, action);
         persister.markDirty(roomCode, session.getFullState());
         await emitGameUpdate(io, roomCode, session, redis);
+      });
+
+      if (acted) {
         startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
       }
       callback?.({ success: true });
@@ -379,15 +399,36 @@ export function setupSocketHandlers(
           allDisconnectTimers.set(roomCode, dissolutionTimer);
         }
 
-        // Host transfer: if disconnected player is room owner, transfer
+        // Host transfer: if disconnected player is room owner
         const room = await getRoom(redis, roomCode);
         if (room && room.ownerId === userId) {
-          const nextOwner = state.players.find(p => p.id !== userId && p.connected);
-          if (nextOwner) {
-            await setRoomOwner(redis, roomCode, nextOwner.id);
-            const updatedRoom = await getRoom(redis, roomCode);
-            const players = await getRoomPlayers(redis, roomCode);
-            io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
+          const phase = state.phase;
+          if (phase === 'round_end' || phase === 'game_over') {
+            cancelOwnerTransferTimer(roomCode);
+            io.to(roomCode).emit('room:owner_transfer_pending', { transferAt: Date.now() + OWNER_TRANSFER_DELAY_S * 1000 });
+            const timer = setTimeout(async () => {
+              ownerTransferTimers.delete(roomCode);
+              const s = sessions.get(roomCode);
+              if (!s) return;
+              const st = s.getFullState();
+              if (st.players.find(p => p.id === userId && p.connected)) return;
+              const nextOwner = st.players.find(p => p.id !== userId && p.connected && !p.isBot);
+              if (!nextOwner) return;
+              await setRoomOwner(redis, roomCode, nextOwner.id);
+              const updatedRoom = await getRoom(redis, roomCode);
+              const rp = await getRoomPlayers(redis, roomCode);
+              io.to(roomCode).emit('room:updated', { players: rp, room: updatedRoom });
+            }, OWNER_TRANSFER_DELAY_S * 1000);
+            timer.unref?.();
+            ownerTransferTimers.set(roomCode, timer);
+          } else if (phase !== 'playing') {
+            const nextOwner = state.players.find(p => p.id !== userId && p.connected && !p.isBot);
+            if (nextOwner) {
+              await setRoomOwner(redis, roomCode, nextOwner.id);
+              const updatedRoom = await getRoom(redis, roomCode);
+              const rp = await getRoomPlayers(redis, roomCode);
+              io.to(roomCode).emit('room:updated', { players: rp, room: updatedRoom });
+            }
           }
         }
 
