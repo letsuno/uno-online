@@ -275,12 +275,7 @@ export default function LobbyPage() {
                 className="group bg-white/[0.03] rounded-[14px] p-3.5 cursor-pointer transition-all border border-transparent hover:bg-white/[0.06] hover:border-[rgba(251,191,36,0.1)]"
                 onClick={() => {
                   connectSocket();
-                  getSocket().emit('room:spectate', room.roomCode, (res: any) => {
-                    if (res.success) navigate(`/game/${room.roomCode}?spectate=true`);
-                    else {
-                      setError(res.error || '无法观战');
-                    }
-                  });
+                  navigate(`/game/${room.roomCode}`);
                 }}
               >
                 <div className="text-sm font-semibold text-[#cbd5e1]">
