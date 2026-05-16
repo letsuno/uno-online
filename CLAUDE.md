@@ -136,7 +136,7 @@ cd packages/mcp && npm publish --access public       # 3. 发布到 npm
 当用户要求更新版本号时，按以下步骤执行：
 
 1. **确定新版本号**：根据变更范围决定（patch/minor/major）
-2. **查 git log**：`git log --oneline --since="<上次版本日期>"` 收集所有变更
+2. **查 git log**：`git log --oneline v<上个版本号>..HEAD` 收集所有变更
 3. **更新版本号**（改一处，自动同步）：
    ```bash
    # 修改根目录 package.json 的 version 字段，然后：
@@ -150,4 +150,9 @@ cd packages/mcp && npm publish --access public       # 3. 发布到 npm
 5. **更新客户端更新弹窗**：`packages/client/src/shared/data/changelog.ts` 在数组最前面添加新条目（精选用户可感知的亮点）
 6. **验证**：确认没有遗留旧版本号 `grep -rn '<旧版本>' --include='*.json' --include='*.ts' --include='*.tsx' . | grep -v node_modules | grep -v dist | grep -v CHANGELOG.md | grep -i version`
 7. **提交 PR 合并**
-8. **Docker 镜像打 tag**（如用户要求）：`docker tag djkcyl/uno-online-server:latest djkcyl/uno-online-server:v<版本号>` + push
+8. **打 git tag**：PR 合并后在 main 分支上打 tag
+   ```bash
+   git tag v<版本号>
+   git push origin v<版本号>
+   ```
+9. **Docker 镜像打 tag**（如用户要求）：`docker tag djkcyl/uno-online-server:latest djkcyl/uno-online-server:v<版本号>` + push
