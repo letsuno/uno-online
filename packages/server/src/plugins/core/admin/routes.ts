@@ -149,11 +149,7 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
   fastify.get('/admin/rooms', { preHandler }, async () => {
     const roomKeys = await kv.keys('room:*');
     // Extract unique room codes (keys are like room:CODE, room:CODE:players)
-    const roomCodes = [...new Set(
-      roomKeys
-        .filter(k => !k.includes(':players') && !k.includes(':game'))
-        .map(k => k.replace('room:', ''))
-    )];
+    const roomCodes = [...new Set(roomKeys.map(k => k.split(':')[1]!))];
 
     const rooms = await Promise.all(
       roomCodes.map(async (code) => {

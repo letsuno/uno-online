@@ -7,11 +7,10 @@ import { getRoom, getRoomSeats, getSeatedPlayers } from '../room/store.js';
 
 export async function getActiveRooms(kv: KvStore, io: SocketIOServer): Promise<ActiveRoomInfo[]> {
   const allKeys = await kv.keys('room:*');
-  const roomKeys = allKeys.filter(k => !k.includes(':players') && !k.includes(':state'));
+  const roomCodes = [...new Set(allKeys.map(k => k.split(':')[1]!))].filter(Boolean);
 
   const activeRooms: ActiveRoomInfo[] = [];
-  for (const key of roomKeys) {
-    const roomCode = key.replace('room:', '');
+  for (const roomCode of roomCodes) {
     const room = await getRoom(kv, roomCode);
     if (!room || room.status !== 'playing') continue;
 
