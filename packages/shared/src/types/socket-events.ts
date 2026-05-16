@@ -57,9 +57,9 @@ export interface ServerToClientEvents {
   'room:updated': (data: Record<string, unknown>) => void;
   'room:dissolved': (data?: { reason?: string }) => void;
   'room:rejoin_redirect': (data: { roomCode: string }) => void;
-  'room:spectator_joined': (data: { nickname: string; spectators: { nickname: string; avatarUrl?: string | null }[] }) => void;
-  'room:spectator_left': (data: { nickname: string; spectators: { nickname: string; avatarUrl?: string | null }[] }) => void;
-  'room:spectator_list': (data: { spectators: { nickname: string; avatarUrl?: string | null }[] }) => void;
+  'room:spectator_joined': (data: { nickname: string; spectators: { nickname: string; avatarUrl?: string | null; connected: boolean }[] }) => void;
+  'room:spectator_left': (data: { nickname: string; spectators: { nickname: string; avatarUrl?: string | null; connected: boolean }[] }) => void;
+  'room:spectator_list': (data: { spectators: { nickname: string; avatarUrl?: string | null; connected: boolean }[] }) => void;
   'room:bot_added': (data: { botId: string; name: string; difficulty: BotDifficulty; personality: BotPersonality }) => void;
   'room:bot_removed': (data: { botId: string }) => void;
   'room:bot_updated': (data: { botId: string; difficulty: BotDifficulty }) => void;

@@ -350,9 +350,14 @@ function SpectatorBar({ phase, onBackToLobby, onJoined }: { phase: string | null
   }, [queued, onJoined]);
 
   const toggleQueue = () => {
-    getSocket().emit('game:spectator_join', (res: { success?: boolean; error?: string; queued?: boolean }) => {
+    getSocket().emit('game:spectator_join', (res: { success?: boolean; error?: string; queued?: boolean; joined?: boolean }) => {
       if (res?.success) {
-        setQueued(res.queued ?? false);
+        if (res.joined) {
+          onJoined();
+          setQueued(false);
+        } else {
+          setQueued(res.queued ?? false);
+        }
       } else {
         useToastStore.getState().addToast(res?.error ?? '操作失败', 'error');
       }

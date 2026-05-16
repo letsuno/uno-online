@@ -126,9 +126,13 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
   }, [isSpectator, spectatorQueued, onJoinedFromSpectator]);
 
   const toggleSpectatorQueue = () => {
-    getSocket().emit('game:spectator_join', (res: { success?: boolean; error?: string; queued?: boolean }) => {
+    getSocket().emit('game:spectator_join', (res: { success?: boolean; error?: string; queued?: boolean; joined?: boolean }) => {
       if (res?.success) {
-        setSpectatorQueued(res.queued ?? false);
+        if (res.joined) {
+          onJoinedFromSpectator?.();
+        } else {
+          setSpectatorQueued(res.queued ?? false);
+        }
       } else {
         useToastStore.getState().addToast(res?.error ?? '操作失败', 'error');
       }
@@ -147,19 +151,24 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
   const allAgreed = votes >= required;
   const canKick = kickCountdown === 0;
   const cooldownActive = startCooldown > 0;
+  const noHumanPlayers = required === 0;
   const nextRoundButtonText = isHost
-    ? hasVoted
-      ? allAgreed
-        ? '开始下一轮'
-        : `等待同意 (${votes}/${required})`
-      : `同意继续 (${votes}/${required})`
+    ? noHumanPlayers
+      ? '开始下一轮'
+      : hasVoted
+        ? allAgreed
+          ? '开始下一轮'
+          : `等待同意 (${votes}/${required})`
+        : `同意继续 (${votes}/${required})`
     : hasVoted
       ? allAgreed
         ? '等待房主开始'
         : `已同意 (${votes}/${required})`
       : `同意继续 (${votes}/${required})`;
   const isNextRoundDisabled = !isGameOver && (
-    isHost ? hasVoted && (!allAgreed || cooldownActive) : hasVoted
+    isHost
+      ? noHumanPlayers ? cooldownActive : hasVoted && (!allAgreed || cooldownActive)
+      : hasVoted
   );
 
   return (
@@ -186,6 +195,7 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
                   <td className="px-2 py-1.5 text-left">
                     {p.id === winnerId && <Crown size={14} className="inline align-middle mr-1" />}
                     <span className={cn(disconnected && 'opacity-50')}>{p.name}</span>
+                    {p.id === ownerId && <span title="房主"><Crown size={12} className="inline align-middle ml-1 text-yellow-500" /></span>}
                     {p.isBot && <AiBadge className="ml-1" />}
                     {disconnected && <WifiOff size={12} className="inline align-middle ml-1 text-destructive" />}
                   </td>
@@ -245,15 +255,10 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
         )}
         {isSpectator ? (
           <div className="flex gap-3 justify-center flex-wrap">
-            {spectatorQueued ? (
-              <Button variant="secondary" onClick={toggleSpectatorQueue} sound="click">
-                <X size={14} className="inline align-middle mr-1" />取消加入
-              </Button>
-            ) : (
-              <Button variant="primary" onClick={toggleSpectatorQueue} sound="ready">
-                <UserPlus size={14} className="inline align-middle mr-1" />加入下一轮
-              </Button>
-            )}
+            {!isGameOver && isHost && <Button variant="primary" onClick={onPlayAgain} disabled={isNextRoundDisabled} sound="ready">{nextRoundButtonText}</Button>}
+            {!isGameOver && <Button variant={isHost ? 'secondary' : 'primary'} onClick={toggleSpectatorQueue} sound="ready"><UserPlus size={14} className="inline align-middle mr-1" />加入游戏</Button>}
+            {isGameOver && isHost && <Button variant="primary" onClick={onBackToRoom} disabled={cooldownActive} sound="ready">返回房间</Button>}
+            {isGameOver && !isHost && <Button variant="primary" disabled>等待房主返回房间…</Button>}
             <Button variant="secondary" onClick={onBackToLobby} sound="click" disabled={leaveCountdown > 0}>{leaveCountdown > 0 ? `返回大厅 (${leaveCountdown}s)` : '返回大厅'}</Button>
           </div>
         ) : (
