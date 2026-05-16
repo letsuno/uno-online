@@ -17,7 +17,6 @@ export const DIFFICULTY_DISPLAY: Record<BotDifficulty, DifficultyDisplay> = {
   hard: { value: 'hard', label: '困难', color: 'text-red-400', border: 'border-red-400', avatarBg: '#ef4444', ringColor: '#f87171', description: '高级策略' },
 };
 
-
 export const DIFFICULTY_LIST: DifficultyDisplay[] = [
   DIFFICULTY_DISPLAY.novice,
   DIFFICULTY_DISPLAY.easy,

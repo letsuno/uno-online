@@ -37,7 +37,9 @@ export function getSocket(): TypedSocket {
 
     socket.on('room:updated', (data) => {
       useRoomStore.getState().updateRoom(data as unknown as { players?: RoomPlayer[]; room?: RoomData });
-      useGameStore.getState().setOwnerTransferAt(null);
+      if (useGameStore.getState().ownerTransferAt !== null) {
+        useGameStore.getState().setOwnerTransferAt(null);
+      }
     });
 
     socket.on('voice:presence', (presence) => {

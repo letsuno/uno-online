@@ -255,8 +255,7 @@ export function setupSocketHandlers(
         await joinRoomSocket(redis, socket, roomCode);
         cancelDissolutionTimer(roomCode);
         if (ownerTransferTimers.has(roomCode)) {
-          const r = await getRoom(redis, roomCode);
-          if (r && r.ownerId === userId) {
+          if (room.ownerId === userId) {
             cancelOwnerTransferTimer(roomCode);
             io.to(roomCode).emit('room:owner_transfer_cancelled');
           }
