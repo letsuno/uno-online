@@ -42,6 +42,18 @@ const RULES: RuleDef[] = HOUSE_RULE_DEFINITIONS.map((def) => ({
   ...RULE_EXTRAS[def.key],
 }));
 
+function BotDifficultyBadge({ difficulty }: { difficulty: import('@uno-online/shared').BotDifficulty }) {
+  const d = DIFFICULTY_DISPLAY[difficulty];
+  return (
+    <span
+      className="inline-flex items-center shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold leading-none"
+      style={{ color: d.ringColor, backgroundColor: `${d.avatarBg}20` }}
+    >
+      AI · {d.label}
+    </span>
+  );
+}
+
 /* ── Component ── */
 
 export default function RoomPage() {
@@ -218,19 +230,9 @@ export default function RoomPage() {
                       <span className="flex min-w-0 flex-1 items-center gap-2" style={roleColor ? { color: roleColor } : undefined}>
                         <span className="truncate text-base font-medium">{p.nickname}</span>
                         {p.isBot && (
-                          p.botConfig ? (
-                            <span
-                              className="inline-flex items-center shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold leading-none"
-                              style={{
-                                color: DIFFICULTY_DISPLAY[p.botConfig.difficulty].ringColor,
-                                backgroundColor: `${DIFFICULTY_DISPLAY[p.botConfig.difficulty].avatarBg}20`,
-                              }}
-                            >
-                              AI · {DIFFICULTY_DISPLAY[p.botConfig.difficulty].label}
-                            </span>
-                          ) : (
-                            <AiBadge />
-                          )
+                          p.botConfig
+                            ? <BotDifficultyBadge difficulty={p.botConfig.difficulty} />
+                            : <AiBadge />
                         )}
                         {room?.ownerId === p.userId && <Crown size={16} className="shrink-0 text-primary" />}
                         <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={isMe} className="shrink-0" />

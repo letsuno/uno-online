@@ -38,43 +38,49 @@ export default function PlayerListPanel() {
                   p.eliminated && 'opacity-40',
                 )}
               >
-                <div
-                  className="relative w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 overflow-hidden"
-                  style={{
-                    background: p.isBot && p.botConfig
-                      ? DIFFICULTY_DISPLAY[p.botConfig.difficulty].avatarBg
-                      : AVATAR_COLORS[i % AVATAR_COLORS.length],
-                  }}
-                >
-                  {p.isBot && p.botConfig ? (
-                    <Bot size={13} className="text-white drop-shadow-sm" />
-                  ) : (
-                    <>
-                      <span>{AVATAR_EMOJIS[i % AVATAR_EMOJIS.length]}</span>
-                      {p.avatarUrl && (
-                        <img
-                          src={p.avatarUrl}
-                          alt={p.name}
-                          className="absolute inset-0 w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
+                {(() => {
+                  const isConfiguredBot = p.isBot && !!p.botConfig;
+                  const botDisplay = isConfiguredBot ? DIFFICULTY_DISPLAY[p.botConfig!.difficulty] : undefined;
+                  return (
+                    <div
+                      className="relative w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 overflow-hidden"
+                      style={{
+                        background: botDisplay
+                          ? botDisplay.avatarBg
+                          : AVATAR_COLORS[i % AVATAR_COLORS.length],
+                      }}
+                    >
+                      {isConfiguredBot ? (
+                        <Bot size={13} className="text-white drop-shadow-sm" />
+                      ) : (
+                        <>
+                          <span>{AVATAR_EMOJIS[i % AVATAR_EMOJIS.length]}</span>
+                          {p.avatarUrl && (
+                            <img
+                              src={p.avatarUrl}
+                              alt={p.name}
+                              className="absolute inset-0 w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          )}
+                        </>
+                      )}
+                      {botDisplay ? (
+                        <div
+                          className="absolute inset-0 rounded-full pointer-events-none"
+                          style={{
+                            border: `1.5px solid ${botDisplay.ringColor}`,
                           }}
                         />
+                      ) : (
+                        <GoogleRing size={0} className="w-full h-full" />
                       )}
-                    </>
-                  )}
-                  {p.isBot && p.botConfig ? (
-                    <div
-                      className="absolute inset-0 rounded-full pointer-events-none"
-                      style={{
-                        border: `1.5px solid ${DIFFICULTY_DISPLAY[p.botConfig.difficulty].ringColor}`,
-                      }}
-                    />
-                  ) : (
-                    <GoogleRing size={0} className="w-full h-full" />
-                  )}
-                </div>
+                    </div>
+                  );
+                })()}
                 <div className="flex-1 min-w-0">
                   <div className={cn(
                     'text-xs truncate',
