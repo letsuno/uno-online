@@ -7,7 +7,7 @@ import { loadGameState } from '../game/state-store.js';
 import { removePendingSpectatorJoin, getPendingSpectatorQueue } from '../../../ws/game-events.js';
 import { joinRoomSocket } from '../../../ws/socket-room.js';
 
-function toSpectatorView(spectators: import('../room/store.js').RoomSpectator[]) {
+export function toSpectatorView(spectators: import('../room/store.js').RoomSpectator[]) {
   return spectators.map(s => ({ nickname: s.nickname, avatarUrl: s.avatarUrl, connected: s.connected }));
 }
 

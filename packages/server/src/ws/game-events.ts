@@ -14,18 +14,9 @@ import { broadcastLobbyRooms } from '../plugins/core/spectate/routes.js';
 import type { SocketData } from './types.js';
 import { checkOwnerDisconnectedAtTerminal } from './owner-transfer.js';
 
-function getSession(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
+function getSession(socket: Socket, sessions: Map<string, GameSession>, opts?: { allowSpectator?: boolean }): { session: GameSession; roomCode: string } | null {
   const data = socket.data as SocketData;
-  if ((data as any).isSpectator) return null;
-  const roomCode = data.roomCode;
-  if (!roomCode) return null;
-  const session = sessions.get(roomCode);
-  if (!session) return null;
-  return { session, roomCode };
-}
-
-function getSessionAllowSpectator(socket: Socket, sessions: Map<string, GameSession>): { session: GameSession; roomCode: string } | null {
-  const data = socket.data as SocketData;
+  if (!opts?.allowSpectator && (data as any).isSpectator) return null;
   const roomCode = data.roomCode;
   if (!roomCode) return null;
   const session = sessions.get(roomCode);
@@ -622,7 +613,7 @@ export function registerGameEvents(
   });
 
   socket.on('game:next_round', async (callback) => {
-    const ctx = getSessionAllowSpectator(socket, sessions);
+    const ctx = getSession(socket, sessions, { allowSpectator: true });
     if (!ctx) return callback?.({ success: false, error: 'No active game' });
     const { session, roomCode } = ctx;
     if (!session.isRoundEnd()) {
@@ -740,7 +731,7 @@ export function registerGameEvents(
     const targetId = payload?.targetId;
     if (!targetId) return callback?.({ success: false, error: '缺少目标玩家' });
 
-    const ctx = getSessionAllowSpectator(socket, sessions);
+    const ctx = getSession(socket, sessions, { allowSpectator: true });
     if (!ctx) return callback?.({ success: false, error: 'No active game' });
     const { session, roomCode } = ctx;
 
@@ -869,7 +860,7 @@ export function registerGameEvents(
   });
 
   socket.on('game:back_to_room', async (callback) => {
-    const ctx = getSessionAllowSpectator(socket, sessions);
+    const ctx = getSession(socket, sessions, { allowSpectator: true });
     if (!ctx) return callback?.({ success: false, error: 'No active game' });
     const { session, roomCode } = ctx;
     if (!session.isGameOver()) {

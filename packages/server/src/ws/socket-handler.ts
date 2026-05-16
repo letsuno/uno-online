@@ -14,7 +14,7 @@ import { loadGameState, GameStatePersister } from '../plugins/core/game/state-st
 import { getActiveRooms } from '../plugins/core/spectate/routes.js';
 import { checkRateLimit, clearRateLimit } from './rate-limiter.js';
 import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws.js';
-import { setupSpectateHandlers, broadcastSpectatorList, broadcastSpectatorLeft } from '../plugins/core/spectate/ws.js';
+import { setupSpectateHandlers, broadcastSpectatorList, broadcastSpectatorLeft, toSpectatorView } from '../plugins/core/spectate/ws.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { cancelOwnerTransfer, hasOwnerTransferPending, scheduleOwnerTransfer, configureOwnerTransfer } from './owner-transfer.js';
 import { registerVoicePresenceEvents, removeVoicePresence } from './voice-presence.js';
@@ -145,11 +145,17 @@ export function setupSocketHandlers(
 
   configureOwnerTransfer(io, redis, sessions, turnTimer, persister, voiceChannels, stopAutoPlayForRoom);
 
+  async function getRoomCodes(): Promise<string[]> {
+    const keys = await redis.keys('room:*');
+    return keys
+      .filter(k => !k.includes(':players') && !k.includes(':state') && !k.includes(':spectators') && !k.includes(':seats'))
+      .map(k => k.replace('room:', ''));
+  }
+
   async function cleanupIdleRooms() {
-    const roomKeys = (await redis.keys('room:*')).filter(k => !k.includes(':players') && !k.includes(':state') && !k.includes(':spectators') && !k.includes(':seats'));
+    const roomCodes = await getRoomCodes();
     const now = Date.now();
-    for (const key of roomKeys) {
-      const roomCode = key.replace('room:', '');
+    for (const roomCode of roomCodes) {
       const room = await getRoom(redis, roomCode);
       if (!room) continue;
       const lastActivityAt = Date.parse(room.lastActivityAt);
@@ -161,10 +167,9 @@ export function setupSocketHandlers(
   }
 
   async function sweepDisconnectedSpectators() {
-    const roomKeys = (await redis.keys('room:*')).filter(k => !k.includes(':players') && !k.includes(':state') && !k.includes(':spectators') && !k.includes(':seats'));
+    const roomCodes = await getRoomCodes();
     const now = Date.now();
-    for (const key of roomKeys) {
-      const roomCode = key.replace('room:', '');
+    for (const roomCode of roomCodes) {
       const spectators = await getRoomSpectators(redis, roomCode);
       const stale = spectators.filter(s => !s.connected && s.disconnectedAt && now - s.disconnectedAt >= RECONNECT_TIMEOUT_MS);
       if (stale.length === 0) continue;
@@ -172,8 +177,8 @@ export function setupSocketHandlers(
       for (const s of stale) {
         await removeSpectatorFromRoom(redis, roomCode, s.userId);
         await clearUserRoom(redis, s.userId);
-        await broadcastSpectatorLeft(io, redis, roomCode, s.userId, s.nickname);
       }
+      await broadcastSpectatorList(io, redis, roomCode);
 
       const room = await getRoom(redis, roomCode);
       if (!room) continue;
@@ -209,7 +214,7 @@ export function setupSocketHandlers(
 
   const spectatorSweepInterval = setInterval(() => {
     sweepDisconnectedSpectators().catch(() => {});
-  }, 1_000);
+  }, 5_000);
   spectatorSweepInterval.unref?.();
 
   const serverStartTime = new Date().toISOString();
@@ -325,7 +330,7 @@ export function setupSocketHandlers(
         ]);
         callback?.({ success: true, gameState: session.getPlayerView(userId), seats, spectators, room });
         socket.emit('chat:history', session.getChatHistory());
-        socket.emit('room:spectator_list', { spectators: (await getRoomSpectators(redis, roomCode)).map(s => ({ nickname: s.nickname, avatarUrl: s.avatarUrl, connected: s.connected })) });
+        socket.emit('room:spectator_list', { spectators: toSpectatorView(await getRoomSpectators(redis, roomCode)) });
         const voteState = getRoundEndVoteState(roomCode, session);
         if (voteState) socket.emit('game:next_round_vote', voteState);
         replayTerminalEvent(socket, roomCode, session);

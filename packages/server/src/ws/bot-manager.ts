@@ -72,8 +72,10 @@ export async function addBot(
     return { success: false, error: '游戏进行中，无法添加机器人' };
   }
 
-  const updatedSeats = await getRoomSeats(redis, roomCode);
-  const spectators = await getRoomSpectators(redis, roomCode);
+  const [updatedSeats, spectators] = await Promise.all([
+    getRoomSeats(redis, roomCode),
+    getRoomSpectators(redis, roomCode),
+  ]);
 
   io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators });
   io.to(roomCode).emit('room:bot_added', { botId, name, difficulty, personality });
@@ -109,8 +111,10 @@ export async function removeBot(
   }
   await clearSeatByUserId(redis, roomCode, botId);
 
-  const updatedSeats = await getRoomSeats(redis, roomCode);
-  const spectators = await getRoomSpectators(redis, roomCode);
+  const [updatedSeats, spectators] = await Promise.all([
+    getRoomSeats(redis, roomCode),
+    getRoomSpectators(redis, roomCode),
+  ]);
 
   io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators });
   io.to(roomCode).emit('room:bot_removed', { botId });
@@ -151,8 +155,10 @@ export async function setBotDifficulty(
 
   io.to(roomCode).emit('room:bot_updated', { botId, difficulty });
 
-  const updatedSeats = await getRoomSeats(redis, roomCode);
-  const spectators = await getRoomSpectators(redis, roomCode);
+  const [updatedSeats, spectators] = await Promise.all([
+    getRoomSeats(redis, roomCode),
+    getRoomSpectators(redis, roomCode),
+  ]);
   io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators });
 
   return { success: true };

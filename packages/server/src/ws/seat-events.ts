@@ -70,8 +70,10 @@ export function clearUserSwapRequests(roomCode: string, userId: string): void {
 }
 
 async function emitSeatUpdate(io: SocketIOServer, kv: KvStore, roomCode: string): Promise<void> {
-  const seats = await getRoomSeats(kv, roomCode);
-  const spectators = await getRoomSpectators(kv, roomCode);
+  const [seats, spectators] = await Promise.all([
+    getRoomSeats(kv, roomCode),
+    getRoomSpectators(kv, roomCode),
+  ]);
   io.to(roomCode).emit('seat:updated', { seats, spectators });
 }
 
@@ -106,8 +108,10 @@ export function registerSeatEvents(
         return callback({ success: false, error: '操作太频繁，请稍后再试' });
       }
 
-      const seats = await getRoomSeats(redis, roomCode);
-      const spectators = await getRoomSpectators(redis, roomCode);
+      const [seats, spectators] = await Promise.all([
+        getRoomSeats(redis, roomCode),
+        getRoomSpectators(redis, roomCode),
+      ]);
 
       if (seats[seatIndex] !== null) {
         return callback({ success: false, error: '该座位已被占用' });
