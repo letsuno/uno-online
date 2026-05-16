@@ -397,10 +397,11 @@ export function setupSocketHandlers(
 
         const state = session.getFullState();
         const connectedCount = state.players.filter((p) => p.connected).length;
+        const connectedHumanCount = state.players.filter((p) => p.connected && !p.isBot).length;
         if (connectedCount < 2) {
           turnTimer.stop(roomCode);
         }
-        if (connectedCount === 0 && !allDisconnectTimers.has(roomCode)) {
+        if (connectedHumanCount === 0 && !allDisconnectTimers.has(roomCode)) {
           const dissolutionTimer = setTimeout(async () => {
             allDisconnectTimers.delete(roomCode);
             if (!sessions.has(roomCode)) return;
@@ -429,7 +430,11 @@ export function setupSocketHandlers(
               const st = s.getFullState();
               if (st.players.find(p => p.id === userId && p.connected)) return;
               const nextOwner = st.players.find(p => p.id !== userId && p.connected && !p.isBot);
-              if (!nextOwner) return;
+              if (!nextOwner) {
+                stopAutoPlayForRoom(roomCode);
+                await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
+                return;
+              }
               await setRoomOwner(redis, roomCode, nextOwner.id);
               const updatedRoom = await getRoom(redis, roomCode);
               const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
@@ -446,6 +451,9 @@ export function setupSocketHandlers(
               const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
               io.to(roomCode).emit('seat:updated', { seats, spectators });
               io.to(roomCode).emit('room:updated', { room: updatedRoom });
+            } else {
+              stopAutoPlayForRoom(roomCode);
+              await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
             }
           }
         }
@@ -463,6 +471,12 @@ export function setupSocketHandlers(
             await emitGameUpdate(io, roomCode, s, redis);
             io.to(roomCode).emit('player:autopilot', { playerId: userId, enabled: true });
             startAutoPlay(userId, roomCode);
+
+            const hasConnectedHuman = s.getFullState().players.some(p => p.connected && !p.isBot);
+            if (!hasConnectedHuman) {
+              stopAutoPlayForRoom(roomCode);
+              await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
+            }
           }
         }, RECONNECT_TIMEOUT_MS);
         disconnectTimers.set(userId, timer);

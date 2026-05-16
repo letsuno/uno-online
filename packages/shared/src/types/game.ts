@@ -67,6 +67,8 @@ export interface GameState {
   deckHash: string;
   settings: RoomSettings;
   chatHistory?: ChatMessage[];
+  gameStartedAt?: number;
+  turnStartedAt?: number;
 }
 
 export interface PendingPenaltyDraw {
