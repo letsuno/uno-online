@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Sparkles, ChevronDown } from 'lucide-react';
 import { changelog } from '../data/changelog';
+import { useAuthStore } from '@/features/auth/stores/auth-store';
 
 const STORAGE_KEY = 'app-last-seen-version';
 const VISIBLE_COUNT = 3;
@@ -12,17 +13,19 @@ export function openChangelog() { externalOpen?.(); }
 export default function ChangelogModal() {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const token = useAuthStore((s) => s.token);
 
   const show = useCallback(() => setOpen(true), []);
   useEffect(() => { externalOpen = show; return () => { externalOpen = null; }; }, [show]);
 
   useEffect(() => {
+    if (!token) return;
     const currentVersion = import.meta.env.BUILD_VERSION as string;
     const lastSeen = localStorage.getItem(STORAGE_KEY);
     if (lastSeen !== currentVersion) {
       setOpen(true);
     }
-  }, []);
+  }, [token]);
 
   const close = () => {
     setOpen(false);
