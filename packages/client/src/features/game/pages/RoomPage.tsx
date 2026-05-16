@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Crown, Check, Copy, Eye, Trash2 } from 'lucide-react';
 import { cn, getRoleColor } from '@/shared/lib/utils';
 import { BotAddButton } from '../components/BotAddButton';
-import { BotPlayerBadge } from '../components/BotPlayerBadge';
+import { AiBadge } from '@/shared/components/ui/AiBadge';
+import { DIFFICULTY_DISPLAY } from '../constants/bot-difficulty';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useRoomStore, type RoomPlayer } from '@/shared/stores/room-store';
 import { useGameStore } from '../stores/game-store';
@@ -193,7 +194,7 @@ export default function RoomPage() {
         {/* Two-column layout */}
         <div className="flex flex-col md:flex-row gap-4 md:gap-6 w-full max-w-[900px] md:flex-1 md:min-h-0">
           {/* Left: Player + spectator lists */}
-          <div className="flex-1 glass-panel p-4 md:p-6 flex flex-col gap-4 min-h-0">
+          <div className="flex-1 glass-panel p-4 md:p-6 flex flex-col gap-4 min-h-0 overflow-y-auto scrollbar-thin">
             <section>
               <h3 className="mb-4 text-sm text-muted-foreground font-game">
                 玩家 ({activePlayers.length}/{MAX_PLAYERS})
@@ -216,7 +217,21 @@ export default function RoomPage() {
                     >
                       <span className="flex min-w-0 flex-1 items-center gap-2" style={roleColor ? { color: roleColor } : undefined}>
                         <span className="truncate text-base font-medium">{p.nickname}</span>
-                        {p.isBot && <BotPlayerBadge difficulty={p.botConfig?.difficulty} />}
+                        {p.isBot && (
+                          p.botConfig ? (
+                            <span
+                              className="inline-flex items-center shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold leading-none"
+                              style={{
+                                color: DIFFICULTY_DISPLAY[p.botConfig.difficulty].ringColor,
+                                backgroundColor: `${DIFFICULTY_DISPLAY[p.botConfig.difficulty].avatarBg}20`,
+                              }}
+                            >
+                              AI · {DIFFICULTY_DISPLAY[p.botConfig.difficulty].label}
+                            </span>
+                          ) : (
+                            <AiBadge />
+                          )
+                        )}
                         {room?.ownerId === p.userId && <Crown size={16} className="shrink-0 text-primary" />}
                         <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={isMe} className="shrink-0" />
                       </span>
@@ -227,7 +242,7 @@ export default function RoomPage() {
                   );
                 })}
               </div>
-              {isOwner && <BotAddButton />}
+              {isOwner && activePlayers.length < MAX_PLAYERS && <BotAddButton />}
             </section>
 
             {spectatorPlayers.length > 0 && (
@@ -254,7 +269,21 @@ export default function RoomPage() {
                       >
                         <span className="flex min-w-0 flex-1 items-center gap-2" style={roleColor ? { color: roleColor } : undefined}>
                           <span className="truncate text-base font-medium">{p.nickname}</span>
-                          {p.isBot && <BotPlayerBadge difficulty={p.botConfig?.difficulty} />}
+                          {p.isBot && (
+                            p.botConfig ? (
+                              <span
+                                className="inline-flex items-center shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold leading-none"
+                                style={{
+                                  color: DIFFICULTY_DISPLAY[p.botConfig.difficulty].ringColor,
+                                  backgroundColor: `${DIFFICULTY_DISPLAY[p.botConfig.difficulty].avatarBg}20`,
+                                }}
+                              >
+                                AI · {DIFFICULTY_DISPLAY[p.botConfig.difficulty].label}
+                              </span>
+                            ) : (
+                              <AiBadge />
+                            )
+                          )}
                           {room?.ownerId === p.userId && <Crown size={16} className="shrink-0 text-primary" />}
                           <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={isMe} className="shrink-0" />
                         </span>
@@ -367,37 +396,41 @@ export default function RoomPage() {
           </div>
         </div>
 
-        {/* Action buttons — uniform sizing across variants; `game` variant
-            keeps its gradient/shadow accents but is sized down to match
-            secondary/danger so the row reads as one consistent control bar. */}
-        <div className="flex flex-wrap justify-center gap-2.5 md:gap-3 shrink-0">
-          {myPlayer?.spectator ? (
-            <Button variant="game" onClick={toggleSpectator} sound="click" className="text-sm md:text-base px-5 py-2.5 tracking-normal">
-              取消观战
+        {/* Action buttons */}
+        <div className="flex flex-col items-center gap-2 shrink-0">
+          <div className="flex flex-wrap justify-center gap-2.5">
+            {myPlayer?.spectator ? (
+              <Button variant="game" onClick={toggleSpectator} sound="click" className="text-sm md:text-base px-5 py-2.5 tracking-normal">
+                取消观战
+              </Button>
+            ) : (
+              <>
+                <Button variant="game" onClick={toggleReady} sound="ready" className="text-sm md:text-base px-5 py-2.5 tracking-normal">
+                  {myPlayer?.ready ? '取消准备' : '准备'}
+                </Button>
+                {isOwner && (
+                  <Button variant="game" className={cn('text-sm md:text-base px-5 py-2.5 tracking-normal', !allReady && 'opacity-50')} onClick={startGame} disabled={!allReady} sound="ready">
+                    开始游戏
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
+            {!myPlayer?.spectator && (
+              <Button variant="secondary" onClick={toggleSpectator} sound="click" size="sm" className="text-xs px-3 py-1.5">
+                <Eye size={12} className="inline align-middle mr-1" />观战
+              </Button>
+            )}
+            <Button variant="secondary" onClick={leaveRoom} sound="click" size="sm" className="text-xs px-3 py-1.5">
+              离开房间
             </Button>
-          ) : (
-            <Button variant="game" onClick={toggleReady} sound="ready" className="text-sm md:text-base px-5 py-2.5 tracking-normal">
-              {myPlayer?.ready ? '取消准备' : '准备'}
-            </Button>
-          )}
-          {!myPlayer?.spectator && (
-            <Button variant="secondary" onClick={toggleSpectator} sound="click" className="text-sm md:text-base px-5 py-2.5">
-              <Eye size={14} className="inline align-middle mr-1" />观战
-            </Button>
-          )}
-          {isOwner && (
-            <Button variant="game" className={cn('text-sm md:text-base px-5 py-2.5 tracking-normal', !allReady && 'opacity-50')} onClick={startGame} disabled={!allReady} sound="ready">
-              开始游戏
-            </Button>
-          )}
-          <Button variant="danger" onClick={leaveRoom} sound="danger" className="text-sm md:text-base px-5 py-2.5">
-            离开房间
-          </Button>
-          {isOwner && (
-            <Button variant="danger" onClick={dissolveRoom} sound="danger" className="text-sm md:text-base px-5 py-2.5">
-              <Trash2 size={14} className="inline align-middle mr-1" />解散房间
-            </Button>
-          )}
+            {isOwner && (
+              <Button variant="danger" onClick={dissolveRoom} sound="danger" size="sm" className="text-xs px-3 py-1.5">
+                <Trash2 size={12} className="inline align-middle mr-1" />解散房间
+              </Button>
+            )}
+          </div>
         </div>
 
         {menuTarget && (

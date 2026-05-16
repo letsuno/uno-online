@@ -1,8 +1,9 @@
-import { Eye, UserPlus } from 'lucide-react';
+import { Bot, Eye, UserPlus } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
 import { useSpectatorStore } from '../stores/spectator-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
+import { DIFFICULTY_DISPLAY } from '../constants/bot-difficulty';
 import GoogleRing from '@/shared/components/ui/GoogleRing';
 import PlayerVoiceStatus from '@/shared/voice/PlayerVoiceStatus';
 import { cn, getRoleColor } from '@/shared/lib/utils';
@@ -39,21 +40,40 @@ export default function PlayerListPanel() {
               >
                 <div
                   className="relative w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 overflow-hidden"
-                  style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
+                  style={{
+                    background: p.isBot && p.botConfig
+                      ? DIFFICULTY_DISPLAY[p.botConfig.difficulty].avatarBg
+                      : AVATAR_COLORS[i % AVATAR_COLORS.length],
+                  }}
                 >
-                  <span>{AVATAR_EMOJIS[i % AVATAR_EMOJIS.length]}</span>
-                  {p.avatarUrl && (
-                    <img
-                      src={p.avatarUrl}
-                      alt={p.name}
-                      className="absolute inset-0 w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
+                  {p.isBot && p.botConfig ? (
+                    <Bot size={13} className="text-white drop-shadow-sm" />
+                  ) : (
+                    <>
+                      <span>{AVATAR_EMOJIS[i % AVATAR_EMOJIS.length]}</span>
+                      {p.avatarUrl && (
+                        <img
+                          src={p.avatarUrl}
+                          alt={p.name}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      )}
+                    </>
+                  )}
+                  {p.isBot && p.botConfig ? (
+                    <div
+                      className="absolute inset-0 rounded-full pointer-events-none"
+                      style={{
+                        border: `1.5px solid ${DIFFICULTY_DISPLAY[p.botConfig.difficulty].ringColor}`,
                       }}
                     />
+                  ) : (
+                    <GoogleRing size={0} className="w-full h-full" />
                   )}
-                  <GoogleRing size={0} className="w-full h-full" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className={cn(

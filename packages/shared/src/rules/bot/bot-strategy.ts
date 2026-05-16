@@ -64,12 +64,16 @@ function chooseDrawSide(state: GameState, config: BotConfig): DrawSide {
     }
   }
 
+  const canReshuffle = state.discardPile.length > 1;
+  if (!canReshuffle) {
+    if (state.deckLeft.length === 0 && state.deckRight.length > 0) return 'right';
+    if (state.deckRight.length === 0 && state.deckLeft.length > 0) return 'left';
+  }
+
   if (config.difficulty === 'novice') {
-    // Novice: random
     return Math.random() < 0.5 ? 'left' : 'right';
   }
 
-  // Others: pick the bigger deck
   return state.deckLeft.length >= state.deckRight.length ? 'left' : 'right';
 }
 

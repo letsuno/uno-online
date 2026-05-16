@@ -12,9 +12,9 @@ import QuickReaction from './QuickReaction';
 import ThrowItemPicker from './ThrowItemPicker';
 import { cn, getRoleColor } from '@/shared/lib/utils';
 import { AiBadge } from '@/shared/components/ui/AiBadge';
-import { BotPlayerBadge } from './BotPlayerBadge';
 import { useCountdown } from '../hooks/useCountdown';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
+import { DIFFICULTY_DISPLAY } from '../constants/bot-difficulty';
 import type { PlayerInfo } from '../stores/game-store';
 
 interface PlayerNodeProps {
@@ -111,6 +111,10 @@ function PlayerNode({
       : [];
   const shouldShowRevealedHand = !isMe && revealedHand.length > 0;
   const roleColor = getRoleColor(player.role);
+  const isConfiguredBot = player.isBot && !!player.botConfig;
+  const botDiffDisplay = isConfiguredBot
+    ? DIFFICULTY_DISPLAY[player.botConfig!.difficulty]
+    : undefined;
 
   const positionTransition =
     shufflePhase === 'shuffling'
@@ -180,23 +184,31 @@ function PlayerNode({
             isSpeaking && 'ring-2 ring-green-400 shadow-[0_0_10px_rgba(74,222,128,0.6)]',
           )}
           style={{
-            background: AVATAR_COLORS[index % AVATAR_COLORS.length],
+            background: isConfiguredBot
+              ? botDiffDisplay!.avatarBg
+              : AVATAR_COLORS[index % AVATAR_COLORS.length],
             width: avatarInnerSize,
             height: avatarInnerSize,
             margin: 2,
           }}
         >
-          <span>{AVATAR_EMOJIS[index % AVATAR_EMOJIS.length]}</span>
-          {player.avatarUrl && (
-            <img
-              src={player.avatarUrl}
-              alt={player.name}
-              className="absolute inset-0 w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
+          {isConfiguredBot ? (
+            <Bot size={avatarInnerSize * 0.55} className="text-white drop-shadow-sm" />
+          ) : (
+            <>
+              <span>{AVATAR_EMOJIS[index % AVATAR_EMOJIS.length]}</span>
+              {player.avatarUrl && (
+                <img
+                  src={player.avatarUrl}
+                  alt={player.name}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              )}
+            </>
           )}
         </div>
 
@@ -211,8 +223,18 @@ function PlayerNode({
           </div>
         </div>
 
-        {/* Google-style colored ring */}
-        <GoogleRing size={avatarSize} />
+        {/* Avatar ring */}
+        {isConfiguredBot ? (
+          <div
+            className="absolute inset-0 rounded-full pointer-events-none"
+            style={{
+              border: `2px solid ${botDiffDisplay!.ringColor}`,
+              boxShadow: `0 0 8px ${botDiffDisplay!.ringColor}40`,
+            }}
+          />
+        ) : (
+          <GoogleRing size={avatarSize} />
+        )}
 
         {/* Host crown */}
         {isHost && (
@@ -289,9 +311,7 @@ function PlayerNode({
           : undefined}
       >
         {displayName}
-        {player.isBot && player.botConfig
-          ? <BotPlayerBadge difficulty={player.botConfig.difficulty} />
-          : player.isBot && <AiBadge className="ml-1" />}
+        {player.isBot && <AiBadge className="ml-1" />}
       </span>
 
       {/* Hand count */}
