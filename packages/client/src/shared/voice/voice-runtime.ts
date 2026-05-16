@@ -75,10 +75,11 @@ function isMumbleUserForceMuted(mumbleUserId: number): boolean {
 
   const normalize = (name: string) => name.trim().replace(/[^\p{L}\p{N}_ .-]/gu, '').slice(0, 32).toLocaleLowerCase();
   const mumbleName = normalize(mumbleUser.name);
-  const { players } = useRoomStore.getState();
+  const { seats } = useRoomStore.getState();
+  const seatedPlayers = seats.filter((s): s is NonNullable<typeof s> => s !== null);
 
   return forceMutedIds.some(gameUserId => {
-    const player = players.find(p => p.userId === gameUserId);
+    const player = seatedPlayers.find(p => p.userId === gameUserId);
     return player && normalize(player.nickname) === mumbleName;
   });
 }
