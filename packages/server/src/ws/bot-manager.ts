@@ -152,5 +152,11 @@ export async function setBotDifficulty(
 
   io.to(roomCode).emit('room:bot_updated', { botId, difficulty });
 
+  const [updatedSeats, spectators] = await Promise.all([
+    getRoomSeats(redis, roomCode),
+    getRoomSpectators(redis, roomCode),
+  ]);
+  io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators });
+
   return { success: true };
 }

@@ -1,4 +1,4 @@
-import { Crown, WifiOff, Plus, Check } from 'lucide-react';
+import { Bot, Crown, WifiOff, Plus, Check } from 'lucide-react';
 import type { RoomSeatPlayer } from '@uno-online/shared';
 import { cn, getRoleColor } from '@/shared/lib/utils';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
@@ -64,7 +64,7 @@ export default function Seat({ index, player, isMe, isOwnerSeat, compact = false
           }
         >
           {isBot ? (
-            <span className="text-white" style={{ fontSize: compact ? 14 : 20 }}>🤖</span>
+            <Bot size={compact ? 16 : 22} className="text-white drop-shadow-sm" />
           ) : (
             <>
               <span style={{ fontSize: compact ? 14 : 20 }}>
