@@ -1,80 +1,72 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Crown, Check, Copy, Eye, Trash2 } from 'lucide-react';
-import { cn, getRoleColor } from '@/shared/lib/utils';
+import { Copy, Eye, Settings, Trash2 } from 'lucide-react';
+import { cn } from '@/shared/lib/utils';
 import { BotAddButton } from '../components/BotAddButton';
-import { AiBadge } from '@/shared/components/ui/AiBadge';
-import { DIFFICULTY_DISPLAY } from '../constants/bot-difficulty';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
-import { useRoomStore, type RoomPlayer } from '@/shared/stores/room-store';
+import { useRoomStore } from '@/shared/stores/room-store';
+import type { RoomSeatPlayer } from '@/shared/stores/room-store';
 import { useGameStore } from '../stores/game-store';
 import { getSocket, connectSocket, refreshVoicePresence } from '@/shared/socket';
 import VoicePanel from '@/shared/voice/VoicePanel';
-import PlayerVoiceStatus from '@/shared/voice/PlayerVoiceStatus';
 import { useToastStore } from '@/shared/stores/toast-store';
 import { showConfirm } from '@/shared/stores/confirm-store';
 import PlayerActionMenu from '../components/PlayerActionMenu';
 import { useLeaveRoom } from '../hooks/useLeaveRoom';
-import { DEFAULT_HOUSE_RULES, HOUSE_RULES_PRESETS, HOUSE_RULE_DEFINITIONS, MAX_PLAYERS } from '@uno-online/shared';
-import type { HouseRules, HouseRuleDefinition } from '@uno-online/shared';
+import { DEFAULT_HOUSE_RULES } from '@uno-online/shared';
+import type { HouseRules } from '@uno-online/shared';
 import { Button } from '@/shared/components/ui/Button';
 import { useBgm } from '@/shared/sound/useBgm';
 import BgmToast from '@/shared/components/BgmToast';
 import GamePageShell from '@/shared/components/GamePageShell';
-
-/* ── House-rule rendering helpers (inlined from HouseRulesPanel) ── */
-
-interface RuleDef extends HouseRuleDefinition {
-  type: 'boolean' | 'select';
-  options?: { value: any; label: string }[];
-}
-
-const RULE_EXTRAS: Partial<Record<keyof HouseRules, Pick<RuleDef, 'type' | 'options'>>> = {
-  unoPenaltyCount: { type: 'select', options: [{ value: 2, label: '2张' }, { value: 4, label: '4张' }, { value: 6, label: '6张' }] },
-  handLimit: { type: 'select', options: [{ value: null, label: '无限制' }, { value: 15, label: '15张' }, { value: 20, label: '20张' }, { value: 25, label: '25张' }] },
-  handRevealThreshold: { type: 'select', options: [{ value: null, label: '关闭' }, { value: 3, label: '3张' }, { value: 2, label: '2张' }] },
-  blitzTimeLimit: { type: 'select', options: [{ value: null, label: '关闭' }, { value: 120, label: '2分钟' }, { value: 300, label: '5分钟' }, { value: 600, label: '10分钟' }] },
-};
-
-const RULES: RuleDef[] = HOUSE_RULE_DEFINITIONS.map((def) => ({
-  ...def,
-  type: 'boolean' as const,
-  ...RULE_EXTRAS[def.key],
-}));
-
-function BotDifficultyBadge({ difficulty }: { difficulty: import('@uno-online/shared').BotDifficulty }) {
-  const d = DIFFICULTY_DISPLAY[difficulty];
-  return (
-    <span
-      className="inline-flex items-center shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold leading-none"
-      style={{ color: d.ringColor, backgroundColor: `${d.avatarBg}20` }}
-    >
-      AI · {d.label}
-    </span>
-  );
-}
+import SeatCircle from '../components/SeatCircle';
+import SpectatorBar from '../components/SpectatorBar';
+import SettingsDrawer from '../components/SettingsDrawer';
+import SwapRequestDialog from '../components/SwapRequestDialog';
 
 /* ── Component ── */
 
 export default function RoomPage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const user = useAuthStore((s) => s.user);
-  const { players, room, setRoom } = useRoomStore();
+  const { seats, spectators, room, setRoom } = useRoomStore();
   const setGameState = useGameStore((s) => s.setGameState);
   const navigate = useNavigate();
   const songName = useBgm('lobby');
   const leaveRoomHook = useLeaveRoom();
 
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [swapRequest, setSwapRequest] = useState<{
+    requesterId: string;
+    requesterName: string;
+    requesterSeatIndex: number;
+  } | null>(null);
+  const [houseRules, setHouseRules] = useState<HouseRules>(DEFAULT_HOUSE_RULES);
+  const [menuTarget, setMenuTarget] = useState<{
+    player: RoomSeatPlayer;
+    seatIndex: number;
+    position: { x: number; y: number };
+  } | null>(null);
+
+  /* Responsive compact detection */
+  const [compact, setCompact] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setCompact(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
+  /* Rejoin effect */
   useEffect(() => {
     connectSocket();
     const socket = getSocket();
     refreshVoicePresence();
 
-    if (useRoomStore.getState().players.length === 0 && roomCode) {
+    if (useRoomStore.getState().seats.every((s) => s === null) && roomCode) {
       socket.emit('room:rejoin', roomCode, (res: any) => {
         if (res.success) {
-          if (res.players && res.room) {
-            setRoom(roomCode, res.players, res.room);
+          if (res.seats && res.spectators && res.room) {
+            setRoom(roomCode, res.seats, res.spectators, res.room);
             refreshVoicePresence();
           }
           if (res.gameState) {
@@ -93,34 +85,54 @@ export default function RoomPage() {
       navigate(`/game/${roomCode}`);
     };
     socket.on('game:state', onState);
-    return () => { socket.off('game:state', onState); };
+    return () => {
+      socket.off('game:state', onState);
+    };
   }, [roomCode, navigate, setGameState]);
 
-  const isOwner = room?.ownerId === user?.id;
-  const myPlayer = players.find((p) => p.userId === user?.id);
-  const activePlayers = players.filter((p) => !p.spectator);
-  const spectatorPlayers = players.filter((p) => p.spectator);
-  const allReady = activePlayers.length >= 2 && activePlayers.every((p) => p.ready);
-  const [houseRules, setHouseRules] = useState<HouseRules>(DEFAULT_HOUSE_RULES);
-  const [menuTarget, setMenuTarget] = useState<{ player: RoomPlayer; position: { x: number; y: number } } | null>(null);
+  /* Socket listeners for swap requests */
+  useEffect(() => {
+    const socket = getSocket();
+    const onSwapRequested = (data: {
+      requesterId: string;
+      requesterName: string;
+      requesterSeatIndex: number;
+    }) => setSwapRequest(data);
+    const onSwapResolved = () => setSwapRequest(null);
+    socket.on('seat:swap_requested', onSwapRequested);
+    socket.on('seat:swap_resolved', onSwapResolved);
+    return () => {
+      socket.off('seat:swap_requested', onSwapRequested);
+      socket.off('seat:swap_resolved', onSwapResolved);
+    };
+  }, []);
 
+  /* Derived state */
+  const isOwner = room?.ownerId === user?.id;
+  const myPlayer =
+    seats.find((s) => s !== null && s.userId === user?.id) ?? null;
+  const isSpectator =
+    !myPlayer && spectators.some((s) => s.userId === user?.id);
+  const seatedPlayers = seats.filter(
+    (s): s is RoomSeatPlayer => s !== null,
+  );
+  const allReady =
+    seatedPlayers.length >= 2 && seatedPlayers.every((p) => p.ready);
+
+  /* Sync houseRules from room settings */
   useEffect(() => {
     if (room?.settings?.houseRules) {
-      setHouseRules({ ...DEFAULT_HOUSE_RULES, ...room.settings.houseRules });
+      setHouseRules({
+        ...DEFAULT_HOUSE_RULES,
+        ...(room.settings.houseRules as Partial<HouseRules>),
+      });
     }
   }, [room?.settings?.houseRules]);
 
+  /* ── Handlers ── */
+
   const toggleReady = () => {
     getSocket().emit('room:ready', !myPlayer?.ready, () => {});
-  };
-
-  const toggleSpectator = () => {
-    const newVal = !myPlayer?.spectator;
-    getSocket().emit('room:toggle_spectator', newVal, (res: { success?: boolean; error?: string }) => {
-      if (!res?.success && res?.error) {
-        useToastStore.getState().addToast(res.error, 'error');
-      }
-    });
   };
 
   const startGame = () => {
@@ -153,47 +165,79 @@ export default function RoomPage() {
   };
 
   const dissolveRoom = async () => {
-    if (!(await showConfirm({
-      title: '解散房间',
-      message: '确定要解散房间吗？所有玩家将被踢出。',
-      confirmText: '解散',
-      variant: 'danger',
-    }))) return;
+    if (
+      !(await showConfirm({
+        title: '解散房间',
+        message: '确定要解散房间吗？所有玩家将被踢出。',
+        confirmText: '解散',
+        variant: 'danger',
+      }))
+    )
+      return;
     getSocket().emit('room:dissolve', () => {});
   };
 
-  /* House-rules helpers */
-  const applyPreset = (preset: string) => {
-    const presetRules = HOUSE_RULES_PRESETS[preset];
-    if (presetRules) {
-      const newRules = { ...DEFAULT_HOUSE_RULES, ...presetRules };
-      setHouseRules(newRules);
-      getSocket().emit('room:update_settings', { houseRules: newRules });
+  /* Seat click handler */
+  const handleSeatClick = (seatIndex: number) => {
+    const seat = seats[seatIndex];
+    if (!seat) {
+      // Empty seat: take it
+      getSocket().emit(
+        'seat:take',
+        seatIndex,
+        (res: { success?: boolean; error?: string }) => {
+          if (!res?.success && res?.error)
+            useToastStore.getState().addToast(res.error, 'error');
+        },
+      );
+    } else if (seat.userId === user?.id) {
+      // My seat: no action
+    } else if (seat.isBot) {
+      // Bot: swap directly (no confirmation needed)
+      getSocket().emit(
+        'seat:swap_request',
+        seat.userId,
+        (res: { success?: boolean; error?: string }) => {
+          if (!res?.success && res?.error)
+            useToastStore.getState().addToast(res.error, 'error');
+        },
+      );
+    } else {
+      // Other player: show action menu
+      setMenuTarget({
+        player: seat,
+        seatIndex,
+        position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+      });
     }
   };
 
-  const toggleRule = (key: keyof HouseRules) => {
-    const newRules = { ...houseRules, [key]: !houseRules[key] };
-    setHouseRules(newRules);
-    getSocket().emit('room:update_settings', { houseRules: newRules });
-  };
-
-  const setRuleValue = (key: keyof HouseRules, value: any) => {
-    const newRules = { ...houseRules, [key]: value };
-    setHouseRules(newRules);
-    getSocket().emit('room:update_settings', { houseRules: newRules });
+  /* Swap respond handler */
+  const handleSwapRespond = (accept: boolean) => {
+    if (!swapRequest) return;
+    getSocket().emit(
+      'seat:swap_respond',
+      { requesterId: swapRequest.requesterId, accept },
+      (res: { success?: boolean; error?: string }) => {
+        if (!res?.success && res?.error)
+          useToastStore.getState().addToast(res.error, 'error');
+      },
+    );
+    setSwapRequest(null);
   };
 
   return (
     <GamePageShell>
-      <div className="relative z-1 flex flex-col items-center gap-4 md:gap-6 w-full h-full overflow-y-auto scrollbar-thin px-4 md:px-8 py-8 md:py-20">
+      <div className="relative z-1 flex flex-col items-center gap-4 md:gap-6 w-full h-full overflow-y-auto scrollbar-thin px-4 md:px-8 py-8 md:py-16">
         {/* Title */}
         <h2 className="font-game text-2xl md:text-[36px] text-primary text-shadow-bold flex items-center gap-2 md:gap-3 shrink-0">
           房间 {roomCode}
           <button
             onClick={() => {
               const url = `${window.location.origin}/room/${roomCode}`;
-              navigator.clipboard.writeText(`来玩 UNO 吧！房间号：${roomCode}\n${url}`);
+              navigator.clipboard.writeText(
+                `来玩 UNO 吧！房间号：${roomCode}\n${url}`,
+              );
               useToastStore.getState().addToast('房间链接已复制', 'success');
             }}
             className="bg-white/10 hover:bg-white/20 rounded-lg p-1.5 cursor-pointer transition-colors"
@@ -203,248 +247,127 @@ export default function RoomPage() {
           </button>
         </h2>
 
-        {/* Two-column layout */}
-        <div className="flex flex-col md:flex-row gap-4 md:gap-6 w-full max-w-[900px] md:flex-1 md:min-h-0">
-          {/* Left: Player + spectator lists */}
-          <div className="flex-1 glass-panel p-4 md:p-6 flex flex-col gap-4 min-h-0 overflow-y-auto scrollbar-thin">
-            <section>
-              <h3 className="mb-4 text-sm text-muted-foreground font-game">
-                玩家 ({activePlayers.length}/{MAX_PLAYERS})
-              </h3>
-              <div className="flex flex-col gap-1">
-                {activePlayers.map((p) => {
-                  const roleColor = getRoleColor(p.role);
-                  const isMe = p.userId === user?.id;
-                  return (
-                    <div
-                      key={p.userId}
-                      className={cn(
-                        'flex items-center justify-between py-3 px-3 rounded-lg border-b border-white/5 last:border-b-0',
-                        !isMe && 'cursor-pointer hover:bg-white/5'
-                      )}
-                      onClick={(e) => {
-                        if (isMe) return;
-                        setMenuTarget({ player: p, position: { x: e.clientX, y: e.clientY } });
-                      }}
-                    >
-                      <span className="flex min-w-0 flex-1 items-center gap-2" style={roleColor ? { color: roleColor } : undefined}>
-                        <span className="truncate text-base font-medium">{p.nickname}</span>
-                        {p.isBot && (
-                          p.botConfig
-                            ? <BotDifficultyBadge difficulty={p.botConfig.difficulty} />
-                            : <AiBadge />
-                        )}
-                        {room?.ownerId === p.userId && <Crown size={16} className="shrink-0 text-primary" />}
-                        <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={isMe} className="shrink-0" />
-                      </span>
-                      <span className={cn('text-xs font-medium', p.ready ? 'text-uno-green' : 'text-muted-foreground')}>
-                        {p.ready ? <><Check size={14} className="inline-block align-middle" /> 已准备</> : '未准备'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              {isOwner && activePlayers.length < MAX_PLAYERS && <BotAddButton />}
-            </section>
+        {/* Circular table */}
+        <SeatCircle
+          seats={seats}
+          onSeatClick={handleSeatClick}
+          compact={compact}
+        />
 
-            {spectatorPlayers.length > 0 && (
-              <section>
-                <h3 className="mb-4 text-sm text-muted-foreground font-game flex items-center gap-1.5">
-                  <Eye size={14} className="text-blue-400" />
-                  观战 ({spectatorPlayers.length})
-                </h3>
-                <div className="flex flex-col gap-1">
-                  {spectatorPlayers.map((p) => {
-                    const roleColor = getRoleColor(p.role);
-                    const isMe = p.userId === user?.id;
-                    return (
-                      <div
-                        key={p.userId}
-                        className={cn(
-                          'flex items-center justify-between py-3 px-3 rounded-lg border-b border-white/5 last:border-b-0 opacity-70',
-                          !isMe && 'cursor-pointer hover:bg-white/5 hover:opacity-100'
-                        )}
-                        onClick={(e) => {
-                          if (isMe) return;
-                          setMenuTarget({ player: p, position: { x: e.clientX, y: e.clientY } });
-                        }}
-                      >
-                        <span className="flex min-w-0 flex-1 items-center gap-2" style={roleColor ? { color: roleColor } : undefined}>
-                          <span className="truncate text-base font-medium">{p.nickname}</span>
-                          {p.isBot && (
-                            p.botConfig ? (
-                              <span
-                                className="inline-flex items-center shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold leading-none"
-                                style={{
-                                  color: DIFFICULTY_DISPLAY[p.botConfig.difficulty].ringColor,
-                                  backgroundColor: `${DIFFICULTY_DISPLAY[p.botConfig.difficulty].avatarBg}20`,
-                                }}
-                              >
-                                AI · {DIFFICULTY_DISPLAY[p.botConfig.difficulty].label}
-                              </span>
-                            ) : (
-                              <AiBadge />
-                            )
-                          )}
-                          {room?.ownerId === p.userId && <Crown size={16} className="shrink-0 text-primary" />}
-                          <PlayerVoiceStatus playerId={p.userId} playerName={p.nickname} isSelf={isMe} className="shrink-0" />
-                        </span>
-                        <span className="text-xs font-medium text-blue-400">
-                          <Eye size={14} className="inline-block align-middle" /> 观战
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-          </div>
-
-          {/* Right: Settings (spectator + house rules in one panel) */}
-          <div className="w-full md:w-[320px] md:shrink-0 glass-panel p-4 md:p-5 flex flex-col md:max-h-[calc(100vh-280px)]">
-            {/* Spectator section */}
-            <h3 className="mb-3 text-sm text-muted-foreground font-game">观战设置</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-sm">允许观战</label>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={room?.settings?.allowSpectators ?? true}
-                  onClick={() => { if (isOwner) getSocket().emit('room:update_settings', { allowSpectators: !(room?.settings?.allowSpectators ?? true) }); }}
-                  disabled={!isOwner}
-                  className={cn(
-                    'w-11 h-6 rounded-xl relative transition-colors duration-200',
-                    !isOwner ? 'cursor-default opacity-50' : 'cursor-pointer',
-                    (room?.settings?.allowSpectators ?? true) ? 'bg-accent' : 'bg-white/15'
-                  )}
-                >
-                  <span className={cn(
-                    'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform',
-                    (room?.settings?.allowSpectators ?? true) ? 'translate-x-5' : ''
-                  )} />
-                </button>
-              </div>
-              {(room?.settings?.allowSpectators ?? true) && (
-                <div className="flex items-center justify-between">
-                  <label className="text-sm">观战模式</label>
-                  <select
-                    value={room?.settings?.spectatorMode ?? 'hidden'}
-                    onChange={(e) => getSocket().emit('room:update_settings', { spectatorMode: e.target.value as 'full' | 'hidden' })}
-                    className={cn(
-                      'bg-white/[0.06] text-foreground border border-white/10 rounded-xl px-3 py-1.5 text-sm outline-none cursor-pointer',
-                      !isOwner && 'opacity-50 cursor-default'
-                    )}
-                    disabled={!isOwner}
-                  >
-                    <option value="hidden">只看出牌</option>
-                    <option value="full">全透视</option>
-                  </select>
-                </div>
-              )}
-            </div>
-
-            <div className="border-b border-white/5 my-4" />
-
-            {/* House rules section */}
-            <h3 className="mb-3 text-sm text-accent font-game">村规设置</h3>
-            <div className="flex gap-2 mb-3 flex-wrap">
-              {(['classic', 'party', 'crazy'] as const).map((p) => (
-                <Button key={p} variant="outline" size="sm" onClick={() => applyPreset(p)} disabled={!isOwner} sound="click">
-                  {p === 'classic' ? '经典' : p === 'party' ? '派对' : '疯狂'}
-                </Button>
-              ))}
-            </div>
-            <div className="flex-1 overflow-y-auto scrollbar-thin min-h-0">
-              {RULES.map((rule) => (
-                <div key={rule.key} className="flex justify-between items-center py-1.5 border-b border-white/5">
-                  <div className="flex-1">
-                    <div className="text-caption">{rule.label}</div>
-                    <div className="text-xs text-muted-foreground">{rule.description}</div>
-                  </div>
-                  {rule.type === 'boolean' ? (
-                    <button
-                      onClick={() => toggleRule(rule.key)}
-                      disabled={!isOwner}
-                      className={cn(
-                        'w-11 h-6 rounded-xl border-none relative transition-colors duration-200',
-                        !isOwner ? 'cursor-default' : 'cursor-pointer',
-                        houseRules[rule.key] ? 'bg-accent' : 'bg-switch-off'
-                      )}
-                    >
-                      <div className={cn(
-                        'w-toggle-knob h-toggle-knob rounded-full bg-white absolute top-toggle-off transition-[left] duration-200',
-                        houseRules[rule.key] ? 'left-toggle-on' : 'left-toggle-off'
-                      )} />
-                    </button>
-                  ) : (
-                    <select
-                      value={String(houseRules[rule.key] ?? 'null')}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setRuleValue(rule.key, v === 'null' ? null : Number(v));
-                      }}
-                      disabled={!isOwner}
-                      className="bg-white/[0.06] text-foreground border border-white/10 rounded-xl px-3 py-1.5 text-xs outline-none cursor-pointer"
-                    >
-                      {rule.options?.map((opt) => (
-                        <option key={String(opt.value)} value={String(opt.value ?? 'null')}>{opt.label}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        {/* Spectator bar */}
+        <SpectatorBar spectators={spectators} compact={compact} />
 
         {/* Action buttons */}
         <div className="flex flex-col items-center gap-2 shrink-0">
-          <div className="flex flex-wrap justify-center gap-2.5">
-            {myPlayer?.spectator ? (
-              <Button variant="game" onClick={toggleSpectator} sound="click" className="text-sm md:text-base px-5 py-2.5 tracking-normal">
-                取消观战
+          {isSpectator ? (
+            <p className="text-xs text-blue-400/60">点击空座位入座</p>
+          ) : myPlayer ? (
+            <div className="flex flex-wrap justify-center gap-2.5">
+              <Button
+                variant="game"
+                onClick={toggleReady}
+                sound="ready"
+                className="text-sm md:text-base px-5 py-2.5 tracking-normal"
+              >
+                {myPlayer.ready ? '取消准备' : '准备'}
               </Button>
-            ) : (
-              <>
-                <Button variant="game" onClick={toggleReady} sound="ready" className="text-sm md:text-base px-5 py-2.5 tracking-normal">
-                  {myPlayer?.ready ? '取消准备' : '准备'}
+              {isOwner && (
+                <Button
+                  variant="game"
+                  className={cn(
+                    'text-sm md:text-base px-5 py-2.5 tracking-normal',
+                    !allReady && 'opacity-50',
+                  )}
+                  onClick={startGame}
+                  disabled={!allReady}
+                  sound="ready"
+                >
+                  开始游戏
                 </Button>
-                {isOwner && (
-                  <Button variant="game" className={cn('text-sm md:text-base px-5 py-2.5 tracking-normal', !allReady && 'opacity-50')} onClick={startGame} disabled={!allReady} sound="ready">
-                    开始游戏
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
+              )}
+            </div>
+          ) : null}
           <div className="flex flex-wrap justify-center gap-2">
-            {!myPlayer?.spectator && (
-              <Button variant="secondary" onClick={toggleSpectator} sound="click" size="sm" className="text-xs px-3 py-1.5">
-                <Eye size={12} className="inline align-middle mr-1" />观战
+            {myPlayer && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  getSocket().emit(
+                    'seat:leave',
+                    (res: { success?: boolean; error?: string }) => {
+                      if (!res?.success && res?.error)
+                        useToastStore.getState().addToast(res.error, 'error');
+                    },
+                  );
+                }}
+                sound="click"
+                size="sm"
+                className="text-xs px-3 py-1.5"
+              >
+                <Eye size={12} className="inline align-middle mr-1" />
+                观战
               </Button>
             )}
-            <Button variant="secondary" onClick={leaveRoom} sound="click" size="sm" className="text-xs px-3 py-1.5">
+            {isOwner && seatedPlayers.length < 10 && <BotAddButton />}
+            <Button
+              variant="secondary"
+              onClick={leaveRoom}
+              sound="click"
+              size="sm"
+              className="text-xs px-3 py-1.5"
+            >
               离开房间
             </Button>
             {isOwner && (
-              <Button variant="danger" onClick={dissolveRoom} sound="danger" size="sm" className="text-xs px-3 py-1.5">
-                <Trash2 size={12} className="inline align-middle mr-1" />解散房间
+              <Button
+                variant="danger"
+                onClick={dissolveRoom}
+                sound="danger"
+                size="sm"
+                className="text-xs px-3 py-1.5"
+              >
+                <Trash2 size={12} className="inline align-middle mr-1" />
+                解散房间
               </Button>
             )}
           </div>
         </div>
 
-        {menuTarget && (
-          <PlayerActionMenu
-            target={menuTarget.player}
-            isOwner={isOwner}
-            roomStatus={room?.status ?? ''}
-            position={menuTarget.position}
-            onClose={() => setMenuTarget(null)}
-          />
-        )}
+        {/* Settings gear (top-right) */}
+        <button
+          className="absolute top-4 right-4 w-9 h-9 bg-white/[0.08] border border-white/15 rounded-lg flex items-center justify-center hover:bg-white/15 cursor-pointer transition-colors"
+          onClick={() => setSettingsOpen(true)}
+          title="房间设置"
+        >
+          <Settings size={16} className="text-muted-foreground" />
+        </button>
       </div>
+
+      <SettingsDrawer
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        isOwner={isOwner}
+        room={room as any}
+        houseRules={houseRules}
+        onHouseRulesChange={setHouseRules}
+      />
+      {swapRequest && (
+        <SwapRequestDialog
+          requesterId={swapRequest.requesterId}
+          requesterName={swapRequest.requesterName}
+          requesterSeatIndex={swapRequest.requesterSeatIndex}
+          onRespond={handleSwapRespond}
+        />
+      )}
+      {menuTarget && (
+        <PlayerActionMenu
+          target={menuTarget.player as any}
+          isOwner={isOwner}
+          roomStatus={room?.status ?? ''}
+          position={menuTarget.position}
+          onClose={() => setMenuTarget(null)}
+        />
+      )}
       <VoicePanel />
       <BgmToast song={songName} />
     </GamePageShell>
