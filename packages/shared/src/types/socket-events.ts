@@ -3,6 +3,7 @@ import type { PlayerView } from './player-view.js';
 import type { ChatMessage } from './chat.js';
 import type { RoomSettings } from './game.js';
 import type { BotDifficulty, BotPersonality } from './bot.js';
+import type { RoomSeats, RoomSpectator } from './room.js';
 
 export interface SocketCallbackResult {
   success: boolean;
@@ -64,6 +65,9 @@ export interface ServerToClientEvents {
   'room:bot_updated': (data: { botId: string; difficulty: BotDifficulty }) => void;
   'room:owner_transfer_pending': (data: { transferAt: number }) => void;
   'room:owner_transfer_cancelled': () => void;
+  'seat:updated': (data: { seats: RoomSeats; spectators: RoomSpectator[] }) => void;
+  'seat:swap_requested': (data: { requesterId: string; requesterName: string; requesterSeatIndex: number }) => void;
+  'seat:swap_resolved': (data: { accepted: boolean; seat1: number; seat2: number }) => void;
   'game:spectator_queue': (data: { queue: string[]; nickname: string; joined: boolean }) => void;
   'game:cheat_detected': () => void;
   'voice:presence': (presence: Record<string, unknown>) => void;
@@ -84,6 +88,10 @@ export interface ClientToServerEvents {
   'room:add_bot': (payload: { difficulty: BotDifficulty }, callback: (res: SocketCallbackResult & { botId?: string }) => void) => void;
   'room:remove_bot': (payload: { botId: string }, callback: (res: SocketCallbackResult) => void) => void;
   'room:set_bot_difficulty': (payload: { botId: string; difficulty: BotDifficulty }, callback: (res: SocketCallbackResult) => void) => void;
+  'seat:take': (seatIndex: number, callback: (res: SocketCallbackResult) => void) => void;
+  'seat:leave': (callback: (res: SocketCallbackResult) => void) => void;
+  'seat:swap_request': (targetUserId: string, callback: (res: SocketCallbackResult) => void) => void;
+  'seat:swap_respond': (payload: { requesterId: string; accept: boolean }, callback: (res: SocketCallbackResult) => void) => void;
   'voice:force_mute': (payload: { targetId: string; muted: boolean }, callback?: (res: SocketCallbackResult) => void) => void;
   'room:spectate': (roomCode: string, callback?: (res: SocketCallbackResult) => void) => void;
   'game:start': (callback: (res: SocketCallbackResult & { gameState?: PlayerView }) => void) => void;
