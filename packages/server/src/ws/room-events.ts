@@ -1,9 +1,9 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
 import type { GameAction, GameState, RoomSettings, BotDifficulty } from '@uno-online/shared';
-import { MIN_PLAYERS, MAX_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction, chooseBotAction, getPlayableCards, DIFFICULTY_PARAMS, BOT_DIFFICULTIES } from '@uno-online/shared';
+import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction, chooseBotAction, getPlayableCards, DIFFICULTY_PARAMS, BOT_DIFFICULTIES } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager.js';
-import { getRoom, getRoomPlayers, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, ensureNotInRoom } from '../plugins/core/room/store.js';
+import { getRoom, getRoomSeats, getRoomSpectators, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, ensureNotInRoom, removeSpectatorFromRoom, getSeatedPlayers } from '../plugins/core/room/store.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
 import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
@@ -106,8 +106,9 @@ export function registerRoomEvents(
     const code = await roomManager.createRoom(data.user.userId, data.user.nickname, roomSettings, data.user.avatarUrl, data.user.role, data.user.isBot);
     const voiceChannelId = await voiceChannels?.ensureRoomChannel(code) ?? null;
     await joinRoomSocket(redis, socket, code);
-    const [room, players] = await Promise.all([getRoom(redis, code), getRoomPlayers(redis, code)]);
-    callback({ success: true, roomCode: code, players, room, voiceChannelId });
+    const [room, seats, spectators] = await Promise.all([getRoom(redis, code), getRoomSeats(redis, code), getRoomSpectators(redis, code)]);
+    callback({ success: true, roomCode: code, players: getSeatedPlayers(seats), room, voiceChannelId });
+    io.to(code).emit('seat:updated', { seats, spectators });
   });
 
   socket.on('room:join', async (roomCode: string, callback) => {
@@ -115,8 +116,9 @@ export function registerRoomEvents(
       const room = await getRoom(redis, roomCode);
       if (!room) return callback({ success: false, error: 'Room not found' });
 
-      const players = await getRoomPlayers(redis, roomCode);
-      const alreadyInRoom = players.some(p => p.userId === data.user.userId);
+      const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
+      const seatedPlayers = getSeatedPlayers(seats);
+      const alreadyInRoom = seatedPlayers.some(p => p.userId === data.user.userId) || spectators.some(s => s.userId === data.user.userId);
 
       if (alreadyInRoom) {
         await joinRoomSocket(redis, socket, roomCode);
@@ -124,7 +126,7 @@ export function registerRoomEvents(
           socket.emit('room:rejoin_redirect', { roomCode });
         }
         const voiceChannelId = await voiceChannels?.getRoomChannel(roomCode) ?? null;
-        return callback({ success: true, players, room, rejoin: room.status !== 'waiting', voiceChannelId });
+        return callback({ success: true, players: seatedPlayers, room, rejoin: room.status !== 'waiting', voiceChannelId });
       }
 
       const conflict = await ensureNotInRoom(redis, data.user.userId, roomCode);
@@ -133,12 +135,13 @@ export function registerRoomEvents(
       await roomManager.joinRoom(roomCode, data.user.userId, data.user.nickname, data.user.avatarUrl, data.user.role, data.user.isBot);
       await touchRoomActivity(redis, roomCode);
       await joinRoomSocket(redis, socket, roomCode);
-      const [voiceChannelId, updatedPlayers] = await Promise.all([
+      const [voiceChannelId, updatedSeats, updatedSpectators] = await Promise.all([
         voiceChannels?.getRoomChannel(roomCode) ?? null,
-        getRoomPlayers(redis, roomCode),
+        getRoomSeats(redis, roomCode),
+        getRoomSpectators(redis, roomCode),
       ]);
-      io.to(roomCode).emit('room:updated', { players: updatedPlayers, room });
-      callback({ success: true, players: updatedPlayers, room, voiceChannelId });
+      io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators: updatedSpectators });
+      callback({ success: true, players: getSeatedPlayers(updatedSeats), room, voiceChannelId });
     } catch (err) {
       callback({ success: false, error: (err as Error).message });
     }
@@ -147,11 +150,16 @@ export function registerRoomEvents(
   socket.on('room:leave', async (callback) => {
     const roomCode = data.roomCode;
     if (!roomCode) return callback?.({ success: false, error: 'Not in a room' });
-    if (data.isSpectator) {
+
+    const spectators = await getRoomSpectators(redis, roomCode);
+    const isRoomSpectator = spectators.some(s => s.userId === data.user.userId);
+
+    if (isRoomSpectator) {
       const { userId, nickname } = data.user;
 
-      const players = await getRoomPlayers(redis, roomCode);
-      const remainingHumans = players.filter(p => !p.isBot && p.userId !== userId);
+      const seats = await getRoomSeats(redis, roomCode);
+      const seatedPlayers = getSeatedPlayers(seats);
+      const remainingHumans = [...seatedPlayers.filter(p => !p.isBot), ...spectators.filter(s => s.userId !== userId)];
 
       // No humans will remain after this spectator leaves — dissolve
       if (remainingHumans.length === 0) {
@@ -163,13 +171,19 @@ export function registerRoomEvents(
       // Transfer ownership if the leaving spectator was the owner
       const room = await getRoom(redis, roomCode);
       if (room?.ownerId === userId) {
-        await setRoomOwner(redis, roomCode, remainingHumans[0]!.userId);
+        const nextOwner = seatedPlayers.find(p => !p.isBot) ?? spectators.find(s => s.userId !== userId);
+        if (nextOwner) {
+          await setRoomOwner(redis, roomCode, nextOwner.userId);
+        }
         const updatedRoom = await getRoom(redis, roomCode);
-        io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
+        io.to(roomCode).emit('room:updated', { room: updatedRoom });
       }
 
+      await removeSpectatorFromRoom(redis, roomCode, userId);
       await leaveRoomSocket(redis, socket, roomCode);
       broadcastSpectatorLeft(io, roomCode, userId, nickname);
+      const [updatedSeats, updatedSpectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
+      io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators: updatedSpectators });
       return callback?.({ success: true });
     }
     const room = await getRoom(redis, roomCode);
@@ -218,8 +232,11 @@ export function registerRoomEvents(
     // If the leaver was the owner, manager.leaveRoom has just transferred
     // ownership to players[0]; the cached `room` still has the stale ownerId.
     const updatedRoom = wasOwner ? await getRoom(redis, roomCode) : room;
-    const players = await getRoomPlayers(redis, roomCode);
-    io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
+    const [seats, updatedSpectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
+    io.to(roomCode).emit('seat:updated', { seats, spectators: updatedSpectators });
+    if (wasOwner) {
+      io.to(roomCode).emit('room:updated', { room: updatedRoom });
+    }
     callback?.({ success: true });
   });
 
@@ -228,33 +245,8 @@ export function registerRoomEvents(
     if (!roomCode) return callback?.({ success: false });
     await roomManager.setReady(roomCode, data.user.userId, ready);
     await touchRoomActivity(redis, roomCode);
-    const players = await getRoomPlayers(redis, roomCode);
-    io.to(roomCode).emit('room:updated', { players });
-    callback?.({ success: true });
-  });
-
-  socket.on('room:toggle_spectator', async (spectator: boolean, callback) => {
-    const roomCode = data.roomCode;
-    if (!roomCode) return callback?.({ success: false });
-    const room = await getRoom(redis, roomCode);
-    if (!room || room.status !== 'waiting') return callback?.({ success: false });
-
-    // When switching back from the spectator bench to a player seat, make
-    // sure we don't blow past the active-roster cap (e.g. 10 active + 1
-    // bench, where toggling back would yield 11 active).
-    if (!spectator) {
-      const players = await getRoomPlayers(redis, roomCode);
-      const me = players.find((p) => p.userId === data.user.userId);
-      const activeCount = players.filter((p) => !p.spectator).length;
-      if (me?.spectator && activeCount >= MAX_PLAYERS) {
-        return callback?.({ success: false, error: '玩家席位已满' });
-      }
-    }
-
-    await roomManager.setSpectator(roomCode, data.user.userId, spectator);
-    await touchRoomActivity(redis, roomCode);
-    const players = await getRoomPlayers(redis, roomCode);
-    io.to(roomCode).emit('room:updated', { players });
+    const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
+    io.to(roomCode).emit('seat:updated', { seats, spectators });
     callback?.({ success: true });
   });
 
@@ -285,9 +277,8 @@ export function registerRoomEvents(
 
     await setRoomSettings(redis, roomCode, nextSettings);
     await touchRoomActivity(redis, roomCode);
-    const players = await getRoomPlayers(redis, roomCode);
     const updatedRoom = await getRoom(redis, roomCode);
-    io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
+    io.to(roomCode).emit('room:updated', { room: updatedRoom });
     callback?.({ success: true, room: updatedRoom });
   });
 
@@ -310,12 +301,14 @@ export function registerRoomEvents(
     if (room.ownerId !== data.user.userId) return callback?.({ success: false, error: '只有房主可以移交' });
     if (room.status !== 'waiting') return callback?.({ success: false, error: '游戏进行中无法移交房主' });
     if (payload.targetId === data.user.userId) return callback?.({ success: false, error: '不能移交给自己' });
-    const players = await getRoomPlayers(redis, roomCode);
-    if (!players.some(p => p.userId === payload.targetId)) return callback?.({ success: false, error: '目标玩家不在房间中' });
+    const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
+    const allUsers = [...getSeatedPlayers(seats), ...spectators];
+    if (!allUsers.some(p => p.userId === payload.targetId)) return callback?.({ success: false, error: '目标玩家不在房间中' });
     await setRoomOwner(redis, roomCode, payload.targetId);
     await touchRoomActivity(redis, roomCode);
     const updatedRoom = await getRoom(redis, roomCode);
-    io.to(roomCode).emit('room:updated', { players, room: updatedRoom });
+    io.to(roomCode).emit('room:updated', { room: updatedRoom });
+    io.to(roomCode).emit('seat:updated', { seats, spectators });
     callback?.({ success: true });
   });
 
@@ -327,8 +320,9 @@ export function registerRoomEvents(
     if (room.ownerId !== data.user.userId) return callback?.({ success: false, error: '只有房主可以踢人' });
     if (room.status === 'playing') return callback?.({ success: false, error: '游戏进行中无法踢人' });
     if (payload.targetId === data.user.userId) return callback?.({ success: false, error: '不能踢自己' });
-    const players = await getRoomPlayers(redis, roomCode);
-    if (!players.some(p => p.userId === payload.targetId)) return callback?.({ success: false, error: '目标玩家不在房间中' });
+    const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
+    const allUsers = [...getSeatedPlayers(seats), ...spectators];
+    if (!allUsers.some(p => p.userId === payload.targetId)) return callback?.({ success: false, error: '目标玩家不在房间中' });
     await roomManager.leaveRoom(roomCode, payload.targetId);
     removeVoicePresence(io, roomCode, payload.targetId);
     const targetSockets = await io.in(roomCode).fetchSockets();
@@ -341,19 +335,20 @@ export function registerRoomEvents(
     }
     await Promise.all(cleanups);
     await touchRoomActivity(redis, roomCode);
-    const updatedPlayers = await getRoomPlayers(redis, roomCode);
+    const [updatedSeats, updatedSpectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
     const updatedRoom = await getRoom(redis, roomCode);
-    io.to(roomCode).emit('room:updated', { players: updatedPlayers, room: updatedRoom });
+    io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators: updatedSpectators });
+    io.to(roomCode).emit('room:updated', { room: updatedRoom });
     callback?.({ success: true });
   });
 
-  socket.on('room:add_bot', async (payload: { difficulty: BotDifficulty }, callback) => {
+  socket.on('room:add_bot', async (payload: { difficulty: BotDifficulty; seatIndex?: number }, callback) => {
     const roomCode = data.roomCode;
     if (!roomCode) return callback({ success: false, error: '不在房间中' });
     if (!BOT_DIFFICULTIES.includes(payload.difficulty)) return callback({ success: false, error: '无效的难度等级' });
 
     const session = sessions.get(roomCode);
-    const result = await addBot(io, redis, roomManager, roomCode, data.user.userId, payload.difficulty, session);
+    const result = await addBot(io, redis, roomCode, data.user.userId, payload.difficulty, session, payload.seatIndex);
 
     if (result.success && session) {
       persister.markDirty(roomCode, session.getFullState());
@@ -390,14 +385,14 @@ export function registerRoomEvents(
         turnTimer.stop(roomCode);
         session.removePlayer(payload.botId);
       }
-      await removeBot(io, redis, roomManager, roomCode, data.user.userId, payload.botId, undefined);
+      await removeBot(io, redis, roomCode, data.user.userId, payload.botId, undefined);
       persister.markDirty(roomCode, session.getFullState());
       await emitGameUpdate(io, roomCode, session, redis);
       broadcastLobbyRooms(redis, io);
       return callback({ success: true });
     }
 
-    const result = await removeBot(io, redis, roomManager, roomCode, data.user.userId, payload.botId, session);
+    const result = await removeBot(io, redis, roomCode, data.user.userId, payload.botId, session);
 
     if (result.success && session) {
       persister.markDirty(roomCode, session.getFullState());
@@ -426,8 +421,9 @@ export function registerRoomEvents(
     if (!room) return callback?.({ success: false, error: '房间不存在' });
     if (room.ownerId !== data.user.userId) return callback?.({ success: false, error: '只有房主可以强制静音' });
     if (payload.targetId === data.user.userId) return callback?.({ success: false, error: '不能静音自己' });
-    const players = await getRoomPlayers(redis, roomCode);
-    if (!players.some(p => p.userId === payload.targetId)) return callback?.({ success: false, error: '目标玩家不在房间中' });
+    const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
+    const allUsers = [...getSeatedPlayers(seats), ...spectators];
+    if (!allUsers.some(p => p.userId === payload.targetId)) return callback?.({ success: false, error: '目标玩家不在房间中' });
     setForceMuted(io, roomCode, payload.targetId, payload.muted);
     callback?.({ success: true });
   });
@@ -439,15 +435,9 @@ export function registerRoomEvents(
     if (!room || room.ownerId !== data.user.userId) {
       return callback?.({ success: false, error: 'Only room owner can start' });
     }
-    const rawPlayers = await getRoomPlayers(redis, roomCode);
-    const seen = new Set<string>();
-    const players = rawPlayers.filter(p => {
-      if (seen.has(p.userId)) return false;
-      seen.add(p.userId);
-      return true;
-    });
-    const activePlayers = players.filter((p) => !p.spectator);
-    const roomSpectatorPlayers = players.filter((p) => p.spectator);
+    const seats = await getRoomSeats(redis, roomCode);
+    const spectators = await getRoomSpectators(redis, roomCode);
+    const activePlayers = getSeatedPlayers(seats);
 
     if (activePlayers.length < MIN_PLAYERS) {
       return callback?.({ success: false, error: 'Not enough players' });
@@ -470,13 +460,12 @@ export function registerRoomEvents(
     const sockets = await io.in(roomCode).fetchSockets();
     for (const s of sockets) {
       const sData = s.data as SocketData;
-      const sUserId = sData.user.userId;
-      if (roomSpectatorPlayers.some((p) => p.userId === sUserId)) {
+      if (spectators.some(sp => sp.userId === sData.user.userId)) {
         sData.isSpectator = true;
-        addSpectator(roomCode, sUserId, sData.user.nickname, sData.user.avatarUrl);
+        addSpectator(roomCode, sData.user.userId, sData.user.nickname, sData.user.avatarUrl);
         s.emit('game:state', session.getSpectatorView(spectatorMode));
       } else {
-        s.emit('game:state', session.getPlayerView(sUserId));
+        s.emit('game:state', session.getPlayerView(sData.user.userId));
       }
     }
 

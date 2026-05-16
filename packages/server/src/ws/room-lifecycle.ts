@@ -7,6 +7,7 @@ import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import type { VoiceChannelManager } from '../voice/channel-manager.js';
 import { clearRoomTimeouts } from './room-events.js';
 import { clearPendingSpectatorJoins } from './game-events.js';
+import { clearPendingSwapRequests } from './seat-events.js';
 import { leaveRoomSocket } from './socket-room.js';
 import { clearVoicePresence } from './voice-presence.js';
 import { clearRoomSpectators } from '../plugins/core/spectate/ws.js';
@@ -26,6 +27,7 @@ export async function dissolveRoom(
   clearRoomTimeouts(roomCode);
   clearPendingSpectatorJoins(roomCode);
   clearRoomSpectators(roomCode);
+  clearPendingSwapRequests(roomCode);
   persister.cleanup(roomCode);
   const session = sessions.get(roomCode);
   session?.clearChatHistory();

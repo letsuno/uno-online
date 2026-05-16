@@ -2,7 +2,7 @@ import { io, type Socket as SocketType } from 'socket.io-client';
 import { getApiUrl } from './env';
 import type { ServerToClientEvents, ClientToServerEvents, PlayerView } from '@uno-online/shared';
 import { useGameStore } from '@/features/game/stores/game-store';
-import { useRoomStore, type RoomPlayer, type RoomData } from './stores/room-store';
+import { useRoomStore } from './stores/room-store';
 import { useToastStore } from './stores/toast-store';
 import { playSound } from './sound/sound-manager';
 import { useGatewayStore, type PlayerVoicePresence } from './voice/gateway-store';
@@ -35,11 +35,17 @@ export function getSocket(): TypedSocket {
       reconnectionDelayMax: 10000,
     });
 
-    socket.on('room:updated', (data) => {
-      useRoomStore.getState().updateRoom(data as unknown as { players?: RoomPlayer[]; room?: RoomData });
+    socket.on('room:updated', (data: Record<string, unknown>) => {
+      if (data.room) {
+        useRoomStore.getState().updateRoom({ room: data.room as any });
+      }
       if (useGameStore.getState().ownerTransferAt !== null) {
         useGameStore.getState().setOwnerTransferAt(null);
       }
+    });
+
+    socket.on('seat:updated', (data: { seats: unknown[]; spectators: unknown[] }) => {
+      useRoomStore.getState().updateSeats(data as any);
     });
 
     socket.on('voice:presence', (presence) => {
@@ -123,10 +129,10 @@ export function getSocket(): TypedSocket {
       }
     });
 
-    socket.on('game:back_to_room', (data: { players?: unknown[]; room?: unknown }) => {
+    socket.on('game:back_to_room', (data: { seats?: unknown[]; spectators?: unknown[]; room?: unknown }) => {
       const roomCode = useRoomStore.getState().roomCode;
-      if (data.players && data.room && roomCode) {
-        useRoomStore.getState().setRoom(roomCode, data.players as any, data.room as any);
+      if (data.seats && data.spectators && data.room && roomCode) {
+        useRoomStore.getState().setRoom(roomCode, data.seats as any, data.spectators as any, data.room as any);
       }
       useGameStore.getState().clearGame();
     });

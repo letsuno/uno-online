@@ -3,22 +3,22 @@ import type { Server as SocketIOServer } from 'socket.io';
 import type { ActiveRoomInfo } from '@uno-online/shared';
 import type { PluginContext } from '../../../plugin-context.js';
 import type { KvStore } from '../../../kv/types.js';
-import { getRoom, getRoomPlayers } from '../room/store.js';
+import { getRoom, getRoomSeats, getSeatedPlayers } from '../room/store.js';
 
 export async function getActiveRooms(kv: KvStore, io: SocketIOServer): Promise<ActiveRoomInfo[]> {
   const allKeys = await kv.keys('room:*');
-  const roomKeys = allKeys.filter(k => !k.includes(':players') && !k.includes(':state'));
+  const roomCodes = [...new Set(allKeys.map(k => k.split(':')[1]!))].filter(Boolean);
 
   const activeRooms: ActiveRoomInfo[] = [];
-  for (const key of roomKeys) {
-    const roomCode = key.replace('room:', '');
+  for (const roomCode of roomCodes) {
     const room = await getRoom(kv, roomCode);
     if (!room || room.status !== 'playing') continue;
 
     const settings = room.settings;
     if (!settings.allowSpectators) continue;
 
-    const players = await getRoomPlayers(kv, roomCode);
+    const seats = await getRoomSeats(kv, roomCode);
+    const players = getSeatedPlayers(seats);
     if (players.length === 0) continue;
 
     const spectatorSockets = await io.in(roomCode).fetchSockets();
@@ -26,7 +26,7 @@ export async function getActiveRooms(kv: KvStore, io: SocketIOServer): Promise<A
 
     activeRooms.push({
       roomCode,
-      players: players.map(p => ({ nickname: p.nickname, avatarUrl: p.avatarUrl })),
+      players: players.map((p: { nickname: string; avatarUrl?: string | null }) => ({ nickname: p.nickname, avatarUrl: p.avatarUrl })),
       playerCount: players.length,
       startedAt: room.createdAt,
       spectatorCount,

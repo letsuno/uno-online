@@ -6,7 +6,7 @@ import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts } from './room-events.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
-import { getRoom, getRoomPlayers, setRoomStatus, touchRoomActivity, removePlayerFromRoom, addPlayerToRoom, resetAllPlayersReady, setUserRoom, setPlayerSpectator } from '../plugins/core/room/store.js';
+import { getRoom, setRoomStatus, touchRoomActivity, clearSeatByUserId, setUserRoom, getRoomSeats, setRoomSeats, getRoomSpectators, getSeatedPlayers, addSpectatorToRoom, resetAllSeatsReady, takeSeat, getFirstEmptySeatIndex, clearUserRoom } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS } from '@uno-online/shared';
 import { addSpectator, removeSpectator, clearRoomSpectators, broadcastSpectatorList } from '../plugins/core/spectate/ws.js';
 import { broadcastLobbyRooms } from '../plugins/core/spectate/routes.js';
@@ -233,13 +233,19 @@ async function processPendingSpectatorJoins(
       role: info.role as any,
       isBot: info.isBot,
     });
-    await addPlayerToRoom(redis, roomCode, {
-      userId,
-      nickname: info.nickname,
-      avatarUrl: info.avatarUrl,
-      role: info.role,
-      isBot: info.isBot,
-    });
+    const seats = await getRoomSeats(redis, roomCode);
+    const seatIdx = getFirstEmptySeatIndex(seats);
+    if (seatIdx !== -1) {
+      await takeSeat(redis, roomCode, seatIdx, {
+        userId,
+        nickname: info.nickname,
+        avatarUrl: info.avatarUrl,
+        role: info.role,
+        isBot: info.isBot ?? false,
+        ready: false,
+        connected: true,
+      });
+    }
     userRoomWrites.push(setUserRoom(redis, userId, roomCode));
     joined.push(userId);
   }
@@ -709,7 +715,8 @@ export function registerGameEvents(
     }
 
     session.removePlayer(targetId);
-    await removePlayerFromRoom(redis, roomCode, targetId);
+    await clearSeatByUserId(redis, roomCode, targetId);
+    await clearUserRoom(redis, targetId);
 
     // Bots are fully removed; human players become spectators
     if (!targetPlayer.isBot) {
@@ -752,7 +759,8 @@ export function registerGameEvents(
     if (!player) return callback?.({ success: false, error: '玩家不在游戏中' });
 
     session.removePlayer(data.user.userId);
-    await removePlayerFromRoom(redis, roomCode, data.user.userId);
+    await clearSeatByUserId(redis, roomCode, data.user.userId);
+    await clearUserRoom(redis, data.user.userId);
 
     (socket.data as SocketData).isSpectator = true;
     addSpectator(roomCode, data.user.userId, player.name, data.user.avatarUrl);
@@ -801,31 +809,49 @@ export function registerGameEvents(
     clearPendingSpectatorJoins(roomCode);
 
     await setRoomStatus(redis, roomCode, 'waiting');
-    await resetAllPlayersReady(redis, roomCode);
+    await resetAllSeatsReady(redis, roomCode);
 
-    const currentRoomPlayers = await getRoomPlayers(redis, roomCode);
-    const currentIds = new Set(currentRoomPlayers.map((p) => p.userId));
+    // Shuffle seats if house rule enabled
+    const gameSettings = session.getFullState().settings;
+    if (gameSettings.houseRules.shuffleSeats) {
+      const seatsToShuffle = await getRoomSeats(redis, roomCode);
+      const occupied = seatsToShuffle
+        .map((s, i) => ({ player: s, index: i }))
+        .filter(e => e.player !== null);
+      // Fisher-Yates shuffle of occupied players across their seats
+      for (let i = occupied.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const idxI = occupied[i]!.index;
+        const idxJ = occupied[j]!.index;
+        [seatsToShuffle[idxI], seatsToShuffle[idxJ]] = [seatsToShuffle[idxJ]!, seatsToShuffle[idxI]!];
+      }
+      await setRoomSeats(redis, roomCode, seatsToShuffle);
+    }
+
+    const seats = await getRoomSeats(redis, roomCode);
+    const seatedIds = new Set(getSeatedPlayers(seats).map(p => p.userId));
     const sockets = await io.in(roomCode).fetchSockets();
     for (const s of sockets) {
       const sData = s.data as SocketData;
-      if (sData.isSpectator && !currentIds.has(sData.user.userId)) {
-        await addPlayerToRoom(redis, roomCode, {
+      if (sData.isSpectator && !seatedIds.has(sData.user.userId)) {
+        await addSpectatorToRoom(redis, roomCode, {
           userId: sData.user.userId,
           nickname: sData.user.nickname,
           avatarUrl: sData.user.avatarUrl,
           role: sData.user.role,
-          isBot: sData.user.isBot,
         });
-        await setPlayerSpectator(redis, roomCode, sData.user.userId, true);
       }
       sData.isSpectator = false;
     }
     clearRoomSpectators(roomCode);
 
     await touchRoomActivity(redis, roomCode);
-    const players = await getRoomPlayers(redis, roomCode);
+    const [updatedSeats, spectators] = await Promise.all([
+      getRoomSeats(redis, roomCode),
+      getRoomSpectators(redis, roomCode),
+    ]);
     const updatedRoom = await getRoom(redis, roomCode);
-    io.to(roomCode).emit('game:back_to_room', { players, room: updatedRoom });
+    io.to(roomCode).emit('game:back_to_room', { seats: updatedSeats, spectators, room: updatedRoom });
     io.to(roomCode).emit('chat:cleared');
     broadcastSpectatorList(io, roomCode);
     broadcastLobbyRooms(redis, io);
