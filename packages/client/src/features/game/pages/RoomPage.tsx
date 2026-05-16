@@ -406,6 +406,7 @@ export default function RoomPage() {
           roomStatus={room?.status ?? ''}
           position={menuTarget.position}
           onClose={() => setMenuTarget(null)}
+          onSwapRequest={handleSwapWithBot}
         />
       )}
       <VoicePanel />
