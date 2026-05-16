@@ -135,6 +135,7 @@
   --z-index-topbar: 10;
   --z-index-actions: 20;
   --z-index-fab: 50;
+  --z-index-autopilot: 60;
   --z-index-confetti: 85;
   --z-index-effects: 90;
   --z-index-timer-overlay: 95;
