@@ -56,7 +56,9 @@ interface GameState {
   roundEndAt: number | null;
   gameOverAt: number | null;
   cheatDetected: boolean;
+  ownerTransferAt: number | null;
   setCheatDetected: (value: boolean) => void;
+  setOwnerTransferAt: (transferAt: number | null) => void;
   setSpectator: (value: boolean) => void;
   infoDrawerOpen: boolean;
   infoDrawerTab: InfoDrawerTab;
@@ -99,7 +101,9 @@ export const useGameStore = create<GameState>((set) => ({
   roundEndAt: null,
   gameOverAt: null,
   cheatDetected: false,
+  ownerTransferAt: null,
   setCheatDetected: (value) => set({ cheatDetected: value }),
+  setOwnerTransferAt: (transferAt) => set({ ownerTransferAt: transferAt }),
   setSpectator: (value) => set({ isSpectator: value }),
   infoDrawerOpen: false,
   infoDrawerTab: 'rules' as InfoDrawerTab,
@@ -187,6 +191,7 @@ export const useGameStore = create<GameState>((set) => ({
       roundEndAt: null,
       gameOverAt: null,
       cheatDetected: false,
+      ownerTransferAt: null,
       infoDrawerOpen: false,
       infoDrawerTab: 'rules' as InfoDrawerTab,
     }),

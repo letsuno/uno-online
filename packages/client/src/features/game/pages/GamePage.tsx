@@ -37,6 +37,7 @@ import { useAuthStore } from '@/features/auth/stores/auth-store';
 import GameStartRulesModal from '../components/GameStartRulesModal';
 import ColorWave from '../components/ColorWave';
 import HotkeySettingsModal from '../components/HotkeySettingsModal';
+import OwnerTransferBanner from '../components/OwnerTransferBanner';
 
 export default function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -240,6 +241,7 @@ export default function GamePage() {
       <GameEffects />
       <ColorWave />
       {antiCheatKey && <AntiCheatToast key={antiCheatKey} />}
+      <OwnerTransferBanner />
       {(phase === 'round_end' || phase === 'game_over') && <Confetti />}
       {needsColorPick && <ColorPicker onPick={chooseColor} />}
       {showScoreBoard && (

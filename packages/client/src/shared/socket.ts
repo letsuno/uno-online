@@ -37,6 +37,7 @@ export function getSocket(): TypedSocket {
 
     socket.on('room:updated', (data) => {
       useRoomStore.getState().updateRoom(data as unknown as { players?: RoomPlayer[]; room?: RoomData });
+      useGameStore.getState().setOwnerTransferAt(null);
     });
 
     socket.on('voice:presence', (presence) => {
@@ -183,6 +184,13 @@ export function getSocket(): TypedSocket {
     socket.on('room:spectator_left', (data) => {
       useToastStore.getState().addToast(`${data.nickname} 离开观战`, 'info');
       useSpectatorStore.getState().setSpectators(data.spectators);
+    });
+
+    socket.on('room:owner_transfer_pending', (data) => {
+      useGameStore.getState().setOwnerTransferAt(data.transferAt);
+    });
+    socket.on('room:owner_transfer_cancelled', () => {
+      useGameStore.getState().setOwnerTransferAt(null);
     });
 
     socket.on('server:version', (data) => {
