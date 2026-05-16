@@ -1,5 +1,10 @@
 import type { KvStore } from '../../../kv/types.js';
 import type { RoomSettings, BotConfig } from '@uno-online/shared';
+import { SEAT_COUNT } from '@uno-online/shared';
+import type { RoomSeatPlayer, RoomSpectator, RoomSeats } from '@uno-online/shared';
+
+export type { RoomSeatPlayer, RoomSpectator, RoomSeats };
+export type RoomPlayer = RoomSeatPlayer;  // backward compat alias
 
 export interface RoomData {
   ownerId: string;
@@ -9,34 +14,27 @@ export interface RoomData {
   lastActivityAt: string;
 }
 
-export interface RoomPlayer {
-  userId: string;
-  nickname: string;
-  avatarUrl?: string | null;
-  ready: boolean;
-  spectator: boolean;
-  role?: string;
-  isBot: boolean;
-  botConfig?: BotConfig;
-}
+// ─── Lock ──────────────────────────────────────────────────────────────────
 
-const roomPlayerLocks = new Map<string, Promise<void>>();
+const roomSeatLocks = new Map<string, Promise<void>>();
 
-async function withRoomPlayerLock<T>(roomCode: string, fn: () => Promise<T>): Promise<T> {
-  const key = `room:${roomCode}:players`;
-  while (roomPlayerLocks.has(key)) {
-    await roomPlayerLocks.get(key);
+async function withRoomSeatLock<T>(roomCode: string, fn: () => Promise<T>): Promise<T> {
+  const key = `room:${roomCode}:seats`;
+  while (roomSeatLocks.has(key)) {
+    await roomSeatLocks.get(key);
   }
   let resolve!: () => void;
   const promise = new Promise<void>(r => { resolve = r; });
-  roomPlayerLocks.set(key, promise);
+  roomSeatLocks.set(key, promise);
   try {
     return await fn();
   } finally {
-    roomPlayerLocks.delete(key);
+    roomSeatLocks.delete(key);
     resolve();
   }
 }
+
+// ─── Room CRUD (unchanged) ─────────────────────────────────────────────────
 
 export async function createRoom(kv: KvStore, roomCode: string, ownerId: string, settings: RoomSettings): Promise<void> {
   const now = new Date().toISOString();
@@ -77,73 +75,11 @@ export async function setRoomOwner(kv: KvStore, roomCode: string, ownerId: strin
   await kv.hset(`room:${roomCode}`, { ownerId });
 }
 
-export async function getRoomPlayers(kv: KvStore, roomCode: string): Promise<RoomPlayer[]> {
-  const raw = await kv.get(`room:${roomCode}:players`);
-  if (!raw) return [];
-  return JSON.parse(raw) as RoomPlayer[];
-}
-
-async function setRoomPlayers(kv: KvStore, roomCode: string, players: RoomPlayer[]): Promise<void> {
-  if (players.length === 0) {
-    await kv.del(`room:${roomCode}:players`);
-  } else {
-    await kv.set(`room:${roomCode}:players`, JSON.stringify(players));
-  }
-}
-
-export async function addPlayerToRoom(kv: KvStore, roomCode: string, player: { userId: string; nickname: string; avatarUrl?: string | null; role?: string; isBot?: boolean; botConfig?: BotConfig }): Promise<void> {
-  await withRoomPlayerLock(roomCode, async () => {
-    const existing = await getRoomPlayers(kv, roomCode);
-    if (existing.some(p => p.userId === player.userId)) return;
-    existing.push({ userId: player.userId, nickname: player.nickname, avatarUrl: player.avatarUrl ?? null, ready: false, spectator: false, role: player.role ?? 'normal', isBot: player.isBot ?? false, botConfig: player.botConfig });
-    await setRoomPlayers(kv, roomCode, existing);
-  });
-}
-
-export async function removePlayerFromRoom(kv: KvStore, roomCode: string, userId: string): Promise<void> {
-  await withRoomPlayerLock(roomCode, async () => {
-    const players = await getRoomPlayers(kv, roomCode);
-    const remaining = players.filter((p) => p.userId !== userId);
-    await setRoomPlayers(kv, roomCode, remaining);
-  });
-}
-
-export async function setPlayerReady(kv: KvStore, roomCode: string, userId: string, ready: boolean): Promise<void> {
-  await withRoomPlayerLock(roomCode, async () => {
-    const players = await getRoomPlayers(kv, roomCode);
-    const updated = players.map((p) => p.userId === userId ? { ...p, ready } : p);
-    await setRoomPlayers(kv, roomCode, updated);
-  });
-}
-
-export async function setPlayerSpectator(kv: KvStore, roomCode: string, userId: string, spectator: boolean): Promise<void> {
-  await withRoomPlayerLock(roomCode, async () => {
-    const players = await getRoomPlayers(kv, roomCode);
-    const updated = players.map((p) => p.userId === userId ? { ...p, spectator, ready: spectator ? false : p.ready } : p);
-    await setRoomPlayers(kv, roomCode, updated);
-  });
-}
-
-export async function setPlayerBotConfig(kv: KvStore, roomCode: string, userId: string, botConfig: BotConfig): Promise<void> {
-  await withRoomPlayerLock(roomCode, async () => {
-    const players = await getRoomPlayers(kv, roomCode);
-    const updated = players.map((p) => p.userId === userId ? { ...p, botConfig } : p);
-    await setRoomPlayers(kv, roomCode, updated);
-  });
-}
-
-export async function resetAllPlayersReady(kv: KvStore, roomCode: string): Promise<void> {
-  await withRoomPlayerLock(roomCode, async () => {
-    const players = await getRoomPlayers(kv, roomCode);
-    const updated = players.map((p) => ({ ...p, ready: false }));
-    await setRoomPlayers(kv, roomCode, updated);
-  });
-}
-
 export async function deleteRoom(kv: KvStore, roomCode: string): Promise<void> {
   await kv.del(
     `room:${roomCode}`,
-    `room:${roomCode}:players`,
+    `room:${roomCode}:seats`,
+    `room:${roomCode}:spectators`,
     `game:${roomCode}:state`,
   );
 }
@@ -169,4 +105,195 @@ export async function ensureNotInRoom(kv: KvStore, userId: string, targetRoomCod
     return null;
   }
   return `你已在房间 ${existingRoom} 中，请先退出当前房间`;
+}
+
+// ─── Seat helpers ──────────────────────────────────────────────────────────
+
+function emptySeats(): RoomSeats {
+  return Array.from({ length: SEAT_COUNT }, () => null);
+}
+
+export async function getRoomSeats(kv: KvStore, roomCode: string): Promise<RoomSeats> {
+  const raw = await kv.get(`room:${roomCode}:seats`);
+  if (!raw) return emptySeats();
+  const parsed = JSON.parse(raw) as RoomSeats;
+  // Pad to SEAT_COUNT if stored array is shorter
+  while (parsed.length < SEAT_COUNT) {
+    parsed.push(null);
+  }
+  return parsed;
+}
+
+export async function setRoomSeats(kv: KvStore, roomCode: string, seats: RoomSeats): Promise<void> {
+  await kv.set(`room:${roomCode}:seats`, JSON.stringify(seats));
+}
+
+export async function takeSeat(
+  kv: KvStore,
+  roomCode: string,
+  seatIndex: number,
+  player: RoomSeatPlayer,
+): Promise<void> {
+  await withRoomSeatLock(roomCode, async () => {
+    if (seatIndex < 0 || seatIndex >= SEAT_COUNT) {
+      throw new Error(`无效座位编号: ${seatIndex}`);
+    }
+    const seats = await getRoomSeats(kv, roomCode);
+    if (seats[seatIndex] !== null) {
+      throw new Error(`座位 ${seatIndex} 已被占用`);
+    }
+    // Clear player from any existing seat first
+    for (let i = 0; i < seats.length; i++) {
+      if (seats[i]?.userId === player.userId) {
+        seats[i] = null;
+        break;
+      }
+    }
+    seats[seatIndex] = player;
+    await setRoomSeats(kv, roomCode, seats);
+  });
+}
+
+export async function leaveSeat(kv: KvStore, roomCode: string, userId: string): Promise<number> {
+  return withRoomSeatLock(roomCode, async () => {
+    const seats = await getRoomSeats(kv, roomCode);
+    const index = seats.findIndex(s => s?.userId === userId);
+    if (index !== -1) {
+      seats[index] = null;
+      await setRoomSeats(kv, roomCode, seats);
+    }
+    return index;
+  });
+}
+
+export async function swapSeats(
+  kv: KvStore,
+  roomCode: string,
+  userId1: string,
+  userId2: string,
+): Promise<{ seat1: number; seat2: number }> {
+  return withRoomSeatLock(roomCode, async () => {
+    const seats = await getRoomSeats(kv, roomCode);
+    const seat1 = seats.findIndex(s => s?.userId === userId1);
+    const seat2 = seats.findIndex(s => s?.userId === userId2);
+    if (seat1 === -1) throw new Error(`用户 ${userId1} 未就座`);
+    if (seat2 === -1) throw new Error(`用户 ${userId2} 未就座`);
+    [seats[seat1], seats[seat2]] = [seats[seat2], seats[seat1]];
+    await setRoomSeats(kv, roomCode, seats);
+    return { seat1, seat2 };
+  });
+}
+
+export async function setSeatPlayerReady(
+  kv: KvStore,
+  roomCode: string,
+  userId: string,
+  ready: boolean,
+): Promise<void> {
+  await withRoomSeatLock(roomCode, async () => {
+    const seats = await getRoomSeats(kv, roomCode);
+    const index = seats.findIndex(s => s?.userId === userId);
+    if (index !== -1) {
+      seats[index] = { ...seats[index]!, ready };
+      await setRoomSeats(kv, roomCode, seats);
+    }
+  });
+}
+
+export async function setSeatPlayerConnected(
+  kv: KvStore,
+  roomCode: string,
+  userId: string,
+  connected: boolean,
+): Promise<void> {
+  await withRoomSeatLock(roomCode, async () => {
+    const seats = await getRoomSeats(kv, roomCode);
+    const index = seats.findIndex(s => s?.userId === userId);
+    if (index !== -1) {
+      seats[index] = {
+        ...seats[index]!,
+        connected,
+        // When disconnecting, also mark as not ready
+        ready: connected ? seats[index]!.ready : false,
+      };
+      await setRoomSeats(kv, roomCode, seats);
+    }
+  });
+}
+
+export async function setSeatPlayerBotConfig(
+  kv: KvStore,
+  roomCode: string,
+  userId: string,
+  botConfig: BotConfig,
+): Promise<void> {
+  await withRoomSeatLock(roomCode, async () => {
+    const seats = await getRoomSeats(kv, roomCode);
+    const index = seats.findIndex(s => s?.userId === userId);
+    if (index !== -1) {
+      seats[index] = { ...seats[index]!, botConfig };
+      await setRoomSeats(kv, roomCode, seats);
+    }
+  });
+}
+
+export async function clearSeatByUserId(kv: KvStore, roomCode: string, userId: string): Promise<number> {
+  return withRoomSeatLock(roomCode, async () => {
+    const seats = await getRoomSeats(kv, roomCode);
+    const index = seats.findIndex(s => s?.userId === userId);
+    if (index !== -1) {
+      seats[index] = null;
+      await setRoomSeats(kv, roomCode, seats);
+    }
+    return index;
+  });
+}
+
+export async function resetAllSeatsReady(kv: KvStore, roomCode: string): Promise<void> {
+  await withRoomSeatLock(roomCode, async () => {
+    const seats = await getRoomSeats(kv, roomCode);
+    const updated = seats.map(s => s !== null ? { ...s, ready: false } : null);
+    await setRoomSeats(kv, roomCode, updated);
+  });
+}
+
+export function getFirstEmptySeatIndex(seats: RoomSeats): number {
+  return seats.findIndex(s => s === null);
+}
+
+export function getSeatedPlayers(seats: RoomSeats): RoomSeatPlayer[] {
+  return seats.filter((s): s is RoomSeatPlayer => s !== null);
+}
+
+// ─── Spectator CRUD ────────────────────────────────────────────────────────
+
+export async function getRoomSpectators(kv: KvStore, roomCode: string): Promise<RoomSpectator[]> {
+  const raw = await kv.get(`room:${roomCode}:spectators`);
+  if (!raw) return [];
+  return JSON.parse(raw) as RoomSpectator[];
+}
+
+async function setRoomSpectators(kv: KvStore, roomCode: string, spectators: RoomSpectator[]): Promise<void> {
+  if (spectators.length === 0) {
+    await kv.del(`room:${roomCode}:spectators`);
+  } else {
+    await kv.set(`room:${roomCode}:spectators`, JSON.stringify(spectators));
+  }
+}
+
+export async function addSpectatorToRoom(kv: KvStore, roomCode: string, spectator: RoomSpectator): Promise<void> {
+  await withRoomSeatLock(roomCode, async () => {
+    const spectators = await getRoomSpectators(kv, roomCode);
+    if (spectators.some(s => s.userId === spectator.userId)) return;
+    spectators.push(spectator);
+    await setRoomSpectators(kv, roomCode, spectators);
+  });
+}
+
+export async function removeSpectatorFromRoom(kv: KvStore, roomCode: string, userId: string): Promise<void> {
+  await withRoomSeatLock(roomCode, async () => {
+    const spectators = await getRoomSpectators(kv, roomCode);
+    const remaining = spectators.filter(s => s.userId !== userId);
+    await setRoomSpectators(kv, roomCode, remaining);
+  });
 }
