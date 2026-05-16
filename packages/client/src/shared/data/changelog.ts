@@ -6,6 +6,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.6.0',
+    date: '2026-05-16',
+    changes: [
+      '新增 Bot AI (人机) 功能，支持添加 Bot 填充空位',
+      '大厅房间列表改为实时推送，无需手动刷新',
+      '服务器延迟测量精度提升（Socket.IO ping/ack）',
+      'Bot UI/UX 优化：单步托管动画、房主迁移逻辑',
+    ],
+  },
+  {
     version: '0.5.1',
     date: '2026-05-15',
     changes: [
