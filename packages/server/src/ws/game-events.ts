@@ -6,7 +6,7 @@ import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts } from './room-events.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
-import { getRoom, setRoomStatus, touchRoomActivity, clearSeatByUserId, setUserRoom, getRoomSeats, getRoomSpectators, getSeatedPlayers, addSpectatorToRoom, resetAllSeatsReady, takeSeat, getFirstEmptySeatIndex, clearUserRoom } from '../plugins/core/room/store.js';
+import { getRoom, setRoomStatus, touchRoomActivity, clearSeatByUserId, setUserRoom, getRoomSeats, setRoomSeats, getRoomSpectators, getSeatedPlayers, addSpectatorToRoom, resetAllSeatsReady, takeSeat, getFirstEmptySeatIndex, clearUserRoom } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS } from '@uno-online/shared';
 import { addSpectator, removeSpectator, clearRoomSpectators, broadcastSpectatorList } from '../plugins/core/spectate/ws.js';
 import { broadcastLobbyRooms } from '../plugins/core/spectate/routes.js';
@@ -810,6 +810,23 @@ export function registerGameEvents(
 
     await setRoomStatus(redis, roomCode, 'waiting');
     await resetAllSeatsReady(redis, roomCode);
+
+    // Shuffle seats if house rule enabled
+    const gameSettings = session.getFullState().settings;
+    if (gameSettings.houseRules.shuffleSeats) {
+      const seatsToShuffle = await getRoomSeats(redis, roomCode);
+      const occupied = seatsToShuffle
+        .map((s, i) => ({ player: s, index: i }))
+        .filter(e => e.player !== null);
+      // Fisher-Yates shuffle of occupied players across their seats
+      for (let i = occupied.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const idxI = occupied[i]!.index;
+        const idxJ = occupied[j]!.index;
+        [seatsToShuffle[idxI], seatsToShuffle[idxJ]] = [seatsToShuffle[idxJ]!, seatsToShuffle[idxI]!];
+      }
+      await setRoomSeats(redis, roomCode, seatsToShuffle);
+    }
 
     const seats = await getRoomSeats(redis, roomCode);
     const seatedIds = new Set(getSeatedPlayers(seats).map(p => p.userId));
