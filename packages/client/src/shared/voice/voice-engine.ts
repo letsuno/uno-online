@@ -21,6 +21,7 @@ export class VoiceEngine {
   private _captureNode: AudioWorkletNode | null = null
   private _captureGain: GainNode | null = null
   private _muted = false
+  private _userVolumes = new Map<number, number>()
 
   private _micStream: MediaStream | null = null
   private _micSource: MediaStreamAudioSourceNode | null = null
@@ -54,6 +55,23 @@ export class VoiceEngine {
     }
   }
 
+  setUserVolume(userId: number, volume: number) {
+    const clamped = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 1))
+    this._userVolumes.set(userId, clamped)
+    this._playbackNode?.port.postMessage({ type: 'volume', userId, volume: clamped })
+  }
+
+  resetUserVolumes(userIds?: Iterable<number>) {
+    if (!userIds) {
+      this._userVolumes.clear()
+      return
+    }
+    for (const userId of userIds) {
+      this._userVolumes.delete(userId)
+      this._playbackNode?.port.postMessage({ type: 'volume', userId, volume: 1 })
+    }
+  }
+
   async enableAudio(): Promise<void> {
     if (this._audioContext && this._playbackNode) {
       await this._audioContext.resume()
@@ -68,10 +86,18 @@ class MumblePlaybackProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     this._streams = new Map();
+    this._volumes = new Map();
     this._lastStatsTime = 0;
     this.port.onmessage = (event) => {
       const msg = event.data;
-      if (!msg || msg.type !== 'pcm') return;
+      if (!msg) return;
+      if (msg.type === 'volume') {
+        const userId = Number(msg.userId) >>> 0;
+        const volume = Math.max(0, Math.min(1, Number(msg.volume)));
+        this._volumes.set(userId, Number.isFinite(volume) ? volume : 1);
+        return;
+      }
+      if (msg.type !== 'pcm') return;
       const userId = Number(msg.userId) >>> 0;
       const channels = Number(msg.channels) || 1;
       if (!(msg.pcm instanceof ArrayBuffer)) return;
@@ -93,6 +119,24 @@ class MumblePlaybackProcessor extends AudioWorkletProcessor {
     const frames = output[0].length;
     for (let ch = 0; ch < outChannels; ch++) output[ch].fill(0);
     for (const [userId, stream] of this._streams) {
+      const volume = this._volumes.get(userId) ?? 1;
+      if (volume <= 0) {
+        if (!stream.current && stream.queue.length > 0) stream.current = stream.queue.shift();
+        let item = stream.current;
+        let skipIndex = 0;
+        while (skipIndex < frames && item) {
+          const inChannels = item.channels || 1;
+          const totalFrames = Math.floor(item.pcm.length / inChannels);
+          const toSkip = Math.min(totalFrames - item.offsetFrames, frames - skipIndex);
+          item.offsetFrames += toSkip;
+          skipIndex += toSkip;
+          if (item.offsetFrames < totalFrames) break;
+          item = stream.queue.shift() || null;
+          stream.current = item;
+        }
+        if (!stream.current && currentTime - stream.lastActive > 10) this._streams.delete(userId);
+        continue;
+      }
       if (!stream.current && stream.queue.length > 0) stream.current = stream.queue.shift();
       let item = stream.current;
       if (!item) { if (currentTime - stream.lastActive > 10) this._streams.delete(userId); continue; }
@@ -106,8 +150,10 @@ class MumblePlaybackProcessor extends AudioWorkletProcessor {
         const toCopy = Math.min(remainingFrames, frames - writeIndex);
         for (let i = 0; i < toCopy; i++) {
           const srcBase = (item.offsetFrames + i) * inChannels;
-          const left = item.pcm[srcBase] ?? 0;
-          const right = inChannels >= 2 ? (item.pcm[srcBase + 1] ?? left) : left;
+          const srcLeft = item.pcm[srcBase] ?? 0;
+          const srcRight = inChannels >= 2 ? (item.pcm[srcBase + 1] ?? srcLeft) : srcLeft;
+          const left = srcLeft * volume;
+          const right = srcRight * volume;
           output[0][writeIndex + i] += left;
           if (outChannels >= 2) output[1][writeIndex + i] += right;
         }
@@ -224,6 +270,10 @@ registerProcessor('mumble-capture', MumbleCaptureProcessor);
     this._audioContext = ctx
     this._playbackNode = playback
     this._playbackGain = playbackGain
+
+    for (const [userId, volume] of this._userVolumes) {
+      playback.port.postMessage({ type: 'volume', userId, volume })
+    }
 
     if (ctx.sampleRate !== 48000) {
       // Keep working, but current implementation assumes 48kHz for both playback and uplink.

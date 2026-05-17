@@ -55,6 +55,7 @@ export interface ServerToClientEvents {
   'chat:rate_limited': (data: { message: string }) => void;
   'throw:item': (data: { fromId: string; targetId: string; item: string }) => void;
   'room:updated': (data: Record<string, unknown>) => void;
+  'room:ready_changed': (data: { playerId: string; ready: boolean }) => void;
   'room:dissolved': (data?: { reason?: string }) => void;
   'room:rejoin_redirect': (data: { roomCode: string }) => void;
   'room:spectator_joined': (data: { nickname: string; spectators: { nickname: string; avatarUrl?: string | null; connected: boolean }[] }) => void;

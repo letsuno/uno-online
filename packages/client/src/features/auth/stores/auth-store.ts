@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { apiPost, apiGet } from '@/shared/api';
+import { apiPost, apiGet, UnauthorizedError } from '@/shared/api';
 
 interface User {
   id: string;
@@ -24,6 +24,8 @@ interface AuthState {
   user: User | null;
   token: string | null;
   loading: boolean;
+  initialized: boolean;
+  authError: string | null;
   login: (code: string) => Promise<CallbackResult>;
   bindGithub: (username: string, password: string, githubId: string, githubAvatarUrl?: string) => Promise<void>;
   devLogin: (username: string) => Promise<void>;
@@ -38,18 +40,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: localStorage.getItem('token'),
   loading: false,
+  initialized: false,
+  authError: null,
 
   login: async (code: string) => {
     set({ loading: true });
     const data = await apiPost<{ token?: string; user?: User; isNewUser?: boolean; needsBind?: boolean; username?: string; githubId?: string; githubAvatarUrl?: string }>('/auth/callback', { code });
 
     if (data.needsBind && data.username && data.githubId) {
-      set({ loading: false });
+      set({ loading: false, initialized: true, authError: null });
       return { needsBind: { username: data.username, githubId: data.githubId, githubAvatarUrl: data.githubAvatarUrl } };
     }
 
     localStorage.setItem('token', data.token!);
-    set({ user: data.user!, token: data.token!, loading: false });
+    set({ user: data.user!, token: data.token!, loading: false, initialized: true, authError: null });
     return { isNewUser: data.isNewUser };
   },
 
@@ -58,9 +62,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const data = await apiPost<{ token: string; user: User }>('/auth/bind-github', { username, password, githubId, githubAvatarUrl });
       localStorage.setItem('token', data.token);
-      set({ user: data.user, token: data.token, loading: false });
+      set({ user: data.user, token: data.token, loading: false, initialized: true, authError: null });
     } catch (e) {
-      set({ loading: false });
+      set({ loading: false, initialized: true });
       throw e;
     }
   },
@@ -69,7 +73,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true });
     const data = await apiPost<{ token: string; user: User }>('/auth/dev-login', { username });
     localStorage.setItem('token', data.token);
-    set({ user: data.user, token: data.token, loading: false });
+    set({ user: data.user, token: data.token, loading: false, initialized: true, authError: null });
   },
 
   register: async (username: string, password: string, nickname: string, avatar?: string) => {
@@ -77,9 +81,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const data = await apiPost<{ token: string; user: User }>('/auth/register', { username, password, nickname, avatar });
       localStorage.setItem('token', data.token);
-      set({ user: data.user, token: data.token, loading: false });
+      set({ user: data.user, token: data.token, loading: false, initialized: true, authError: null });
     } catch (e) {
-      set({ loading: false });
+      set({ loading: false, initialized: true });
       throw e;
     }
   },
@@ -89,29 +93,43 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const data = await apiPost<{ token: string; user: User }>('/auth/login', { username, password });
       localStorage.setItem('token', data.token);
-      set({ user: data.user, token: data.token, loading: false });
+      set({ user: data.user, token: data.token, loading: false, initialized: true, authError: null });
     } catch (e) {
-      set({ loading: false });
+      set({ loading: false, initialized: true });
       throw e;
     }
   },
 
   loadUser: async () => {
     const token = localStorage.getItem('token');
-    if (!token) return;
-    set({ loading: true });
+    if (!token) {
+      set({ user: null, token: null, loading: false, initialized: true, authError: null });
+      return;
+    }
+    set({ loading: true, authError: null });
     try {
       const user = await apiGet<User>('/auth/me');
-      set({ user, token, loading: false });
-    } catch {
-      localStorage.removeItem('token');
-      set({ user: null, token: null, loading: false });
+      set({ user, token, loading: false, initialized: true, authError: null });
+    } catch (error) {
+      if (error instanceof UnauthorizedError) {
+        localStorage.removeItem('token');
+        set({ user: null, token: null, loading: false, initialized: true, authError: null });
+        return;
+      }
+      set({
+        user: null,
+        token,
+        loading: false,
+        initialized: true,
+        authError: error instanceof Error ? error.message : 'Failed to restore session',
+      });
+      throw error;
     }
   },
 
   logout: () => {
     localStorage.removeItem('token');
-    set({ user: null, token: null });
+    set({ user: null, token: null, loading: false, initialized: true, authError: null });
   },
 
   setUser: (user: User) => set({ user }),

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx dist/index.js",
-    "build": "tsc && mkdir -p dist/voice/generated && cp src/voice/generated/MumbleServer.js dist/voice/generated/MumbleServer.js",
+    "build": "tsc && pnpm run build:copy-voice",
+    "build:copy-voice": "node -e \"require('fs').mkdirSync('dist/voice/generated',{recursive:true});require('fs').copyFileSync('src/voice/generated/MumbleServer.js','dist/voice/generated/MumbleServer.js')\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "echo 'No codegen needed with Kysely'",

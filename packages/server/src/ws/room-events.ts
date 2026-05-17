@@ -229,10 +229,15 @@ export function registerRoomEvents(
   socket.on('room:ready', async (ready: boolean, callback) => {
     const roomCode = data.roomCode;
     if (!roomCode) return callback?.({ success: false });
+    const previousSeats = await getRoomSeats(redis, roomCode);
+    const previousReady = previousSeats.find(seat => seat?.userId === data.user.userId)?.ready ?? false;
     await roomManager.setReady(roomCode, data.user.userId, ready);
     await touchRoomActivity(redis, roomCode);
     const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
     io.to(roomCode).emit('seat:updated', { seats, spectators });
+    if (previousReady !== ready) {
+      io.to(roomCode).emit('room:ready_changed', { playerId: data.user.userId, ready });
+    }
     callback?.({ success: true });
   });
 

@@ -1,8 +1,19 @@
 import { getApiUrl } from './env';
 
-function handleUnauthorized() {
+export class UnauthorizedError extends Error {
+  constructor() {
+    super('Session expired, please sign in again');
+    this.name = 'UnauthorizedError';
+  }
+}
+
+export function clearStoredAuthToken(): void {
   localStorage.removeItem('token');
-  window.location.href = '/?session_expired=1';
+}
+
+function notifyUnauthorized(): void {
+  clearStoredAuthToken();
+  window.dispatchEvent(new Event('auth:unauthorized'));
 }
 
 function authHeaders(): Record<string, string> {
@@ -12,8 +23,8 @@ function authHeaders(): Record<string, string> {
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (res.status === 401) {
-    handleUnauthorized();
-    throw new Error('登录已过期，请重新登录');
+    notifyUnauthorized();
+    throw new UnauthorizedError();
   }
   if (!res.ok) {
     const data = await res.json().catch(() => ({})) as Record<string, string>;

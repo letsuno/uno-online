@@ -14,6 +14,8 @@ import { useSpectatorStore } from '@/features/game/stores/spectator-store';
 import { useLobbyStore } from '@/features/lobby/stores/lobby-store';
 import { resetClientRoomState } from './stores/reset-room';
 import { globalNavigate } from './utils/global-navigate';
+import { useAuthStore } from '@/features/auth/stores/auth-store';
+import { clearStoredAuthToken } from './api';
 
 type TypedSocket = SocketType<ServerToClientEvents, ClientToServerEvents>;
 
@@ -24,9 +26,18 @@ export function onConnectionStatus(cb: (status: 'connected' | 'disconnected' | '
   connectionStatusCallback = cb;
 }
 
+function currentToken(): string | null {
+  return useAuthStore.getState().token ?? localStorage.getItem('token');
+}
+
+function clearAuthSession(): void {
+  clearStoredAuthToken();
+  useAuthStore.setState({ user: null, token: null, loading: false, initialized: true });
+}
+
 export function getSocket(): TypedSocket {
   if (!socket) {
-    const token = localStorage.getItem('token');
+    const token = currentToken();
     socket = io(getApiUrl(), {
       auth: { token },
       autoConnect: false,
@@ -47,6 +58,11 @@ export function getSocket(): TypedSocket {
 
     socket.on('seat:updated', (data: { seats: unknown[]; spectators: unknown[] }) => {
       useRoomStore.getState().updateSeats(data as any);
+    });
+
+    socket.on('room:ready_changed', (data) => {
+      const selfId = useAuthStore.getState().user?.id ?? useGameStore.getState().viewerId;
+      if (data.ready && data.playerId !== selfId) playSound('ready');
     });
 
     socket.on('voice:presence', (presence) => {
@@ -242,7 +258,7 @@ export function getSocket(): TypedSocket {
     socket.on('connect_error', (err) => {
       if (err.message === 'Authentication failed') {
         resetClientRoomState();
-        localStorage.removeItem('token');
+        clearAuthSession();
         socket?.disconnect();
         socket = null;
         window.location.href = '/?session_expired=1';
@@ -251,7 +267,7 @@ export function getSocket(): TypedSocket {
 
     socket.on('auth:kicked', (_data) => {
       resetClientRoomState();
-      localStorage.removeItem('token');
+      clearAuthSession();
       window.location.href = '/';
     });
 
@@ -290,6 +306,14 @@ export function refreshVoicePresence(): void {
 
 export function connectSocket(): void {
   const s = getSocket();
+  const token = currentToken();
+  const oldToken = (s.auth as { token?: string | null } | undefined)?.token ?? null;
+  s.auth = { token };
+  if (s.connected && oldToken !== token) {
+    s.disconnect();
+    s.connect();
+    return;
+  }
   if (!s.connected) {
     s.connect();
   }

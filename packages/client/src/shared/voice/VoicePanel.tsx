@@ -144,7 +144,26 @@ export default function VoicePanel() {
       next.set(userId, volume);
       return next;
     });
-  }, []);
+    getVoiceEngine(sendMicOpus, sendMicEnd).setUserVolume(userId, volume / 100);
+  }, [sendMicOpus, sendMicEnd]);
+
+  useEffect(() => {
+    const userIds = new Set(Object.keys(usersById).map(Number));
+    setPeerVolumes((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      for (const userId of next.keys()) {
+        if (!userIds.has(userId)) {
+          next.delete(userId);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+    getVoiceEngine(sendMicOpus, sendMicEnd).resetUserVolumes(
+      [...peerVolumes.keys()].filter((userId) => !userIds.has(userId)),
+    );
+  }, [usersById, peerVolumes, sendMicOpus, sendMicEnd]);
 
   const otherUsers = Object.values(usersById).filter((u) => u.id !== selfUserId);
   const speakingCount = Object.values(speakingByUserId).filter(Boolean).length;

@@ -3,6 +3,7 @@ import { Eye, Volume2, VolumeX, Music, Spade, DoorOpen, LogOut, Bot, HelpCircle,
 import { AUTOPILOT_TOGGLE_COOLDOWN_MS } from '@uno-online/shared';
 import type { Card, Color } from '@uno-online/shared';
 import TurnTimer from './TurnTimer';
+import BlitzTimer from './BlitzTimer';
 import { useSettingsStore } from '@/shared/stores/settings-store';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { useGameStore } from '../stores/game-store';
@@ -179,6 +180,7 @@ export default function TopBar({ roomCode, onOpenHotkeys }: TopBarProps) {
         <span className="text-muted-foreground">房间: {roomCode}</span>
         <span className="text-muted-foreground/50 text-xs hidden md:inline">v{BUILD_VERSION}</span>
         <LatencyIndicator />
+        <BlitzTimer />
         <ElapsedTimers />
       </div>
       <GameStatus />
