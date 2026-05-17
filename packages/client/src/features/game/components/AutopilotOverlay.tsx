@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Hand, Bot } from 'lucide-react';
+import { AUTOPILOT_TOGGLE_COOLDOWN_MS } from '@uno-online/shared';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { getSocket } from '@/shared/socket';
-
-const COOLDOWN_MS = 3000;
 
 export default function AutopilotOverlay() {
   const players = useGameStore((s) => s.players);
@@ -18,7 +17,7 @@ export default function AutopilotOverlay() {
     if (cooldown) return;
     setCooldown(true);
     getSocket().emit('player:toggle-autopilot', () => {});
-    setTimeout(() => setCooldown(false), COOLDOWN_MS);
+    setTimeout(() => setCooldown(false), AUTOPILOT_TOGGLE_COOLDOWN_MS);
   };
 
   const visible = myAutopilot

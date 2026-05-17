@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Trophy, BarChart3, Crown, Check, UserX, UserPlus, WifiOff, Eye, X } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
@@ -12,30 +12,7 @@ import { getSocket } from '@/shared/socket';
 import { useToastStore } from '@/shared/stores/toast-store';
 import { serverNow } from '@/shared/server-time';
 
-const KICK_DELAY_S = 30;
 const START_COOLDOWN_S = 10;
-
-function KickCountdownRing({ remaining, total }: { remaining: number; total: number }) {
-  const r = 7;
-  const circumference = 2 * Math.PI * r;
-  const progress = Math.max(0, remaining / total);
-
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" className="inline align-middle">
-      <circle cx="9" cy="9" r={r} fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground/20" />
-      <circle
-        cx="9" cy="9" r={r} fill="none" stroke="currentColor" strokeWidth="2"
-        className="text-destructive"
-        strokeDasharray={circumference}
-        strokeDashoffset={circumference * (1 - progress)}
-        strokeLinecap="round"
-        transform="rotate(-90 9 9)"
-        style={{ transition: 'stroke-dashoffset 1s linear' }}
-      />
-      <text x="9" y="9" textAnchor="middle" dominantBaseline="central" className="fill-muted-foreground" fontSize="7">{remaining}</text>
-    </svg>
-  );
-}
 
 interface ScoreBoardProps {
   isSpectator?: boolean;
@@ -55,10 +32,6 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
   const roundEndAt = useGameStore((s) => s.roundEndAt);
   const gameOverAt = useGameStore((s) => s.gameOverAt);
   const pendingJoinQueue = useSpectatorStore((s) => s.pendingJoinQueue);
-  const [kickCountdown, setKickCountdown] = useState(() => {
-    if (!roundEndAt) return KICK_DELAY_S;
-    return Math.max(0, KICK_DELAY_S - Math.floor((serverNow() - roundEndAt) / 1000));
-  });
   const [leaveCountdown, setLeaveCountdown] = useState(5);
   const [startCooldown, setStartCooldown] = useState(() => {
     const endAt = roundEndAt ?? gameOverAt;
@@ -69,20 +42,6 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
     const nickname = useAuthStore.getState().user?.nickname;
     return !!nickname && pendingJoinQueue.includes(nickname);
   });
-  const kickTimerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
-
-  useEffect(() => {
-    if (phase !== 'round_end' || !roundEndAt) { setKickCountdown(KICK_DELAY_S); return; }
-    const calc = () => Math.max(0, KICK_DELAY_S - Math.floor((serverNow() - roundEndAt) / 1000));
-    setKickCountdown(calc());
-    kickTimerRef.current = setInterval(() => {
-      const v = calc();
-      setKickCountdown(v);
-      if (v <= 0) clearInterval(kickTimerRef.current);
-    }, 1000);
-    return () => clearInterval(kickTimerRef.current);
-  }, [phase, roundEndAt]);
-
   useEffect(() => {
     setLeaveCountdown(5);
     const interval = setInterval(() => {
@@ -149,7 +108,6 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
   const votes = vote?.votes ?? 0;
   const required = vote?.required ?? fallbackRequired;
   const allAgreed = votes >= required;
-  const canKick = kickCountdown === 0;
   const cooldownActive = startCooldown > 0;
   const noHumanPlayers = required === 0;
   const nextRoundButtonText = isHost
@@ -201,24 +159,12 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
                   </td>
                   {!isGameOver && (
                     <td className="px-2 py-1.5 text-center whitespace-nowrap">
-                      {p.isBot ? (
-                        <span className="inline-flex items-center gap-1">
-                          <Check size={14} className="inline text-green-400" />
-                          {isHost && <button onClick={() => onKickPlayer(p.id)} className="text-destructive hover:text-destructive/80 cursor-pointer bg-transparent border-none" title="移除机器人"><UserX size={14} className="inline" /></button>}
-                        </span>
-                      ) : ready
-                        ? <Check size={14} className="inline text-green-400" />
-                        : isSpectator
-                          ? <span className="text-xs text-muted-foreground">等待中</span>
-                          : isSelf
-                            ? <span className="text-xs text-muted-foreground">等待中</span>
-                            : isHost && canKick
-                              ? <button onClick={() => onKickPlayer(p.id)} className="text-xs text-destructive hover:text-destructive/80 cursor-pointer bg-transparent border-none" title="移至观战席"><UserX size={14} className="inline" /></button>
-                              : disconnected
-                                ? canKick
-                                  ? <span className="text-xs text-destructive">已超时</span>
-                                  : <KickCountdownRing remaining={kickCountdown} total={KICK_DELAY_S} />
-                                : <span className="text-xs text-muted-foreground">等待中</span>}
+                      <span className="inline-flex items-center gap-1">
+                        {ready ? <Check size={14} className="inline text-green-400" /> : <span className="text-xs text-muted-foreground">等待中</span>}
+                        {isHost && !isSelf && !isSpectator && (
+                          <button onClick={() => onKickPlayer(p.id)} className="text-destructive hover:text-destructive/80 cursor-pointer bg-transparent border-none" title={p.isBot ? '移除机器人' : '移至观战席'}><UserX size={14} className="inline" /></button>
+                        )}
+                      </span>
                     </td>
                   )}
                   <td className="px-2 py-1.5 text-right font-bold">{p.score}</td>

@@ -1,6 +1,6 @@
 import type { Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
-import { getRoom, setRoomOwner, getRoomSeats, getRoomSpectators } from '../plugins/core/room/store.js';
+import { getRoom, setRoomOwner, findNextOwner } from '../plugins/core/room/store.js';
 import type { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
@@ -57,20 +57,7 @@ export function scheduleOwnerTransfer(roomCode: string, ownerId: string): void {
     const sockets = await _io.in(roomCode).fetchSockets();
     if (sockets.some(s => s.data.user?.userId === ownerId)) return;
 
-    // Find next owner: prefer game-session connected players, fall back to
-    // any connected non-bot socket (covers the waiting-room case).
-    let nextOwnerId: string | undefined;
-    const session = _sessions.get(roomCode);
-    if (session) {
-      nextOwnerId = session.getFullState().players
-        .find(p => p.id !== ownerId && p.connected && !p.isBot)?.id;
-    }
-    if (!nextOwnerId) {
-      nextOwnerId = sockets
-        .find(s => s.data.user?.userId !== ownerId && !s.data.user?.isBot)
-        ?.data.user?.userId;
-    }
-
+    const nextOwnerId = await findNextOwner(_redis, roomCode, ownerId);
     if (!nextOwnerId) {
       _stopAutoPlayForRoom(roomCode);
       await dissolveRoom(_io, _redis, roomCode, _sessions, _turnTimer, _persister, 'empty', _voiceChannels);
@@ -78,9 +65,6 @@ export function scheduleOwnerTransfer(roomCode: string, ownerId: string): void {
     }
     await setRoomOwner(_redis, roomCode, nextOwnerId);
     const updatedRoom = await getRoom(_redis, roomCode);
-    const seats = await getRoomSeats(_redis, roomCode);
-    const spectators = await getRoomSpectators(_redis, roomCode);
-    _io.to(roomCode).emit('seat:updated', { seats, spectators });
     _io.to(roomCode).emit('room:updated', { room: updatedRoom });
   }, OWNER_TRANSFER_DELAY_S * 1000);
   timer.unref?.();

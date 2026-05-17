@@ -3,10 +3,10 @@ import type { KvStore } from '../kv/types.js';
 import type { ChatMessage, Color, GameAction } from '@uno-online/shared';
 import { chooseAutopilotJumpInAction } from '@uno-online/shared';
 import { GameSession } from '../plugins/core/game/session.js';
-import type { GameStatePersister } from '../plugins/core/game/state-store.js';
+import { deleteGameState, type GameStatePersister } from '../plugins/core/game/state-store.js';
 import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts } from './room-events.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
-import { getRoom, setRoomStatus, setRoomOwner, touchRoomActivity, clearSeatByUserId, setUserRoom, getRoomSeats, setRoomSeats, getRoomSpectators, getSeatedPlayers, addSpectatorToRoom, removeSpectatorFromRoom, clearRoomSpectators, takeSeat, getFirstEmptySeatIndex, clearUserRoom } from '../plugins/core/room/store.js';
+import { getRoom, setRoomStatus, setRoomOwner, touchRoomActivity, clearSeatByUserId, setUserRoom, getRoomSeats, setRoomSeats, getRoomSpectators, getSeatedPlayers, addSpectatorToRoom, removeSpectatorFromRoom, clearRoomSpectators, takeSeat, getFirstEmptySeatIndex, clearUserRoom, findNextOwner } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS, MIN_PLAYERS, SEAT_COUNT } from '@uno-online/shared';
 import type { RoomSeats } from '../plugins/core/room/store.js';
 import { broadcastSpectatorList } from '../plugins/core/spectate/ws.js';
@@ -735,8 +735,8 @@ export function registerGameEvents(
     if (!ctx) return callback?.({ success: false, error: 'No active game' });
     const { session, roomCode } = ctx;
 
-    if (!session.isRoundEnd()) {
-      return callback?.({ success: false, error: '只能在回合结束阶段踢人' });
+    if (!session.isRoundEnd() && !session.isGameOver()) {
+      return callback?.({ success: false, error: '只能在回合/游戏结束阶段踢人' });
     }
 
     const room = await getRoom(redis, roomCode);
@@ -755,12 +755,7 @@ export function registerGameEvents(
     }
 
     if (state.players.length <= MIN_PLAYERS) {
-      return callback?.({ success: false, error: '玩家数量不足，无法踢出' });
-    }
-
-    const voters = nextRoundVotes.get(roomCode) ?? new Set<string>();
-    if (!targetPlayer.isBot && voters.has(targetId)) {
-      return callback?.({ success: false, error: '该玩家已准备，无法踢出' });
+      return callback?.({ success: false, error: '至少需要两名玩家' });
     }
 
     session.removePlayer(targetId);
@@ -786,7 +781,8 @@ export function registerGameEvents(
       });
     }
 
-    voters.delete(targetId);
+    const voters = nextRoundVotes.get(roomCode);
+    if (voters) voters.delete(targetId);
     const voteState = getNextRoundVoteState(roomCode, session);
     io.to(roomCode).emit('game:next_round_vote', voteState);
 
@@ -832,10 +828,9 @@ export function registerGameEvents(
 
     const room = await getRoom(redis, roomCode);
     if (room?.ownerId === data.user.userId) {
-      const remaining = session.getFullState().players;
-      const nextOwner = remaining.find(p => p.connected && !p.isBot) ?? remaining.find(p => !p.isBot);
-      if (nextOwner) {
-        await setRoomOwner(redis, roomCode, nextOwner.id);
+      const nextOwnerId = await findNextOwner(redis, roomCode, data.user.userId);
+      if (nextOwnerId) {
+        await setRoomOwner(redis, roomCode, nextOwnerId);
       }
     }
 
@@ -882,14 +877,14 @@ export function registerGameEvents(
     persister.cleanup(roomCode);
     turnTimer.stop(roomCode);
     clearRoomTimeouts(roomCode);
-    // Leftover opt-ins from the previous game would otherwise be re-applied
-    // with stale socket ids → ghost players.
     clearPendingSpectatorJoins(roomCode);
 
-    await setRoomStatus(redis, roomCode, 'waiting');
-
     const emptySeats: RoomSeats = Array.from({ length: SEAT_COUNT }, () => null);
-    await setRoomSeats(redis, roomCode, emptySeats);
+    await Promise.all([
+      deleteGameState(redis, roomCode),
+      setRoomStatus(redis, roomCode, 'waiting'),
+      setRoomSeats(redis, roomCode, emptySeats),
+    ]);
 
     await clearRoomSpectators(redis, roomCode);
     const sockets = await io.in(roomCode).fetchSockets();
@@ -902,7 +897,7 @@ export function registerGameEvents(
         role: sData.user.role,
         connected: true,
       });
-      sData.isSpectator = false;
+      sData.isSpectator = true;
     }
 
     await touchRoomActivity(redis, roomCode);

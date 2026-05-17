@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Eye, Volume2, VolumeX, Music, Spade, DoorOpen, LogOut, Bot, HelpCircle, Keyboard, Trash2, Wifi, Clock, RotateCw } from 'lucide-react';
+import { AUTOPILOT_TOGGLE_COOLDOWN_MS } from '@uno-online/shared';
 import type { Card, Color } from '@uno-online/shared';
 import TurnTimer from './TurnTimer';
 import { useSettingsStore } from '@/shared/stores/settings-store';
@@ -13,8 +14,6 @@ import { useServerStore } from '@/shared/stores/server-store';
 import { showConfirm } from '@/shared/stores/confirm-store';
 import { cn } from '@/shared/lib/utils';
 import { BUILD_VERSION } from '@/shared/build-info';
-
-const AUTOPILOT_COOLDOWN_MS = 3000;
 
 const PHASE_LABEL: Record<string, string> = {
   choosing_color: '选色中…',
@@ -144,7 +143,7 @@ export default function TopBar({ roomCode, onOpenHotkeys }: TopBarProps) {
     if (autopilotCooldown) return;
     setAutopilotCooldown(true);
     getSocket().emit('player:toggle-autopilot', () => {});
-    setTimeout(() => setAutopilotCooldown(false), AUTOPILOT_COOLDOWN_MS);
+    setTimeout(() => setAutopilotCooldown(false), AUTOPILOT_TOGGLE_COOLDOWN_MS);
   };
 
   const handleLeave = async () => {

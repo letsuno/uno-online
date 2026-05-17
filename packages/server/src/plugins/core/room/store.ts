@@ -324,3 +324,23 @@ export async function setSpectatorConnected(kv: KvStore, roomCode: string, userI
 export async function clearRoomSpectators(kv: KvStore, roomCode: string): Promise<void> {
   await kv.del(`room:${roomCode}:spectators`);
 }
+
+export function pickNextOwner(
+  seats: RoomSeats, spectators: RoomSpectator[], excludeUserId?: string,
+): string | null {
+  const seated = getSeatedPlayers(seats);
+  const next =
+    seated.find(p => !p.isBot && p.connected && p.userId !== excludeUserId) ??
+    spectators.find(s => s.connected && s.userId !== excludeUserId);
+  return next?.userId ?? null;
+}
+
+export async function findNextOwner(
+  kv: KvStore, roomCode: string, excludeUserId?: string,
+): Promise<string | null> {
+  const [seats, spectators] = await Promise.all([
+    getRoomSeats(kv, roomCode),
+    getRoomSpectators(kv, roomCode),
+  ]);
+  return pickNextOwner(seats, spectators, excludeUserId);
+}

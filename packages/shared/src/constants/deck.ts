@@ -10,6 +10,7 @@ export const MAX_PLAYERS = 10;
 export const SEAT_COUNT = 10;
 export const SWAP_COOLDOWN_MS = 5000;
 export const SWAP_REQUEST_TIMEOUT_MS = 15000;
+export const AUTOPILOT_TOGGLE_COOLDOWN_MS = 3000;
 
 export const ROOM_CODE_LENGTH = 6;
 export const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

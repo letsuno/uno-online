@@ -6,6 +6,7 @@ import {
   getRoomSeats, takeSeat, clearSeatByUserId, setSeatPlayerReady,
   resetAllSeatsReady, setRoomOwner, getSeatedPlayers, getFirstEmptySeatIndex,
   getRoomSpectators, addSpectatorToRoom, removeSpectatorFromRoom,
+  pickNextOwner,
 } from './store.js';
 import type { RoomSeatPlayer } from './store.js';
 
@@ -62,18 +63,19 @@ export class RoomManager {
     await clearSeatByUserId(this.redis, roomCode, userId);
     await removeSpectatorFromRoom(this.redis, roomCode, userId);
     const seats = await getRoomSeats(this.redis, roomCode);
+    const spectators = await getRoomSpectators(this.redis, roomCode);
     const seatedPlayers = getSeatedPlayers(seats);
     const hasHumanPlayers = seatedPlayers.some(p => !p.isBot);
-    if (seatedPlayers.length === 0 || !hasHumanPlayers) {
+    const hasHumanSpectators = spectators.some(sp => sp.connected);
+    if ((seatedPlayers.length === 0 || !hasHumanPlayers) && !hasHumanSpectators) {
       await deleteRoom(this.redis, roomCode);
       return { deleted: true };
     }
     const room = await getRoom(this.redis, roomCode);
     if (room && room.ownerId === userId) {
-      const spectators = await getRoomSpectators(this.redis, roomCode);
-      const nextOwner = seatedPlayers.find(p => !p.isBot) ?? spectators[0];
-      if (nextOwner) {
-        await setRoomOwner(this.redis, roomCode, nextOwner.userId);
+      const nextOwnerId = pickNextOwner(seats, spectators);
+      if (nextOwnerId) {
+        await setRoomOwner(this.redis, roomCode, nextOwnerId);
       }
     }
     return { deleted: false };

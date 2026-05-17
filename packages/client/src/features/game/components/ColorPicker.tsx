@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Color } from '@uno-online/shared';
 import { UNO_COLOR_HEX } from '../constants/colors';
@@ -14,10 +14,13 @@ interface ColorPickerProps { onPick: (color: Color) => void; }
 
 export default function ColorPicker({ onPick }: ColorPickerProps) {
   const [picked, setPicked] = useState<Color | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
 
   const handlePick = (color: Color) => {
     setPicked(color);
-    setTimeout(() => onPick(color), 400);
+    timerRef.current = setTimeout(() => onPick(color), 400);
   };
 
   return (

@@ -3,7 +3,7 @@ import type { KvStore } from '../kv/types.js';
 import type { GameAction, GameState, RoomSettings, BotDifficulty } from '@uno-online/shared';
 import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction, chooseBotAction, getPlayableCards, DIFFICULTY_PARAMS, BOT_DIFFICULTIES } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager.js';
-import { getRoom, getRoomSeats, getRoomSpectators, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, ensureNotInRoom, removeSpectatorFromRoom, clearRoomSpectators, getSeatedPlayers } from '../plugins/core/room/store.js';
+import { getRoom, getRoomSeats, getRoomSpectators, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, ensureNotInRoom, removeSpectatorFromRoom, clearRoomSpectators, getSeatedPlayers, findNextOwner } from '../plugins/core/room/store.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
 import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
@@ -170,9 +170,9 @@ export function registerRoomEvents(
       // Transfer ownership if the leaving spectator was the owner
       const room = await getRoom(redis, roomCode);
       if (room?.ownerId === userId) {
-        const nextOwner = seatedPlayers.find(p => !p.isBot) ?? spectators.find(s => s.userId !== userId);
-        if (nextOwner) {
-          await setRoomOwner(redis, roomCode, nextOwner.userId);
+        const nextOwnerId = await findNextOwner(redis, roomCode, userId);
+        if (nextOwnerId) {
+          await setRoomOwner(redis, roomCode, nextOwnerId);
         }
         const updatedRoom = await getRoom(redis, roomCode);
         io.to(roomCode).emit('room:updated', { room: updatedRoom });

@@ -7,7 +7,7 @@ import { GameSession } from '../plugins/core/game/session.js';
 import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, notifyAutopilotAction, resetPlayerTimeout } from './room-events.js';
 import { getAutopilotActionPlayerId, canPlayerAutopilotOnce } from './autopilot-action-player.js';
 import { registerGameEvents, emitTerminalStateIfNeeded, addAutopilotVote, clearChatTimestamps, getRoundEndVoteState, getPendingSpectatorQueue, getRoundEndAt } from './game-events.js';
-import { getRoom, setRoomOwner, clearUserRoom, getUserRoom, setSeatPlayerConnected, getRoomSeats, getRoomSpectators, addSpectatorToRoom, removeSpectatorFromRoom, setSpectatorConnected, getSeatedPlayers } from '../plugins/core/room/store.js';
+import { getRoom, setRoomOwner, clearUserRoom, getUserRoom, setSeatPlayerConnected, getRoomSeats, getRoomSpectators, addSpectatorToRoom, removeSpectatorFromRoom, setSpectatorConnected, getSeatedPlayers, findNextOwner, pickNextOwner } from '../plugins/core/room/store.js';
 import { registerSeatEvents, clearPendingSwapRequests, clearUserSwapRequests } from './seat-events.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
 import { loadGameState, GameStatePersister } from '../plugins/core/game/state-store.js';
@@ -20,11 +20,11 @@ import { cancelOwnerTransfer, hasOwnerTransferPending, scheduleOwnerTransfer, co
 import { registerVoicePresenceEvents, removeVoicePresence } from './voice-presence.js';
 import { VoiceChannelManager } from '../voice/channel-manager.js';
 import type { MumbleIceConfig } from '../config.js';
+import { AUTOPILOT_TOGGLE_COOLDOWN_MS } from '@uno-online/shared';
 
-const RECONNECT_TIMEOUT_MS = 60_000;
+const RECONNECT_TIMEOUT_MS = 30_000;
 const AUTOPILOT_THINK_MS = 2_000;
 const ROOM_IDLE_SWEEP_MS = 60_000;
-const AUTOPILOT_TOGGLE_COOLDOWN_MS = 3_000;
 const ALL_DISCONNECT_TIMEOUT_MS = 5 * 60_000;
 
 const autopilotToggleTimestamps = new Map<string, number>();
@@ -197,9 +197,9 @@ export function setupSocketHandlers(
       }
 
       if (stale.some(s => s.userId === room.ownerId)) {
-        const nextOwner = seatedPlayers.find(p => !p.isBot && p.connected) ?? remaining.find(sp => sp.connected);
-        if (nextOwner) {
-          await setRoomOwner(redis, roomCode, nextOwner.userId);
+        const nextOwnerId = pickNextOwner(seats, remaining, room.ownerId);
+        if (nextOwnerId) {
+          await setRoomOwner(redis, roomCode, nextOwnerId);
           const updatedRoom = await getRoom(redis, roomCode);
           io.to(roomCode).emit('room:updated', { room: updatedRoom });
         }
@@ -335,7 +335,7 @@ export function setupSocketHandlers(
         ]);
         callback?.({ success: true, gameState: session.getPlayerView(userId), seats, spectators, room });
         socket.emit('chat:history', session.getChatHistory());
-        socket.emit('room:spectator_list', { spectators: toSpectatorView(await getRoomSpectators(redis, roomCode)) });
+        socket.emit('room:spectator_list', { spectators: toSpectatorView(spectators) });
         const voteState = getRoundEndVoteState(roomCode, session);
         if (voteState) socket.emit('game:next_round_vote', voteState);
         replayTerminalEvent(socket, roomCode, session);
@@ -522,6 +522,7 @@ export function setupSocketHandlers(
             }
           }
         }, RECONNECT_TIMEOUT_MS);
+        timer.unref?.();
         disconnectTimers.set(userId, timer);
       } else {
         // Mark player as disconnected in seat (also cancels ready)
@@ -558,6 +559,7 @@ export function setupSocketHandlers(
             await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
           }
         }, RECONNECT_TIMEOUT_MS);
+        timer.unref?.();
         disconnectTimers.set(userId, timer);
       }
     });

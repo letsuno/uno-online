@@ -68,7 +68,7 @@ export default function RoomPage() {
     const socket = getSocket();
     refreshVoicePresence();
 
-    if (useRoomStore.getState().seats.every((s) => s === null) && roomCode) {
+    if (useRoomStore.getState().roomCode !== roomCode && roomCode) {
       socket.emit('room:rejoin', roomCode, (res: any) => {
         if (res.success) {
           if (res.seats && res.spectators && res.room) {

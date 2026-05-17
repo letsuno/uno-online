@@ -14,6 +14,10 @@ export async function loadGameState(redis: KvStore, roomCode: string): Promise<G
   return JSON.parse(raw) as GameState;
 }
 
+export async function deleteGameState(redis: KvStore, roomCode: string): Promise<void> {
+  await redis.del(GAME_STATE_KEY(roomCode));
+}
+
 export class GameStatePersister {
   private dirty = new Map<string, GameState>();
   private flushTimers = new Map<string, ReturnType<typeof setTimeout>>();
