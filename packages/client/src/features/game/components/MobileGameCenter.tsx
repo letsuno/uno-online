@@ -31,7 +31,7 @@ function useCanDraw(side: 'left' | 'right') {
 
   const remainingPenaltyDraws = pendingPenaltyDraws > 0 ? pendingPenaltyDraws : drawStack;
   const isPenaltyDrawing = remainingPenaltyDraws > 0;
-  const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
+  const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable);
   const canStartDrawUntilPlayable = !mustDrawUntilPlayable || playableIds.size === 0;
   const canContinueDrawUntilPlayable = !isPenaltyDrawing && mustDrawUntilPlayable && hasDrawnThisTurn && playableIds.size === 0;
   const hasCardsAvailable = deckCount > 0 || discardPileLength > 1;

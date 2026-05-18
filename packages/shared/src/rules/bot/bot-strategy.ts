@@ -428,8 +428,7 @@ function handlePlaying(state: GameState, playerId: string, config: BotConfig): G
       playableAfterDraw = playableAfterDraw.filter(c => !isFinishBlocked(c, player.hand, hr));
     }
     if (playableAfterDraw.length === 0) {
-      // drawUntilPlayable / deathDraw: keep drawing if deck has cards
-      if (!noCards && (hr.drawUntilPlayable || hr.deathDraw)) {
+      if (!noCards && hr.drawUntilPlayable) {
         return [{ type: 'DRAW_CARD', playerId, side: drawSide }];
       }
       return [{ type: 'PASS', playerId }];

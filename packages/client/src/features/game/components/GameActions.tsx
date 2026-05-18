@@ -41,7 +41,7 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   const deckRightCount = useGameStore((s) => s.deckRightCount);
   const discardPileLength = useGameStore((s) => s.discardPile.length);
   const noCardsAvailable = deckLeftCount === 0 && deckRightCount === 0 && discardPileLength <= 1;
-  const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
+  const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable);
   const canPassAfterDraw = pendingPenaltyDraws === 0 && drawStack === 0 && hasDrawnThisTurn && (!mustDrawUntilPlayable || playableIds.size > 0);
   const canPass = canPassAfterDraw || noCardsAvailable;
 

@@ -65,7 +65,7 @@ describe('latest house rule bug fixes', () => {
     expect(afterDraw.discardPile.map(c => c.id)).not.toContain('drawn_playable');
   });
 
-  it('does not let death-draw inherit a previous skip as a continuing draw turn', () => {
+  it('does not let drawUntilPlayable inherit a previous skip as a continuing draw turn', () => {
     const skip = makeCard('skip', 'red', { id: 'skip' });
     const state = makeState({
       players: [
@@ -85,7 +85,7 @@ describe('latest house rule bug fixes', () => {
         targetScore: 500,
         allowSpectators: true,
         spectatorMode: 'hidden',
-        houseRules: { ...DEFAULT_HOUSE_RULES, deathDraw: true },
+        houseRules: { ...DEFAULT_HOUSE_RULES, drawUntilPlayable: true },
       },
     });
 
@@ -98,7 +98,7 @@ describe('latest house rule bug fixes', () => {
     expect(afterSecondDraw.players[2]!.hand.map(c => c.id)).toEqual(['p3_blue', 'first_unplayable', 'second_unplayable']);
   });
 
-  it('does not auto-play the first drawn card when death-draw is combined with forced draw play', () => {
+  it('does not auto-play the first drawn card when drawUntilPlayable is combined with forced draw play', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [makeCard('number', 'blue', { value: 8, id: 'p1_blue' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
@@ -114,7 +114,7 @@ describe('latest house rule bug fixes', () => {
         targetScore: 500,
         allowSpectators: true,
         spectatorMode: 'hidden',
-        houseRules: { ...DEFAULT_HOUSE_RULES, deathDraw: true, forcedPlayAfterDraw: true },
+        houseRules: { ...DEFAULT_HOUSE_RULES, drawUntilPlayable: true, forcedPlayAfterDraw: true },
       },
     });
 

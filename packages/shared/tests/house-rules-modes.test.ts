@@ -4,14 +4,14 @@ import { DEFAULT_HOUSE_RULES } from '../src/types/house-rules';
 import { makeCard, makeState } from './helpers/test-utils';
 
 describe('mode rules: no regression', () => {
-  it('deathDraw enabled does not break standard play', () => {
+  it('drawUntilPlayable enabled does not break standard play', () => {
     const card = makeCard('number', 'red', { value: 7, id: 'play1' });
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [card, makeCard('number', 'blue', { value: 1 })], score: 0, connected: true, calledUno: false },
         { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 1 })], score: 0, connected: true, calledUno: false },
       ],
-      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, deathDraw: true } },
+      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, drawUntilPlayable: true } },
     });
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'play1' });
     expect(next.currentPlayerIndex).toBe(1);
@@ -68,7 +68,4 @@ describe('mode rules: no regression', () => {
     expect(DEFAULT_HOUSE_RULES.bombCard).toBe(false);
   });
 
-  it('deathDraw flag exists and is false by default', () => {
-    expect(DEFAULT_HOUSE_RULES.deathDraw).toBe(false);
-  });
 });

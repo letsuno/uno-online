@@ -30,7 +30,7 @@ function DrawPile({ side, isPortrait, onDraw, drawTargetX, drawTargetY, drawAnim
   const remainingPenaltyDraws = pendingPenaltyDraws > 0 ? pendingPenaltyDraws : drawStack;
   const isPenaltyDrawing = remainingPenaltyDraws > 0;
   const playableIds = usePlayableCardIds();
-  const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
+  const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable);
   const isDrawUntilTurn = mustDrawUntilPlayable && !isPenaltyDrawing;
   const canStartDrawUntilPlayable = !mustDrawUntilPlayable || playableIds.size === 0;
   const canContinueDrawUntilPlayable = !isPenaltyDrawing && mustDrawUntilPlayable && hasDrawnThisTurn && playableIds.size === 0;

@@ -18,7 +18,6 @@ export interface HouseRules {
   unoPenaltyCount: 2 | 4 | 6;
   strictUnoCall: boolean;
   misplayPenalty: boolean;
-  deathDraw: boolean;
   fastMode: boolean;
   noHints: boolean;
   elimination: boolean;
@@ -55,7 +54,6 @@ export const DEFAULT_HOUSE_RULES: HouseRules = {
   unoPenaltyCount: 2,
   strictUnoCall: false,
   misplayPenalty: false,
-  deathDraw: false,
   fastMode: false,
   noHints: false,
   elimination: false,

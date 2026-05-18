@@ -51,7 +51,7 @@ export function useDrawAnimation(
   const [activeHandSwaps, setActiveHandSwaps] = useState<ActiveHandSwap[]>([]);
   const [handSwapEffects, setHandSwapEffects] = useState<Map<string, HandSwapEffect>>(new Map());
 
-  const drawUntilEnabled = Boolean(settings?.houseRules?.drawUntilPlayable || settings?.houseRules?.deathDraw);
+  const drawUntilEnabled = Boolean(settings?.houseRules?.drawUntilPlayable);
 
   const computeDrawTarget = useCallback((playerId: string) => {
     const pos = getPlayerPosition(playerId);

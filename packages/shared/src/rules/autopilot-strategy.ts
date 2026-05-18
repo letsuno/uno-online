@@ -139,7 +139,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   if (hasDrawnThisTurn && state.drawStack === 0) {
     const playableAfterDraw = getPlayableCards(player.hand, topCard, state.currentColor);
     if (playableAfterDraw.length === 0) {
-      if (!noCards && (state.settings.houseRules.drawUntilPlayable || state.settings.houseRules.deathDraw)) {
+      if (!noCards && state.settings.houseRules.drawUntilPlayable) {
         return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
       }
       return [{ type: 'PASS', playerId }];

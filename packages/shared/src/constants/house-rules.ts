@@ -36,7 +36,6 @@ export const HOUSE_RULE_DEFINITIONS: HouseRuleDefinition[] = [
   { key: 'elimination', label: '淘汰制', description: '每轮结束手牌最多者被淘汰' },
   { key: 'revengeMode', label: '复仇模式', description: '反击+2/+4时伤害翻倍' },
   { key: 'teamMode', label: '团队模式', description: '偶数玩家时对面是队友' },
-  { key: 'deathDraw', label: '死亡抽牌', description: '无牌可出时必须不停摸牌' },
   { key: 'handLimit', label: '手牌上限', description: '超过数量时不能摸牌' },
   { key: 'handRevealThreshold', label: '手牌透明', description: '手牌低于此数对所有人可见' },
   { key: 'blitzTimeLimit', label: '闪电战', description: '总时间限制（秒），超时手牌最少者赢' },

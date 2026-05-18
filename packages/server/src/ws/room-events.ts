@@ -586,7 +586,7 @@ export function startTurnTimer(
       && playableCount === 0
       && state.lastAction?.type === 'DRAW_CARD'
       && state.lastAction.playerId === actingPlayerId
-      && (hr.drawUntilPlayable || hr.deathDraw);
+      && hr.drawUntilPlayable;
     const delayMs = (isPenaltyDraw || isDrawLoop)
       ? 250 + Math.random() * 250
       : calculateBotDelay(difficulty, playableCount);

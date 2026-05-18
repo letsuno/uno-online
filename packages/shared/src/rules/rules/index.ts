@@ -5,7 +5,6 @@ import { noChallengeWildFour } from './no-challenge-wild-four.js';
 import { unoPenalty } from './uno-penalty.js';
 import { handLimit } from './hand-limit.js';
 import { forcedPlay } from './forced-play.js';
-import { deathDrawPass, deathDrawDraw } from './death-draw.js';
 import { multiPlayPass, multiPlayPost } from './multi-play.js';
 import { misplayPenalty } from './misplay-penalty.js';
 import { deflection } from './deflection.js';
@@ -27,13 +26,11 @@ export const PRE_CHECK_PLUGINS: HouseRulePlugin[] = [
   unoPenalty,
   handLimit,
   forcedPlay,
-  deathDrawPass,
   multiPlayPass,
   misplayPenalty,
   deflection,
   stacking,
   drawUntilPlayable,
-  deathDrawDraw,
   jumpIn,
   sevenSwapTarget,
 ];
@@ -56,8 +53,6 @@ export {
   unoPenalty,
   handLimit,
   forcedPlay,
-  deathDrawPass,
-  deathDrawDraw,
   multiPlayPass,
   multiPlayPost,
   misplayPenalty,
