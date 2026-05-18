@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Eye } from 'lucide-react';
 import { useSpectatorStore } from '../stores/spectator-store';
@@ -11,20 +11,23 @@ interface SpectatorSeatsProps {
 function SpectatorSeats({ top }: SpectatorSeatsProps) {
   const spectators = useSpectatorStore((s) => s.spectators);
   const pendingJoinQueue = useSpectatorStore((s) => s.pendingJoinQueue);
+  const constraintsRef = useRef<HTMLDivElement>(null);
 
   if (spectators.length === 0) return null;
 
   return (
-    <div
-      className="absolute left-0 right-0 z-10 flex justify-center"
-      style={top != null ? { top } : { bottom: 8 }}
-    >
-      <motion.div
-        drag
-        dragMomentum={false}
-        dragElastic={0}
-        className="flex items-center gap-2 bg-card/60 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/5 cursor-grab active:cursor-grabbing select-none"
+    <div ref={constraintsRef} className="absolute inset-0 z-fab pointer-events-none">
+      <div
+        className="absolute left-0 right-0 flex justify-center"
+        style={top != null ? { top } : { bottom: 8 }}
       >
+        <motion.div
+          drag
+          dragConstraints={constraintsRef}
+          dragMomentum={false}
+          dragElastic={0}
+          className="flex items-center gap-2 bg-card/60 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/5 cursor-grab active:cursor-grabbing select-none pointer-events-auto"
+        >
         <Eye size={12} className="text-muted-foreground shrink-0" />
         <div className="flex items-center gap-1">
           {spectators.map((s) => {
@@ -49,6 +52,7 @@ function SpectatorSeats({ top }: SpectatorSeatsProps) {
           })}
         </div>
       </motion.div>
+      </div>
     </div>
   );
 }

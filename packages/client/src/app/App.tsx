@@ -38,6 +38,25 @@ export default function App() {
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
   }, []);
 
+  useEffect(() => {
+    const isEditable = (el: EventTarget | null) =>
+      el instanceof HTMLElement &&
+      !!el.closest('input, textarea, select, [contenteditable="true"], [data-allow-selection]');
+
+    const onContextMenu = (e: Event) => {
+      if (!isEditable(e.target)) e.preventDefault();
+    };
+    const onMouseDown = (e: Event) => {
+      if (e instanceof MouseEvent && e.detail > 1 && !isEditable(e.target)) e.preventDefault();
+    };
+    document.addEventListener('contextmenu', onContextMenu);
+    document.addEventListener('mousedown', onMouseDown);
+    return () => {
+      document.removeEventListener('contextmenu', onContextMenu);
+      document.removeEventListener('mousedown', onMouseDown);
+    };
+  }, []);
+
   return (
     <div className="flex min-h-svh flex-col font-game bg-background text-foreground">
       <AppRouter />

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Crown, UserX, MicOff, Mic, Volume2 } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { ArrowLeftRight, Crown, UserX, MicOff, Mic, Volume2 } from 'lucide-react';
 import { getSocket } from '@/shared/socket';
 import { useGatewayStore } from '@/shared/voice/gateway-store';
 import { useToastStore } from '@/shared/stores/toast-store';
@@ -105,10 +104,10 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
       </div>
       {hasSwapRequest && (
         <button
-          className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 rounded-lg flex items-center gap-2 text-foreground cursor-pointer"
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-white/10 cursor-pointer transition-colors"
           onClick={() => { onSwapRequest(target.userId); onClose(); }}
         >
-          🔄 请求换座
+          <ArrowLeftRight size={14} /> 请求换座
         </button>
       )}
       {hasOwnerItems && !target.isBot && (
@@ -117,7 +116,7 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
             <Crown size={14} />
             移交房主
           </button>
-          <button onClick={kickPlayer} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 cursor-pointer transition-colors">
+          <button onClick={kickPlayer} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/10 cursor-pointer transition-colors">
             <UserX size={14} />
             踢出房间
           </button>
@@ -130,7 +129,7 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
             <button
               key={d.value}
               onClick={() => { setBotDifficulty(target.userId, d.value); onClose(); }}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-white/10 cursor-pointer transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/10 cursor-pointer transition-colors"
             >
               <span className={DIFFICULTY_DISPLAY[d.value].color}>●</span>
               <span>{d.label}</span>
@@ -138,7 +137,7 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
           ))}
           <button
             onClick={() => { removeBot(target.userId); onClose(); }}
-            className="w-full px-3 py-1.5 text-left text-sm text-red-400 hover:bg-white/10 cursor-pointer transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/10 cursor-pointer transition-colors"
           >
             移除人机
           </button>

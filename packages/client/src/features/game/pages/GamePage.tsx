@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import type { MouseEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Loader2, Eye, LogOut, UserPlus, X } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
@@ -163,18 +162,6 @@ export default function GamePage() {
     open_chat: () => openInfoDrawer('chat'),
   });
 
-  const isSelectionAllowed = (target: EventTarget | null) => {
-    if (!(target instanceof HTMLElement)) return false;
-    return Boolean(target.closest('[data-allow-selection], input, textarea, select, [contenteditable="true"]'));
-  };
-
-  const suppressContextMenu = (event: MouseEvent<HTMLDivElement>) => {
-    if (!isSelectionAllowed(event.target)) {
-      event.preventDefault();
-    }
-  };
-
-
   if (!phase) {
     return <div className="flex flex-1 items-center justify-center">
       <p className="text-muted-foreground">加载游戏中...</p>
@@ -182,15 +169,8 @@ export default function GamePage() {
   }
 
   return (
-    <div
-      className="flex h-screen flex-col relative overflow-hidden select-none"
-      onContextMenu={suppressContextMenu}
-      onMouseDown={(event) => {
-        if (event.detail > 1 && !isSelectionAllowed(event.target)) {
-          event.preventDefault();
-        }
-      }}
-    >
+    <div className="flex h-screen flex-col relative overflow-hidden">
+
       {connectionStatus !== 'connected' && (
         <div className="fixed inset-0 z-connection flex flex-col items-center justify-center gap-3 bg-black/75">
           <Loader2 size={36} className="animate-spin text-white" />
@@ -365,7 +345,7 @@ function SpectatorBar({ phase, onBackToLobby, onJoined }: { phase: string | null
   };
 
   return (
-    <div className="fixed top-14 left-1/2 -translate-x-1/2 z-actions bg-card/90 backdrop-blur-sm rounded-full px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
+    <div className="fixed top-14 left-1/2 -translate-x-1/2 z-actions glass-panel !rounded-full px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
       <Eye size={16} /> 观战中
       {queued ? (
         <button

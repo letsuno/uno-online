@@ -34,12 +34,12 @@ export function BotAddButton() {
         <span>添加人机</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1.5 w-full rounded-xl bg-card/95 backdrop-blur-sm border border-white/10 p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute left-0 top-full z-50 mt-1.5 w-full glass-panel !rounded-xl py-1 animate-in fade-in zoom-in-95 duration-100">
           {DIFFICULTY_LIST.map((d) => (
             <button
               key={d.value}
               onClick={() => handleAdd(d.value)}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-white/8 cursor-pointer transition-colors group"
+              className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/10 cursor-pointer transition-colors group"
             >
               <div
                 className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"

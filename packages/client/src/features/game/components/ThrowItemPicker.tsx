@@ -87,7 +87,7 @@ export default function ThrowItemPicker({ onSelect, onClose, anchorX, anchorY }:
         exit={{ opacity: 0, scale: 0.7, y: 6 }}
         transition={{ duration: 0.18, ease: 'easeOut' }}
       >
-        <div className="bg-card/90 backdrop-blur-sm rounded-xl border border-white/10 p-2.5 flex gap-2 mb-2">
+        <div className="glass-panel !rounded-xl p-2.5 flex gap-2 mb-2">
           {ITEMS.map(({ emoji, label }) => (
             <button
               key={emoji}

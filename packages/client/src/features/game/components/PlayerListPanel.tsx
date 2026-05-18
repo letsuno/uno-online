@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, useDragControls, AnimatePresence } from 'framer-motion';
 import { ArrowRightLeft, Bot, ChevronDown, Crown, Eye, GripHorizontal, UserPlus } from 'lucide-react';
 import { getSocket } from '@/shared/socket';
@@ -24,17 +24,20 @@ export default function PlayerListPanel() {
   const userId = useEffectiveUserId();
   const [collapsed, setCollapsed] = useState(false);
   const dragControls = useDragControls();
+  const constraintsRef = useRef<HTMLDivElement>(null);
 
   if (players.length === 0) return null;
 
   return (
+    <div ref={constraintsRef} className="fixed inset-0 pointer-events-none z-fab hidden md:block">
     <motion.div
       drag
+      dragConstraints={constraintsRef}
       dragControls={dragControls}
       dragListener={false}
       dragMomentum={false}
       dragElastic={0}
-      className="absolute top-12 right-3 z-topbar hidden md:block"
+      className="absolute top-12 right-3 pointer-events-auto"
     >
       <div className="rounded-card-ui bg-card/80 backdrop-blur-sm shadow-card shadow-tech border border-white/10 w-48">
         <div
@@ -179,5 +182,6 @@ export default function PlayerListPanel() {
         </AnimatePresence>
       </div>
     </motion.div>
+    </div>
   );
 }

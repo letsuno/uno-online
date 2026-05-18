@@ -159,7 +159,6 @@ function PlayerNode({
         className="relative pointer-events-auto"
         style={{ width: avatarSize, height: avatarSize }}
         onClick={handleClick}
-        onContextMenu={(e) => e.preventDefault()}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
       >

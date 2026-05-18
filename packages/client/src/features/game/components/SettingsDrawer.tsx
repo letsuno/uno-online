@@ -131,18 +131,26 @@ export default function SettingsDrawer({
               {(room?.settings?.allowSpectators ?? true) && (
                 <div className="flex items-center justify-between">
                   <label className="text-sm">观战模式</label>
-                  <select
-                    value={room?.settings?.spectatorMode ?? 'hidden'}
-                    onChange={(e) => getSocket().emit('room:update_settings', { spectatorMode: e.target.value as 'full' | 'hidden' })}
-                    className={cn(
-                      'bg-white/[0.06] text-foreground border border-white/10 rounded-xl px-3 py-1.5 text-sm outline-none cursor-pointer',
-                      !isOwner && 'opacity-50 cursor-default',
-                    )}
-                    disabled={!isOwner}
-                  >
-                    <option value="hidden">只看出牌</option>
-                    <option value="full">全透视</option>
-                  </select>
+                  <div className={cn('flex rounded-xl bg-white/[0.06] border border-white/10 p-0.5', !isOwner && 'opacity-50')}>
+                    {([['hidden', '只看出牌'], ['full', '全透视']] as const).map(([value, label]) => {
+                      const active = (room?.settings?.spectatorMode ?? 'hidden') === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => isOwner && getSocket().emit('room:update_settings', { spectatorMode: value })}
+                          disabled={!isOwner}
+                          className={cn(
+                            'px-3 py-1 rounded-lg text-sm transition-colors',
+                            isOwner ? 'cursor-pointer' : 'cursor-default',
+                            active ? 'bg-accent text-white' : 'text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
