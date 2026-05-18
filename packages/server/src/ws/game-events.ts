@@ -225,11 +225,12 @@ function scheduleAutopilotJumpIn(
 function getNextRoundVoteState(roomCode: string, session: GameSession): NextRoundVoteState {
   const players = session.getFullState().players;
   const humanPlayerIds = new Set(players.filter((p) => !p.isBot).map((p) => p.id));
-  const voters = [...(nextRoundVotes.get(roomCode) ?? new Set<string>())].filter((id) => humanPlayerIds.has(id));
+  const allVoters = [...(nextRoundVotes.get(roomCode) ?? new Set<string>())];
+  const humanVoters = allVoters.filter((id) => humanPlayerIds.has(id));
   return {
-    votes: voters.length,
+    votes: humanVoters.length,
     required: humanPlayerIds.size,
-    voters,
+    voters: allVoters,
   };
 }
 
