@@ -7,7 +7,7 @@ import { GameSession } from '../plugins/core/game/session.js';
 import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, notifyAutopilotAction, resetPlayerTimeout } from './room-events.js';
 import { getAutopilotActionPlayerId, canPlayerAutopilotOnce } from './autopilot-action-player.js';
 import { registerGameEvents, emitTerminalStateIfNeeded, addAutopilotVote, clearChatTimestamps, getRoundEndVoteState, getPendingSpectatorQueue, getRoundEndAt } from './game-events.js';
-import { getRoom, setRoomOwner, clearUserRoom, getUserRoom, setSeatPlayerConnected, getRoomSeats, getRoomSpectators, addSpectatorToRoom, removeSpectatorFromRoom, setSpectatorConnected, getSeatedPlayers, findNextOwner, pickNextOwner } from '../plugins/core/room/store.js';
+import { getRoom, setRoomOwner, clearUserRoom, getUserRoom, setSeatPlayerConnected, getRoomSeats, getRoomSpectators, addSpectatorToRoom, removeDisconnectedSpectators, setSpectatorConnected, getSeatedPlayers, findNextOwner, pickNextOwner } from '../plugins/core/room/store.js';
 import { registerSeatEvents, clearPendingSwapRequests, clearUserSwapRequests } from './seat-events.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
 import { loadGameState, GameStatePersister } from '../plugins/core/game/state-store.js';
@@ -168,14 +168,11 @@ export function setupSocketHandlers(
 
   async function sweepDisconnectedSpectators() {
     const roomCodes = await getRoomCodes();
-    const now = Date.now();
     for (const roomCode of roomCodes) {
-      const spectators = await getRoomSpectators(redis, roomCode);
-      const stale = spectators.filter(s => !s.connected && s.disconnectedAt && now - s.disconnectedAt >= RECONNECT_TIMEOUT_MS);
-      if (stale.length === 0) continue;
+      const removed = await removeDisconnectedSpectators(redis, roomCode, RECONNECT_TIMEOUT_MS);
+      if (removed.length === 0) continue;
 
-      for (const s of stale) {
-        await removeSpectatorFromRoom(redis, roomCode, s.userId);
+      for (const s of removed) {
         await clearUserRoom(redis, s.userId);
       }
       await broadcastSpectatorList(io, redis, roomCode);
@@ -196,7 +193,7 @@ export function setupSocketHandlers(
         continue;
       }
 
-      if (stale.some(s => s.userId === room.ownerId)) {
+      if (removed.some(s => s.userId === room.ownerId)) {
         const nextOwnerId = pickNextOwner(seats, remaining, room.ownerId);
         if (nextOwnerId) {
           await setRoomOwner(redis, roomCode, nextOwnerId);
@@ -365,7 +362,7 @@ export function setupSocketHandlers(
           await setSpectatorConnected(redis, roomCode, userId, true);
         }
 
-        await joinRoomSocket(redis, socket, roomCode);
+        await joinRoomSocket(redis, socket, roomCode, { asSpectator: !isSeated });
         if (hasOwnerTransferPending(roomCode) && room.ownerId === userId) {
           cancelOwnerTransfer(roomCode);
           io.to(roomCode).emit('room:owner_transfer_cancelled');
@@ -548,7 +545,6 @@ export function setupSocketHandlers(
               getRoomSpectators(redis, roomCode),
             ]);
             io.to(roomCode).emit('seat:updated', { seats, spectators });
-            // If leaver was owner, room:updated already emitted by leaveRoom's transfer
             if (room) {
               io.to(roomCode).emit('room:updated', { room });
             }

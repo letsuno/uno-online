@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Trophy, BarChart3, Crown, Check, UserX, UserPlus, WifiOff, Eye, X } from 'lucide-react';
+import { Trophy, BarChart3, Crown, Check, UserX, UserPlus, WifiOff, Eye, X, ArrowRightLeft } from 'lucide-react';
+import { showConfirm } from '@/shared/stores/confirm-store';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useRoomStore } from '@/shared/stores/room-store';
@@ -100,9 +101,12 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
 
   const ownerId = useRoomStore((s) => s.room?.ownerId);
   const userId = useEffectiveUserId();
+  const authUserId = useAuthStore((s) => s.user?.id);
   const sorted = [...players].sort((a, b) => b.score - a.score);
   const isGameOver = phase === 'game_over';
   const isHost = ownerId === userId;
+  const isSpectatorOwner = isSpectator && ownerId === authUserId;
+  const canTransfer = isHost || isSpectatorOwner;
   const hasVoted = !!userId && !!vote?.voters.includes(userId);
   const fallbackRequired = players.length;
   const votes = vote?.votes ?? 0;
@@ -156,6 +160,20 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
                     {p.id === ownerId && <span title="房主"><Crown size={12} className="inline align-middle ml-1 text-yellow-500" /></span>}
                     {p.isBot && <AiBadge className="ml-1" />}
                     {disconnected && <WifiOff size={12} className="inline align-middle ml-1 text-destructive" />}
+                    {canTransfer && !isSelf && !p.isBot && (
+                      <button
+                        onClick={async () => {
+                          if (!(await showConfirm({ title: '移交房主', message: `确定要将房主移交给 ${p.name} 吗？`, confirmText: '移交' }))) return;
+                          getSocket().emit('room:transfer_owner', { targetId: p.id }, (res: { success?: boolean; error?: string }) => {
+                            if (!res?.success) useToastStore.getState().addToast(res?.error ?? '移交失败', 'error');
+                          });
+                        }}
+                        className="ml-1 text-yellow-500/50 hover:text-yellow-500 cursor-pointer bg-transparent border-none transition-colors"
+                        title="移交房主"
+                      >
+                        <ArrowRightLeft size={12} className="inline align-middle" />
+                      </button>
+                    )}
                   </td>
                   {!isGameOver && (
                     <td className="px-2 py-1.5 text-center whitespace-nowrap">
@@ -173,6 +191,12 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
             })}
           </tbody>
         </table>
+        {isSpectatorOwner && (
+          <div className="mb-3 flex items-center gap-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 text-xs text-yellow-300">
+            <Crown size={14} className="shrink-0" />
+            <span>你是房主但处于观战状态，请入座或将房主移交给在座的玩家</span>
+          </div>
+        )}
         {!isGameOver && pendingJoinQueue.length > 0 && (
           <p className="mb-2 text-xs text-accent flex items-center justify-center gap-1">
             <UserPlus size={12} /> {pendingJoinQueue.join('、')} 将在下一轮加入

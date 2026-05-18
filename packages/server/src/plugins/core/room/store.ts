@@ -325,6 +325,22 @@ export async function clearRoomSpectators(kv: KvStore, roomCode: string): Promis
   await kv.del(`room:${roomCode}:spectators`);
 }
 
+export async function removeDisconnectedSpectators(
+  kv: KvStore, roomCode: string, thresholdMs: number,
+): Promise<RoomSpectator[]> {
+  return withRoomSeatLock(roomCode, async () => {
+    const spectators = await getRoomSpectators(kv, roomCode);
+    const now = Date.now();
+    const stale = spectators.filter(
+      s => !s.connected && s.disconnectedAt && now - s.disconnectedAt >= thresholdMs,
+    );
+    if (stale.length === 0) return [];
+    const remaining = spectators.filter(s => !stale.includes(s));
+    await setRoomSpectators(kv, roomCode, remaining);
+    return stale;
+  });
+}
+
 export function pickNextOwner(
   seats: RoomSeats, spectators: RoomSpectator[], excludeUserId?: string,
 ): string | null {

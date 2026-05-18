@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { motion, useDragControls, AnimatePresence } from 'framer-motion';
-import { Bot, ChevronDown, Crown, Eye, GripHorizontal, UserPlus } from 'lucide-react';
+import { ArrowRightLeft, Bot, ChevronDown, Crown, Eye, GripHorizontal, UserPlus } from 'lucide-react';
+import { getSocket } from '@/shared/socket';
+import { showConfirm } from '@/shared/stores/confirm-store';
+import { useToastStore } from '@/shared/stores/toast-store';
 import { useGameStore } from '../stores/game-store';
 import { useSpectatorStore } from '../stores/spectator-store';
 import { useRoomStore } from '@/shared/stores/room-store';
@@ -128,6 +131,20 @@ export default function PlayerListPanel() {
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <PlayerVoiceStatus playerId={p.id} playerName={p.name} isSelf={isMe} />
+                          {ownerId === userId && !isMe && !p.isBot && (
+                            <button
+                              onClick={async () => {
+                                if (!(await showConfirm({ title: '移交房主', message: `确定要将房主移交给 ${p.name} 吗？`, confirmText: '移交' }))) return;
+                                getSocket().emit('room:transfer_owner', { targetId: p.id }, (res: { success?: boolean; error?: string }) => {
+                                  if (!res?.success) useToastStore.getState().addToast(res?.error ?? '移交失败', 'error');
+                                });
+                              }}
+                              className="text-yellow-500/40 hover:text-yellow-500 cursor-pointer transition-colors"
+                              title="移交房主"
+                            >
+                              <ArrowRightLeft size={10} />
+                            </button>
+                          )}
                           <span className="text-2xs text-muted-foreground">{p.handCount}</span>
                           {!p.connected && <span className="w-1.5 h-1.5 rounded-full bg-destructive" />}
                           {isActive && <span className="text-2xs">◀</span>}

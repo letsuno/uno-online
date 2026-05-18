@@ -810,6 +810,11 @@ export function registerGameEvents(
     const player = state.players.find((p) => p.id === data.user.userId);
     if (!player) return callback?.({ success: false, error: '玩家不在游戏中' });
 
+    const room = await getRoom(redis, roomCode);
+    if (room?.ownerId === data.user.userId) {
+      return callback?.({ success: false, error: '房主需要先移交房主权才能进入观战席' });
+    }
+
     if (state.players.length <= MIN_PLAYERS) {
       return callback?.({ success: false, error: '玩家数量不足，无法切换观战' });
     }
@@ -825,14 +830,6 @@ export function registerGameEvents(
       role: data.user.role,
       connected: true,
     });
-
-    const room = await getRoom(redis, roomCode);
-    if (room?.ownerId === data.user.userId) {
-      const nextOwnerId = await findNextOwner(redis, roomCode, data.user.userId);
-      if (nextOwnerId) {
-        await setRoomOwner(redis, roomCode, nextOwnerId);
-      }
-    }
 
     const voters = nextRoundVotes.get(roomCode) ?? new Set<string>();
     voters.delete(data.user.userId);

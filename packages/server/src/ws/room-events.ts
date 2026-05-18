@@ -3,7 +3,7 @@ import type { KvStore } from '../kv/types.js';
 import type { GameAction, GameState, RoomSettings, BotDifficulty } from '@uno-online/shared';
 import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction, chooseBotAction, getPlayableCards, DIFFICULTY_PARAMS, BOT_DIFFICULTIES } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager.js';
-import { getRoom, getRoomSeats, getRoomSpectators, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, ensureNotInRoom, removeSpectatorFromRoom, clearRoomSpectators, getSeatedPlayers, findNextOwner } from '../plugins/core/room/store.js';
+import { getRoom, getRoomSeats, getRoomSpectators, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, ensureNotInRoom, removeSpectatorFromRoom, clearRoomSpectators, getSeatedPlayers, pickNextOwner, findNextOwner } from '../plugins/core/room/store.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
 import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
@@ -160,17 +160,17 @@ export function registerRoomEvents(
       const seats = await getRoomSeats(redis, roomCode);
       const seatedPlayers = getSeatedPlayers(seats);
       const hasHumanPlayers = seatedPlayers.some(p => !p.isBot);
+      const hasOtherHumanSpectators = spectators.some(s => s.connected && s.userId !== userId);
 
-      if (seatedPlayers.length === 0 || !hasHumanPlayers) {
+      if ((seatedPlayers.length === 0 || !hasHumanPlayers) && !hasOtherHumanSpectators) {
         await leaveRoomSocket(redis, socket, roomCode);
         await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
         return callback?.({ success: true, dissolved: true });
       }
 
-      // Transfer ownership if the leaving spectator was the owner
       const room = await getRoom(redis, roomCode);
       if (room?.ownerId === userId) {
-        const nextOwnerId = await findNextOwner(redis, roomCode, userId);
+        const nextOwnerId = pickNextOwner(seats, spectators, userId);
         if (nextOwnerId) {
           await setRoomOwner(redis, roomCode, nextOwnerId);
         }
@@ -200,6 +200,22 @@ export function registerRoomEvents(
       io.to(roomCode).emit('player:autopilot', { playerId: data.user.userId, enabled: true });
       removeVoicePresence(io, roomCode, data.user.userId);
       await leaveRoomSocket(redis, socket, roomCode);
+
+      if (!session.getFullState().players.some(p => p.connected && !p.isBot)) {
+        await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
+        return callback?.({ success: true, dissolved: true });
+      }
+
+      const room = await getRoom(redis, roomCode);
+      if (room && room.ownerId === data.user.userId) {
+        const nextOwnerId = await findNextOwner(redis, roomCode, data.user.userId);
+        if (nextOwnerId) {
+          await setRoomOwner(redis, roomCode, nextOwnerId);
+          const updatedRoom = await getRoom(redis, roomCode);
+          io.to(roomCode).emit('room:updated', { room: updatedRoom });
+        }
+      }
+
       addAutopilotVote(roomCode, data.user.userId, session, io);
       startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
       return callback?.({ success: true });
@@ -290,14 +306,12 @@ export function registerRoomEvents(
     const room = await getRoom(redis, roomCode);
     if (!room) return callback?.({ success: false, error: '房间不存在' });
     if (room.ownerId !== data.user.userId) return callback?.({ success: false, error: '只有房主可以移交' });
-    if (room.status !== 'waiting') return callback?.({ success: false, error: '游戏进行中无法移交房主' });
     if (payload.targetId === data.user.userId) return callback?.({ success: false, error: '不能移交给自己' });
-    const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
-    const allUsers = [...getSeatedPlayers(seats), ...spectators];
-    if (!allUsers.some(p => p.userId === payload.targetId)) return callback?.({ success: false, error: '目标玩家不在房间中' });
+    const seats = await getRoomSeats(redis, roomCode);
+    if (!getSeatedPlayers(seats).some(p => p.userId === payload.targetId && !p.isBot)) return callback?.({ success: false, error: '只能移交给在座的玩家' });
     await setRoomOwner(redis, roomCode, payload.targetId);
     await touchRoomActivity(redis, roomCode);
-    const updatedRoom = await getRoom(redis, roomCode);
+    const [updatedRoom, spectators] = await Promise.all([getRoom(redis, roomCode), getRoomSpectators(redis, roomCode)]);
     io.to(roomCode).emit('room:updated', { room: updatedRoom });
     io.to(roomCode).emit('seat:updated', { seats, spectators });
     callback?.({ success: true });

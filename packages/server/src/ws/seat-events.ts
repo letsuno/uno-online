@@ -189,6 +189,7 @@ export function registerSeatEvents(
 
       const currentSeat = seats[seatIndex]!;
       if (currentSeat.ready) return callback({ success: false, error: '请先取消准备再离座' });
+      if (room.ownerId === userId) return callback({ success: false, error: '房主需要先移交房主权才能离座' });
 
       await leaveSeat(redis, roomCode, userId);
 
