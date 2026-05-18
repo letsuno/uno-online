@@ -40,6 +40,7 @@ export function getSocket(): TypedSocket {
     const token = currentToken();
     socket = io(getApiUrl(), {
       auth: { token },
+      transports: ['websocket'],
       autoConnect: false,
       reconnection: true,
       reconnectionAttempts: 5,

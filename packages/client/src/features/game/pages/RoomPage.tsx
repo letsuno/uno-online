@@ -30,12 +30,13 @@ import type { BotDifficulty } from '@uno-online/shared';
 export default function RoomPage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const user = useAuthStore((s) => s.user);
-  const { seats, spectators, room, setRoom } = useRoomStore();
+  const { roomCode: storeRoomCode, seats, spectators, room, setRoom } = useRoomStore();
   const setGameState = useGameStore((s) => s.setGameState);
   const navigate = useNavigate();
   const songName = useBgm('lobby');
   const leaveRoomHook = useLeaveRoom();
 
+  const [rejoinError, setRejoinError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [swapRequest, setSwapRequest] = useState<{
     requesterId: string;
@@ -66,10 +67,13 @@ export default function RoomPage() {
   useEffect(() => {
     connectSocket();
     const socket = getSocket();
-    refreshVoicePresence();
+    let cancelled = false;
 
-    if (useRoomStore.getState().roomCode !== roomCode && roomCode) {
+    const tryRejoin = () => {
+      if (cancelled || !roomCode) return;
+      if (useRoomStore.getState().roomCode === roomCode) return;
       socket.emit('room:rejoin', roomCode, (res: any) => {
+        if (cancelled) return;
         if (res.success) {
           if (res.seats && res.spectators && res.room) {
             setRoom(roomCode, res.seats, res.spectators, res.room);
@@ -80,9 +84,16 @@ export default function RoomPage() {
             navigate(`/game/${roomCode}`);
           }
         } else {
-          navigate('/');
+          setRejoinError(res.error || '房间不存在');
         }
       });
+    };
+
+    if (useRoomStore.getState().roomCode !== roomCode) {
+      if (socket.connected) tryRejoin();
+      socket.on('connect', tryRejoin);
+    } else {
+      refreshVoicePresence();
     }
 
     const onState = (view: any) => {
@@ -92,6 +103,8 @@ export default function RoomPage() {
     };
     socket.on('game:state', onState);
     return () => {
+      cancelled = true;
+      socket.off('connect', tryRejoin);
       socket.off('game:state', onState);
     };
   }, [roomCode, navigate, setGameState]);
@@ -251,6 +264,29 @@ export default function RoomPage() {
     );
     setSwapRequest(null);
   };
+
+  if (rejoinError) {
+    return (
+      <GamePageShell>
+        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <p className="text-muted-foreground">{rejoinError}</p>
+          <Button variant="game" onClick={() => navigate('/')} sound="click">
+            返回大厅
+          </Button>
+        </div>
+      </GamePageShell>
+    );
+  }
+
+  if (storeRoomCode !== roomCode) {
+    return (
+      <GamePageShell>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground">正在加入房间…</p>
+        </div>
+      </GamePageShell>
+    );
+  }
 
   return (
     <GamePageShell>

@@ -48,6 +48,7 @@ export default function LobbyPage() {
     const socket = getSocket();
     let cancelled = false;
     const checkRoom = () => {
+      if (cancelled) return;
       socket.emit('user:current_room', (res) => {
         if (cancelled || !res.roomCode) return;
         localStorage.setItem('lastRoomCode', res.roomCode);
@@ -55,7 +56,7 @@ export default function LobbyPage() {
       });
     };
     if (socket.connected) checkRoom();
-    else socket.once('connect', checkRoom);
+    socket.on('connect', checkRoom);
     return () => {
       cancelled = true;
       socket.off('connect', checkRoom);

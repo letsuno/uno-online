@@ -259,6 +259,13 @@ export function setupSocketHandlers(
 
     // Handle reconnection: restore room and game state
     socket.on('room:rejoin', async (roomCode: string, callback) => {
+      const pendingDisconnect = disconnectTimers.get(userId);
+      if (pendingDisconnect) {
+        clearTimeout(pendingDisconnect);
+        disconnectTimers.delete(userId);
+        stopAutoPlay(userId);
+      }
+
       const room = await getRoom(redis, roomCode);
       if (!room) {
         await clearUserRoom(redis, userId);
