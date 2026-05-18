@@ -6,6 +6,18 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.8.0',
+    date: '2026-05-19',
+    changes: [
+      '游戏计时器：回合计时与延迟实时显示',
+      '移动端游戏布局适配与托管遮罩',
+      '可拖拽悬浮面板、玩家列表折叠',
+      '观战房主自动排队入座，房主迁移流程完善',
+      '修复末牌限制/空手赢不算对局卡死问题',
+      '重连稳定性与连接速度优化',
+    ],
+  },
+  {
     version: '0.7.0',
     date: '2026-05-16',
     changes: [
