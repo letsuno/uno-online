@@ -194,7 +194,7 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
         {isSpectatorOwner && (
           <div className="mb-3 flex items-center gap-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 text-xs text-yellow-300">
             <Crown size={14} className="shrink-0" />
-            <span>你是房主但处于观战状态，请入座或将房主移交给在座的玩家</span>
+            <span>{spectatorQueued ? '你将在下一轮入座，或将房主移交给在座的玩家' : '你是房主但处于观战状态，请入座或将房主移交给在座的玩家'}</span>
           </div>
         )}
         {!isGameOver && pendingJoinQueue.length > 0 && (
@@ -226,7 +226,16 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
         {isSpectator ? (
           <div className="flex gap-3 justify-center flex-wrap">
             {!isGameOver && isHost && <Button variant="primary" onClick={onPlayAgain} disabled={isNextRoundDisabled} sound="ready">{nextRoundButtonText}</Button>}
-            {!isGameOver && <Button variant={isHost ? 'secondary' : 'primary'} onClick={toggleSpectatorQueue} sound="ready"><UserPlus size={14} className="inline align-middle mr-1" />加入游戏</Button>}
+            {!isGameOver && (() => {
+              const locked = spectatorQueued && isSpectatorOwner;
+              const Icon = spectatorQueued ? (locked ? Check : X) : UserPlus;
+              const label = spectatorQueued ? (locked ? '已加入下局' : '取消加入') : '下局加入';
+              return (
+                <Button variant="secondary" onClick={locked ? undefined : toggleSpectatorQueue} disabled={locked} sound={spectatorQueued ? 'click' : 'ready'}>
+                  <Icon size={14} className="inline align-middle mr-1" />{label}
+                </Button>
+              );
+            })()}
             {isGameOver && isHost && <Button variant="primary" onClick={onBackToRoom} disabled={cooldownActive} sound="ready">返回房间</Button>}
             {isGameOver && !isHost && <Button variant="primary" disabled>等待房主返回房间…</Button>}
             <Button variant="secondary" onClick={onBackToLobby} sound="click" disabled={leaveCountdown > 0}>{leaveCountdown > 0 ? `返回大厅 (${leaveCountdown}s)` : '返回大厅'}</Button>

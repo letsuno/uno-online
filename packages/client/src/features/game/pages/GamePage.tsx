@@ -304,7 +304,6 @@ export default function GamePage() {
       <GameEffects />
       <ColorWave />
       {antiCheatKey && <AntiCheatToast key={antiCheatKey} />}
-      <OwnerTransferBanner />
       {!isSpectator && <AutopilotOverlay />}
       {(phase === 'round_end' || phase === 'game_over') && <Confetti />}
       {needsColorPick && <ColorPicker onPick={chooseColor} />}
@@ -319,6 +318,7 @@ export default function GamePage() {
           onJoinedFromSpectator={() => { setSpectator(false); clearSpectators(); }}
         />
       )}
+      <OwnerTransferBanner />
       <BgmToast song={bgmSongName} />
       <HotkeySettingsModal open={showHotkeys} onClose={() => setShowHotkeys(false)} />
     </div>

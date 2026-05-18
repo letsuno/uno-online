@@ -79,6 +79,42 @@ export function clearPendingSpectatorJoins(roomCode: string): void {
   pendingSpectatorJoins.delete(roomCode);
 }
 
+async function autoQueueSpectatorOwner(
+  io: SocketIOServer, redis: KvStore, roomCode: string, session: GameSession,
+): Promise<void> {
+  const room = await getRoom(redis, roomCode);
+  if (!room) return;
+  const ownerId = room.ownerId;
+  if (session.getFullState().players.some(p => p.id === ownerId)) return;
+
+  if (!pendingSpectatorJoins.has(roomCode)) pendingSpectatorJoins.set(roomCode, new Map());
+  const pending = pendingSpectatorJoins.get(roomCode)!;
+  if (pending.has(ownerId)) return;
+  if (session.getPlayerCount() + pending.size >= MAX_PLAYERS) return;
+
+  const sockets = await io.in(roomCode).fetchSockets();
+  const ownerSocket = sockets.find(s =>
+    (s.data as SocketData).user?.userId === ownerId && (s.data as SocketData).isSpectator,
+  );
+  if (!ownerSocket) return;
+
+  const ownerData = ownerSocket.data as SocketData;
+  pending.set(ownerId, {
+    userId: ownerId,
+    nickname: ownerData.user.nickname,
+    avatarUrl: ownerData.user.avatarUrl,
+    role: ownerData.user.role,
+    isBot: ownerData.user.isBot,
+    socketId: ownerSocket.id,
+  });
+
+  io.to(roomCode).emit('game:spectator_queue', {
+    queue: [...pending.values()].map((p) => p.nickname),
+    nickname: ownerData.user.nickname,
+    joined: true,
+  });
+}
+
 interface NextRoundVoteState {
   votes: number;
   required: number;
@@ -359,6 +395,8 @@ export async function emitTerminalStateIfNeeded(
 
     const voteState = getNextRoundVoteState(roomCode, session);
     io.to(roomCode).emit('game:next_round_vote', voteState);
+
+    await autoQueueSpectatorOwner(io, redis, roomCode, session);
   }
 
   if (state.phase === 'game_over') {
@@ -634,6 +672,13 @@ export function registerGameEvents(
     const voteState = getNextRoundVoteState(roomCode, session);
     io.to(roomCode).emit('game:next_round_vote', voteState);
 
+    if (isOwner && data.isSpectator) {
+      const pending = pendingSpectatorJoins.get(roomCode);
+      if (!pending?.has(data.user.userId)) {
+        return callback?.({ success: false, error: '房主必须先加入下一轮才能开始' });
+      }
+    }
+
     if (isOwner && (hadAlreadyVoted || voteState.required === 0) && voteState.votes >= voteState.required) {
       const endedAt = roundEndTimestamps.get(roomCode);
       if (endedAt && Date.now() - endedAt < NEXT_ROUND_COOLDOWN_MS) {
@@ -655,51 +700,14 @@ export function registerGameEvents(
       return callback?.({ success: false, error: '已在游戏中' });
     }
 
-    const state = session.getFullState();
-    if (state.phase === 'round_end') {
-      if (session.getPlayerCount() >= MAX_PLAYERS) {
-        return callback?.({ success: false, error: `房间人数已达上限 (${MAX_PLAYERS})` });
-      }
-
-      const seats = await getRoomSeats(redis, roomCode);
-      const seatIdx = getFirstEmptySeatIndex(seats);
-      if (seatIdx === -1) {
-        return callback?.({ success: false, error: '没有空余座位' });
-      }
-
-      (socket.data as SocketData).isSpectator = false;
-      await removeSpectatorFromRoom(redis, roomCode, data.user.userId);
-      session.addPlayer({
-        id: data.user.userId,
-        name: data.user.nickname,
-        avatarUrl: data.user.avatarUrl,
-        role: data.user.role as any,
-        isBot: data.user.isBot,
-      });
-      await takeSeat(redis, roomCode, seatIdx, {
-        userId: data.user.userId,
-        nickname: data.user.nickname,
-        avatarUrl: data.user.avatarUrl,
-        role: data.user.role,
-        isBot: data.user.isBot ?? false,
-        ready: false,
-        connected: true,
-      });
-      await setUserRoom(redis, data.user.userId, roomCode);
-
-      persister.markDirty(roomCode, session.getFullState());
-      await persister.flushNow(roomCode);
-      await emitGameUpdate(io, roomCode, session, redis);
-      await broadcastSpectatorList(io, redis, roomCode);
-      const voteState = getNextRoundVoteState(roomCode, session);
-      io.to(roomCode).emit('game:next_round_vote', voteState);
-      return callback?.({ success: true, joined: true });
-    }
-
     if (!pendingSpectatorJoins.has(roomCode)) pendingSpectatorJoins.set(roomCode, new Map());
     const pending = pendingSpectatorJoins.get(roomCode)!;
 
     if (pending.has(data.user.userId)) {
+      const room = await getRoom(redis, roomCode);
+      if (room?.ownerId === data.user.userId) {
+        return callback?.({ success: false, error: '房主必须参加下一轮，如需取消请先移交房主' });
+      }
       pending.delete(data.user.userId);
       callback?.({ success: true, queued: false });
     } else {
