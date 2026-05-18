@@ -48,7 +48,7 @@ describe('default house rules — behaves like standard engine', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 
 describe('noWildFinish', () => {
-  it('rejects wild as last card', () => {
+  it('rejects wild as last card and draws 1 card', () => {
     const wild = makeCard('wild', null, { id: 'wild1' });
     const state = makeState({
       players: [
@@ -63,12 +63,11 @@ describe('noWildFinish', () => {
       },
     });
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wild1' });
-    // State should be returned unchanged (play rejected)
-    expect(next.players[0]!.hand).toHaveLength(1);
+    expect(next.players[0]!.hand).toHaveLength(2);
     expect(next.discardPile[next.discardPile.length - 1]!.id).toBe('discard_top');
   });
 
-  it('rejects wild_draw_four as last card', () => {
+  it('rejects wild_draw_four as last card and draws 1 card', () => {
     const wd4 = makeCard('wild_draw_four', null, { id: 'wd4' });
     const state = makeState({
       players: [
@@ -83,7 +82,7 @@ describe('noWildFinish', () => {
       },
     });
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4' });
-    expect(next.players[0]!.hand).toHaveLength(1);
+    expect(next.players[0]!.hand).toHaveLength(2);
   });
 
   it('allows wild when NOT last card', () => {
@@ -104,6 +103,44 @@ describe('noWildFinish', () => {
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wild1' });
     expect(next.phase).toBe('choosing_color');
   });
+
+  it('blocks without drawing when drawStack > 0', () => {
+    const wd4 = makeCard('wild_draw_four', null, { id: 'wd4' });
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [wd4], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, noWildFinish: true },
+      },
+      drawStack: 2,
+    });
+    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4' });
+    expect(next).toBe(state);
+  });
+
+  it('blocks jump-in without drawing', () => {
+    const wd4 = makeCard('wild_draw_four', null, { id: 'wd4' });
+    const state = makeState({
+      currentPlayerIndex: 1,
+      players: [
+        { id: 'p1', name: 'Alice', hand: [wd4], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, noWildFinish: true },
+      },
+    });
+    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4' });
+    expect(next).toBe(state);
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -111,7 +148,7 @@ describe('noWildFinish', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 
 describe('noFunctionCardFinish', () => {
-  it('rejects draw_two as last card', () => {
+  it('rejects draw_two as last card and draws 1 card', () => {
     const d2 = makeCard('draw_two', 'red', { id: 'd2' });
     const state = makeState({
       players: [
@@ -126,10 +163,10 @@ describe('noFunctionCardFinish', () => {
       },
     });
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'd2' });
-    expect(next.players[0]!.hand).toHaveLength(1);
+    expect(next.players[0]!.hand).toHaveLength(2);
   });
 
-  it('rejects wild_draw_four as last card', () => {
+  it('rejects wild_draw_four as last card and draws 1 card', () => {
     const wd4 = makeCard('wild_draw_four', null, { id: 'wd4' });
     const state = makeState({
       players: [
@@ -144,7 +181,7 @@ describe('noFunctionCardFinish', () => {
       },
     });
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4' });
-    expect(next.players[0]!.hand).toHaveLength(1);
+    expect(next.players[0]!.hand).toHaveLength(2);
   });
 
   it('allows draw_two when NOT last card', () => {

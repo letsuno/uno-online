@@ -16,11 +16,19 @@ export const finishRestrictions: HouseRulePlugin = {
     const card = player?.hand.find(c => c.id === action.cardId);
     if (!card) return { handled: false };
     const hr = state.settings.houseRules;
-    if (hr.noWildFinish && ctx.isLastCard(state, action.playerId, action.cardId) && ctx.isWildCard(card)) {
-      return { handled: true, state };
-    }
-    if (hr.noFunctionCardFinish && ctx.isLastCard(state, action.playerId, action.cardId) && ctx.isFunctionCard(card)) {
-      return { handled: true, state };
+    const isLast = ctx.isLastCard(state, action.playerId, action.cardId);
+    if (isLast && (
+      (hr.noWildFinish && ctx.isWildCard(card)) ||
+      (hr.noFunctionCardFinish && ctx.isFunctionCard(card))
+    )) {
+      const isCurrentPlayer = state.players[state.currentPlayerIndex]?.id === action.playerId;
+      if (!isCurrentPlayer || state.drawStack > 0) {
+        return { handled: true, state };
+      }
+      return {
+        handled: true,
+        state: ctx.drawCardsFromDeck(state, action.playerId, 1),
+      };
     }
     return { handled: false };
   },
