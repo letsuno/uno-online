@@ -20,6 +20,7 @@ interface TokenPayload {
   nickname: string;
   avatarUrl?: string | null;
   role: UserRole; // 'normal' | 'member' | 'vip' | 'admin'
+  isBot?: boolean;
 }
 ```
 
@@ -122,6 +123,10 @@ interface ServerInfo {
 // -> { token: string; user: User; isNewUser?: boolean }
 // -> { needsBind: true; username: string; githubId: string; githubAvatarUrl?: string }
 
+// POST /api/auth/set-password
+{ password: string }
+// -> { success: true }
+
 // POST /api/auth/bind-github
 { username: string; password: string; githubId: string; githubAvatarUrl?: string }
 // -> { token: string; user: User }
@@ -208,26 +213,7 @@ interface ServerInfo {
 }
 ```
 
-### 2.5 观战房间列表
-
-| 方法 | 路径 | 认证 | 说明 |
-|------|------|------|------|
-| `GET` | `/api/rooms/active` | JWT | 获取允许观战且正在游戏中的房间 |
-
-响应是数组，不包裹 `{ rooms }`：
-
-```typescript
-Array<{
-  roomCode: string;
-  players: Array<{ nickname: string; avatarUrl?: string | null }>;
-  playerCount: number;
-  startedAt: string;
-  spectatorCount: number;
-  spectatorMode: 'full' | 'hidden';
-}>
-```
-
-### 2.6 API Key 管理
+### 2.5 API Key 管理
 
 | 方法 | 路径 | 认证 | 说明 |
 |------|------|------|------|
@@ -260,7 +246,7 @@ Array<{ id: string; name: string; keyPreview: string; createdAt: string; lastUse
 - **全局限流**: 每连接每秒 20 条 Socket 消息
 - **聊天限流**: 每用户 5 秒 10 条
 - **单用户连接**: 同一用户新连接会踢掉旧连接，并发送 `auth:kicked`
-- **重连窗口**: 断线 60 秒内可恢复；超时后进入托管
+- **重连窗口**: 断线 30 秒内可恢复；超时后进入托管
 - **全员断线清理**: 游戏中所有玩家断线 5 分钟后解散房间
 - **类型定义**: `packages/shared/src/types/socket-events.ts`
 
@@ -271,8 +257,9 @@ Array<{ id: string; name: string; keyPreview: string; createdAt: string; lastUse
 | 事件名 | 载荷 | 回调响应 |
 |--------|------|---------|
 | `user:current_room` | 无 | `{ roomCode: string \| null }` |
-| `room:create` | `Partial<RoomSettings>` | `{ success, roomCode?, seats?, spectators?, room?, voiceChannelId?, error? }` |
-| `room:join` | `roomCode: string` | `{ success, seats?, spectators?, room?, rejoin?, voiceChannelId?, error? }` |
+| `ping:latency` | 无 | 空回调（用于测量延迟） |
+| `room:create` | `Partial<RoomSettings>` | `{ success, roomCode?, players?, room?, voiceChannelId?, error? }` |
+| `room:join` | `roomCode: string` | `{ success, players?, room?, rejoin?, voiceChannelId?, error? }` |
 | `room:rejoin` | `roomCode: string` | `{ success, gameState?, seats?, spectators?, room?, isSpectator?, error? }` |
 | `room:leave` | 无 | `{ success, dissolved?, error? }` |
 | `room:ready` | `ready: boolean` | `{ success, error? }` |
@@ -280,11 +267,13 @@ Array<{ id: string; name: string; keyPreview: string; createdAt: string; lastUse
 | `room:dissolve` | 无 | `{ success, error? }` |
 | `room:transfer_owner` | `{ targetId: string }` | `{ success, error? }` |
 | `room:kick` | `{ targetId: string }` | `{ success, error? }` |
-| `room:spectate` | `roomCode: string` | `{ success, error? }`，成功时会额外推送 `game:state` |
-| `seat:take` | `(seatIndex: number, callback)` | `{ success, error? }` — 入座指定座位（0-9） |
-| `seat:leave` | `(callback)` | `{ success, error? }` — 离开座位回到观战席 |
-| `seat:swap_request` | `(targetUserId: string, callback)` | `{ success, error? }` — 请求与目标玩家交换座位（Bot 目标直接交换） |
-| `seat:swap_respond` | `({ requesterId, accept }, callback)` | `{ success, error? }` — 响应换座请求 |
+| `room:add_bot` | `{ difficulty: BotDifficulty; seatIndex?: number }` | `{ success, botId?, error? }` |
+| `room:remove_bot` | `{ botId: string }` | `{ success, error? }` |
+| `room:set_bot_difficulty` | `{ botId: string; difficulty: BotDifficulty }` | `{ success, error? }` |
+| `seat:take` | `seatIndex: number` | `{ success, error? }` — 入座指定座位（0-9） |
+| `seat:leave` | 无 | `{ success, error? }` — 离开座位回到观战席 |
+| `seat:swap_request` | `targetUserId: string` | `{ success, error? }` — 请求与目标玩家交换座位（Bot 目标直接交换） |
+| `seat:swap_respond` | `{ requesterId, accept }` | `{ success, error? }` — 响应换座请求 |
 
 #### 游戏操作
 
@@ -323,6 +312,25 @@ Array<{ id: string; name: string; keyPreview: string; createdAt: string; lastUse
 
 ### 3.3 服务端 -> 客户端事件
 
+#### 大厅
+
+| 事件名 | 载荷 | 说明 |
+|--------|------|------|
+| `lobby:rooms` | `ActiveRoomInfo[]` | 未加入房间时推送可观战房间列表 |
+
+`ActiveRoomInfo` 类型：
+
+```typescript
+interface ActiveRoomInfo {
+  roomCode: string;
+  players: Array<{ nickname: string; avatarUrl?: string | null }>;
+  playerCount: number;
+  gameStartedAt: number;
+  spectatorCount: number;
+  spectatorMode: 'full' | 'hidden';
+}
+```
+
 #### 游戏状态
 
 | 事件名 | 载荷 | 说明 |
@@ -351,20 +359,36 @@ Array<{ id: string; name: string; keyPreview: string; createdAt: string; lastUse
 | 事件名 | 载荷 | 说明 |
 |--------|------|------|
 | `room:updated` | `{ room: RoomData }` | 房间设置变更（不含座位/玩家变化，座位变化通过 `seat:updated` 推送） |
+| `room:ready_changed` | `{ playerId: string; ready: boolean }` | 玩家准备状态变化 |
 | `seat:updated` | `{ seats: (RoomSeatPlayer \| null)[], spectators: RoomSpectator[] }` | 座位或观战席变更 |
-| `seat:swap_requested` | `{ requesterId, requesterName, requesterSeatIndex }` | 收到换座请求 |
-| `seat:swap_resolved` | `{ accepted, seat1, seat2 }` | 换座结果 |
+| `seat:swap_requested` | `{ requesterId, requesterName, requesterSeatIndex, targetSeatIndex }` | 收到换座请求 |
+| `seat:swap_resolved` | `{ accepted, requesterId?, targetUserId?, reason? }` | 换座结果 |
 | `room:dissolved` | `{ reason?: string }` | 房间被解散 |
 | `room:rejoin_redirect` | `{ roomCode: string }` | 已在进行中房间，提示客户端跳转 |
 | `room:spectator_joined` | `{ nickname: string; spectators: SpectatorInfo[] }` | 观众加入 |
 | `room:spectator_left` | `{ nickname: string; spectators: SpectatorInfo[] }` | 观众离开 |
 | `room:spectator_list` | `{ spectators: SpectatorInfo[] }` | 当前观众列表 |
+| `room:bot_added` | `{ botId: string; name: string; difficulty: BotDifficulty; personality: BotPersonality }` | 机器人加入房间 |
+| `room:bot_removed` | `{ botId: string }` | 机器人离开房间 |
+| `room:bot_updated` | `{ botId: string; difficulty: BotDifficulty }` | 机器人难度更新 |
+| `room:owner_transfer_pending` | `{ transferAt: number }` | 房主转让倒计时开始 |
+| `room:owner_transfer_cancelled` | 无 | 房主转让取消 |
 | `player:timeout` | `{ playerId: string }` | 玩家超时 |
 | `player:disconnected` | `{ playerId: string }` | 玩家断线 |
 | `player:reconnected` | `{ playerId: string }` | 玩家重连 |
 | `player:autopilot` | `{ playerId: string; enabled: boolean }` | 托管状态变化 |
 | `auth:kicked` | `{ reason: string }` | 同账号多端登录导致旧连接被踢 |
 | `server:version` | `{ version: string; serverTime: number }` | 连接时发送；`version` 当前为服务端启动时间字符串 |
+
+`SpectatorInfo` 是观众广播时使用的精简视图：
+
+```typescript
+interface SpectatorInfo {
+  nickname: string;
+  avatarUrl?: string | null;
+  connected: boolean;
+}
+```
 
 #### 聊天、互动、语音
 
@@ -405,7 +429,47 @@ interface RoomSettings {
 }
 ```
 
-### 4.3 RoomData / RoomSeatPlayer / RoomSpectator
+### 4.3 HouseRules
+
+```typescript
+interface HouseRules {
+  stackDrawTwo: boolean;
+  stackDrawFour: boolean;
+  crossStack: boolean;
+  reverseDeflectDrawTwo: boolean;
+  reverseDeflectDrawFour: boolean;
+  skipDeflect: boolean;
+  zeroRotateHands: boolean;
+  sevenSwapHands: boolean;
+  jumpIn: boolean;
+  multiplePlaySameNumber: boolean;
+  wildFirstTurn: boolean;
+  drawUntilPlayable: boolean;
+  forcedPlayAfterDraw: boolean;
+  handLimit: number | null;
+  forcedPlay: boolean;
+  handRevealThreshold: number | null;
+  unoPenaltyCount: 2 | 4 | 6;
+  strictUnoCall: boolean;
+  misplayPenalty: boolean;
+  fastMode: boolean;
+  noHints: boolean;
+  elimination: boolean;
+  blitzTimeLimit: number | null;
+  revengeMode: boolean;
+  silentUno: boolean;
+  teamMode: boolean;
+  noFunctionCardFinish: boolean;
+  noWildFinish: boolean;
+  doubleScore: boolean;
+  noChallengeWildFour: boolean;
+  blindDraw: boolean;
+  bombCard: boolean;
+  shuffleSeats: boolean;
+}
+```
+
+### 4.4 RoomData / RoomSeatPlayer / RoomSpectator
 
 ```typescript
 interface RoomData {
@@ -434,10 +498,12 @@ interface RoomSpectator {
   nickname: string;
   avatarUrl?: string | null;
   role?: string;
+  connected: boolean;
+  disconnectedAt?: number;
 }
 ```
 
-### 4.4 PlayerView
+### 4.5 PlayerView
 
 ```typescript
 interface PlayerViewPlayer {
@@ -456,6 +522,7 @@ interface PlayerViewPlayer {
   avatarUrl?: string | null;
   role?: string;
   isBot: boolean;
+  botConfig?: BotConfig;
 }
 
 interface PlayerView {
@@ -476,10 +543,13 @@ interface PlayerView {
   pendingDrawPlayerId: string | null;
   lastAction: GameAction | null;
   deckHash?: string;
+  discardPileCount?: number;
+  gameStartedAt?: number;
+  turnStartedAt?: number;
 }
 ```
 
-### 4.5 GameAction / GamePhase
+### 4.6 GameAction / GamePhase
 
 ```typescript
 type GameAction =
@@ -504,7 +574,19 @@ type GamePhase =
   | 'game_over';
 ```
 
-### 4.6 ChatMessage / VoicePresence
+### 4.7 BotConfig
+
+```typescript
+type BotDifficulty = 'novice' | 'easy' | 'normal' | 'hard';
+type BotPersonality = 'aggressive' | 'defensive' | 'chaotic' | 'strategic' | 'balanced';
+
+interface BotConfig {
+  difficulty: BotDifficulty;
+  personality: BotPersonality;
+}
+```
+
+### 4.8 ChatMessage / VoicePresence
 
 ```typescript
 interface ChatMessage {
@@ -536,17 +618,23 @@ interface VoicePresence {
 | `MAX_PLAYERS` | 10 | `packages/shared/src/constants/deck.ts` | 玩家席最多人数；观战席不计入 |
 | `INITIAL_HAND_SIZE` | 7 | `packages/shared/src/constants/deck.ts` | 初始手牌数 |
 | `ROOM_CODE_LENGTH` | 6 | `packages/shared/src/constants/deck.ts` | 房间码长度 |
+| `SEAT_COUNT` | 10 | `packages/shared/src/constants/deck.ts` | 座位总数（固定） |
+| `SWAP_COOLDOWN_MS` | 5000 | `packages/shared/src/constants/deck.ts` | 换座冷却时间 |
+| `SWAP_REQUEST_TIMEOUT_MS` | 15000 | `packages/shared/src/constants/deck.ts` | 换座请求超时时间 |
+| `AUTOPILOT_TOGGLE_COOLDOWN_MS` | 3000 | `packages/shared/src/constants/deck.ts` | 托管开关冷却时间 |
 | `DEFAULT_TARGET_SCORE` | 1000 | `packages/shared/src/constants/scoring.ts` | 默认目标分数 |
 | `DEFAULT_TURN_TIME_LIMIT` | 30 | `packages/shared/src/constants/scoring.ts` | 默认回合时限（秒） |
 | `UNO_PENALTY_CARDS` | 2 | `packages/shared/src/constants/scoring.ts` | UNO 惩罚抽牌数 |
-| `SEAT_COUNT` | 10 | `packages/shared/src/constants/deck.ts` | 座位总数（固定） |
-| `SWAP_COOLDOWN_MS` | 5000 | `packages/server/src/plugins/core/room.ts` | 换座冷却时间 |
-| `SWAP_REQUEST_TIMEOUT_MS` | 15000 | `packages/server/src/plugins/core/room.ts` | 换座请求超时时间 |
-| `RECONNECT_TIMEOUT_MS` | 60000 | `packages/server/src/ws/socket-handler.ts` | 掉线重连窗口 |
+| `RECONNECT_TIMEOUT_MS` | 30000 | `packages/server/src/ws/socket-handler.ts` | 掉线重连窗口 |
 | `AUTOPILOT_THINK_MS` | 2000 | `packages/server/src/ws/socket-handler.ts` | 托管循环间隔 |
+| `ROOM_IDLE_SWEEP_MS` | 60000 | `packages/server/src/ws/socket-handler.ts` | 空闲房间清理检查间隔 |
+| `ALL_DISCONNECT_TIMEOUT_MS` | 300000 | `packages/server/src/ws/socket-handler.ts` | 全员断线后解散房间的超时时间 |
 | `MAX_MESSAGES_PER_SECOND` | 20 | `packages/server/src/ws/rate-limiter.ts` | Socket 全局频率限制 |
 | `CHAT_LIMIT` | 10 | `packages/server/src/ws/game-events.ts` | 聊天窗口内消息数 |
 | `CHAT_WINDOW_MS` | 5000 | `packages/server/src/ws/game-events.ts` | 聊天限流窗口 |
+| `NEXT_ROUND_COOLDOWN_MS` | 10000 | `packages/server/src/ws/game-events.ts` | 下一轮/返回房间操作冷却时间 |
+| `AUTOPILOT_JUMP_IN_DELAY_MS` | 2000 | `packages/server/src/ws/game-events.ts` | 托管模式抢出牌延迟 |
+| `MIN_THROW_INTERVAL_MS` | 300 | `packages/server/src/plugins/core/interaction/ws.ts` | 投掷物品最小间隔 |
 
 ---
 
@@ -555,6 +643,10 @@ interface VoicePresence {
 ### API 前缀
 
 服务端在 `plugin-loader.ts` 中将所有 HTTP 插件注册到 `/api` 下。Vite 开发代理不能重写 `/api`，否则服务端路由无法匹配。
+
+### 观战房间列表
+
+可观战房间列表通过 Socket.IO `lobby:rooms` 事件实时推送给未加入房间的连接，不提供 HTTP 端点。
 
 ### `game:over` / `game:round_end` 与 `game:update`
 
