@@ -36,7 +36,8 @@ COPY packages/shared/ packages/shared/
 COPY packages/server/ packages/server/
 RUN pnpm --filter @uno-online/shared build \
   && pnpm --filter @uno-online/server build \
-  && pnpm deploy --filter @uno-online/server --prod --legacy /app/deploy
+  && pnpm deploy --filter @uno-online/server --prod --legacy /app/deploy \
+  && find /app/deploy/node_modules -name '*linuxmusl*' -exec rm -rf {} + 2>/dev/null; true
 
 # ---- Stage 6: Server runtime ----
 FROM node:22-slim AS server
