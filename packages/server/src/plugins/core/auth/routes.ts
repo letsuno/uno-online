@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { PluginContext } from '../../../plugin-context.js';
 import { exchangeCodeForToken, fetchGitHubUser } from '../../../auth/github.js';
 import { findOrCreateUser, findUserByUsername, createLocalUser, isUsernameTaken, setPassword, bindGithub, getUserById } from '../../../db/user-repo.js';
@@ -7,6 +7,7 @@ import { validateUsername, validatePassword, validateNickname } from '../../../a
 import { authPreHandler, makeToken, userResponse } from './service.js';
 import type { AuthenticatedRequest } from './service.js';
 import { createRateLimiter } from '../../../auth/rate-limiter.js';
+import { verifyTurnstile } from '../../../auth/turnstile.js';
 
 export function registerAuthRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const { config } = ctx;
@@ -14,6 +15,7 @@ export function registerAuthRoutes(fastify: FastifyInstance, ctx: PluginContext)
   fastify.get('/auth/config', async () => ({
     devMode: config.devMode,
     githubClientId: config.githubClientId,
+    turnstileSiteKey: config.turnstileSiteKey ?? null,
   }));
 
   if (config.devMode) {
@@ -51,8 +53,19 @@ function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) 
   const registerLimiter = createRateLimiter({ windowMs: 3_600_000, max: 5 });
   const loginLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
 
-  fastify.post<{ Body: { username: string; password: string; nickname: string; avatar?: string } }>('/auth/register', { preHandler: [registerLimiter] }, async (request, reply) => {
-    const { username, password, nickname, avatar } = request.body;
+  async function checkTurnstile(turnstileToken: string | undefined, request: FastifyRequest, reply: FastifyReply): Promise<boolean> {
+    if (!config.turnstileSecretKey) return true;
+    if (!turnstileToken || !(await verifyTurnstile(turnstileToken, config.turnstileSecretKey, request.ip))) {
+      reply.code(400).send({ error: '人机验证失败，请刷新页面重试' });
+      return false;
+    }
+    return true;
+  }
+
+  fastify.post<{ Body: { username: string; password: string; nickname: string; avatar?: string; turnstileToken?: string } }>('/auth/register', { preHandler: [registerLimiter] }, async (request, reply) => {
+    const { username, password, nickname, avatar, turnstileToken } = request.body;
+
+    if (!(await checkTurnstile(turnstileToken, request, reply))) return;
 
     const uv = validateUsername(username);
     if (!uv.valid) return reply.code(400).send({ error: uv.error });
@@ -80,11 +93,13 @@ function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) 
     return { token, user: userResponse(user) };
   });
 
-  fastify.post<{ Body: { username: string; password: string } }>('/auth/login', { preHandler: [loginLimiter] }, async (request, reply) => {
-    const { username, password } = request.body;
+  fastify.post<{ Body: { username: string; password: string; turnstileToken?: string } }>('/auth/login', { preHandler: [loginLimiter] }, async (request, reply) => {
+    const { username, password, turnstileToken } = request.body;
     if (!username || !password) {
       return reply.code(400).send({ error: '请输入用户名和密码' });
     }
+
+    if (!(await checkTurnstile(turnstileToken, request, reply))) return;
 
     const user = await findUserByUsername(username);
     if (!user || !user.passwordHash) {
