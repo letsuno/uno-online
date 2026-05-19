@@ -1,20 +1,31 @@
 import { create } from 'zustand';
 
 interface ServerVersionState {
-  initialVersion: string | null;
+  initialServerVersion: string | null;
+  initialClientVersion: string | null;
   needsRefresh: boolean;
-  setVersion: (version: string) => void;
+  setServerVersion: (version: string) => void;
+  setClientVersion: (version: string) => void;
   dismiss: () => void;
 }
 
 export const useServerVersionStore = create<ServerVersionState>((set, get) => ({
-  initialVersion: null,
+  initialServerVersion: null,
+  initialClientVersion: null,
   needsRefresh: false,
-  setVersion: (version) => {
-    const { initialVersion } = get();
-    if (!initialVersion) {
-      set({ initialVersion: version });
-    } else if (version !== initialVersion) {
+  setServerVersion: (version) => {
+    const { initialServerVersion } = get();
+    if (!initialServerVersion) {
+      set({ initialServerVersion: version });
+    } else if (version !== initialServerVersion) {
+      set({ needsRefresh: true });
+    }
+  },
+  setClientVersion: (version) => {
+    const { initialClientVersion } = get();
+    if (!initialClientVersion) {
+      set({ initialClientVersion: version });
+    } else if (version !== initialClientVersion) {
       set({ needsRefresh: true });
     }
   },

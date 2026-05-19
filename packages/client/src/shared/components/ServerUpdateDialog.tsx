@@ -27,12 +27,12 @@ export default function ServerUpdateDialog() {
             className="relative w-full max-w-[380px] glass-panel"
           >
             <div className="flex items-center gap-2 border-b border-white/5 px-6 py-4 text-lg font-bold">
-              <RefreshCw size={18} className="text-accent" /> 服务器已更新
+              <RefreshCw size={18} className="text-accent" /> 检测到新版本
             </div>
 
             <div className="px-6 py-5">
               <p className="text-sm text-foreground/90">
-                服务器刚刚完成了一次更新，请刷新页面以加载最新版本。
+                检测到版本更新，请刷新页面以加载最新版本。
               </p>
             </div>
 

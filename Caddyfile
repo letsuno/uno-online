@@ -22,6 +22,7 @@
 	header {
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Instance-Start "{$INSTANCE_START}"
 		-Server
 	}
 }
