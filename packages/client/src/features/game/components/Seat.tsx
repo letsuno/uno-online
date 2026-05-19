@@ -134,7 +134,7 @@ export default function Seat({ index, player, isMe, isOwnerSeat, compact = false
       {/* Bot difficulty badge */}
       {botDiff && (
         <span
-          className="text-[9px] font-bold leading-none rounded px-1 py-0.5"
+          className="text-[9px] font-bold leading-none rounded px-1 py-0.5 whitespace-nowrap"
           style={{ color: botDiff.ringColor, backgroundColor: `${botDiff.avatarBg}25` }}
         >
           AI · {botDiff.label}
