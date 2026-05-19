@@ -24,7 +24,8 @@ export default function RegisterPage() {
     e.preventDefault();
     setFieldError('');
     if (!username.trim()) { setFieldError('请输入用户名'); return; }
-    if (password.length < 6) { setFieldError('密码至少 6 位'); return; }
+    if (password.length < 8) { setFieldError('密码至少 8 位，需包含字母和数字'); return; }
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) { setFieldError('密码必须同时包含字母和数字'); return; }
     if (password !== confirm) { setFieldError('两次密码不一致'); return; }
     setSubmitting(true);
     try {
@@ -69,7 +70,7 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="block text-xs text-muted-foreground mb-1.5 tracking-wide">密码（至少 6 位）</label>
+          <label className="block text-xs text-muted-foreground mb-1.5 tracking-wide">密码（至少 8 位，需包含字母和数字）</label>
           <input
             type="password"
             value={password}
