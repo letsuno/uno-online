@@ -6,6 +6,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.9.1',
+    date: '2026-05-20',
+    changes: [
+      '修复加入房间后座位不显示的问题',
+      '修复游戏开始后部分玩家误入观战视角',
+      '修复踢掉线玩家后观战席出现幽灵在线观众',
+      '回合结束掉线玩家现在会自动投票下一轮',
+    ],
+  },
+  {
     version: '0.9.0',
     date: '2026-05-19',
     changes: [
