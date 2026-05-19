@@ -153,7 +153,7 @@ export default function HomePage() {
             />
           </div>
           {authConfig?.turnstileSiteKey && (
-            <Turnstile sitekey={authConfig.turnstileSiteKey} onVerify={setTurnstileToken} />
+            <Turnstile sitekey={authConfig.turnstileSiteKey} onVerify={setTurnstileToken} onExpire={() => setTurnstileToken(null)} />
           )}
           {fieldError && <p className="text-sm text-destructive m-0">{fieldError}</p>}
           <Button type="submit" variant="game" className="w-full" disabled={loggingIn} sound="click">
