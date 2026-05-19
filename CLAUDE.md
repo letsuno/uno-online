@@ -169,6 +169,24 @@ cd packages/mcp && npm publish --access public       # 3. 发布到 npm
     cd packages/mcp && npm publish --access public
     ```
 11. **创建 GitHub Release**：
+    - 标题格式：`v<版本号> — <简短标题>`
+    - 内容从 CHANGELOG.md 复制对应版本条目，末尾追加 MCP 安装说明
     ```bash
-    gh release create v<版本号> --title "v<版本号> — <简短标题>" --notes "<从 CHANGELOG 复制，末尾加安装说明>"
+    gh release create v<版本号> --title "v<版本号> — <简短标题>" --notes "$(cat <<'EOF'
+    <从 CHANGELOG 复制，按 新增/优化/修复 分类>
+
+    ### Docker
+
+    \`\`\`bash
+    docker pull djkcyl/uno-online-server:v<版本号>
+    docker pull djkcyl/uno-online-caddy:v<版本号>
+    \`\`\`
+
+    ### MCP
+
+    \`\`\`bash
+    npx @uno-online/mcp@<版本号>
+    \`\`\`
+    EOF
+    )"
     ```
