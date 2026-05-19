@@ -7,6 +7,7 @@ import { showConfirm } from '@/shared/stores/confirm-store';
 import type { RoomPlayer } from '@/shared/stores/room-store';
 import { useBotManagement } from '../hooks/useBotManagement';
 import { DIFFICULTY_DISPLAY, DIFFICULTY_LIST } from '../constants/bot-difficulty';
+import { menuItemClass, dangerItemClass } from '../constants/menu-styles';
 
 interface PlayerActionMenuProps {
   target: RoomPlayer;
@@ -104,7 +105,7 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
       </div>
       {hasSwapRequest && (
         <button
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-white/10 cursor-pointer transition-colors"
+          className={menuItemClass}
           onClick={() => { onSwapRequest(target.userId); onClose(); }}
         >
           <ArrowLeftRight size={14} /> 请求换座
@@ -112,11 +113,11 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
       )}
       {hasOwnerItems && !target.isBot && (
         <>
-          <button onClick={transferOwner} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/10 cursor-pointer transition-colors">
+          <button onClick={transferOwner} className={menuItemClass}>
             <Crown size={14} />
             移交房主
           </button>
-          <button onClick={kickPlayer} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/10 cursor-pointer transition-colors">
+          <button onClick={kickPlayer} className={dangerItemClass}>
             <UserX size={14} />
             踢出房间
           </button>
@@ -129,7 +130,7 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
             <button
               key={d.value}
               onClick={() => { setBotDifficulty(target.userId, d.value); onClose(); }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/10 cursor-pointer transition-colors"
+              className={menuItemClass}
             >
               <span className={DIFFICULTY_DISPLAY[d.value].color}>●</span>
               <span>{d.label}</span>
@@ -137,14 +138,14 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
           ))}
           <button
             onClick={() => { removeBot(target.userId); onClose(); }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/10 cursor-pointer transition-colors"
+            className={dangerItemClass}
           >
             移除人机
           </button>
         </>
       )}
       {hasForceMute && (
-        <button onClick={toggleForceMute} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/10 cursor-pointer transition-colors">
+        <button onClick={toggleForceMute} className={menuItemClass}>
           {isForceMuted ? <Mic size={14} /> : <MicOff size={14} />}
           {isForceMuted ? '解除静音' : '强制静音'}
         </button>

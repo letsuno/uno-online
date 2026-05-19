@@ -2,9 +2,7 @@ import { useEffect, useRef } from 'react';
 import { ArrowLeftRight, Bot, Trash2, UserRoundPlus } from 'lucide-react';
 import type { BotDifficulty, RoomSeatPlayer } from '@uno-online/shared';
 import { DIFFICULTY_LIST } from '../constants/bot-difficulty';
-
-const menuItemClass = 'w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-white/10 cursor-pointer transition-colors';
-const dangerItemClass = 'w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/10 cursor-pointer transition-colors';
+import { menuItemClass, dangerItemClass } from '../constants/menu-styles';
 
 interface SeatContextMenuProps {
   seatIndex: number;
@@ -53,7 +51,7 @@ export function SeatContextMenu({
             {DIFFICULTY_LIST.map((d) => (
               <button
                 key={d.value}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-white/10 cursor-pointer transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/10 cursor-pointer transition-colors"
                 onClick={() => { onAddBot(d.value, seatIndex); onClose(); }}
               >
                 <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: d.avatarBg }}>
@@ -87,7 +85,7 @@ export function SeatContextMenu({
             {DIFFICULTY_LIST.map((d) => (
               <button
                 key={d.value}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-white/10 cursor-pointer transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/10 cursor-pointer transition-colors"
                 onClick={() => { onSetBotDifficulty(player.userId, d.value); onClose(); }}
               >
                 <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: d.avatarBg }}>

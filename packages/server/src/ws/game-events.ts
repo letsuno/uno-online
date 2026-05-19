@@ -254,6 +254,7 @@ async function processPendingSpectatorJoins(
 
   const joined: string[] = [];
   const userRoomWrites: Promise<void>[] = [];
+  const allSockets = await io.in(roomCode).fetchSockets();
   for (const [userId, info] of pending) {
     if (session.getPlayerCount() >= MAX_PLAYERS) break;
     if (session.getFullState().players.some((p) => p.id === userId)) {
@@ -261,7 +262,6 @@ async function processPendingSpectatorJoins(
       continue;
     }
 
-    const allSockets = await io.in(roomCode).fetchSockets();
     const sock = allSockets.find(s => (s.data as SocketData).user?.userId === userId);
     if (!sock) {
       joined.push(userId);
