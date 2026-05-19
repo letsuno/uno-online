@@ -3,7 +3,7 @@ import type { PluginContext } from '../../../plugin-context.js';
 import { authPreHandler } from '../auth/service.js';
 import type { AuthenticatedRequest } from '../auth/service.js';
 import { getUserById, updateNickname, updateAvatar, updateUsername, resolveAvatar } from '../../../db/user-repo.js';
-import { validateNickname, validateUsername } from '../../../auth/validation.js';
+import { validateNickname, validateUsername, validateAvatar } from '../../../auth/validation.js';
 
 export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const { config } = ctx;
@@ -86,12 +86,8 @@ export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginConte
       return { success: true, avatarUrl: null };
     }
 
-    if (!avatar.startsWith('data:image/')) {
-      return reply.code(400).send({ error: '头像格式无效' });
-    }
-    if (avatar.length > 100_000) {
-      return reply.code(400).send({ error: '头像数据过大' });
-    }
+    const av = validateAvatar(avatar);
+    if (!av.valid) return reply.code(400).send({ error: av.error });
 
     await updateAvatar(userId, avatar);
     return { success: true, avatarUrl: `/api/avatar/${userId}` };

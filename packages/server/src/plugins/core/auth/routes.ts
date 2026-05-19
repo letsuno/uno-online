@@ -3,7 +3,7 @@ import type { PluginContext } from '../../../plugin-context.js';
 import { exchangeCodeForToken, fetchGitHubUser } from '../../../auth/github.js';
 import { findOrCreateUser, findUserByUsername, createLocalUser, isUsernameTaken, setPassword, bindGithub, getUserById } from '../../../db/user-repo.js';
 import { hashPassword, verifyPassword } from '../../../auth/password.js';
-import { validateUsername, validatePassword, validateNickname } from '../../../auth/validation.js';
+import { validateUsername, validatePassword, validateNickname, validateAvatar } from '../../../auth/validation.js';
 import { authPreHandler, makeToken, userResponse } from './service.js';
 import type { AuthenticatedRequest } from './service.js';
 import { createRateLimiter } from '../../../auth/rate-limiter.js';
@@ -79,12 +79,8 @@ function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) 
     }
 
     if (avatar) {
-      if (!avatar.startsWith('data:image/')) {
-        return reply.code(400).send({ error: '头像格式无效' });
-      }
-      if (avatar.length > 100_000) {
-        return reply.code(400).send({ error: '头像数据过大' });
-      }
+      const av = validateAvatar(avatar);
+      if (!av.valid) return reply.code(400).send({ error: av.error });
     }
 
     const passwordHash = await hashPassword(password);

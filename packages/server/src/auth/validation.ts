@@ -24,3 +24,12 @@ export function validateNickname(nickname: string): { valid: boolean; error?: st
   if (!/[\p{L}\p{N}]/u.test(cleaned)) return { valid: false, error: '昵称必须包含至少一个字母或数字' };
   return { valid: true };
 }
+
+const AVATAR_DATA_URL_RE = /^data:image\/(webp|jpeg|png|gif);base64,([A-Za-z0-9+/]+=*)$/;
+const AVATAR_MAX_LENGTH = 100_000;
+
+export function validateAvatar(avatar: string): { valid: boolean; error?: string } {
+  if (!AVATAR_DATA_URL_RE.test(avatar)) return { valid: false, error: '头像格式无效' };
+  if (avatar.length > AVATAR_MAX_LENGTH) return { valid: false, error: '头像数据过大' };
+  return { valid: true };
+}
