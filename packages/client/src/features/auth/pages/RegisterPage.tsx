@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth-store';
 import { useToastStore } from '@/shared/stores/toast-store';
+import { apiGet } from '@/shared/api';
 import AvatarUpload from '../components/AvatarUpload';
 import AuthLayout from '../components/AuthLayout';
 import { Button } from '@/shared/components/ui/Button';
 import { useBgm } from '@/shared/sound/useBgm';
+import { Turnstile } from 'react-turnstile';
 
 export default function RegisterPage() {
   const register = useAuthStore((s) => s.register);
@@ -17,8 +19,16 @@ export default function RegisterPage() {
   const [avatar, setAvatar] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   useBgm('lobby');
+
+  useEffect(() => {
+    apiGet<{ turnstileSiteKey: string | null }>('/auth/config')
+      .then((cfg) => setTurnstileSiteKey(cfg.turnstileSiteKey))
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +39,7 @@ export default function RegisterPage() {
     if (password !== confirm) { setFieldError('两次密码不一致'); return; }
     setSubmitting(true);
     try {
-      await register(username, password, nickname || username, avatar ?? undefined);
+      await register(username, password, nickname || username, avatar ?? undefined, turnstileToken ?? undefined);
       navigate('/');
     } catch (err) {
       useToastStore.getState().addToast((err as Error).message || '注册失败', 'error');
@@ -92,6 +102,10 @@ export default function RegisterPage() {
             autoComplete="new-password"
           />
         </div>
+
+        {turnstileSiteKey && (
+          <Turnstile sitekey={turnstileSiteKey} onVerify={setTurnstileToken} />
+        )}
 
         {fieldError && <p className="text-sm text-destructive m-0">{fieldError}</p>}
 
