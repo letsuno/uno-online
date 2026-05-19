@@ -6,6 +6,7 @@ import { hashPassword, verifyPassword } from '../../../auth/password.js';
 import { validateUsername, validatePassword, validateNickname } from '../../../auth/validation.js';
 import { authPreHandler, makeToken, userResponse } from './service.js';
 import type { AuthenticatedRequest } from './service.js';
+import { createRateLimiter } from '../../../auth/rate-limiter.js';
 
 export function registerAuthRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const { config } = ctx;
@@ -47,8 +48,10 @@ function registerDevRoutes(fastify: FastifyInstance, ctx: PluginContext) {
 function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const { config } = ctx;
   const preHandler = authPreHandler(config.jwtSecret);
+  const registerLimiter = createRateLimiter({ windowMs: 3_600_000, max: 5 });
+  const loginLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
 
-  fastify.post<{ Body: { username: string; password: string; nickname: string; avatar?: string } }>('/auth/register', async (request, reply) => {
+  fastify.post<{ Body: { username: string; password: string; nickname: string; avatar?: string } }>('/auth/register', { preHandler: [registerLimiter] }, async (request, reply) => {
     const { username, password, nickname, avatar } = request.body;
 
     const uv = validateUsername(username);
@@ -72,7 +75,7 @@ function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) 
     return { token, user: userResponse(user) };
   });
 
-  fastify.post<{ Body: { username: string; password: string } }>('/auth/login', async (request, reply) => {
+  fastify.post<{ Body: { username: string; password: string } }>('/auth/login', { preHandler: [loginLimiter] }, async (request, reply) => {
     const { username, password } = request.body;
     if (!username || !password) {
       return reply.code(400).send({ error: '请输入用户名和密码' });
@@ -145,7 +148,7 @@ function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) 
     }
   });
 
-  fastify.post<{ Body: { username: string; password: string; githubId: string; githubAvatarUrl?: string } }>('/auth/bind-github', async (request, reply) => {
+  fastify.post<{ Body: { username: string; password: string; githubId: string; githubAvatarUrl?: string } }>('/auth/bind-github', { preHandler: [loginLimiter] }, async (request, reply) => {
     const { username, password, githubId, githubAvatarUrl } = request.body;
     if (!username || !password || !githubId) {
       return reply.code(400).send({ error: '参数不完整' });
