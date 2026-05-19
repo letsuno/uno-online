@@ -148,6 +148,7 @@ export function registerSeatEvents(
           role: data.user.role,
           isBot: data.user.isBot ?? false,
         };
+        data.isSpectator = false;
         await removeSpectatorFromRoom(redis, roomCode, userId);
       } else {
         // Reuse existing player data, reset ready
@@ -192,6 +193,7 @@ export function registerSeatEvents(
       if (room.ownerId === userId) return callback({ success: false, error: '房主需要先移交房主权才能离座' });
 
       await leaveSeat(redis, roomCode, userId);
+      data.isSpectator = true;
 
       await addSpectatorToRoom(redis, roomCode, {
         userId: data.user.userId,
