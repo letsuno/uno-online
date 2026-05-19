@@ -24,6 +24,7 @@ curl http://localhost/api/server/info
 - `DATABASE_PATH`：SQLite 数据库路径，Docker 默认是 `/data/uno.db`。
 - `REDIS_URL`：可选；未设置时服务端使用内存 KV，Docker Compose 默认启用 Redis。
 - `CADDY_SITE_ADDRESS`：Caddy 站点地址，可用域名或 `:80`。
+- `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`：可选；Cloudflare Turnstile 人机验证，两者同时配置后注册/登录页启用 CAPTCHA。
 - `MUMBLE_*` / `MUMBLE_ICE_*`：语音服务和房间语音频道管理配置。
 
 完整变量列表以仓库根目录的 `.env.example` 为准。

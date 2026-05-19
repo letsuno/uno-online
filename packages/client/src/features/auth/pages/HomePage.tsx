@@ -6,10 +6,12 @@ import { apiGet } from '@/shared/api';
 import { Button } from '@/shared/components/ui/Button';
 import AuthLayout from '../components/AuthLayout';
 import { useBgm } from '@/shared/sound/useBgm';
+import { Turnstile } from 'react-turnstile';
 
 interface AuthConfig {
   devMode: boolean;
   githubClientId: string;
+  turnstileSiteKey: string | null;
 }
 
 export default function HomePage() {
@@ -22,6 +24,7 @@ export default function HomePage() {
   const [fieldError, setFieldError] = useState('');
   const [authConfig, setAuthConfig] = useState<AuthConfig | null>(null);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const redirect = searchParams.get('redirect');
 
   useBgm('lobby');
@@ -62,7 +65,7 @@ export default function HomePage() {
     setFieldError('');
     setLoggingIn(true);
     try {
-      await passwordLogin(loginUsername.trim(), loginPassword);
+      await passwordLogin(loginUsername.trim(), loginPassword, turnstileToken ?? undefined);
       sessionStorage.removeItem('loginRedirect');
       navigate(getRedirectTarget());
     } catch (err) {
@@ -149,6 +152,9 @@ export default function HomePage() {
               autoComplete="current-password"
             />
           </div>
+          {authConfig?.turnstileSiteKey && (
+            <Turnstile sitekey={authConfig.turnstileSiteKey} onVerify={setTurnstileToken} />
+          )}
           {fieldError && <p className="text-sm text-destructive m-0">{fieldError}</p>}
           <Button type="submit" variant="game" className="w-full" disabled={loggingIn} sound="click">
             {loggingIn ? '登录中...' : '登 录'}

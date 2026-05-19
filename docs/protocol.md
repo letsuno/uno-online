@@ -86,15 +86,15 @@ interface ServerInfo {
 
 | 方法 | 路径 | 模式 | 认证 | 说明 |
 |------|------|------|------|------|
-| `GET` | `/api/auth/config` | 全部 | 无 | 获取 `devMode` 和 GitHub Client ID |
+| `GET` | `/api/auth/config` | 全部 | 无 | 获取 `devMode`、GitHub Client ID、Turnstile Site Key |
 | `POST` | `/api/auth/dev-login` | 仅 `DEV_MODE=true` | 无 | 开发模式临时用户登录 |
 | `GET` | `/api/auth/me` | 全部 | JWT | 获取当前用户 |
-| `POST` | `/api/auth/register` | 仅生产模式 | 无 | 用户名密码注册 |
-| `POST` | `/api/auth/login` | 仅生产模式 | 无 | 用户名密码登录 |
+| `POST` | `/api/auth/register` | 仅生产模式 | 无 | 用户名密码注册（限流 5次/小时/IP） |
+| `POST` | `/api/auth/login` | 仅生产模式 | 无 | 用户名密码登录（限流 10次/分钟/IP） |
 | `POST` | `/api/auth/set-password` | 仅生产模式 | JWT | 设置或修改密码 |
 | `GET` | `/api/auth/github` | 仅生产模式 | 无 | 重定向到 GitHub OAuth 授权页 |
 | `POST` | `/api/auth/callback` | 仅生产模式 | 无 | GitHub OAuth code 换取登录态 |
-| `POST` | `/api/auth/bind-github` | 仅生产模式 | 无 | 将 GitHub 账号绑定到已有账号 |
+| `POST` | `/api/auth/bind-github` | 仅生产模式 | 无 | 将 GitHub 账号绑定到已有账号（限流 10次/分钟/IP） |
 
 主要请求/响应：
 
@@ -103,12 +103,18 @@ interface ServerInfo {
 { username: string }
 // -> { token: string; user: User }
 
+// GET /api/auth/config
+// -> { devMode: boolean; githubClientId: string; turnstileSiteKey: string | null }
+
 // POST /api/auth/register
-{ username: string; password: string; nickname: string; avatar?: string }
+{ username: string; password: string; nickname: string; avatar?: string; turnstileToken?: string }
 // -> { token: string; user: User }
+// 密码要求：≥8 字符，必须同时包含字母和数字
+// 昵称要求：去除不可见字符后 1-20 字符，至少含一个字母或数字
+// 头像：服务端通过 sharp 统一处理为 256x256 WebP，bodyLimit 10MB
 
 // POST /api/auth/login
-{ username: string; password: string }
+{ username: string; password: string; turnstileToken?: string }
 // -> { token: string; user: User }
 
 // POST /api/auth/callback
@@ -149,9 +155,10 @@ interface ServerInfo {
 { nickname?: string; username?: string }
 // -> { success: true }
 
-// POST /api/profile/avatar
+// POST /api/profile/avatar（bodyLimit 10MB）
 { avatar: string } // base64 data URI；空值表示删除头像
 // -> { success: true; avatarUrl: string | null }
+// 服务端通过 sharp 解码验证 → 取第一帧 → 256x256 cover crop → WebP q80
 ```
 
 ### 2.4 管理后台

@@ -68,7 +68,8 @@ export default function ProfileModal() {
   };
 
   const handleSetPassword = async () => {
-    if (password.length < 6) { setPasswordMsg('密码至少 6 个字符'); return; }
+    if (password.length < 8) { setPasswordMsg('密码至少 8 位，需包含字母和数字'); return; }
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) { setPasswordMsg('密码必须同时包含字母和数字'); return; }
     if (password !== passwordConfirm) { setPasswordMsg('两次密码不一致'); return; }
     setPasswordMsg('');
     try {

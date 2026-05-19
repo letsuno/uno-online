@@ -29,8 +29,8 @@ interface AuthState {
   login: (code: string) => Promise<CallbackResult>;
   bindGithub: (username: string, password: string, githubId: string, githubAvatarUrl?: string) => Promise<void>;
   devLogin: (username: string) => Promise<void>;
-  register: (username: string, password: string, nickname: string, avatar?: string) => Promise<void>;
-  passwordLogin: (username: string, password: string) => Promise<void>;
+  register: (username: string, password: string, nickname: string, avatar?: string, turnstileToken?: string) => Promise<void>;
+  passwordLogin: (username: string, password: string, turnstileToken?: string) => Promise<void>;
   loadUser: () => Promise<void>;
   logout: () => void;
   setUser: (user: User) => void;
@@ -76,10 +76,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: data.user, token: data.token, loading: false, initialized: true, authError: null });
   },
 
-  register: async (username: string, password: string, nickname: string, avatar?: string) => {
+  register: async (username: string, password: string, nickname: string, avatar?: string, turnstileToken?: string) => {
     set({ loading: true });
     try {
-      const data = await apiPost<{ token: string; user: User }>('/auth/register', { username, password, nickname, avatar });
+      const data = await apiPost<{ token: string; user: User }>('/auth/register', { username, password, nickname, avatar, turnstileToken });
       localStorage.setItem('token', data.token);
       set({ user: data.user, token: data.token, loading: false, initialized: true, authError: null });
     } catch (e) {
@@ -88,10 +88,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  passwordLogin: async (username: string, password: string) => {
+  passwordLogin: async (username: string, password: string, turnstileToken?: string) => {
     set({ loading: true });
     try {
-      const data = await apiPost<{ token: string; user: User }>('/auth/login', { username, password });
+      const data = await apiPost<{ token: string; user: User }>('/auth/login', { username, password, turnstileToken });
       localStorage.setItem('token', data.token);
       set({ user: data.user, token: data.token, loading: false, initialized: true, authError: null });
     } catch (e) {

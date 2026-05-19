@@ -1,11 +1,14 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { PluginContext } from '../../../plugin-context.js';
 import { exchangeCodeForToken, fetchGitHubUser } from '../../../auth/github.js';
 import { findOrCreateUser, findUserByUsername, createLocalUser, isUsernameTaken, setPassword, bindGithub, getUserById } from '../../../db/user-repo.js';
 import { hashPassword, verifyPassword } from '../../../auth/password.js';
 import { validateUsername, validatePassword, validateNickname } from '../../../auth/validation.js';
+import { processAvatar, AvatarError } from '../../../auth/avatar.js';
 import { authPreHandler, makeToken, userResponse } from './service.js';
 import type { AuthenticatedRequest } from './service.js';
+import { createRateLimiter } from '../../../auth/rate-limiter.js';
+import { verifyTurnstile } from '../../../auth/turnstile.js';
 
 export function registerAuthRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const { config } = ctx;
@@ -13,6 +16,7 @@ export function registerAuthRoutes(fastify: FastifyInstance, ctx: PluginContext)
   fastify.get('/auth/config', async () => ({
     devMode: config.devMode,
     githubClientId: config.githubClientId,
+    turnstileSiteKey: config.turnstileSiteKey ?? null,
   }));
 
   if (config.devMode) {
@@ -47,36 +51,60 @@ function registerDevRoutes(fastify: FastifyInstance, ctx: PluginContext) {
 function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const { config } = ctx;
   const preHandler = authPreHandler(config.jwtSecret);
+  const registerLimiter = createRateLimiter({ windowMs: 3_600_000, max: 5 });
+  const loginLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
 
-  fastify.post<{ Body: { username: string; password: string; nickname: string; avatar?: string } }>('/auth/register', async (request, reply) => {
-    const { username, password, nickname, avatar } = request.body;
-
-    const uv = validateUsername(username);
-    if (!uv.valid) return reply.code(400).send({ error: uv.error });
-    const pv = validatePassword(password);
-    if (!pv.valid) return reply.code(400).send({ error: pv.error });
-    const nv = validateNickname(nickname);
-    if (!nv.valid) return reply.code(400).send({ error: nv.error });
-
-    if (await isUsernameTaken(username)) {
-      return reply.code(409).send({ error: '用户名已被使用' });
+  async function checkTurnstile(turnstileToken: string | undefined, request: FastifyRequest, reply: FastifyReply): Promise<boolean> {
+    if (!config.turnstileSecretKey) return true;
+    if (!turnstileToken || !(await verifyTurnstile(turnstileToken, config.turnstileSecretKey, request.ip))) {
+      reply.code(400).send({ error: '人机验证失败，请刷新页面重试' });
+      return false;
     }
+    return true;
+  }
 
-    if (avatar && avatar.length > 100_000) {
-      return reply.code(400).send({ error: '头像数据过大' });
-    }
+  fastify.post<{ Body: { username: string; password: string; nickname: string; avatar?: string; turnstileToken?: string } }>(
+    '/auth/register',
+    { preHandler: [registerLimiter], bodyLimit: 10 * 1024 * 1024 },
+    async (request, reply) => {
+      const { username, password, nickname, avatar, turnstileToken } = request.body;
 
-    const passwordHash = await hashPassword(password);
-    const user = await createLocalUser({ username, nickname: nickname.trim(), passwordHash, avatarData: avatar ?? null });
-    const token = makeToken(user, config.jwtSecret);
-    return { token, user: userResponse(user) };
-  });
+      if (!(await checkTurnstile(turnstileToken, request, reply))) return;
 
-  fastify.post<{ Body: { username: string; password: string } }>('/auth/login', async (request, reply) => {
-    const { username, password } = request.body;
+      const uv = validateUsername(username);
+      if (!uv.valid) return reply.code(400).send({ error: uv.error });
+      const pv = validatePassword(password);
+      if (!pv.valid) return reply.code(400).send({ error: pv.error });
+      const nv = validateNickname(nickname);
+      if (!nv.valid) return reply.code(400).send({ error: nv.error });
+
+      if (await isUsernameTaken(username)) {
+        return reply.code(409).send({ error: '用户名已被使用' });
+      }
+
+      let avatarData: string | null = null;
+      if (avatar) {
+        try {
+          avatarData = await processAvatar(avatar);
+        } catch (e) {
+          return reply.code(400).send({ error: e instanceof AvatarError ? e.message : '头像处理失败' });
+        }
+      }
+
+      const passwordHash = await hashPassword(password);
+      const user = await createLocalUser({ username, nickname: nickname.trim(), passwordHash, avatarData });
+      const token = makeToken(user, config.jwtSecret);
+      return { token, user: userResponse(user) };
+    },
+  );
+
+  fastify.post<{ Body: { username: string; password: string; turnstileToken?: string } }>('/auth/login', { preHandler: [loginLimiter] }, async (request, reply) => {
+    const { username, password, turnstileToken } = request.body;
     if (!username || !password) {
       return reply.code(400).send({ error: '请输入用户名和密码' });
     }
+
+    if (!(await checkTurnstile(turnstileToken, request, reply))) return;
 
     const user = await findUserByUsername(username);
     if (!user || !user.passwordHash) {
@@ -145,7 +173,7 @@ function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) 
     }
   });
 
-  fastify.post<{ Body: { username: string; password: string; githubId: string; githubAvatarUrl?: string } }>('/auth/bind-github', async (request, reply) => {
+  fastify.post<{ Body: { username: string; password: string; githubId: string; githubAvatarUrl?: string } }>('/auth/bind-github', { preHandler: [loginLimiter] }, async (request, reply) => {
     const { username, password, githubId, githubAvatarUrl } = request.body;
     if (!username || !password || !githubId) {
       return reply.code(400).send({ error: '参数不完整' });
