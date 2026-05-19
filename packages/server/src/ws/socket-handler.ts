@@ -475,6 +475,10 @@ export function setupSocketHandlers(
         await emitGameUpdate(io, roomCode, session, redis);
         io.to(roomCode).emit('player:disconnected', { playerId: userId });
 
+        if (session.isRoundEnd()) {
+          addAutopilotVote(roomCode, userId, session, io);
+        }
+
         const state = session.getFullState();
         const connectedCount = state.players.filter((p) => p.connected).length;
         const connectedHumanCount = state.players.filter((p) => p.connected && !p.isBot).length;

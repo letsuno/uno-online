@@ -125,8 +125,12 @@ export function registerRoomEvents(
         if (room.status !== 'waiting') {
           socket.emit('room:rejoin_redirect', { roomCode });
         }
-        const voiceChannelId = await voiceChannels?.getRoomChannel(roomCode) ?? null;
-        return callback({ success: true, players: seatedPlayers, room, rejoin: room.status !== 'waiting', voiceChannelId });
+        const [voiceChannelId, latestSeats, latestSpectators] = await Promise.all([
+          voiceChannels?.getRoomChannel(roomCode) ?? null,
+          getRoomSeats(redis, roomCode),
+          getRoomSpectators(redis, roomCode),
+        ]);
+        return callback({ success: true, players: seatedPlayers, seats: latestSeats, spectators: latestSpectators, room, rejoin: room.status !== 'waiting', voiceChannelId });
       }
 
       const conflict = await ensureNotInRoom(redis, data.user.userId, roomCode);
@@ -140,8 +144,8 @@ export function registerRoomEvents(
         getRoomSeats(redis, roomCode),
         getRoomSpectators(redis, roomCode),
       ]);
+      callback({ success: true, players: getSeatedPlayers(updatedSeats), seats: updatedSeats, spectators: updatedSpectators, room, voiceChannelId });
       io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators: updatedSpectators });
-      callback({ success: true, players: getSeatedPlayers(updatedSeats), room, voiceChannelId });
     } catch (err) {
       callback({ success: false, error: (err as Error).message });
     }
@@ -469,6 +473,7 @@ export function registerRoomEvents(
         sData.isSpectator = true;
         s.emit('game:state', session.getSpectatorView(spectatorMode));
       } else {
+        sData.isSpectator = false;
         s.emit('game:state', session.getPlayerView(sData.user.userId));
       }
     }
