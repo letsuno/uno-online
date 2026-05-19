@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from 'react';
-import { Camera, Loader2 } from 'lucide-react';
+import { Camera, Loader2, RotateCw } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
 import { loadImage, cropAndCompress, revokeImageSrc } from '@/shared/utils/image-compress';
@@ -18,6 +18,7 @@ export default function AvatarUpload({ avatarUrl, size = 96, onUpload }: Props) 
   const [imageEl, setImageEl] = useState<HTMLImageElement | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
   const [croppedArea, setCroppedArea] = useState<Area | null>(null);
 
   const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
@@ -34,6 +35,7 @@ export default function AvatarUpload({ avatarUrl, size = 96, onUpload }: Props) 
       setImageSrc(img.src);
       setCrop({ x: 0, y: 0 });
       setZoom(1);
+      setRotation(0);
     } catch {
       // ignore
     }
@@ -49,7 +51,7 @@ export default function AvatarUpload({ avatarUrl, size = 96, onUpload }: Props) 
     if (!imageEl || !croppedArea) return;
     setUploading(true);
     try {
-      const dataUrl = cropAndCompress(imageEl, croppedArea);
+      const dataUrl = cropAndCompress(imageEl, croppedArea, rotation);
       onUpload(dataUrl);
     } finally {
       setUploading(false);
@@ -99,24 +101,36 @@ export default function AvatarUpload({ avatarUrl, size = 96, onUpload }: Props) 
                 image={imageSrc}
                 crop={crop}
                 zoom={zoom}
+                rotation={rotation}
                 aspect={1}
                 cropShape="round"
                 showGrid={false}
                 onCropChange={setCrop}
                 onZoomChange={setZoom}
+                onRotationChange={setRotation}
                 onCropComplete={onCropComplete}
               />
             </div>
             <div className="flex flex-col gap-3 p-4">
-              <input
-                type="range"
-                min={1}
-                max={3}
-                step={0.1}
-                value={zoom}
-                onChange={(e) => setZoom(Number(e.target.value))}
-                className="w-full accent-primary"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  value={zoom}
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                  className="flex-1 accent-primary"
+                />
+                <button
+                  type="button"
+                  onClick={() => setRotation((r) => (r + 90) % 360)}
+                  className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-white hover:bg-white/10 transition-colors"
+                  title="旋转 90°"
+                >
+                  <RotateCw size={18} />
+                </button>
+              </div>
               <div className="flex gap-2">
                 <Button type="button" variant="ghost" className="flex-1" onClick={handleCancel} sound="click">
                   取消
