@@ -81,7 +81,6 @@ export interface ClientToServerEvents {
   'room:rejoin': (roomCode: string, callback: (res: SocketCallbackResult & Record<string, unknown>) => void) => void;
   'room:leave': (callback?: (res: SocketCallbackResult) => void) => void;
   'room:ready': (ready: boolean, callback?: (res: SocketCallbackResult) => void) => void;
-  'room:toggle_spectator': (spectator: boolean, callback?: (res: SocketCallbackResult) => void) => void;
   'room:update_settings': (settings: Partial<RoomSettings>, callback?: (res: SocketCallbackResult & { room?: Record<string, unknown> }) => void) => void;
   'room:dissolve': (callback?: (res: SocketCallbackResult) => void) => void;
   'room:transfer_owner': (payload: { targetId: string }, callback?: (res: SocketCallbackResult) => void) => void;
