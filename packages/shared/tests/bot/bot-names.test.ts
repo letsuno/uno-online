@@ -2,13 +2,19 @@ import { describe, it, expect } from 'vitest';
 import { BOT_NAMES, pickBotName } from '../../src/rules/bot/bot-names';
 
 describe('BOT_NAMES', () => {
-  it('has 26 names (A-Z)', () => {
-    expect(BOT_NAMES).toHaveLength(26);
+  it('covers all 26 letters (A-Z)', () => {
+    const firstLetters = new Set(BOT_NAMES.map(n => n[0]!.toUpperCase()));
+    expect(firstLetters.size).toBe(26);
   });
 
-  it('each name starts with a unique letter', () => {
-    const firstLetters = BOT_NAMES.map(n => n[0]!.toUpperCase());
-    expect(new Set(firstLetters).size).toBe(26);
+  it('has equal number of names per letter', () => {
+    const groups = new Map<string, number>();
+    for (const name of BOT_NAMES) {
+      const letter = name[0]!.toUpperCase();
+      groups.set(letter, (groups.get(letter) ?? 0) + 1);
+    }
+    const counts = [...groups.values()];
+    expect(new Set(counts).size).toBe(1);
   });
 });
 
