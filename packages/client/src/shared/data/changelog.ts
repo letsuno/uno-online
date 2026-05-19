@@ -6,6 +6,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.9.0',
+    date: '2026-05-19',
+    changes: [
+      '客户端更新检测：Caddy 重启后自动提示刷新',
+      '头像裁切支持自定义旋转角度',
+      '注册/登录安全增强',
+      'Bot 名字库扩充至 156 个',
+      '修复头像裁切空白、浮动面板样式等问题',
+    ],
+  },
+  {
     version: '0.8.0',
     date: '2026-05-19',
     changes: [
