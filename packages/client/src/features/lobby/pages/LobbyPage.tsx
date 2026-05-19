@@ -101,7 +101,7 @@ export default function LobbyPage() {
     getSocket().emit('room:join', code, (res: any) => {
       setLoading(false);
       if (res.success) {
-        setRoom(code, Array.from({ length: SEAT_COUNT }, () => null), [], res.room as any ?? { ownerId: '', status: 'waiting', settings: {} });
+        setRoom(code, res.seats ?? Array.from({ length: SEAT_COUNT }, () => null), res.spectators ?? [], res.room as any ?? { ownerId: '', status: 'waiting', settings: {} });
         navigate(res.rejoin ? `/game/${code}` : `/room/${code}`);
       } else {
         setError(res.error || '加入失败');

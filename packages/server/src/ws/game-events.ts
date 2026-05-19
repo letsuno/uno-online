@@ -775,8 +775,10 @@ export function registerGameEvents(
       await clearUserRoom(redis, targetId);
     } else {
       const targetSockets = await io.in(roomCode).fetchSockets();
+      let hasConnectedSocket = false;
       for (const s of targetSockets) {
         if ((s.data as SocketData).user.userId === targetId) {
+          hasConnectedSocket = true;
           (s.data as SocketData).isSpectator = true;
           s.emit('game:kicked', { reason: '你已被房主移至观战席', toSpectator: true });
         }
@@ -786,7 +788,8 @@ export function registerGameEvents(
         nickname: targetPlayer.name,
         avatarUrl: targetPlayer.avatarUrl,
         role: targetPlayer.role,
-        connected: true,
+        connected: hasConnectedSocket,
+        disconnectedAt: hasConnectedSocket ? undefined : Date.now(),
       });
     }
 
