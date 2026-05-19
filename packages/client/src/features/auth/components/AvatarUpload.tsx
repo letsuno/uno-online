@@ -122,6 +122,18 @@ export default function AvatarUpload({ avatarUrl, size = 96, onUpload }: Props) 
                   onChange={(e) => setZoom(Number(e.target.value))}
                   className="flex-1 accent-primary"
                 />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={0}
+                  max={360}
+                  step={1}
+                  value={rotation}
+                  onChange={(e) => setRotation(Number(e.target.value))}
+                  className="flex-1 accent-primary"
+                />
+                <span className="shrink-0 w-9 text-right text-xs tabular-nums text-muted-foreground">{rotation}°</span>
                 <button
                   type="button"
                   onClick={() => setRotation((r) => (r + 90) % 360)}
