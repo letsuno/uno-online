@@ -16,16 +16,40 @@ export function revokeImageSrc(img: HTMLImageElement) {
   if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
 }
 
-export function cropAndCompress(img: HTMLImageElement, croppedArea: Area): string {
+export function cropAndCompress(img: HTMLImageElement, croppedArea: Area, rotation = 0): string {
   const canvas = document.createElement('canvas');
   canvas.width = TARGET_SIZE;
   canvas.height = TARGET_SIZE;
   const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(
-    img,
-    croppedArea.x, croppedArea.y, croppedArea.width, croppedArea.height,
-    0, 0, TARGET_SIZE, TARGET_SIZE,
-  );
+
+  if (rotation === 0) {
+    ctx.drawImage(
+      img,
+      croppedArea.x, croppedArea.y, croppedArea.width, croppedArea.height,
+      0, 0, TARGET_SIZE, TARGET_SIZE,
+    );
+  } else {
+    const rad = (rotation * Math.PI) / 180;
+    const sin = Math.abs(Math.sin(rad));
+    const cos = Math.abs(Math.cos(rad));
+    const rw = img.naturalWidth * cos + img.naturalHeight * sin;
+    const rh = img.naturalWidth * sin + img.naturalHeight * cos;
+
+    const tmp = document.createElement('canvas');
+    tmp.width = rw;
+    tmp.height = rh;
+    const tctx = tmp.getContext('2d')!;
+    tctx.translate(rw / 2, rh / 2);
+    tctx.rotate(rad);
+    tctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+
+    ctx.drawImage(
+      tmp,
+      croppedArea.x, croppedArea.y, croppedArea.width, croppedArea.height,
+      0, 0, TARGET_SIZE, TARGET_SIZE,
+    );
+  }
+
   return canvas.toDataURL('image/png');
 }
 
