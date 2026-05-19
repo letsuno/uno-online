@@ -31,6 +31,8 @@ export interface Config {
   serverName: string;
   serverMotd: string;
   roomIdleTimeoutMs: number;
+  turnstileSiteKey?: string;
+  turnstileSecretKey?: string;
   mumbleIce: MumbleIceConfig;
 }
 
@@ -67,6 +69,8 @@ export function loadConfig(): Config {
     serverName: process.env['SERVER_NAME'] ?? 'UNO Online',
     serverMotd: process.env['SERVER_MOTD'] ?? '欢迎来到 UNO Online！',
     roomIdleTimeoutMs: parseInt(process.env['ROOM_IDLE_TIMEOUT_MS'] ?? '7200000', 10),
+    turnstileSiteKey: process.env['TURNSTILE_SITE_KEY'] || undefined,
+    turnstileSecretKey: process.env['TURNSTILE_SECRET_KEY'] || undefined,
     mumbleIce: loadMumbleIceConfig(),
   };
 }
