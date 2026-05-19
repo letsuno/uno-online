@@ -1,5 +1,30 @@
-const TARGET_SIZE = 128;
-const JPEG_QUALITY = 0.8;
+import type { Area } from 'react-easy-crop';
+
+const TARGET_SIZE = 256;
+const WEBP_QUALITY = 0.8;
+
+export function loadImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')); };
+    img.src = url;
+  });
+}
+
+export function cropAndCompress(img: HTMLImageElement, croppedArea: Area): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = TARGET_SIZE;
+  canvas.height = TARGET_SIZE;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(
+    img,
+    croppedArea.x, croppedArea.y, croppedArea.width, croppedArea.height,
+    0, 0, TARGET_SIZE, TARGET_SIZE,
+  );
+  return canvas.toDataURL('image/webp', WEBP_QUALITY);
+}
 
 export function compressImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -7,24 +32,13 @@ export function compressImage(file: File): Promise<string> {
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const canvas = document.createElement('canvas');
-      canvas.width = TARGET_SIZE;
-      canvas.height = TARGET_SIZE;
-      const ctx = canvas.getContext('2d')!;
-
-      // Center-crop: take the largest centered square from the image
       const size = Math.min(img.width, img.height);
       const sx = (img.width - size) / 2;
       const sy = (img.height - size) / 2;
-      ctx.drawImage(img, sx, sy, size, size, 0, 0, TARGET_SIZE, TARGET_SIZE);
-
-      const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
-      resolve(dataUrl);
+      const area: Area = { x: sx, y: sy, width: size, height: size };
+      resolve(cropAndCompress(img, area));
     };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('Failed to load image'));
-    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')); };
     img.src = url;
   });
 }
