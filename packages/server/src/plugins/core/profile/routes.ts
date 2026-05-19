@@ -3,7 +3,8 @@ import type { PluginContext } from '../../../plugin-context.js';
 import { authPreHandler } from '../auth/service.js';
 import type { AuthenticatedRequest } from '../auth/service.js';
 import { getUserById, updateNickname, updateAvatar, updateUsername, resolveAvatar } from '../../../db/user-repo.js';
-import { validateNickname, validateUsername, validateAvatar } from '../../../auth/validation.js';
+import { validateNickname, validateUsername } from '../../../auth/validation.js';
+import { processAvatar, AvatarError } from '../../../auth/avatar.js';
 
 export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const { config } = ctx;
@@ -77,19 +78,27 @@ export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginConte
     return { success: true };
   });
 
-  fastify.post<{ Body: { avatar: string } }>('/profile/avatar', { preHandler }, async (request, reply) => {
-    const { userId } = (request as AuthenticatedRequest).user;
-    const { avatar } = request.body;
+  fastify.post<{ Body: { avatar: string } }>(
+    '/profile/avatar',
+    { preHandler, bodyLimit: 10 * 1024 * 1024 },
+    async (request, reply) => {
+      const { userId } = (request as AuthenticatedRequest).user;
+      const { avatar } = request.body;
 
-    if (!avatar) {
-      await updateAvatar(userId, null);
-      return { success: true, avatarUrl: null };
-    }
+      if (!avatar) {
+        await updateAvatar(userId, null);
+        return { success: true, avatarUrl: null };
+      }
 
-    const av = validateAvatar(avatar);
-    if (!av.valid) return reply.code(400).send({ error: av.error });
+      let avatarData: string;
+      try {
+        avatarData = await processAvatar(avatar);
+      } catch (e) {
+        return reply.code(400).send({ error: e instanceof AvatarError ? e.message : '头像处理失败' });
+      }
 
-    await updateAvatar(userId, avatar);
-    return { success: true, avatarUrl: `/api/avatar/${userId}` };
-  });
+      await updateAvatar(userId, avatarData);
+      return { success: true, avatarUrl: `/api/avatar/${userId}` };
+    },
+  );
 }

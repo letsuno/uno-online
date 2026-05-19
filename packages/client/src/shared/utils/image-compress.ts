@@ -1,7 +1,6 @@
 import type { Area } from 'react-easy-crop';
 
 const TARGET_SIZE = 256;
-const WEBP_QUALITY = 0.8;
 
 export function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -23,7 +22,7 @@ export function cropAndCompress(img: HTMLImageElement, croppedArea: Area): strin
     croppedArea.x, croppedArea.y, croppedArea.width, croppedArea.height,
     0, 0, TARGET_SIZE, TARGET_SIZE,
   );
-  return canvas.toDataURL('image/webp', WEBP_QUALITY);
+  return canvas.toDataURL('image/png');
 }
 
 export function compressImage(file: File): Promise<string> {

@@ -3,7 +3,8 @@ import type { PluginContext } from '../../../plugin-context.js';
 import { exchangeCodeForToken, fetchGitHubUser } from '../../../auth/github.js';
 import { findOrCreateUser, findUserByUsername, createLocalUser, isUsernameTaken, setPassword, bindGithub, getUserById } from '../../../db/user-repo.js';
 import { hashPassword, verifyPassword } from '../../../auth/password.js';
-import { validateUsername, validatePassword, validateNickname, validateAvatar } from '../../../auth/validation.js';
+import { validateUsername, validatePassword, validateNickname } from '../../../auth/validation.js';
+import { processAvatar, AvatarError } from '../../../auth/avatar.js';
 import { authPreHandler, makeToken, userResponse } from './service.js';
 import type { AuthenticatedRequest } from './service.js';
 import { createRateLimiter } from '../../../auth/rate-limiter.js';
@@ -62,32 +63,40 @@ function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) 
     return true;
   }
 
-  fastify.post<{ Body: { username: string; password: string; nickname: string; avatar?: string; turnstileToken?: string } }>('/auth/register', { preHandler: [registerLimiter] }, async (request, reply) => {
-    const { username, password, nickname, avatar, turnstileToken } = request.body;
+  fastify.post<{ Body: { username: string; password: string; nickname: string; avatar?: string; turnstileToken?: string } }>(
+    '/auth/register',
+    { preHandler: [registerLimiter], bodyLimit: 10 * 1024 * 1024 },
+    async (request, reply) => {
+      const { username, password, nickname, avatar, turnstileToken } = request.body;
 
-    if (!(await checkTurnstile(turnstileToken, request, reply))) return;
+      if (!(await checkTurnstile(turnstileToken, request, reply))) return;
 
-    const uv = validateUsername(username);
-    if (!uv.valid) return reply.code(400).send({ error: uv.error });
-    const pv = validatePassword(password);
-    if (!pv.valid) return reply.code(400).send({ error: pv.error });
-    const nv = validateNickname(nickname);
-    if (!nv.valid) return reply.code(400).send({ error: nv.error });
+      const uv = validateUsername(username);
+      if (!uv.valid) return reply.code(400).send({ error: uv.error });
+      const pv = validatePassword(password);
+      if (!pv.valid) return reply.code(400).send({ error: pv.error });
+      const nv = validateNickname(nickname);
+      if (!nv.valid) return reply.code(400).send({ error: nv.error });
 
-    if (await isUsernameTaken(username)) {
-      return reply.code(409).send({ error: '用户名已被使用' });
-    }
+      if (await isUsernameTaken(username)) {
+        return reply.code(409).send({ error: '用户名已被使用' });
+      }
 
-    if (avatar) {
-      const av = validateAvatar(avatar);
-      if (!av.valid) return reply.code(400).send({ error: av.error });
-    }
+      let avatarData: string | null = null;
+      if (avatar) {
+        try {
+          avatarData = await processAvatar(avatar);
+        } catch (e) {
+          return reply.code(400).send({ error: e instanceof AvatarError ? e.message : '头像处理失败' });
+        }
+      }
 
-    const passwordHash = await hashPassword(password);
-    const user = await createLocalUser({ username, nickname: nickname.trim(), passwordHash, avatarData: avatar ?? null });
-    const token = makeToken(user, config.jwtSecret);
-    return { token, user: userResponse(user) };
-  });
+      const passwordHash = await hashPassword(password);
+      const user = await createLocalUser({ username, nickname: nickname.trim(), passwordHash, avatarData });
+      const token = makeToken(user, config.jwtSecret);
+      return { token, user: userResponse(user) };
+    },
+  );
 
   fastify.post<{ Body: { username: string; password: string; turnstileToken?: string } }>('/auth/login', { preHandler: [loginLimiter] }, async (request, reply) => {
     const { username, password, turnstileToken } = request.body;

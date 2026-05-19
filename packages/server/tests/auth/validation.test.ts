@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validatePassword, validateNickname, validateAvatar } from '../../src/auth/validation';
+import { validatePassword, validateNickname } from '../../src/auth/validation';
 
 describe('validatePassword', () => {
   it('rejects passwords shorter than 8 characters', () => {
@@ -65,47 +65,3 @@ describe('validateNickname', () => {
   });
 });
 
-describe('validateAvatar', () => {
-  const validWebp = 'data:image/webp;base64,UklGR' + 'A'.repeat(20) + '=';
-  const validJpeg = 'data:image/jpeg;base64,/9j/4AAQ' + 'B'.repeat(20) + '==';
-  const validPng = 'data:image/png;base64,iVBOR' + 'C'.repeat(20) + '=';
-
-  it('accepts valid webp data URL', () => {
-    expect(validateAvatar(validWebp).valid).toBe(true);
-  });
-
-  it('accepts valid jpeg data URL', () => {
-    expect(validateAvatar(validJpeg).valid).toBe(true);
-  });
-
-  it('accepts valid png data URL', () => {
-    expect(validateAvatar(validPng).valid).toBe(true);
-  });
-
-  it('rejects non-image MIME type', () => {
-    expect(validateAvatar('data:text/html;base64,AAAA').valid).toBe(false);
-    expect(validateAvatar('data:text/html;base64,AAAA').error).toBe('头像格式无效');
-  });
-
-  it('rejects missing data: prefix', () => {
-    expect(validateAvatar('image/webp;base64,AAAA').valid).toBe(false);
-  });
-
-  it('rejects unsupported image type', () => {
-    expect(validateAvatar('data:image/svg+xml;base64,AAAA').valid).toBe(false);
-  });
-
-  it('rejects invalid base64 characters', () => {
-    expect(validateAvatar('data:image/webp;base64,!!!invalid!!!').valid).toBe(false);
-  });
-
-  it('rejects data URL without base64 encoding marker', () => {
-    expect(validateAvatar('data:image/webp,raw-data-here').valid).toBe(false);
-  });
-
-  it('rejects avatar exceeding size limit', () => {
-    const huge = 'data:image/webp;base64,' + 'A'.repeat(100_000);
-    expect(validateAvatar(huge).valid).toBe(false);
-    expect(validateAvatar(huge).error).toBe('头像数据过大');
-  });
-});
