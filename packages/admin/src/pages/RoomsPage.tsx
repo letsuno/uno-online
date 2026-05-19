@@ -1,23 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Button } from '@/components/Button';
+import { Badge } from '@/components/Badge';
+import { Modal } from '@/components/Modal';
 
 interface RoomPlayer {
   userId: string;
@@ -32,6 +17,11 @@ interface Room {
   players: RoomPlayer[];
   createdAt: string;
 }
+
+const statusBadgeVariant: Record<string, 'warning' | 'success' | 'secondary'> = {
+  waiting: 'warning',
+  playing: 'success',
+};
 
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -84,17 +74,6 @@ export default function RoomsPage() {
     }
   };
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'waiting':
-        return 'warning' as const;
-      case 'playing':
-        return 'success' as const;
-      default:
-        return 'secondary' as const;
-    }
-  };
-
   return (
     <div className="p-6">
       <h2 className="text-xl font-bold text-white mb-4">Active Rooms</h2>
@@ -108,30 +87,30 @@ export default function RoomsPage() {
       {loading ? (
         <div className="text-slate-400">Loading...</div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="border-b border-slate-700">
-              <TableHead>Room Code</TableHead>
-              <TableHead>Players</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-700">
+              <th className="h-10 px-2 text-left font-medium text-slate-400">Room Code</th>
+              <th className="h-10 px-2 text-left font-medium text-slate-400">Players</th>
+              <th className="h-10 px-2 text-left font-medium text-slate-400">Status</th>
+              <th className="h-10 px-2 text-left font-medium text-slate-400">Created</th>
+              <th className="h-10 px-2 text-left font-medium text-slate-400">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
             {rooms.map((room) => (
-              <TableRow key={room.code}>
-                <TableCell className="font-mono text-white">{room.code}</TableCell>
-                <TableCell className="text-slate-300">
+              <tr key={room.code} className="border-b border-slate-700/50 transition-colors hover:bg-slate-800/50">
+                <td className="p-2 font-mono text-white">{room.code}</td>
+                <td className="p-2 text-slate-300">
                   {room.playerCount} - {room.players.map((p) => p.nickname).join(', ')}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={getStatusBadgeVariant(room.status)}>{room.status}</Badge>
-                </TableCell>
-                <TableCell className="text-slate-400">
+                </td>
+                <td className="p-2">
+                  <Badge variant={statusBadgeVariant[room.status] ?? 'secondary'}>{room.status}</Badge>
+                </td>
+                <td className="p-2 text-slate-400">
                   {new Date(room.createdAt).toLocaleString()}
-                </TableCell>
-                <TableCell className="space-x-2">
+                </td>
+                <td className="p-2 space-x-2">
                   {room.status === 'playing' && (
                     <Button
                       variant="destructive"
@@ -150,63 +129,45 @@ export default function RoomsPage() {
                   >
                     {dissolvingCode === room.code ? 'Dissolving...' : 'Dissolve'}
                   </Button>
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ))}
             {rooms.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-slate-400 py-8">
+              <tr>
+                <td colSpan={5} className="text-center text-slate-400 py-8">
                   No active rooms
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       )}
 
-      <Dialog open={confirmCode !== null} onOpenChange={(open) => !open && setConfirmCode(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Dissolve Room</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to dissolve room {confirmCode}? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmCode(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => confirmCode && handleDissolve(confirmCode)}
-            >
-              Dissolve
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Modal
+        open={confirmCode !== null}
+        onClose={() => setConfirmCode(null)}
+        title="Dissolve Room"
+        description={`Are you sure you want to dissolve room ${confirmCode}? This action cannot be undone.`}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setConfirmCode(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => confirmCode && handleDissolve(confirmCode)}>Dissolve</Button>
+          </>
+        }
+      />
 
-      <Dialog open={confirmCheatCode !== null} onOpenChange={(open) => !open && setConfirmCheatCode(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Trigger Cheat Detection</DialogTitle>
-            <DialogDescription>
-              This will show a &quot;cheater detected&quot; screen to ALL players in room {confirmCheatCode} and dissolve the game. Are you sure?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmCheatCode(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => confirmCheatCode && handleCheat(confirmCheatCode)}
-            >
-              Confirm Cheat
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Modal
+        open={confirmCheatCode !== null}
+        onClose={() => setConfirmCheatCode(null)}
+        title="Trigger Cheat Detection"
+        description={`This will show a "cheater detected" screen to ALL players in room ${confirmCheatCode} and dissolve the game. Are you sure?`}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setConfirmCheatCode(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => confirmCheatCode && handleCheat(confirmCheatCode)}>Confirm Cheat</Button>
+          </>
+        }
+      />
     </div>
   );
 }

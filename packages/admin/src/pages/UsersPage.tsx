@@ -1,31 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
+import { Button } from '@/components/Button';
+import { Input } from '@/components/Input';
+import { Modal } from '@/components/Modal';
+import { Select } from '@/components/Select';
 
 interface UserRow {
   id: string;
@@ -154,54 +132,45 @@ export default function UsersPage() {
         <div className="text-slate-400">Loading...</div>
       ) : (
         <>
-          <Table>
-            <TableHeader>
-              <TableRow className="border-b border-slate-700">
-                <TableHead>Username</TableHead>
-                <TableHead>Nickname</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead className="w-[80px]" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-700">
+                <th className="h-10 px-2 text-left font-medium text-slate-400">Username</th>
+                <th className="h-10 px-2 text-left font-medium text-slate-400">Nickname</th>
+                <th className="h-10 px-2 text-left font-medium text-slate-400">Role</th>
+                <th className="h-10 px-2 text-left font-medium text-slate-400 w-[80px]" />
+              </tr>
+            </thead>
+            <tbody>
               {data.users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="text-white">{user.username}</TableCell>
-                  <TableCell className="text-slate-300">{user.nickname}</TableCell>
-                  <TableCell>
+                <tr key={user.id} className="border-b border-slate-700/50 transition-colors hover:bg-slate-800/50">
+                  <td className="p-2 text-white">{user.username}</td>
+                  <td className="p-2 text-slate-300">{user.nickname}</td>
+                  <td className="p-2">
                     <Select
                       value={user.role}
-                      onValueChange={(value) => handleRoleChange(user.id, value)}
+                      options={ROLES.map((role) => ({ value: role, label: role }))}
+                      onChange={(value) => handleRoleChange(user.id, value)}
                       disabled={updatingId === user.id}
-                    >
-                      <SelectTrigger className="w-[120px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ROLES.map((role) => (
-                          <SelectItem key={role} value={role}>
-                            {role}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
+                      className="w-[120px]"
+                    />
+                  </td>
+                  <td className="p-2">
                     <Button variant="ghost" size="sm" onClick={() => openEditDialog(user)}>
                       Edit
                     </Button>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))}
               {data.users.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-slate-400 py-8">
+                <tr>
+                  <td colSpan={4} className="text-center text-slate-400 py-8">
                     No users found
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               )}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
@@ -231,43 +200,44 @@ export default function UsersPage() {
         </>
       )}
 
-      <Dialog open={!!editUser} onOpenChange={(open) => { if (!open) setEditUser(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>编辑用户</DialogTitle>
-            <DialogDescription>修改用户名和昵称</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-username" className="text-slate-300">用户名</Label>
-              <Input
-                id="edit-username"
-                value={editUsername}
-                onChange={(e) => setEditUsername(e.target.value)}
-                maxLength={20}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-nickname" className="text-slate-300">昵称</Label>
-              <Input
-                id="edit-nickname"
-                value={editNickname}
-                onChange={(e) => setEditNickname(e.target.value)}
-                maxLength={20}
-              />
-            </div>
-            {editError && (
-              <div className="text-sm text-red-400">{editError}</div>
-            )}
-          </div>
-          <DialogFooter>
+      <Modal
+        open={!!editUser}
+        onClose={() => setEditUser(null)}
+        title="编辑用户"
+        description="修改用户名和昵称"
+        footer={
+          <>
             <Button variant="secondary" onClick={() => setEditUser(null)}>取消</Button>
             <Button onClick={handleEditSave} disabled={editSaving}>
               {editSaving ? '保存中...' : '保存'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        }
+      >
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <label htmlFor="edit-username" className="text-sm font-medium text-slate-300">用户名</label>
+            <Input
+              id="edit-username"
+              value={editUsername}
+              onChange={(e) => setEditUsername(e.target.value)}
+              maxLength={20}
+            />
+          </div>
+          <div className="grid gap-2">
+            <label htmlFor="edit-nickname" className="text-sm font-medium text-slate-300">昵称</label>
+            <Input
+              id="edit-nickname"
+              value={editNickname}
+              onChange={(e) => setEditNickname(e.target.value)}
+              maxLength={20}
+            />
+          </div>
+          {editError && (
+            <div className="text-sm text-red-400">{editError}</div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

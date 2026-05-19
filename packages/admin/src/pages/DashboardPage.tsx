@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/Badge';
 
 interface DashboardStats {
   totalUsers: number;
@@ -42,16 +41,16 @@ export default function DashboardPage() {
       <h2 className="text-xl font-bold text-white mb-6">Dashboard</h2>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {cards.map((card) => (
-          <Card key={card.label}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">
+          <div key={card.label} className="rounded-lg border border-slate-700 bg-slate-800">
+            <div className="p-4 pb-2">
+              <div className="text-sm font-medium">
                 <Badge variant={card.variant}>{card.label}</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </div>
+            </div>
+            <div className="p-4 pt-0">
               <div className="text-3xl font-bold text-white">{card.value.toLocaleString()}</div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
     </div>

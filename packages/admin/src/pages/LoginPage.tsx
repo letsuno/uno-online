@@ -1,9 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/Button';
+import { Input } from '@/components/Input';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -17,12 +15,12 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4">
-      <Card className="w-full max-w-sm shadow-xl">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-white">UNO Admin</CardTitle>
-          <CardDescription>Sign in to access the admin panel</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="w-full max-w-sm rounded-lg border border-slate-700 bg-slate-800 shadow-xl">
+        <div className="p-6 pb-0 text-center">
+          <h1 className="text-2xl font-bold text-white">UNO Admin</h1>
+          <p className="mt-1.5 text-sm text-slate-400">Sign in to access the admin panel</p>
+        </div>
+        <div className="p-6">
           {error && (
             <div className="bg-red-900/40 border border-red-700 text-red-300 text-sm rounded px-3 py-2 mb-4">
               {error}
@@ -31,9 +29,9 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
-              <Label htmlFor="username" className="text-slate-300">
+              <label htmlFor="username" className="text-sm font-medium text-slate-300">
                 Username
-              </Label>
+              </label>
               <Input
                 id="username"
                 type="text"
@@ -46,9 +44,9 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="password" className="text-slate-300">
+              <label htmlFor="password" className="text-sm font-medium text-slate-300">
                 Password
-              </Label>
+              </label>
               <Input
                 id="password"
                 type="password"
@@ -63,8 +61,8 @@ export default function LoginPage() {
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
