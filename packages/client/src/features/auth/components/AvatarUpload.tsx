@@ -2,7 +2,7 @@ import { useRef, useState, useCallback } from 'react';
 import { Camera, Loader2 } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
-import { loadImage, cropAndCompress } from '@/shared/utils/image-compress';
+import { loadImage, cropAndCompress, revokeImageSrc } from '@/shared/utils/image-compress';
 import { Button } from '@/shared/components/ui/Button';
 
 interface Props {
@@ -39,6 +39,12 @@ export default function AvatarUpload({ avatarUrl, size = 96, onUpload }: Props) 
     }
   };
 
+  const cleanup = () => {
+    if (imageEl) revokeImageSrc(imageEl);
+    setImageSrc(null);
+    setImageEl(null);
+  };
+
   const handleConfirm = () => {
     if (!imageEl || !croppedArea) return;
     setUploading(true);
@@ -47,14 +53,12 @@ export default function AvatarUpload({ avatarUrl, size = 96, onUpload }: Props) 
       onUpload(dataUrl);
     } finally {
       setUploading(false);
-      setImageSrc(null);
-      setImageEl(null);
+      cleanup();
     }
   };
 
   const handleCancel = () => {
-    setImageSrc(null);
-    setImageEl(null);
+    cleanup();
   };
 
   return (
