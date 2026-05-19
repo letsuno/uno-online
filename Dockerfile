@@ -55,3 +55,4 @@ COPY Caddyfile /etc/caddy/Caddyfile
 COPY --from=build-client /app/packages/client/dist/ /srv/
 COPY --from=build-admin /app/packages/admin/dist/ /srv/admin/
 EXPOSE 80 443
+CMD ["sh", "-c", "INSTANCE_START=$(date -u +%Y-%m-%dT%H:%M:%SZ) exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile"]

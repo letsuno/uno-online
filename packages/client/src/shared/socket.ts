@@ -35,6 +35,18 @@ function clearAuthSession(): void {
   useAuthStore.setState({ user: null, token: null, loading: false, initialized: true });
 }
 
+async function checkCaddyVersion(): Promise<void> {
+  try {
+    const res = await fetch('/healthz', { method: 'HEAD', cache: 'no-store' });
+    const instanceStart = res.headers.get('X-Instance-Start');
+    if (instanceStart) {
+      useServerVersionStore.getState().setClientVersion(instanceStart);
+    }
+  } catch {
+    // Caddy header unavailable (e.g. dev mode) — skip
+  }
+}
+
 export function getSocket(): TypedSocket {
   if (!socket) {
     const token = currentToken();
@@ -220,7 +232,7 @@ export function getSocket(): TypedSocket {
     });
 
     socket.on('server:version', (data) => {
-      useServerVersionStore.getState().setVersion(data.version);
+      useServerVersionStore.getState().setServerVersion(data.version);
       if (data.serverTime) setServerTimeOffset(data.serverTime);
     });
 
@@ -240,6 +252,7 @@ export function getSocket(): TypedSocket {
       connectionStatusCallback?.('connected');
       measureLatency();
       latencyInterval = setInterval(measureLatency, 30_000);
+      checkCaddyVersion();
     });
 
     socket.on('disconnect', () => {
