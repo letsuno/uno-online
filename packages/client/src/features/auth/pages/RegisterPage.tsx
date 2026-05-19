@@ -104,7 +104,7 @@ export default function RegisterPage() {
         </div>
 
         {turnstileSiteKey && (
-          <Turnstile sitekey={turnstileSiteKey} onVerify={setTurnstileToken} />
+          <Turnstile sitekey={turnstileSiteKey} onVerify={setTurnstileToken} onExpire={() => setTurnstileToken(null)} />
         )}
 
         {fieldError && <p className="text-sm text-destructive m-0">{fieldError}</p>}
