@@ -65,8 +65,13 @@ function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) 
       return reply.code(409).send({ error: '用户名已被使用' });
     }
 
-    if (avatar && avatar.length > 100_000) {
-      return reply.code(400).send({ error: '头像数据过大' });
+    if (avatar) {
+      if (!avatar.startsWith('data:image/')) {
+        return reply.code(400).send({ error: '头像格式无效' });
+      }
+      if (avatar.length > 100_000) {
+        return reply.code(400).send({ error: '头像数据过大' });
+      }
     }
 
     const passwordHash = await hashPassword(password);

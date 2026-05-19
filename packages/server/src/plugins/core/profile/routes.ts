@@ -86,6 +86,9 @@ export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginConte
       return { success: true, avatarUrl: null };
     }
 
+    if (!avatar.startsWith('data:image/')) {
+      return reply.code(400).send({ error: '头像格式无效' });
+    }
     if (avatar.length > 100_000) {
       return reply.code(400).send({ error: '头像数据过大' });
     }
