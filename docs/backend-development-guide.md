@@ -60,7 +60,10 @@ packages/server/src/
     middleware.ts         # Socket 认证
     password.ts           # 密码哈希
     github.ts             # GitHub OAuth
-    validation.ts         # 输入验证
+    validation.ts         # 输入验证（用户名/密码/昵称）
+    rate-limiter.ts       # HTTP 端点 IP 限流
+    turnstile.ts          # Cloudflare Turnstile 人机验证
+    avatar.ts             # 头像处理（sharp 解码/缩放/WebP 编码）
   db/                     # 数据库层
     database.ts           # Kysely 实例 + 迁移
     user-repo.ts          # 用户 CRUD

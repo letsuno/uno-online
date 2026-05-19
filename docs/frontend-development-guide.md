@@ -10,6 +10,8 @@
 - **动画**: Framer Motion 12
 - **图标**: Lucide React
 - **实时通信**: Socket.IO Client 4.8
+- **头像裁切**: react-easy-crop（圆形裁切 + 缩放）
+- **人机验证**: react-turnstile（Cloudflare Turnstile）
 
 ## 目录结构
 
