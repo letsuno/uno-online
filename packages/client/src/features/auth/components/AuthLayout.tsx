@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import GamePageShell from '@/shared/components/GamePageShell';
 import ServerStatusBar from '@/shared/components/ServerStatusBar';
+import FitScaler from '@/shared/components/FitScaler';
 
 interface Props {
   title?: string;
@@ -19,34 +20,40 @@ interface Props {
 export default function AuthLayout({ title, subtitle, showLogo = true, footer, children }: Props) {
   return (
     <GamePageShell>
+      <FitScaler align="center" maxScale={0.8} className="absolute left-5 right-5 portrait:left-[6%] portrait:right-[6%] top-[28px] bottom-[88px] z-[2]">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
-        className="relative z-1 w-[min(440px,calc(100vw-2rem))] rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/10 shadow-2xl px-8 py-10"
+        className="glass-panel w-[644px] portrait:w-[460px] rounded-[28px] px-[52px] portrait:px-[30px] py-[44px] portrait:py-[38px]"
       >
         {showLogo && (
           <div className="text-center">
-            <p className="font-game text-[28px] leading-none text-primary" style={{ textShadow: '0 0 16px rgba(251,191,36,0.25)' }}>
-              ♠ UNO
-            </p>
-            {title && <h1 className="mt-4 font-game text-[28px] text-primary text-shadow-bold">{title}</h1>}
+            <div className="flex justify-center items-center gap-2.5 text-[var(--gold)] font-black text-[28px]" style={{ textShadow: '0 0 18px rgba(246,190,62,0.36)' }}>
+              <span>♠</span><span>UNO</span>
+            </div>
+            {title && (
+              <h1 className="mt-3 text-[var(--gold)] text-[48px] font-black tracking-[0.12em]">
+                {title}
+              </h1>
+            )}
             {subtitle && (
               <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
             )}
           </div>
         )}
 
-        <div className={showLogo ? 'mt-8' : ''}>
+        <div className={showLogo ? 'mt-[30px]' : ''}>
           {children}
         </div>
 
         {footer && (
-          <div className="mt-6 text-center text-sm text-muted-foreground">
+          <div className="mt-[26px] text-center text-[17px] text-[#c8d0e6]">
             {footer}
           </div>
         )}
       </motion.div>
+      </FitScaler>
 
       <ServerStatusBar />
     </GamePageShell>
