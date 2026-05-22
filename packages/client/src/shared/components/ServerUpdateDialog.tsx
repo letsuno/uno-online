@@ -10,7 +10,7 @@ export default function ServerUpdateDialog() {
   return (
     <AnimatePresence>
       {needsRefresh && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center px-4">
+        <div className="fixed inset-0 z-modal flex items-center justify-center">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

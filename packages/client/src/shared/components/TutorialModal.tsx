@@ -181,18 +181,11 @@ export default function TutorialModal({ open, onClose }: { open: boolean; onClos
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
-          className="fixed inset-0 z-modal flex flex-col"
-          style={{
-            background: `
-              radial-gradient(circle at 50% 42%, rgba(246, 190, 62, 0.12), transparent 30%),
-              radial-gradient(circle at 50% 100%, rgba(246, 190, 62, 0.12), transparent 26%),
-              linear-gradient(180deg, #0a1020 0%, #15172a 52%, #080d19 100%)
-            `,
-          }}
+          className="fixed inset-0 z-modal flex flex-col bg-[linear-gradient(135deg,#1a1a2e_0%,#16213e_50%,#0f3460_100%)]"
         >
           <div
             className="absolute top-[42%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] rounded-full pointer-events-none animate-[breathe_6s_ease-in-out_infinite]"
-            style={{ background: 'radial-gradient(circle, rgba(246,190,62,0.08) 0%, rgba(246,190,62,0.03) 30%, transparent 60%)' }}
+            style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.06) 0%, rgba(251,191,36,0.02) 30%, transparent 60%)' }}
           />
           <button
             onClick={close}

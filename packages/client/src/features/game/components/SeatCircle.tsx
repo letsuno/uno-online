@@ -34,16 +34,10 @@ export default function SeatCircle({ seats, onSeatClick, compact = false }: Seat
     <div className="relative" style={{ width: containerW, height: containerH }}>
       {/* Table ellipse in the center */}
       <div
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center rounded-[50%] border border-[rgba(246,190,62,0.28)]"
-        style={{
-          width: rx * 1.1,
-          height: ry * 1.1,
-          background: 'radial-gradient(circle at 50% 38%, rgba(246,190,62,0.10), rgba(255,255,255,0.02) 55%, transparent 75%)',
-          boxShadow: 'inset 0 0 40px rgba(246,190,62,0.10), inset 0 1px 0 rgba(255,255,255,0.06), 0 18px 50px rgba(0,0,0,0.4)',
-          backdropFilter: 'blur(6px)',
-        }}
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center rounded-[50%] border-2 border-green-700/60 bg-green-950/40"
+        style={{ width: rx * 1.1, height: ry * 1.1 }}
       >
-        <Layers size={compact ? 24 : 32} className="text-[var(--gold)]/55" strokeWidth={1.5} />
+        <Layers size={compact ? 24 : 32} className="text-green-500/50" strokeWidth={1.5} />
       </div>
 
       {/* Seats positioned around the ellipse */}
