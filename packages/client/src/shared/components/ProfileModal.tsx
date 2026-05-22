@@ -191,7 +191,7 @@ export default function ProfileModal() {
             className="fixed inset-0 z-modal flex items-center justify-center pointer-events-none"
           >
             <div
-              className="pointer-events-auto w-[min(1110px,calc(100vw-72px))] max-h-[min(820px,calc(100svh-80px))] grid grid-cols-[270px_1fr] max-md:grid-cols-1 rounded-[24px] overflow-hidden border border-white/[0.12] shadow-[0_26px_80px_rgba(0,0,0,0.48)]"
+              className="pointer-events-auto w-[min(1110px,calc(100vw-72px))] h-[min(820px,calc(100svh-80px))] grid grid-cols-[270px_1fr] max-md:grid-cols-1 rounded-[24px] overflow-hidden border border-white/[0.12] shadow-[0_26px_80px_rgba(0,0,0,0.48)]"
               style={{
                 background: `
                   radial-gradient(circle at 84% 14%, rgba(246,190,62,0.08), transparent 28%),
