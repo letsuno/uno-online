@@ -20,14 +20,26 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
   const preHandler = authPreHandler(config.jwtSecret);
   const loginLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
 
-  function getRpId(request: { hostname: string }): string {
-    return config.webauthnRpId ?? request.hostname.split(':')[0]!;
+  function getRpId(request: { hostname: string }): string | string[] {
+    if (!config.webauthnRpId) return request.hostname.split(':')[0]!;
+    return config.webauthnRpId.includes(',')
+      ? config.webauthnRpId.split(',').map((s) => s.trim())
+      : config.webauthnRpId;
   }
 
-  function getOrigin(request: { protocol: string; hostname: string }): string {
-    if (config.webauthnOrigin) return config.webauthnOrigin;
-    const proto = request.protocol ?? 'https';
-    return `${proto}://${request.hostname}`;
+  function getFirstRpId(request: { hostname: string }): string {
+    const rpId = getRpId(request);
+    return Array.isArray(rpId) ? rpId[0]! : rpId;
+  }
+
+  function getOrigin(request: { protocol: string; hostname: string }): string | string[] {
+    if (!config.webauthnOrigin) {
+      const proto = request.protocol ?? 'https';
+      return `${proto}://${request.hostname}`;
+    }
+    return config.webauthnOrigin.includes(',')
+      ? config.webauthnOrigin.split(',').map((s) => s.trim())
+      : config.webauthnOrigin;
   }
 
   // ── Registration (authenticated) ──
@@ -38,7 +50,7 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
 
     const options = await generateRegistrationOptions({
       rpName: config.webauthnRpName ?? 'UNO Online',
-      rpID: getRpId(request),
+      rpID: getFirstRpId(request),
       userName: username,
       attestationType: 'none',
       excludeCredentials: userPasskeys.map((pk) => ({
@@ -108,7 +120,7 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
 
   fastify.post('/auth/passkey/login-options', async (request) => {
     const options = await generateAuthenticationOptions({
-      rpID: getRpId(request),
+      rpID: getFirstRpId(request),
       userVerification: 'preferred',
       allowCredentials: [],
     });
