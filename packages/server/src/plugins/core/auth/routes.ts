@@ -17,6 +17,7 @@ export function registerAuthRoutes(fastify: FastifyInstance, ctx: PluginContext)
     devMode: config.devMode,
     githubClientId: config.githubClientId,
     turnstileSiteKey: config.turnstileSiteKey ?? null,
+    passkeyEnabled: true,
   }));
 
   if (config.devMode) {
