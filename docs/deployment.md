@@ -25,6 +25,9 @@ curl http://localhost/api/server/info
 - `REDIS_URL`：可选；未设置时服务端使用内存 KV，Docker Compose 默认启用 Redis。
 - `CADDY_SITE_ADDRESS`：Caddy 站点地址，可用域名或 `:80`。
 - `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`：可选；Cloudflare Turnstile 人机验证，两者同时配置后注册/登录页启用 CAPTCHA。
+- `WEBAUTHN_RP_NAME`：可选；WebAuthn 依赖方名称，默认 `UNO Online`。
+- `WEBAUTHN_RP_ID`：可选；WebAuthn 依赖方 ID，默认从请求 hostname 推断。支持逗号分隔多值。
+- `WEBAUTHN_ORIGIN`：可选；WebAuthn 允许的 origin，默认从请求推断。支持逗号分隔多值。
 - `MUMBLE_*` / `MUMBLE_ICE_*`：语音服务和房间语音频道管理配置。
 
 完整变量列表以仓库根目录的 `.env.example` 为准。

@@ -17,6 +17,7 @@
   "dependencies": {
     "@fastify/cookie": "^11.0.0",
     "@fastify/cors": "^11.0.0",
+    "@simplewebauthn/server": "^13.3.0",
     "@uno-online/shared": "workspace:*",
     "@zeroc/ice": "^3.8.1",
     "bcryptjs": "^3.0.3",

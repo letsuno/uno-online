@@ -19,6 +19,7 @@ Web-based multiplayer UNO with real-time play, voice chat, spectator mode, confi
 - 34 configurable house rules with Classic, Party, and Crazy presets
 - Socket.IO authoritative server with responsive client-side feedback
 - Mumble-based voice chat with per-player mute and speaking indicators
+- Passkey (WebAuthn) passwordless login with fingerprint, face, or security key
 - Server selector, admin panel, spectator mode, color-blind mode, sound, and animations
 - MCP server so AI clients can join and play via tools
 

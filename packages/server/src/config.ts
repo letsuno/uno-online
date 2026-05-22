@@ -33,6 +33,9 @@ export interface Config {
   roomIdleTimeoutMs: number;
   turnstileSiteKey?: string;
   turnstileSecretKey?: string;
+  webauthnRpName?: string;
+  webauthnRpId?: string;
+  webauthnOrigin?: string;
   mumbleIce: MumbleIceConfig;
 }
 
@@ -71,6 +74,9 @@ export function loadConfig(): Config {
     roomIdleTimeoutMs: parseInt(process.env['ROOM_IDLE_TIMEOUT_MS'] ?? '7200000', 10),
     turnstileSiteKey: process.env['TURNSTILE_SITE_KEY'] || undefined,
     turnstileSecretKey: process.env['TURNSTILE_SECRET_KEY'] || undefined,
+    webauthnRpName: process.env['WEBAUTHN_RP_NAME'] || undefined,
+    webauthnRpId: process.env['WEBAUTHN_RP_ID'] || undefined,
+    webauthnOrigin: process.env['WEBAUTHN_ORIGIN'] || undefined,
     mumbleIce: loadMumbleIceConfig(),
   };
 }

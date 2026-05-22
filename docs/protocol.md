@@ -39,6 +39,14 @@ interface TokenPayload {
 - **管理限制**: 每用户最多 10 个，名称最长 50 字符
 - **验证限流**: `/api/api-keys/verify` 每 IP 每分钟 10 次
 
+### Passkey (WebAuthn) 认证
+
+- **用途**: 已有用户可在个人设置中绑定 Passkey，之后可免密码登录
+- **库**: `@simplewebauthn/server` + `@simplewebauthn/browser`
+- **Challenge 存储**: KV Store，5 分钟过期
+- **认证结果**: 验证通过后签发与密码登录相同格式的 JWT Token
+- **多域名**: `WEBAUTHN_RP_ID` 和 `WEBAUTHN_ORIGIN` 支持逗号分隔多值
+
 ### Socket.IO 认证
 
 Socket.IO 连接通过 `auth.token` 传递凭证：
@@ -96,6 +104,12 @@ interface ServerInfo {
 | `GET` | `/api/auth/github` | 仅生产模式 | 无 | 重定向到 GitHub OAuth 授权页 |
 | `POST` | `/api/auth/callback` | 仅生产模式 | 无 | GitHub OAuth code 换取登录态 |
 | `POST` | `/api/auth/bind-github` | 仅生产模式 | 无 | 将 GitHub 账号绑定到已有账号（限流 10次/分钟/IP） |
+| `POST` | `/api/auth/passkey/register-options` | 仅生产模式 | JWT | 生成 Passkey 注册选项（challenge） |
+| `POST` | `/api/auth/passkey/register-verify` | 仅生产模式 | JWT | 验证 Passkey 注册响应，存储凭证 |
+| `POST` | `/api/auth/passkey/login-options` | 仅生产模式 | 无 | 生成 Passkey 认证选项（challenge） |
+| `POST` | `/api/auth/passkey/login-verify` | 仅生产模式 | 无 | 验证 Passkey 认证响应，签发 JWT（限流 10次/分钟/IP） |
+| `GET` | `/api/auth/passkey/list` | 仅生产模式 | JWT | 列出当前用户的 Passkey |
+| `DELETE` | `/api/auth/passkey/:id` | 仅生产模式 | JWT | 删除指定 Passkey |
 
 主要请求/响应：
 
@@ -105,7 +119,7 @@ interface ServerInfo {
 // -> { token: string; user: User }
 
 // GET /api/auth/config
-// -> { devMode: boolean; githubClientId: string; turnstileSiteKey: string | null }
+// -> { devMode: boolean; githubClientId: string; turnstileSiteKey: string | null; passkeyEnabled: boolean }
 
 // POST /api/auth/register
 { username: string; password: string; nickname: string; avatar?: string; turnstileToken?: string }
@@ -130,6 +144,26 @@ interface ServerInfo {
 // POST /api/auth/bind-github
 { username: string; password: string; githubId: string; githubAvatarUrl?: string }
 // -> { token: string; user: User }
+
+// POST /api/auth/passkey/register-options（需 JWT）
+// -> PublicKeyCredentialCreationOptionsJSON
+
+// POST /api/auth/passkey/register-verify（需 JWT）
+{ credential: RegistrationResponseJSON; name: string }
+// -> { success: true; passkey: { id: string; name: string; createdAt: string } }
+
+// POST /api/auth/passkey/login-options
+// -> { options: PublicKeyCredentialRequestOptionsJSON; challengeId: string }
+
+// POST /api/auth/passkey/login-verify
+{ credential: AuthenticationResponseJSON; challengeId: string }
+// -> { token: string; user: User }
+
+// GET /api/auth/passkey/list（需 JWT）
+// -> Array<{ id: string; name: string; createdAt: string }>
+
+// DELETE /api/auth/passkey/:id（需 JWT）
+// -> { success: true }
 ```
 
 ### 2.3 个人资料
