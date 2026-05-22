@@ -38,6 +38,7 @@ export default function ProfileModal() {
   const [registeringPasskey, setRegisteringPasskey] = useState(false);
   const [passkeyError, setPasskeyError] = useState('');
   const [passkeySuccess, setPasskeySuccess] = useState('');
+  const [activeTab, setActiveTab] = useState<'notification' | 'security' | 'apikeys'>('notification');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -200,15 +201,17 @@ export default function ProfileModal() {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Left: Sidebar */}
-              <div className="border-r border-white/[0.08] p-[34px_22px] bg-white/[0.025] flex flex-col items-center max-md:hidden">
-                <div className="self-stretch flex items-center gap-3 text-[26px] font-black mb-11">
+              <div className="border-r border-white/[0.08] p-[34px_22px] bg-white/[0.025] flex flex-col max-md:hidden">
+                <div className="self-stretch flex items-center gap-3 text-[26px] font-black mb-8">
                   <span className="text-[var(--gold)]">♠</span>
                   <span>设置</span>
                 </div>
 
                 {profile && (
-                  <div className="text-center mb-12">
-                    <AvatarUpload avatarUrl={profile.user.avatarUrl} size={100} onUpload={handleAvatarUpload} />
+                  <div className="text-center mb-8">
+                    <div className="flex justify-center">
+                      <AvatarUpload avatarUrl={profile.user.avatarUrl} size={100} onUpload={handleAvatarUpload} />
+                    </div>
                     <div className="mt-[18px]">
                       {editingNickname ? (
                         <div className="flex items-center gap-2 justify-center">
@@ -230,6 +233,28 @@ export default function ProfileModal() {
                     </div>
                   </div>
                 )}
+
+                {/* Tab navigation */}
+                <nav className="flex flex-col gap-1">
+                  {([
+                    { id: 'notification', icon: Bell, label: '通知' },
+                    { id: 'security', icon: Lock, label: '安全' },
+                    { id: 'apikeys', icon: Key, label: 'API Keys' },
+                  ] as const).map(({ id, icon: Icon, label }) => (
+                    <button
+                      key={id}
+                      onClick={() => setActiveTab(id)}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-[14px] text-[15px] font-bold transition-all text-left cursor-pointer ${
+                        activeTab === id
+                          ? 'bg-[rgba(246,190,62,0.10)] text-[var(--gold)] border border-[rgba(246,190,62,0.28)]'
+                          : 'text-[#8b95b3] border border-transparent hover:bg-white/[0.04] hover:text-[#c7d0ec]'
+                      }`}
+                    >
+                      <Icon size={18} />
+                      {label}
+                    </button>
+                  ))}
+                </nav>
 
                 <div className="flex-1" />
                 <Button variant="ghost" className="w-full text-[#b6c0da]" onClick={close} sound="click">关闭</Button>
@@ -281,10 +306,33 @@ export default function ProfileModal() {
                   </div>
                 )}
 
-                {/* Notification settings section */}
-                <NotificationSettingsInline />
+                {/* Mobile tab bar */}
+                <div className="hidden max-md:flex gap-2 mb-[18px] overflow-x-auto scrollbar-thin">
+                  {([
+                    { id: 'notification', icon: Bell, label: '通知' },
+                    { id: 'security', icon: Lock, label: '安全' },
+                    { id: 'apikeys', icon: Key, label: 'API Keys' },
+                  ] as const).map(({ id, icon: Icon, label }) => (
+                    <button
+                      key={id}
+                      onClick={() => setActiveTab(id)}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+                        activeTab === id
+                          ? 'bg-[rgba(246,190,62,0.12)] text-[var(--gold)] border border-[rgba(246,190,62,0.32)]'
+                          : 'text-[#8b95b3] border border-white/[0.10] bg-white/[0.03]'
+                      }`}
+                    >
+                      <Icon size={15} />
+                      {label}
+                    </button>
+                  ))}
+                </div>
 
-                {/* Password section */}
+                {/* Notification settings section */}
+                {activeTab === 'notification' && <NotificationSettingsInline />}
+
+                {/* Security section (Password + Passkey) */}
+                {activeTab === 'security' && <>
                 <div className="rounded-[22px] p-[22px_26px_26px] mb-[18px] bg-white/[0.035] border border-white/[0.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                   <h2 className="flex items-center gap-3 text-[#eaf0ff] text-[22px] font-black mb-4">
                     <Lock size={22} /> 设置密码
@@ -348,7 +396,10 @@ export default function ProfileModal() {
                   </div>
                 )}
 
+                </>}
+
                 {/* API Keys section */}
+                {activeTab === 'apikeys' && (
                 <div className="rounded-[22px] p-[22px_26px_26px] mb-[18px] bg-white/[0.035] border border-white/[0.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                   <h2 className="flex items-center gap-3 text-[#eaf0ff] text-[22px] font-black mb-4">
                     <Key size={22} /> API Keys
@@ -404,6 +455,7 @@ export default function ProfileModal() {
                     </div>
                   )}
                 </div>
+                )}
               </div>
             </div>
           </motion.div>
