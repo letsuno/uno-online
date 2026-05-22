@@ -27,9 +27,22 @@ interface ApiKeyTable {
   lastUsedAt: string | null;
 }
 
+interface PasskeyTable {
+  id: string;
+  userId: string;
+  publicKey: string;
+  counter: number;
+  deviceType: string;
+  backedUp: number;
+  transports: string | null;
+  name: string;
+  createdAt: Generated<string>;
+}
+
 export interface Database {
   users: UserTable;
   apiKeys: ApiKeyTable;
+  passkeys: PasskeyTable;
 }
 
 // ── Init ──
@@ -138,6 +151,27 @@ export async function migrateDb(): Promise<void> {
     .createIndex('idx_api_keys_user_id')
     .ifNotExists()
     .on('api_keys')
+    .column('user_id')
+    .execute();
+
+  await k.schema
+    .createTable('passkeys')
+    .ifNotExists()
+    .addColumn('id', 'text', (c) => c.primaryKey())
+    .addColumn('user_id', 'text', (c) => c.references('users.id').onDelete('cascade').notNull())
+    .addColumn('public_key', 'text', (c) => c.notNull())
+    .addColumn('counter', 'integer', (c) => c.notNull().defaultTo(0))
+    .addColumn('device_type', 'text', (c) => c.notNull())
+    .addColumn('backed_up', 'integer', (c) => c.notNull().defaultTo(0))
+    .addColumn('transports', 'text')
+    .addColumn('name', 'text', (c) => c.notNull())
+    .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
+    .execute();
+
+  await k.schema
+    .createIndex('idx_passkeys_user_id')
+    .ifNotExists()
+    .on('passkeys')
     .column('user_id')
     .execute();
 }

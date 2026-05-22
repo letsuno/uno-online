@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@simplewebauthn/browser": "^13.3.0",
     "@tailwindcss/vite": "^4.3.0",
     "@uno-online/shared": "workspace:*",
     "class-variance-authority": "^0.7.1",

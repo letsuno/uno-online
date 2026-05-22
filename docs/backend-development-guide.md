@@ -67,6 +67,7 @@ packages/server/src/
   db/                     # 数据库层
     database.ts           # Kysely 实例 + 迁移
     user-repo.ts          # 用户 CRUD
+    passkey-repo.ts       # Passkey 凭证 CRUD
   kv/                     # KV 存储抽象
     types.ts              # KvStore 接口
     memory.ts             # 内存实现
@@ -232,6 +233,9 @@ interface SocketData {
 | `ROOM_IDLE_TIMEOUT_MS` | 否 | 7200000 | 房间闲置自动解散（毫秒） |
 | `SERVER_NAME` | 否 | UNO Online | 服务器显示名称 |
 | `SERVER_MOTD` | 否 | 欢迎来到 UNO Online！ | 服务器欢迎信息 |
+| `WEBAUTHN_RP_NAME` | 否 | UNO Online | WebAuthn 依赖方名称 |
+| `WEBAUTHN_RP_ID` | 否 | 请求 hostname | WebAuthn 依赖方 ID，支持逗号分隔多值 |
+| `WEBAUTHN_ORIGIN` | 否 | 请求 origin | WebAuthn 允许的 origin，支持逗号分隔多值 |
 | `MUMBLE_ICE_ENABLED` | 否 | false | 是否启用 Mumble ICE 频道管理 |
 | `MUMBLE_ICE_HOST` | 否 | mumble | Mumble ICE 主机 |
 | `MUMBLE_ICE_PORT` | 否 | 6502 | Mumble ICE 端口 |
