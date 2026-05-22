@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { X, Settings } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { getSocket } from '@/shared/socket';
 import { Button } from '@/shared/components/ui/Button';
@@ -80,19 +80,22 @@ export default function SettingsDrawer({
       {/* Panel */}
       <div
         className={cn(
-          'fixed right-0 top-0 h-full w-[320px] max-w-[75vw] bg-[#0f1729]/98 border-l border-white/10 z-50 flex flex-col',
+          'fixed right-0 top-0 h-full w-[320px] max-w-[75vw] z-50 flex flex-col border-l border-[rgba(246,190,62,0.18)] backdrop-blur-xl shadow-[-20px_0_60px_rgba(0,0,0,0.45)]',
           'transition-transform duration-300',
           open ? 'translate-x-0' : 'translate-x-full',
         )}
+        style={{ background: 'linear-gradient(180deg, rgba(23,30,56,0.96), rgba(12,17,34,0.97))' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
-          <span className="text-sm font-bold font-game text-foreground">房间设置</span>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 shrink-0">
+          <span className="flex items-center gap-2 text-base font-black text-foreground">
+            <Settings size={16} className="text-[var(--gold)]" /> 房间设置
+          </span>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-md bg-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+            className="w-8 h-8 rounded-[10px] bg-white/[0.045] border border-white/[0.12] flex items-center justify-center text-[#c7d0ec] hover:text-[var(--gold)] hover:border-[rgba(246,190,62,0.46)] cursor-pointer transition-all"
           >
-            <X size={14} />
+            <X size={15} />
           </button>
         </div>
 
@@ -115,14 +118,19 @@ export default function SettingsDrawer({
                   }}
                   disabled={!isOwner}
                   className={cn(
-                    'w-11 h-6 rounded-xl relative transition-colors duration-200',
+                    'w-11 h-6 rounded-full relative transition-all duration-200',
                     !isOwner ? 'cursor-default opacity-50' : 'cursor-pointer',
-                    (room?.settings?.allowSpectators ?? true) ? 'bg-accent' : 'bg-white/15',
                   )}
+                  style={{
+                    background: (room?.settings?.allowSpectators ?? true)
+                      ? 'linear-gradient(135deg, var(--gold-2), var(--gold))'
+                      : 'rgba(255,255,255,0.15)',
+                    boxShadow: (room?.settings?.allowSpectators ?? true) ? '0 0 12px rgba(246,190,62,0.26)' : 'none',
+                  }}
                 >
                   <span
                     className={cn(
-                      'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform',
+                      'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform',
                       (room?.settings?.allowSpectators ?? true) ? 'translate-x-5' : '',
                     )}
                   />
@@ -141,9 +149,9 @@ export default function SettingsDrawer({
                           onClick={() => isOwner && getSocket().emit('room:update_settings', { spectatorMode: value })}
                           disabled={!isOwner}
                           className={cn(
-                            'px-3 py-1 rounded-lg text-sm transition-colors',
+                            'px-3 py-1 rounded-lg text-sm font-medium transition-colors',
                             isOwner ? 'cursor-pointer' : 'cursor-default',
-                            active ? 'bg-accent text-white' : 'text-muted-foreground hover:text-foreground',
+                            active ? 'bg-accent text-[#161513]' : 'text-muted-foreground hover:text-foreground',
                           )}
                         >
                           {label}
@@ -181,14 +189,19 @@ export default function SettingsDrawer({
                       onClick={() => toggleRule(rule.key)}
                       disabled={!isOwner}
                       className={cn(
-                        'w-11 h-6 rounded-xl border-none relative transition-colors duration-200',
+                        'w-11 h-6 rounded-full border-none relative transition-all duration-200',
                         !isOwner ? 'cursor-default' : 'cursor-pointer',
-                        houseRules[rule.key] ? 'bg-accent' : 'bg-switch-off',
                       )}
+                      style={{
+                        background: houseRules[rule.key]
+                          ? 'linear-gradient(135deg, var(--gold-2), var(--gold))'
+                          : 'rgba(255,255,255,0.15)',
+                        boxShadow: houseRules[rule.key] ? '0 0 12px rgba(246,190,62,0.26)' : 'none',
+                      }}
                     >
                       <div
                         className={cn(
-                          'w-toggle-knob h-toggle-knob rounded-full bg-white absolute top-toggle-off transition-[left] duration-200',
+                          'w-toggle-knob h-toggle-knob rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] absolute top-toggle-off transition-[left] duration-200',
                           houseRules[rule.key] ? 'left-toggle-on' : 'left-toggle-off',
                         )}
                       />

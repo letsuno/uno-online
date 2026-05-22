@@ -27,10 +27,10 @@ export default function Seat({ index, player, isMe, isOwnerSeat, compact = false
         title={`座位 ${seatLabel}`}
       >
         <div
-          className="rounded-full border-2 border-dashed border-white/25 flex items-center justify-center relative transition-colors group-hover:border-white/50 group-hover:bg-white/5"
+          className="rounded-full border-2 border-dashed border-white/20 flex items-center justify-center relative transition-colors group-hover:border-[rgba(246,190,62,0.55)] group-hover:bg-[rgba(246,190,62,0.08)]"
           style={{ width: avatarSize, height: avatarSize }}
         >
-          <Plus size={compact ? 14 : 18} className="text-white/30 group-hover:text-white/60 transition-colors" />
+          <Plus size={compact ? 14 : 18} className="text-white/30 group-hover:text-[var(--gold)] transition-colors" />
         </div>
         <span className="text-xs text-muted-foreground/50">{seatLabel}</span>
       </button>

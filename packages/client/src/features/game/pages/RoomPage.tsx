@@ -292,8 +292,16 @@ export default function RoomPage() {
     <GamePageShell>
       <div className="relative z-1 flex flex-col items-center gap-4 md:gap-6 w-full h-full overflow-y-auto scrollbar-thin px-4 md:px-8 py-8 md:py-16">
         {/* Title */}
-        <h2 className="font-game text-2xl md:text-[36px] text-primary text-shadow-bold flex items-center gap-2 md:gap-3 shrink-0">
-          房间 {roomCode}
+        <div className="flex items-center gap-3 shrink-0">
+          <h2
+            className="text-2xl md:text-[32px] font-black text-[var(--gold)]"
+            style={{ textShadow: '0 0 20px rgba(246,190,62,0.35)' }}
+          >
+            房间
+          </h2>
+          <span className="font-mono text-xl md:text-[26px] font-bold tracking-[0.18em] indent-[0.18em] text-[var(--gold-2)] bg-[rgba(246,190,62,0.08)] border border-[rgba(246,190,62,0.32)] rounded-[14px] px-4 py-1 md:py-1.5">
+            {roomCode}
+          </span>
           <button
             onClick={() => {
               const url = `${window.location.origin}/room/${roomCode}`;
@@ -302,12 +310,12 @@ export default function RoomPage() {
               );
               useToastStore.getState().addToast('房间链接已复制', 'success');
             }}
-            className="bg-white/10 hover:bg-white/20 rounded-lg p-1.5 cursor-pointer transition-colors"
+            className="w-9 h-9 md:w-10 md:h-10 rounded-[12px] bg-white/[0.045] border border-white/[0.12] flex items-center justify-center text-[#c7d0ec] hover:text-[var(--gold)] hover:border-[rgba(246,190,62,0.46)] cursor-pointer transition-all shrink-0"
             title="复制房间链接"
           >
-            <Copy size={16} className="text-muted-foreground" />
+            <Copy size={16} />
           </button>
-        </h2>
+        </div>
 
         {/* Circular table */}
         <SeatCircle
@@ -364,7 +372,7 @@ export default function RoomPage() {
                 }}
                 sound="click"
                 size="sm"
-                className="text-xs px-3 py-1.5"
+                className="rounded-full bg-white/[0.045] border border-white/[0.12] text-[#dbe3f8] hover:bg-white/[0.08] hover:border-white/[0.18] text-xs font-medium px-4 py-2"
               >
                 <Eye size={12} className="inline align-middle mr-1" />
                 观战
@@ -375,7 +383,7 @@ export default function RoomPage() {
               onClick={leaveRoom}
               sound="click"
               size="sm"
-              className="text-xs px-3 py-1.5"
+              className="rounded-full bg-white/[0.045] border border-white/[0.12] text-[#dbe3f8] hover:bg-white/[0.08] hover:border-white/[0.18] text-xs font-medium px-4 py-2"
             >
               离开房间
             </Button>
@@ -385,7 +393,7 @@ export default function RoomPage() {
                 onClick={dissolveRoom}
                 sound="danger"
                 size="sm"
-                className="text-xs px-3 py-1.5"
+                className="rounded-full bg-[rgba(255,92,131,0.1)] border border-[rgba(255,92,131,0.35)] text-[#ff8da8] hover:bg-[rgba(255,92,131,0.18)] hover:border-[rgba(255,92,131,0.5)] text-xs font-medium px-4 py-2"
               >
                 <Trash2 size={12} className="inline align-middle mr-1" />
                 解散房间
@@ -396,11 +404,11 @@ export default function RoomPage() {
 
         {/* Settings gear (top-right) */}
         <button
-          className="absolute top-4 right-4 w-9 h-9 bg-white/[0.08] border border-white/15 rounded-lg flex items-center justify-center hover:bg-white/15 cursor-pointer transition-colors"
+          className="absolute top-5 right-5 w-11 h-11 bg-white/[0.045] border border-white/[0.12] rounded-[14px] flex items-center justify-center text-[#c7d0ec] hover:text-[var(--gold)] hover:border-[rgba(246,190,62,0.46)] cursor-pointer transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_22px_rgba(0,0,0,0.26)]"
           onClick={() => setSettingsOpen(true)}
           title="房间设置"
         >
-          <Settings size={16} className="text-muted-foreground" />
+          <Settings size={18} />
         </button>
       </div>
 

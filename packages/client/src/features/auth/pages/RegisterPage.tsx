@@ -51,56 +51,68 @@ export default function RegisterPage() {
   return (
     <AuthLayout
       title="注册"
-      footer={<Link to="/" className="hover:text-foreground transition-colors">已有账号？去登录</Link>}
+      footer={<Link to="/" className="text-[var(--gold)] font-extrabold no-underline hover:opacity-80">已有账号？去登录</Link>}
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-[22px]">
         <div className="flex justify-center">
           <AvatarUpload avatarUrl={avatar} size={96} onUpload={setAvatar} />
         </div>
 
         <div>
-          <label className="block text-xs text-muted-foreground mb-1.5 tracking-wide">用户名（用于登录）</label>
-          <input
-            value={username}
-            onChange={(e) => { setUsername(e.target.value); setFieldError(''); }}
-            className="glass-input w-full text-foreground"
-            required
-            autoComplete="username"
-          />
+          <label className="block text-[#dce5ff] text-[18px] font-bold mb-2.5">用户名（用于登录）</label>
+          <div className="relative">
+            <svg className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--gold)]" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
+            <input
+              value={username}
+              onChange={(e) => { setUsername(e.target.value); setFieldError(''); }}
+              className="h-[68px] w-full rounded-[16px] border border-[rgba(127,154,225,0.32)] bg-[rgba(13,20,39,0.64)] text-foreground outline-0 pl-14 pr-5 text-base placeholder:text-[rgba(216,224,245,0.38)] focus:border-[rgba(246,190,62,0.6)] focus:shadow-[0_0_0_4px_rgba(246,190,62,0.10)] transition-all"
+              required
+              autoComplete="username"
+            />
+          </div>
         </div>
 
         <div>
-          <label className="block text-xs text-muted-foreground mb-1.5 tracking-wide">昵称（游戏中显示，可选）</label>
-          <input
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            className="glass-input w-full text-foreground"
-            placeholder="留空则使用用户名"
-          />
+          <label className="block text-[#dce5ff] text-[18px] font-bold mb-2.5">昵称（游戏中显示，可选）</label>
+          <div className="relative">
+            <svg className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--gold)]" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9"/><path d="m16.5 3.5 4 4L7 21H3v-4L16.5 3.5Z"/></svg>
+            <input
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder="留空则使用用户名"
+              className="h-[68px] w-full rounded-[16px] border border-[rgba(127,154,225,0.32)] bg-[rgba(13,20,39,0.64)] text-foreground outline-0 pl-14 pr-5 text-base placeholder:text-[rgba(216,224,245,0.38)] focus:border-[rgba(246,190,62,0.6)] focus:shadow-[0_0_0_4px_rgba(246,190,62,0.10)] transition-all"
+            />
+          </div>
         </div>
 
         <div>
-          <label className="block text-xs text-muted-foreground mb-1.5 tracking-wide">密码（至少 8 位，需包含字母和数字）</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => { setPassword(e.target.value); setFieldError(''); }}
-            className="glass-input w-full text-foreground"
-            required
-            autoComplete="new-password"
-          />
+          <label className="block text-[#dce5ff] text-[18px] font-bold mb-2.5">密码（至少 8 位，需包含字母和数字）</label>
+          <div className="relative">
+            <svg className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--gold)]" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setFieldError(''); }}
+              className="h-[68px] w-full rounded-[16px] border border-[rgba(127,154,225,0.32)] bg-[rgba(13,20,39,0.64)] text-foreground outline-0 pl-14 pr-5 text-base placeholder:text-[rgba(216,224,245,0.38)] focus:border-[rgba(246,190,62,0.6)] focus:shadow-[0_0_0_4px_rgba(246,190,62,0.10)] transition-all"
+              required
+              autoComplete="new-password"
+            />
+          </div>
         </div>
 
         <div>
-          <label className="block text-xs text-muted-foreground mb-1.5 tracking-wide">确认密码</label>
-          <input
-            type="password"
-            value={confirm}
-            onChange={(e) => { setConfirm(e.target.value); setFieldError(''); }}
-            className="glass-input w-full text-foreground"
-            required
-            autoComplete="new-password"
-          />
+          <label className="block text-[#dce5ff] text-[18px] font-bold mb-2.5">确认密码</label>
+          <div className="relative">
+            <svg className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--gold)]" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <input
+              type="password"
+              value={confirm}
+              onChange={(e) => { setConfirm(e.target.value); setFieldError(''); }}
+              className="h-[68px] w-full rounded-[16px] border border-[rgba(127,154,225,0.32)] bg-[rgba(13,20,39,0.64)] text-foreground outline-0 pl-14 pr-5 text-base placeholder:text-[rgba(216,224,245,0.38)] focus:border-[rgba(246,190,62,0.6)] focus:shadow-[0_0_0_4px_rgba(246,190,62,0.10)] transition-all"
+              required
+              autoComplete="new-password"
+            />
+          </div>
         </div>
 
         {turnstileSiteKey && (
@@ -109,7 +121,7 @@ export default function RegisterPage() {
 
         {fieldError && <p className="text-sm text-destructive m-0">{fieldError}</p>}
 
-        <Button type="submit" variant="game" className="w-full mt-1" disabled={submitting} sound="click">
+        <Button type="submit" variant="game" className="w-full h-[76px] text-2xl tracking-[0.35em] mt-1" disabled={submitting} sound="click">
           {submitting ? '注册中...' : '注 册'}
         </Button>
       </form>
