@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { apiPost, apiGet, UnauthorizedError } from '@/shared/api';
+import { apiPost, apiGet, apiDelete, UnauthorizedError } from '@/shared/api';
+import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 
 interface User {
   id: string;
@@ -34,6 +35,10 @@ interface AuthState {
   loadUser: () => Promise<void>;
   logout: () => void;
   setUser: (user: User) => void;
+  passkeyLogin: () => Promise<void>;
+  getPasskeys: () => Promise<{ id: string; name: string; createdAt: string }[]>;
+  registerPasskey: (name: string) => Promise<{ id: string; name: string; createdAt: string }>;
+  deletePasskey: (id: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -133,4 +138,33 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   setUser: (user: User) => set({ user }),
+
+  passkeyLogin: async () => {
+    set({ loading: true });
+    try {
+      const { options, challengeId } = await apiPost<{ options: any; challengeId: string }>('/auth/passkey/login-options', {});
+      const credential = await startAuthentication({ optionsJSON: options });
+      const data = await apiPost<{ token: string; user: User }>('/auth/passkey/login-verify', { credential, challengeId });
+      localStorage.setItem('token', data.token);
+      set({ user: data.user, token: data.token, loading: false, initialized: true, authError: null });
+    } catch (e) {
+      set({ loading: false, initialized: true });
+      throw e;
+    }
+  },
+
+  getPasskeys: async () => {
+    return apiGet<{ id: string; name: string; createdAt: string }[]>('/auth/passkey/list');
+  },
+
+  registerPasskey: async (name: string) => {
+    const options = await apiPost<any>('/auth/passkey/register-options', {});
+    const credential = await startRegistration({ optionsJSON: options });
+    const result = await apiPost<{ success: boolean; passkey: { id: string; name: string; createdAt: string } }>('/auth/passkey/register-verify', { credential, name });
+    return result.passkey;
+  },
+
+  deletePasskey: async (id: string) => {
+    await apiDelete(`/auth/passkey/${id}`);
+  },
 }));
