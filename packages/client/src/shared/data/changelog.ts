@@ -6,6 +6,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.10.0',
+    date: '2026-05-22',
+    changes: [
+      '新增 Passkey 免密码登录，支持指纹、面容和安全密钥',
+      '个人设置中可管理已绑定的 Passkey',
+      '全局视觉重构：深色主题 + 金色色系',
+      '大厅、登录、注册页面全面重构',
+      '响应式优化，移动端体验提升',
+    ],
+  },
+  {
     version: '0.9.1',
     date: '2026-05-20',
     changes: [
