@@ -28,19 +28,19 @@ export default function UserCapsule() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-3 cursor-pointer px-[18px] py-2 pr-2 rounded-[28px] bg-white/[0.03] border border-white/[0.06] transition-all hover:bg-white/[0.06] hover:border-white/10"
+        className="flex items-center gap-3 cursor-pointer h-[58px] max-sm:h-12 px-[22px] max-sm:px-0 pr-[10px] max-sm:pr-0 rounded-full bg-white/[0.045] max-sm:bg-transparent border border-white/[0.12] max-sm:border-0 transition-all hover:bg-white/[0.07] hover:border-white/[0.18] shadow-[0_18px_40px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)] max-sm:shadow-none"
       >
-        <span className="text-[13px] text-muted-foreground">
-          欢迎, <span className="font-semibold text-foreground" style={roleColor ? { color: roleColor } : undefined}>
+        <span className="text-[14px] text-[#d7def2] max-sm:hidden">
+          欢迎, <b className="text-[var(--gold)]" style={roleColor ? { color: roleColor } : undefined}>
             {user?.nickname ?? user?.username}
-          </span>
+          </b>
         </span>
-        <span className="w-9 h-9 rounded-full bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] flex items-center justify-center text-sm font-bold text-[#1a1a2e] overflow-hidden">
+        <ChevronDown size={16} className={`text-[#d7def2] transition-transform max-sm:hidden ${open ? 'rotate-180' : ''}`} />
+        <span className="w-[46px] h-[46px] max-sm:w-12 max-sm:h-12 rounded-full bg-gradient-to-br from-[#ffd66d] to-[#f6be3e] flex items-center justify-center text-base font-bold text-[#161513] overflow-hidden border-2 border-[rgba(246,190,62,0.55)] shadow-[0_0_22px_rgba(246,190,62,0.32)]">
           {user?.avatarUrl
             ? <img src={user.avatarUrl} alt={initial} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             : initial}
         </span>
-        <ChevronDown size={12} className={`text-[#475569] transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       <div className={`absolute top-[calc(100%+8px)] right-0 w-[180px] glass-panel p-1.5 z-20 transition-all duration-200 ${

@@ -153,31 +153,38 @@
 }
 
 :root {
-  --background: #1a1a2e;
-  --foreground: #e2e8f0;
-  --card: #16213e;
-  --card-foreground: #e2e8f0;
-  --popover: #16213e;
-  --popover-foreground: #e2e8f0;
-  --primary: #fbbf24;
-  --primary-foreground: #1a1a2e;
-  --secondary: rgba(255, 255, 255, 0.08);
-  --secondary-foreground: #e2e8f0;
-  --muted: #0f3460;
-  --muted-foreground: #94a3b8;
-  --accent: #fbbf24;
-  --accent-foreground: #1a1a2e;
-  --destructive: #ff3366;
+  --background: #070b16;
+  --foreground: #f4f7ff;
+  --card: #0b1021;
+  --card-foreground: #f4f7ff;
+  --popover: #12172b;
+  --popover-foreground: #f4f7ff;
+  --primary: #f6be3e;
+  --primary-foreground: #161513;
+  --secondary: rgba(255, 255, 255, 0.045);
+  --secondary-foreground: #f4f7ff;
+  --muted: #12172b;
+  --muted-foreground: #8b95b3;
+  --accent: #f6be3e;
+  --accent-foreground: #161513;
+  --destructive: #ff5c83;
   --destructive-foreground: #ffffff;
-  --border: rgba(255, 255, 255, 0.15);
-  --input: rgba(255, 255, 255, 0.15);
-  --ring: rgba(251, 191, 36, 0.5);
+  --border: rgba(255, 255, 255, 0.11);
+  --input: rgba(255, 255, 255, 0.13);
+  --ring: rgba(246, 190, 62, 0.34);
   --radius: 0.75rem;
-  --radius-btn: 24px;
-  --radius-input: 12px;
-  --radius-card-ui: 16px;
-  --radius-panel-ui: 20px;
-  --border-glow: none;
+  --radius-btn: 18px;
+  --radius-input: 16px;
+  --radius-card-ui: 22px;
+  --radius-panel-ui: 28px;
+  --border-glow: 0 0 26px rgba(246, 190, 62, 0.34), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --gold: #f6be3e;
+  --gold-2: #ffd66d;
+  --gold-3: #d8901d;
+  --panel: rgba(16, 22, 42, 0.78);
+  --panel-strong: rgba(18, 25, 48, 0.92);
+  --line: rgba(255, 255, 255, 0.11);
+  --line-gold: rgba(246, 191, 62, 0.38);
 }
 
 @layer base {
@@ -195,7 +202,7 @@
   }
   body {
     @apply bg-background text-foreground font-[family-name:var(--font-ui)];
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    background: var(--background);
     min-height: 100vh;
     overflow-x: hidden;
   }
@@ -297,35 +304,49 @@
   }
 }
 @utility glass-panel {
-  background: rgba(22, 33, 62, 0.65);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 22px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.06), transparent 46%),
+    linear-gradient(180deg, rgba(22, 29, 54, 0.9), rgba(10, 15, 30, 0.84));
+  border: 1px solid rgba(246, 190, 62, 0.26);
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(18px);
+  border-radius: var(--radius-panel-ui);
 }
 @utility glass-input {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  padding: 18px 24px;
+  background: rgba(8, 13, 28, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 20px;
+  padding: 18px 20px;
   color: var(--foreground);
   font-size: 16px;
   outline: none;
-  transition: all 0.25s;
+  transition: all 0.2s;
   &::placeholder {
-    color: rgba(51, 65, 85, 1);
+    color: rgba(210, 218, 240, 0.42);
     letter-spacing: 1px;
-    font-size: 13px;
+    font-size: 14px;
   }
   &:focus {
-    border-color: rgba(251, 191, 36, 0.3);
-    background: rgba(255, 255, 255, 0.07);
-    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.06);
+    border-color: rgba(246, 190, 62, 0.58);
+    box-shadow: 0 0 0 4px rgba(246, 190, 62, 0.10);
   }
 }
 @utility glass-modal-backdrop {
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
+}
+@utility gold-button-base {
+  border: 0;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 24%),
+    linear-gradient(135deg, var(--gold-2), var(--gold) 52%, #f1a72d);
+  color: #161513;
+  font-weight: 900;
+  box-shadow: 0 0 26px rgba(246, 190, 62, 0.34), 0 10px 30px rgba(0, 0, 0, 0.35);
+  &:hover {
+    filter: brightness(1.05);
+  }
 }
 @utility bg-wild-gradient {
   background: conic-gradient(#ff3366 0deg 90deg, #4488ff 90deg 180deg, #33cc66 180deg 270deg, #fbbf24 270deg 360deg);
