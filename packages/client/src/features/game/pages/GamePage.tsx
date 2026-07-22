@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Loader2, Eye, LogOut, UserPlus, X } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useGameStore } from '../stores/game-store';
+import { cn } from '@/shared/lib/utils';
 import { useIsMyTurn } from '../hooks/useIsMyTurn';
 import { usePlayableCardIds } from '../hooks/usePlayableCardIds';
 import { useGameSocket } from '../hooks/useGameSocket';
@@ -49,6 +50,7 @@ export default function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
   const phase = useGameStore((s) => s.phase);
+  const infoDrawerOpen = useGameStore((s) => s.infoDrawerOpen);
   const roundNumber = useGameStore((s) => s.roundNumber);
   const settings = useGameStore((s) => s.settings);
   const toggleInfoDrawer = useGameStore((s) => s.toggleInfoDrawer);
@@ -169,7 +171,10 @@ export default function GamePage() {
   }
 
   return (
-    <div className="flex h-screen flex-col relative overflow-hidden">
+    <div className={cn(
+      'flex h-screen flex-col relative overflow-hidden transition-[padding] duration-300',
+      infoDrawerOpen && 'md:pr-[360px]',
+    )}>
 
       {connectionStatus !== 'connected' && (
         <div className="fixed inset-0 z-connection flex flex-col items-center justify-center gap-3 bg-black/75">
