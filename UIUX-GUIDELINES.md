@@ -150,7 +150,7 @@ Gold theme extensions (CSS variables in `:root`): `--gold` / `--gold-2` / `--gol
 
 | Token | Stack | Usage |
 |-------|-------|-------|
-| `font-game` | `'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif` | Game text: card values, headings, effect labels, buttons |
+| `font-game` | `'Fredoka Variable', 'Microsoft YaHei', 'PingFang SC', sans-serif` | Game text: card values, headings, effect labels, buttons. Fredoka is self-hosted via `@fontsource-variable/fredoka` (imported in `app/main.tsx`); CJK falls back to system fonts |
 | `font-ui` (default) | `system-ui, -apple-system, sans-serif` | Interface elements: inputs, body text, labels |
 
 ### Named Size Tokens

@@ -50,6 +50,9 @@ importers:
 
   packages/client:
     dependencies:
+      '@fontsource-variable/fredoka':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@simplewebauthn/browser':
         specifier: ^13.3.0
         version: 13.3.0
@@ -654,6 +657,9 @@ packages:
 
   '@fastify/proxy-addr@5.1.0':
     resolution: {integrity: sha512-INS+6gh91cLUjB+PVHfu1UqcB76Sqtpyp7bnL+FYojhjygvOPA9ctiD/JDKsyD9Xgu4hUhCSJBPig/w7duNajw==}
+
+  '@fontsource-variable/fredoka@5.3.0':
+    resolution: {integrity: sha512-13w98iw2RcmYfZQRZPLSu+0YJK3HHm5A2XrpU26moFIAePmfiKfvkmEJUgkc8r5GNR+pbDijOueS1KdGAMAWmQ==}
 
   '@hexagon/base64@1.1.28':
     resolution: {integrity: sha512-lhqDEAvWixy3bZ+UOYbPwUbBkwBq5C1LAJ/xPC8Oi+lL54oyakv/npbA0aU2hgCsx/1NUd4IBvV03+aUBWxerw==}
@@ -2871,6 +2877,8 @@ snapshots:
     dependencies:
       '@fastify/forwarded': 3.0.1
       ipaddr.js: 2.4.0
+
+  '@fontsource-variable/fredoka@5.3.0': {}
 
   '@hexagon/base64@1.1.28': {}
 
