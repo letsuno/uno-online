@@ -103,13 +103,16 @@ Use the `@utility` directive for custom utility classes:
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `background` | `#1a1a2e` | Main app background |
-| `card` | `#16213e` | Card/panel surfaces |
-| `muted` | `#0f3460` | Secondary surfaces |
-| `primary` | `#fbbf24` | Accent/highlight (golden) |
-| `destructive` | `#ff3366` | Danger actions |
-| `foreground` | `#e2e8f0` | Primary text |
-| `muted-foreground` | `#94a3b8` | Secondary text |
+| `background` | `#070b16` | Main app background |
+| `card` | `#0b1021` | Card/panel surfaces |
+| `popover` / `muted` | `#12172b` | Secondary surfaces |
+| `primary` | `#f6be3e` | Accent/highlight (golden) |
+| `destructive` | `#ff5c83` | Danger actions |
+| `foreground` | `#f4f7ff` | Primary text |
+| `muted-foreground` | `#8b95b3` | Secondary text |
+| `secondary` | `rgba(255,255,255,0.045)` | Subtle fills, chips, icon buttons |
+
+Gold theme extensions (CSS variables in `:root`): `--gold` / `--gold-2` / `--gold-3` (gold ramp), `--panel` / `--panel-strong` (glass panel backgrounds), `--line` / `--line-gold` (borders). Prefer the `@utility` classes built on them (`glass-panel`, `gold-button-base`, `glass-input`, `glass-modal-backdrop`) over raw values.
 
 ### Feedback Colors
 
@@ -214,6 +217,8 @@ Use Tailwind's built-in spacing scale for padding and margin:
 | `shadow-glow-active` | Active player avatar glow |
 | `shadow-draw-ready` | Pulsing glow on draw pile when it's your turn |
 | `shadow-toast` | Notification toast shadow |
+| `shadow-input-focus` | Focus ring for text inputs (gold halo) |
+| `shadow-tech` | Gold glow + drop shadow for prominent panels |
 
 ---
 

@@ -12,15 +12,15 @@ function Section({ title, defaultOpen = true, children }: SectionProps) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="border border-white/10 rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-hidden">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 w-full px-3 py-2 text-sm font-bold text-foreground bg-slate-800/50 cursor-pointer text-left"
+        className="flex items-center gap-2 w-full px-3 py-2 text-sm font-bold text-foreground bg-secondary cursor-pointer text-left"
       >
         {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         {title}
       </button>
-      {open && <div className="px-3 py-2 text-xs text-slate-300 leading-relaxed">{children}</div>}
+      {open && <div className="px-3 py-2 text-xs text-muted-foreground leading-relaxed">{children}</div>}
     </div>
   );
 }
@@ -32,11 +32,11 @@ function MiniCard({ color, label }: { color: string; label: string }) {
     green: 'bg-uno-green',
     yellow: 'bg-uno-yellow',
     wild: 'bg-wild-gradient',
-    dark: 'bg-slate-700 border border-slate-500',
+    dark: 'bg-[#232a45] border border-white/25',
   };
 
   return (
-    <div className={cn('inline-flex items-center justify-center w-8 h-11 rounded text-white text-2xs font-bold shrink-0', bgMap[color] ?? 'bg-slate-600')}>
+    <div className={cn('inline-flex items-center justify-center w-8 h-11 rounded text-white text-2xs font-bold shrink-0', bgMap[color] ?? 'bg-muted')}>
       {label}
     </div>
   );

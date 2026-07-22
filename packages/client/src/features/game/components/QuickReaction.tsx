@@ -36,7 +36,7 @@ export default function QuickReaction({ onSelect, onClose, anchorX, anchorY }: Q
         exit={{ opacity: 0, scale: 0.7, y: 6 }}
         transition={{ duration: 0.18, ease: 'easeOut' }}
       >
-        <div className="glass-panel !rounded-xl p-2 flex gap-1 mb-2">
+        <div className="glass-panel-sm p-2 flex gap-1 mb-2">
           {EMOJIS.map((emoji) => (
             <button
               key={emoji}

@@ -310,7 +310,7 @@ export default function RoomPage() {
               );
               useToastStore.getState().addToast('房间链接已复制', 'success');
             }}
-            className="w-9 h-9 md:w-10 md:h-10 rounded-[12px] bg-white/[0.045] border border-white/[0.12] flex items-center justify-center text-[#c7d0ec] hover:text-[var(--gold)] hover:border-[rgba(246,190,62,0.46)] cursor-pointer transition-all shrink-0"
+            className="icon-button w-9 h-9 md:w-10 md:h-10 rounded-[12px] shrink-0"
             title="复制房间链接"
           >
             <Copy size={16} />
@@ -330,7 +330,7 @@ export default function RoomPage() {
         {/* Action buttons */}
         <div className="flex flex-col items-center gap-2 shrink-0">
           {isSpectator ? (
-            <p className="text-xs text-blue-400/60">点击空座位入座</p>
+            <p className="text-xs text-muted-foreground">点击空座位入座</p>
           ) : myPlayer ? (
             <div className="flex flex-wrap justify-center gap-2.5">
               <Button
@@ -404,7 +404,7 @@ export default function RoomPage() {
 
         {/* Settings gear (top-right) */}
         <button
-          className="absolute top-5 right-5 w-11 h-11 bg-white/[0.045] border border-white/[0.12] rounded-[14px] flex items-center justify-center text-[#c7d0ec] hover:text-[var(--gold)] hover:border-[rgba(246,190,62,0.46)] cursor-pointer transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_22px_rgba(0,0,0,0.26)]"
+          className="icon-button absolute top-5 right-5 w-11 h-11 rounded-[14px] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_22px_rgba(0,0,0,0.26)]"
           onClick={() => setSettingsOpen(true)}
           title="房间设置"
         >

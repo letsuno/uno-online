@@ -350,21 +350,21 @@ function SpectatorBar({ phase, onBackToLobby, onJoined }: { phase: string | null
       {queued ? (
         <button
           onClick={toggleQueue}
-          className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-xs text-foreground transition-colors hover:bg-white/20"
+          className="ml-1 inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-foreground transition-colors hover:bg-white/10"
         >
           <X size={12} /> 取消加入
         </button>
       ) : (
         <button
           onClick={toggleQueue}
-          className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/80 px-2 py-1 text-xs text-white transition-colors hover:bg-primary"
+          className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/80 px-2 py-1 text-xs text-primary-foreground transition-colors hover:bg-primary"
         >
           <UserPlus size={12} /> 下局加入
         </button>
       )}
       <button
         onClick={onBackToLobby}
-        className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-xs text-foreground transition-colors hover:bg-white/20"
+        className="ml-1 inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-foreground transition-colors hover:bg-white/10"
       >
         <LogOut size={12} /> 退出
       </button>

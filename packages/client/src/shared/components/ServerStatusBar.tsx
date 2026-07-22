@@ -2,13 +2,7 @@ import { useEffect } from 'react';
 import { Globe } from 'lucide-react';
 import { useServerStore } from '@/shared/stores/server-store';
 import { BUILD_VERSION } from '@/shared/build-info';
-
-function getPingColor(ms: number | null | undefined) {
-  if (ms == null) return { dot: '#666', text: '#64748b' };
-  if (ms < 50) return { dot: '#22c55e', text: '#4ade80' };
-  if (ms <= 150) return { dot: '#fbbf24', text: '#fbbf24' };
-  return { dot: '#ef4444', text: '#f87171' };
-}
+import { getPingColor } from '@/shared/lib/ping';
 
 export default function ServerStatusBar() {
   const { servers, currentServerId, serverInfoMap, latencyMap, openModal, refreshServerInfo } = useServerStore();

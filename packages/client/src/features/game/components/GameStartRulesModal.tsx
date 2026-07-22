@@ -104,7 +104,7 @@ export default function GameStartRulesModal({ open, houseRules, onClose }: GameS
             <div className="border-t border-white/5 px-5 py-3.5">
               <button
                 onClick={onClose}
-                className="w-full rounded-lg bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] px-4 py-2 text-sm font-bold text-[#1a1a2e] transition-opacity hover:opacity-90"
+                className="gold-button-base w-full px-4 py-2 text-sm transition-all"
               >
                 开始游戏
               </button>

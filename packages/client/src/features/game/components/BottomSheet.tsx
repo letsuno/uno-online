@@ -14,7 +14,7 @@ export default function BottomSheet({ open, onClose, title, children }: BottomSh
       {open && (
         <div className="fixed inset-0 z-modal">
           <motion.div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 glass-modal-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -22,7 +22,8 @@ export default function BottomSheet({ open, onClose, title, children }: BottomSh
             onClick={onClose}
           />
           <motion.div
-            className="absolute bottom-0 left-0 right-0 max-h-sheet-max-h bg-card rounded-t-2xl border-t border-white/10 flex flex-col overflow-hidden"
+            className="absolute bottom-0 left-0 right-0 max-h-sheet-max-h rounded-t-2xl border-t border-[rgba(246,190,62,0.22)] backdrop-blur-xl flex flex-col overflow-hidden"
+            style={{ background: 'linear-gradient(180deg, rgba(23,30,56,0.97), rgba(12,17,34,0.98))' }}
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}

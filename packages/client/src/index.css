@@ -130,6 +130,7 @@
   --shadow-glow-active: 0 0 12px rgba(251, 191, 36, 0.6);
   --shadow-draw-ready: 0 0 0 4px rgba(251, 191, 36, 0.28), 0 0 26px rgba(251, 191, 36, 0.72), 3px 4px 0px rgba(0, 0, 0, 0.2);
   --shadow-toast: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-input-focus: 0 0 0 4px rgba(246, 190, 62, 0.10);
 
   --z-index-card: 1;
   --z-index-topbar: 10;
@@ -312,6 +313,15 @@
   backdrop-filter: blur(18px);
   border-radius: var(--radius-panel-ui);
 }
+@utility glass-panel-sm {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.06), transparent 46%),
+    linear-gradient(180deg, rgba(22, 29, 54, 0.9), rgba(10, 15, 30, 0.84));
+  border: 1px solid rgba(246, 190, 62, 0.26);
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(18px);
+  border-radius: var(--radius-xl);
+}
 @utility glass-input {
   background: rgba(8, 13, 28, 0.56);
   border: 1px solid rgba(255, 255, 255, 0.13);
@@ -329,6 +339,34 @@
   &:focus {
     border-color: rgba(246, 190, 62, 0.58);
     box-shadow: 0 0 0 4px rgba(246, 190, 62, 0.10);
+  }
+}
+@utility themed-input {
+  border: 1px solid rgba(127, 154, 225, 0.32);
+  background: rgba(13, 20, 39, 0.64);
+  color: var(--foreground);
+  outline: none;
+  transition: all 0.2s;
+  &::placeholder {
+    color: rgba(216, 224, 245, 0.38);
+  }
+  &:focus {
+    border-color: rgba(246, 190, 62, 0.6);
+    box-shadow: var(--shadow-input-focus);
+  }
+}
+@utility icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--secondary);
+  border: 1px solid var(--line);
+  color: #c7d0ec;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover {
+    color: var(--gold);
+    border-color: rgba(246, 190, 62, 0.46);
   }
 }
 @utility glass-modal-backdrop {
