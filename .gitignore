@@ -19,3 +19,4 @@ yarn.lock
 vite.config.js
 vite.config.d.ts
 .vscode/
+packages/e2e/output/

@@ -1,0 +1,12 @@
+{
+  "name": "@uno-online/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "visual": "node visual.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "^1.49.0"
+  }
+}
