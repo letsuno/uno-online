@@ -9,7 +9,25 @@ import { processAvatar, AvatarError } from '../../../auth/avatar.js';
 export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const { config } = ctx;
 
-  if (config.devMode) return;
+  // DEV_MODE：临时用户没有 DB 记录，提供基于 JWT 的只读资料视图，
+  // 让个人资料弹窗在开发/测试环境可用（PATCH/头像上传等写操作不注册）
+  if (config.devMode) {
+    const devPreHandler = authPreHandler(config.jwtSecret);
+    fastify.get('/profile', { preHandler: devPreHandler }, async (request) => {
+      const u = (request as AuthenticatedRequest).user;
+      return {
+        user: {
+          id: u.userId,
+          username: u.username,
+          nickname: u.nickname,
+          avatarUrl: u.avatarUrl ?? null,
+          githubId: null,
+          role: u.role ?? 'normal',
+        },
+      };
+    });
+    return;
+  }
 
   const preHandler = authPreHandler(config.jwtSecret);
 

@@ -105,6 +105,11 @@ async function run() {
         }
 
         if (STAGES.includes('profile')) {
+          // 可能尚未进站（如 --stages profile 单独跑）
+          if (page.url().startsWith('about:')) {
+            await page.goto(`${CLIENT_URL}/`, { waitUntil: 'domcontentloaded' });
+            await waitSocketConnected(page);
+          }
           await page.evaluate(() => window.__uno?.useProfileModalStore?.getState?.().open());
           await page.waitForTimeout(600);
           await shot(page, 'profile', w, h, errors);

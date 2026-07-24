@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "visual": "node visual.mjs"
+    "visual": "node visual.mjs",
+    "smoke": "node smoke.mjs"
   },
   "dependencies": {
     "playwright-core": "^1.49.0"

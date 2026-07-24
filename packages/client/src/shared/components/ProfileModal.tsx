@@ -214,7 +214,7 @@ export default function ProfileModal() {
       {/* 全出血布局：抵消 Modal 内容区内边距，保持左右分栏结构 */}
       <div className="absolute inset-0 grid grid-cols-[270px_1fr] max-md:grid-cols-1">
         {/* Left: Sidebar */}
-        <div className="border-r border-white/[0.08] p-[34px_22px] bg-white/[0.025] flex flex-col max-md:hidden">
+        <div className="border-r border-white/[0.08] p-[34px_22px] bg-white/[0.025] flex flex-col max-md:hidden overflow-y-auto scrollbar-thin shrink-0">
           <div className="self-stretch flex items-center gap-3 text-[26px] font-black mb-8">
             <span className="text-primary">♠</span>
             <span>设置</span>
