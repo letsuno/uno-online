@@ -5,14 +5,13 @@ import { getRoleColor } from '@/shared/lib/utils';
 
 interface SpectatorBarProps {
   spectators: RoomSpectator[];
-  compact?: boolean;
 }
 
-export default function SpectatorBar({ spectators, compact = false }: SpectatorBarProps) {
+export default function SpectatorBar({ spectators }: SpectatorBarProps) {
   if (spectators.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2">
+    <div className="flex items-center gap-2 bg-secondary border border-border rounded-xl px-3 py-2">
       <Eye size={13} className="text-muted-foreground shrink-0" />
       <span className="text-xs text-muted-foreground shrink-0">{spectators.length}</span>
 
@@ -24,7 +23,6 @@ export default function SpectatorBar({ spectators, compact = false }: SpectatorB
               key={spectator.userId}
               className={cn(
                 'flex items-center gap-1',
-                compact && 'gap-0',
                 !spectator.connected && 'opacity-40',
               )}
               title={spectator.nickname + (!spectator.connected ? ' (已断线)' : '')}
@@ -46,17 +44,14 @@ export default function SpectatorBar({ spectators, compact = false }: SpectatorB
                 )}
               </div>
 
-              {/* Name — hidden in compact mode */}
-              {!compact && (
-                <span
-                  className="text-xs text-muted-foreground leading-none"
-                  style={roleColor ? { color: roleColor } : undefined}
-                >
-                  {spectator.nickname.length > 8
-                    ? spectator.nickname.slice(0, 8) + '…'
-                    : spectator.nickname}
-                </span>
-              )}
+              <span
+                className="text-xs text-muted-foreground leading-none"
+                style={roleColor ? { color: roleColor } : undefined}
+              >
+                {spectator.nickname.length > 8
+                  ? spectator.nickname.slice(0, 8) + '…'
+                  : spectator.nickname}
+              </span>
             </div>
           );
         })}

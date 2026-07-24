@@ -15,6 +15,8 @@ import { useLeaveRoom } from '../hooks/useLeaveRoom';
 import { DEFAULT_HOUSE_RULES } from '@uno-online/shared';
 import type { HouseRules } from '@uno-online/shared';
 import { Button } from '@/shared/components/ui/Button';
+import { IconButton } from '@/shared/components/ui/IconButton';
+import FitScaler from '@/shared/components/FitScaler';
 import { useBgm } from '@/shared/sound/useBgm';
 import BgmToast from '@/shared/components/BgmToast';
 import GamePageShell from '@/shared/components/GamePageShell';
@@ -54,14 +56,6 @@ export default function RoomPage() {
     player: RoomSeatPlayer | null;
     position: { x: number; y: number };
   } | null>(null);
-
-  /* Responsive compact detection */
-  const [compact, setCompact] = useState(window.innerWidth < 768);
-  useEffect(() => {
-    const handler = () => setCompact(window.innerWidth < 768);
-    window.addEventListener('resize', handler);
-    return () => window.removeEventListener('resize', handler);
-  }, []);
 
   /* Rejoin effect */
   useEffect(() => {
@@ -290,19 +284,20 @@ export default function RoomPage() {
 
   return (
     <GamePageShell>
-      <div className="relative z-1 flex flex-col items-center gap-4 md:gap-6 w-full h-full overflow-y-auto scrollbar-thin px-4 md:px-8 py-8 md:py-16">
+      <FitScaler align="center" maxScale={1} className="absolute inset-0 z-card">
+        <div className="flex flex-col items-center gap-6 w-[760px] portrait:w-[440px]">
         {/* Title */}
         <div className="flex items-center gap-3 shrink-0">
           <h2
-            className="text-2xl md:text-[32px] font-black text-[var(--gold)]"
+            className="text-[32px] font-black text-primary"
             style={{ textShadow: '0 0 20px rgba(246,190,62,0.35)' }}
           >
             房间
           </h2>
-          <span className="font-mono text-xl md:text-[26px] font-bold tracking-[0.18em] indent-[0.18em] text-[var(--gold-2)] bg-[rgba(246,190,62,0.08)] border border-[rgba(246,190,62,0.32)] rounded-[14px] px-4 py-1 md:py-1.5">
+          <span className="font-mono text-[26px] font-bold tracking-[0.18em] indent-[0.18em] text-[var(--gold-2)] bg-primary/8 border border-[rgba(246,190,62,0.32)] rounded-[14px] px-4 py-1.5">
             {roomCode}
           </span>
-          <button
+          <IconButton
             onClick={() => {
               const url = `${window.location.origin}/room/${roomCode}`;
               navigator.clipboard.writeText(
@@ -310,22 +305,20 @@ export default function RoomPage() {
               );
               useToastStore.getState().addToast('房间链接已复制', 'success');
             }}
-            className="icon-button w-9 h-9 md:w-10 md:h-10 rounded-[12px] shrink-0"
             title="复制房间链接"
           >
             <Copy size={16} />
-          </button>
+          </IconButton>
         </div>
 
         {/* Circular table */}
         <SeatCircle
           seats={seats}
           onSeatClick={handleSeatClick}
-          compact={compact}
         />
 
         {/* Spectator bar */}
-        <SpectatorBar spectators={spectators} compact={compact} />
+        <SpectatorBar spectators={spectators} />
 
         {/* Action buttons */}
         <div className="flex flex-col items-center gap-2 shrink-0">
@@ -337,7 +330,7 @@ export default function RoomPage() {
                 variant="game"
                 onClick={toggleReady}
                 sound="ready"
-                className="text-sm md:text-base px-5 py-2.5 tracking-normal"
+                className="text-base px-6 py-3 tracking-normal"
               >
                 {myPlayer.ready ? '取消准备' : '准备'}
               </Button>
@@ -345,7 +338,7 @@ export default function RoomPage() {
                 <Button
                   variant="game"
                   className={cn(
-                    'text-sm md:text-base px-5 py-2.5 tracking-normal',
+                    'text-base px-6 py-3 tracking-normal',
                     !allReady && 'opacity-50',
                   )}
                   onClick={startGame}
@@ -372,7 +365,7 @@ export default function RoomPage() {
                 }}
                 sound="click"
                 size="sm"
-                className="rounded-full bg-white/[0.045] border border-white/[0.12] text-[#dbe3f8] hover:bg-white/[0.08] hover:border-white/[0.18] text-xs font-medium px-4 py-2"
+                className="rounded-full bg-secondary border border-border text-foreground/85 hover:bg-white/[0.08] text-xs font-bold px-4 py-2"
               >
                 <Eye size={12} className="inline align-middle mr-1" />
                 观战
@@ -383,7 +376,7 @@ export default function RoomPage() {
               onClick={leaveRoom}
               sound="click"
               size="sm"
-              className="rounded-full bg-white/[0.045] border border-white/[0.12] text-[#dbe3f8] hover:bg-white/[0.08] hover:border-white/[0.18] text-xs font-medium px-4 py-2"
+              className="rounded-full bg-secondary border border-border text-foreground/85 hover:bg-white/[0.08] text-xs font-bold px-4 py-2"
             >
               离开房间
             </Button>
@@ -393,7 +386,7 @@ export default function RoomPage() {
                 onClick={dissolveRoom}
                 sound="danger"
                 size="sm"
-                className="rounded-full bg-[rgba(255,92,131,0.1)] border border-[rgba(255,92,131,0.35)] text-[#ff8da8] hover:bg-[rgba(255,92,131,0.18)] hover:border-[rgba(255,92,131,0.5)] text-xs font-medium px-4 py-2"
+                className="rounded-full bg-destructive/10 border border-destructive/35 text-destructive hover:bg-destructive/18 text-xs font-bold px-4 py-2"
               >
                 <Trash2 size={12} className="inline align-middle mr-1" />
                 解散房间
@@ -402,15 +395,17 @@ export default function RoomPage() {
           </div>
         </div>
 
-        {/* Settings gear (top-right) */}
-        <button
-          className="icon-button absolute top-5 right-5 w-11 h-11 rounded-[14px] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_22px_rgba(0,0,0,0.26)]"
-          onClick={() => setSettingsOpen(true)}
-          title="房间设置"
-        >
-          <Settings size={18} />
-        </button>
-      </div>
+        </div>
+      </FitScaler>
+
+      {/* Settings gear (top-right, HUD) */}
+      <IconButton
+        className="absolute top-5 right-5 w-11 h-11 rounded-[14px]"
+        onClick={() => setSettingsOpen(true)}
+        title="房间设置"
+      >
+        <Settings size={18} />
+      </IconButton>
 
       <SettingsDrawer
         open={settingsOpen}

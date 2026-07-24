@@ -6,6 +6,8 @@ import { apiGet } from '@/shared/api';
 import AvatarUpload from '../components/AvatarUpload';
 import AuthLayout from '../components/AuthLayout';
 import { Button } from '@/shared/components/ui/Button';
+import { Input } from '@/shared/components/ui/Input';
+import { User, Pencil, Lock } from 'lucide-react';
 import { useBgm } from '@/shared/sound/useBgm';
 import { Turnstile } from 'react-turnstile';
 
@@ -59,60 +61,52 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="block text-[#dce5ff] text-[18px] font-bold mb-2.5">用户名（用于登录）</label>
-          <div className="relative">
-            <svg className="absolute left-5 top-1/2 -translate-y-1/2 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
-            <input
-              value={username}
-              onChange={(e) => { setUsername(e.target.value); setFieldError(''); }}
-              className="themed-input h-[68px] w-full rounded-input pl-14 pr-5 text-base"
-              required
-              autoComplete="username"
-            />
-          </div>
+          <label className="block text-foreground text-[18px] font-bold mb-2.5">用户名（用于登录）</label>
+          <Input
+            icon={<User size={24} />}
+            inputSize="lg"
+            value={username}
+            onChange={(e) => { setUsername(e.target.value); setFieldError(''); }}
+            required
+            autoComplete="username"
+          />
         </div>
 
         <div>
-          <label className="block text-[#dce5ff] text-[18px] font-bold mb-2.5">昵称（游戏中显示，可选）</label>
-          <div className="relative">
-            <svg className="absolute left-5 top-1/2 -translate-y-1/2 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9"/><path d="m16.5 3.5 4 4L7 21H3v-4L16.5 3.5Z"/></svg>
-            <input
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              placeholder="留空则使用用户名"
-              className="themed-input h-[68px] w-full rounded-input pl-14 pr-5 text-base"
-            />
-          </div>
+          <label className="block text-foreground text-[18px] font-bold mb-2.5">昵称（游戏中显示，可选）</label>
+          <Input
+            icon={<Pencil size={24} />}
+            inputSize="lg"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            placeholder="留空则使用用户名"
+          />
         </div>
 
         <div>
-          <label className="block text-[#dce5ff] text-[18px] font-bold mb-2.5">密码（至少 8 位，需包含字母和数字）</label>
-          <div className="relative">
-            <svg className="absolute left-5 top-1/2 -translate-y-1/2 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setFieldError(''); }}
-              className="themed-input h-[68px] w-full rounded-input pl-14 pr-5 text-base"
-              required
-              autoComplete="new-password"
-            />
-          </div>
+          <label className="block text-foreground text-[18px] font-bold mb-2.5">密码（至少 8 位，需包含字母和数字）</label>
+          <Input
+            icon={<Lock size={24} />}
+            inputSize="lg"
+            type="password"
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); setFieldError(''); }}
+            required
+            autoComplete="new-password"
+          />
         </div>
 
         <div>
-          <label className="block text-[#dce5ff] text-[18px] font-bold mb-2.5">确认密码</label>
-          <div className="relative">
-            <svg className="absolute left-5 top-1/2 -translate-y-1/2 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-            <input
-              type="password"
-              value={confirm}
-              onChange={(e) => { setConfirm(e.target.value); setFieldError(''); }}
-              className="themed-input h-[68px] w-full rounded-input pl-14 pr-5 text-base"
-              required
-              autoComplete="new-password"
-            />
-          </div>
+          <label className="block text-foreground text-[18px] font-bold mb-2.5">确认密码</label>
+          <Input
+            icon={<Lock size={24} />}
+            inputSize="lg"
+            type="password"
+            value={confirm}
+            onChange={(e) => { setConfirm(e.target.value); setFieldError(''); }}
+            required
+            autoComplete="new-password"
+          />
         </div>
 
         {turnstileSiteKey && (
