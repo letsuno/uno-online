@@ -178,7 +178,7 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
                   {!isGameOver && (
                     <td className="px-2 py-1.5 text-center whitespace-nowrap">
                       <span className="inline-flex items-center gap-1">
-                        {ready ? <Check size={14} className="inline text-green-400" /> : <span className="text-xs text-muted-foreground">等待中</span>}
+                        {ready ? <Check size={14} className="inline text-speaking" /> : <span className="text-xs text-muted-foreground">等待中</span>}
                         {isHost && !isSelf && !isSpectator && (
                           <button onClick={() => onKickPlayer(p.id)} className="text-destructive hover:text-destructive/80 cursor-pointer bg-transparent border-none" title={p.isBot ? '移除机器人' : '移至观战席'}><UserX size={14} className="inline" /></button>
                         )}

@@ -1,0 +1,211 @@
+/* ==========================================================================
+   设计 Token —— 所有颜色/半径/间距/字号/阴影/层级的唯一定义处
+   组件禁止硬编码这些值，一律引用本文件 token。
+   ========================================================================== */
+
+@theme inline {
+  /* ---- 语义色（引用 :root 中的值，便于整体换肤） ---- */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* ---- UNO 牌色 ---- */
+  --color-uno-red: #ff3366;
+  --color-uno-blue: #4488ff;
+  --color-uno-green: #33cc66;
+  --color-uno-yellow: #fbbf24;
+
+  /* ---- 功能色 ---- */
+  --color-toast-info: rgba(59, 130, 246, 0.9);
+  --color-toast-error: rgba(239, 68, 68, 0.9);
+  --color-toast-success: rgba(34, 197, 94, 0.9);
+  --color-voice-active: rgba(34, 197, 94, 0.3);
+  --color-voice-active-border: #22c55e;
+  --color-voice-inactive: rgba(148, 163, 184, 0.2);
+  --color-voice-inactive-border: rgba(148, 163, 184, 0.3);
+  --color-voice-leave: rgba(239, 68, 68, 0.3);
+  --color-voice-leave-border: #ef4444;
+  --color-speaking: #22c55e;
+  --color-error-text: #ef4444;
+  --color-effect-skip: #ff6b6b;
+  --color-switch-off: rgba(148, 163, 184, 0.3);
+  --color-card-back-from: #1e3a5f;
+  --color-card-back-to: #0f2744;
+
+  /* ---- 头像底色 ---- */
+  --color-avatar-1: #ff3366;
+  --color-avatar-2: #33cc66;
+  --color-avatar-3: #4488ff;
+  --color-avatar-4: #f97316;
+  --color-avatar-5: #a855f7;
+  --color-avatar-6: #ec4899;
+  --color-avatar-7: #14b8a6;
+  --color-avatar-8: #eab308;
+  --color-avatar-9: #6366f1;
+
+  /* ---- 圆角 ----
+     sm/md/lg/xl：通用小组件刻度
+     card/card-md/panel：UNO 牌面与游戏面板
+     btn/input/card-ui/panel-ui：界面控件与玻璃面板 */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-card: 14px;
+  --radius-card-md: 18px;
+  --radius-panel: 20px;
+
+  /* ---- 字体 ---- */
+  --font-game: 'Fredoka Variable', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-ui: system-ui, -apple-system, sans-serif;
+
+  /* ---- 间距 ---- */
+  --spacing-card-w: 52px;
+  --spacing-card-h: 76px;
+  --spacing-card-w-md: 70px;
+  --spacing-card-h-md: 100px;
+  --spacing-card-mini-w: 22px;
+  --spacing-card-mini-h: 32px;
+  --spacing-card-log-w: 20px;
+  --spacing-card-log-h: 28px;
+  --spacing-card-sm-w: 28px;
+  --spacing-card-sm-h: 40px;
+  --spacing-chat-w: 280px;
+  --spacing-chat-h: 320px;
+  --spacing-chat-bottom: 100px;
+  --spacing-toggle-knob: 18px;
+  --spacing-toggle-on: 23px;
+  --spacing-toggle-off: 3px;
+  --spacing-color-burst: 60px;
+  --spacing-dev-input: 200px;
+  --spacing-join-input: 160px;
+  --spacing-profile-max: 500px;
+  --spacing-toast-max: 360px;
+  --spacing-houserules-max: 400px;
+  --spacing-houserules-max-h: 400px;
+  --spacing-room-min: 300px;
+  --spacing-voice-error-max: 60px;
+  --spacing-sheet-max-h: 70vh;
+  --spacing-hand-pb: 18px;
+  --spacing-opponent-gap: 3px;
+  --spacing-direction-sm: 120px;
+  --spacing-draw-pile-min: 92px;
+  --spacing-hint-bottom: calc(100% + 8px);
+  --spacing-uno-top: 40%;
+  --spacing-turn-top: 42%;
+  --spacing-card-border: 3px;
+
+  /* ---- 字号 ---- */
+  --font-size-2xs: 9px;
+  --font-size-xs: 10px;
+  --font-size-sm: 11px;
+  --font-size-caption: 13px;
+  --font-size-card-back: 12px;
+  --font-size-card-number: 1.75rem;
+  --font-size-card-number-md: 2.375rem;
+  --font-size-card-symbol: 1.375rem;
+  --font-size-card-symbol-md: 1.75rem;
+  --font-size-card-draw: 1.5rem;
+  --font-size-card-wild: 1.375rem;
+  --font-size-card-wild4: 1.25rem;
+  --font-size-zero: 0px;
+  --font-size-effect: 3.5rem;
+  --font-size-effect-xl: 4rem;
+  --font-size-throw: 3.5rem;
+  --font-size-timer-critical: 4.5rem;
+  --font-size-uno-call: 4rem;
+  --font-size-heading-xl: 3rem;
+  --font-size-heading-lg: 2rem;
+  --font-size-direction: 1.75rem;
+  --font-size-title-responsive: clamp(3rem, 5vw, 4rem);
+
+  /* ---- 阴影 ---- */
+  --shadow-card: 3px 4px 0px rgba(0, 0, 0, 0.2);
+  --shadow-card-sm: 2px 3px 0px rgba(0, 0, 0, 0.3);
+  --shadow-card-playable: 0 0 12px rgba(251, 191, 36, 0.5), 3px 4px 0px rgba(0, 0, 0, 0.2);
+  --shadow-glow-active: 0 0 12px rgba(251, 191, 36, 0.6);
+  --shadow-draw-ready: 0 0 0 4px rgba(251, 191, 36, 0.28), 0 0 26px rgba(251, 191, 36, 0.72), 3px 4px 0px rgba(0, 0, 0, 0.2);
+  --shadow-toast: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-input-focus: 0 0 0 4px rgba(246, 190, 62, 0.10);
+
+  /* ---- 层级（唯一合法 z-index 集合，禁止任意值） ---- */
+  --z-index-card: 1;
+  --z-index-topbar: 10;
+  --z-index-actions: 20;
+  --z-index-fab: 50;
+  --z-index-autopilot: 60;
+  --z-index-confetti: 85;
+  --z-index-effects: 90;
+  --z-index-timer-overlay: 95;
+  --z-index-modal: 100;
+  --z-index-connection: 200;
+  --z-index-toast: 300;
+  --z-index-ace: 310;
+  --z-index-cheat: 400;
+  --z-index-cheat-flash: 410;
+
+  /* ---- 动画 ---- */
+  --animate-timer-flash: timerFlash 0.5s ease-in-out infinite alternate;
+  --animate-draw-pulse: drawReadyPulse 1s ease-in-out infinite alternate;
+  --animate-shake: shake 0.1s ease-in-out 3;
+
+  --scale-click: 0.97;
+  --scale-draw-hover: 1.04;
+  --tracking-room-code: 4px;
+}
+
+:root {
+  /* ---- 语义色值 ---- */
+  --background: #070b16;
+  --foreground: #f4f7ff;
+  --card: #0b1021;
+  --card-foreground: #f4f7ff;
+  --popover: #12172b;
+  --popover-foreground: #f4f7ff;
+  --primary: #f6be3e;
+  --primary-foreground: #161513;
+  --secondary: rgba(255, 255, 255, 0.045);
+  --secondary-foreground: #f4f7ff;
+  --muted: #12172b;
+  --muted-foreground: #8b95b3;
+  --accent: #f6be3e;
+  --accent-foreground: #161513;
+  --destructive: #ff5c83;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.11);
+  --input: rgba(255, 255, 255, 0.13);
+  --ring: rgba(246, 190, 62, 0.34);
+
+  /* ---- 界面控件圆角 ---- */
+  --radius: 0.75rem;
+  --radius-btn: 18px;
+  --radius-input: 16px;
+  --radius-card-ui: 22px;
+  --radius-panel-ui: 28px;
+
+  /* ---- 金色主题扩展 ---- */
+  --border-glow: 0 0 26px rgba(246, 190, 62, 0.34), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --gold: #f6be3e;
+  --gold-2: #ffd66d;
+  --gold-3: #d8901d;
+  --panel: rgba(16, 22, 42, 0.78);
+  --panel-strong: rgba(18, 25, 48, 0.92);
+  --line: rgba(255, 255, 255, 0.11);
+  --line-gold: rgba(246, 191, 62, 0.38);
+}

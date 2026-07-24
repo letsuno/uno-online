@@ -173,7 +173,7 @@ export default function VoicePanel() {
     active
       ? 'bg-voice-active border-voice-active-border'
       : 'bg-voice-inactive border-voice-inactive-border',
-    speaking && 'scale-105 ring-2 ring-green-300/90 shadow-[0_0_0_6px_rgba(34,197,94,0.18),0_0_28px_rgba(34,197,94,0.85)]'
+    speaking && 'scale-105 ring-2 ring-speaking/90 shadow-[0_0_0_6px_color-mix(in_srgb,var(--color-speaking)_18%,transparent),0_0_28px_color-mix(in_srgb,var(--color-speaking)_85%,transparent)]'
   );
 
   return (
@@ -215,7 +215,7 @@ export default function VoicePanel() {
                 {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </button>
               <span className={cn(
-                'text-xs text-center bg-black/40 rounded-lg px-1.5 py-0.5',
+                'text-xs text-center bg-background/60 rounded-lg px-1.5 py-0.5',
                 speakingCount > 0 ? 'text-speaking' : 'text-muted-foreground'
               )}>
                 {speakingCount > 0 && <Volume2 size={10} className="inline align-middle mr-0.5" />}{otherUsers.length + 1}人
@@ -228,7 +228,7 @@ export default function VoicePanel() {
                 <div key={user.id} className="flex items-center gap-1.5">
                   <span className={cn(
                     'w-2 h-2 rounded-full shrink-0',
-                    speakingByUserId[user.id] ? 'bg-green-400' : 'bg-gray-500'
+                    speakingByUserId[user.id] ? 'bg-speaking' : 'bg-muted-foreground'
                   )} />
                   <span className="text-2xs text-foreground truncate flex-1">{user.name}</span>
                   <input
@@ -250,7 +250,7 @@ export default function VoicePanel() {
         <span className="text-2xs text-muted-foreground text-center">连接中…</span>
       )}
       {status === 'reconnecting' && (
-        <span className="text-2xs text-warning text-center">重连中…</span>
+        <span className="text-2xs text-primary text-center">重连中…</span>
       )}
       {status === 'error' && (
         <span className="text-2xs text-error-text max-w-voice-error-max text-center">{connectError || '连接失败'}</span>

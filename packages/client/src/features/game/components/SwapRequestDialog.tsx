@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { SWAP_REQUEST_TIMEOUT_MS } from '@uno-online/shared';
 import { Button } from '@/shared/components/ui/Button';
+import Modal from '@/shared/components/ui/Modal';
 
 interface SwapRequestDialogProps {
   requesterId: string;
@@ -34,14 +35,38 @@ export default function SwapRequestDialog({
   }, [totalSeconds, onRespond]);
 
   return (
-    <div className="fixed inset-0 glass-modal-backdrop z-50 flex items-center justify-center">
-      <div className="glass-panel p-6 w-[320px] max-w-[90vw] flex flex-col items-center gap-4">
-        {/* Title */}
-        <div className="text-center">
-          <h3 className="text-lg font-bold font-game text-foreground">换座请求</h3>
-          <p className="text-sm text-muted-foreground mt-1">来自 {requesterSeatIndex + 1}号位</p>
+    <Modal
+      open
+      onClose={() => onRespond(false)}
+      width={320}
+      title={
+        <div>
+          <div className="font-game text-base font-bold text-foreground">换座请求</div>
+          <div className="text-xs font-normal text-muted-foreground mt-0.5">来自 {requesterSeatIndex + 1}号位</div>
         </div>
-
+      }
+      footer={
+        <div className="flex gap-3">
+          <Button
+            variant="secondary"
+            className="flex-1"
+            onClick={() => onRespond(false)}
+            sound="click"
+          >
+            拒绝
+          </Button>
+          <Button
+            variant="game"
+            className="flex-1 text-sm px-4 py-2.5 tracking-normal"
+            onClick={() => onRespond(true)}
+            sound="ready"
+          >
+            接受
+          </Button>
+        </div>
+      }
+    >
+      <div className="flex flex-col items-center gap-4">
         {/* Avatars */}
         <div className="flex items-center gap-4">
           {/* Requester */}
@@ -66,27 +91,7 @@ export default function SwapRequestDialog({
 
         {/* Countdown */}
         <p className="text-xs text-muted-foreground">{remaining}秒后自动拒绝</p>
-
-        {/* Buttons */}
-        <div className="flex gap-3 w-full">
-          <Button
-            variant="secondary"
-            className="flex-1"
-            onClick={() => onRespond(false)}
-            sound="click"
-          >
-            拒绝
-          </Button>
-          <Button
-            variant="game"
-            className="flex-1 text-sm px-4 py-2.5 tracking-normal"
-            onClick={() => onRespond(true)}
-            sound="ready"
-          >
-            接受
-          </Button>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

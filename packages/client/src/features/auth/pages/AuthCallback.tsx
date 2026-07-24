@@ -5,6 +5,8 @@ import { useToastStore } from '@/shared/stores/toast-store';
 import AuthLayout from '../components/AuthLayout';
 import SpinningCard from '../components/SpinningCard';
 import { Button } from '@/shared/components/ui/Button';
+import { Input } from '@/shared/components/ui/Input';
+import { Lock } from 'lucide-react';
 import { useBgm } from '@/shared/sound/useBgm';
 
 const STATUS_MESSAGES = [
@@ -85,11 +87,11 @@ export default function AuthCallback() {
 
           <div>
             <label className="block text-xs text-muted-foreground mb-1.5 tracking-wide">该账号密码</label>
-            <input
+            <Input
+              icon={<Lock size={20} />}
               type="password"
               value={password}
               onChange={(e) => { setPassword(e.target.value); setFieldError(''); }}
-              className="glass-input w-full text-foreground"
               autoFocus
               autoComplete="current-password"
             />

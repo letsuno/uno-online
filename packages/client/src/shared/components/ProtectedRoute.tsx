@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
+import { Button } from '@/shared/components/ui/Button';
 
 export default function ProtectedRoute() {
   const token = useAuthStore((s) => s.token);
@@ -42,8 +43,8 @@ function AuthRestoreFailed({ message, onRetry, onLogout }: { message: string | n
           <p className="mt-2 text-sm text-muted-foreground">{message ?? '请检查网络后重试。'}</p>
         </div>
         <div className="flex justify-center gap-2">
-          <button type="button" className="btn-primary px-4 py-2 rounded-lg" onClick={onRetry}>重试</button>
-          <button type="button" className="btn-secondary px-4 py-2 rounded-lg" onClick={onLogout}>退出登录</button>
+          <Button type="button" variant="primary" onClick={onRetry}>重试</Button>
+          <Button type="button" variant="secondary" onClick={onLogout}>退出登录</Button>
         </div>
       </div>
     </div>

@@ -36,6 +36,7 @@ export default function Confetti() {
           animate={{ y: '110vh', rotate: 720, opacity: 0 }}
           transition={{ duration: 2.5 + Math.random(), delay: p.delay, ease: 'linear' }}
           className="absolute"
+          data-allow-overflow
           style={{
             width: p.size,
             height: p.size,

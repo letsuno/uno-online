@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { X, Sparkles, ChevronDown } from 'lucide-react';
+import { Sparkles, ChevronDown } from 'lucide-react';
+import Modal from '@/shared/components/ui/Modal';
+import { Button } from '@/shared/components/ui/Button';
 import { changelog } from '../data/changelog';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 
@@ -37,74 +38,46 @@ export default function ChangelogModal() {
   const visibleEntries = expanded ? changelog : changelog.slice(0, VISIBLE_COUNT);
 
   return (
-    <AnimatePresence>
-      {open && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center px-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="absolute inset-0 glass-modal-backdrop"
-            onClick={close}
-          />
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.2 }}
-            className="relative w-full max-w-[420px] glass-panel"
-          >
-            <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
-              <div className="flex items-center gap-2 text-lg font-bold">
-                <Sparkles size={18} className="text-accent" /> 更新日志
-              </div>
-              <button onClick={close} className="p-1 text-muted-foreground hover:text-foreground">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="max-h-[400px] overflow-y-auto p-5 scrollbar-thin">
-              {visibleEntries.map((entry) => (
-                <div key={entry.version} className="mb-5 last:mb-0">
-                  <div className="mb-2 flex items-baseline gap-2">
-                    <span className="text-base font-bold text-accent">v{entry.version}</span>
-                    <span className="text-xs text-muted-foreground">{entry.date}</span>
-                  </div>
-                  <ul className="space-y-1.5">
-                    {entry.changes.map((change, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-foreground/90">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-                        {change}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-
-              {hasMore && !expanded && (
-                <button
-                  onClick={() => setExpanded(true)}
-                  className="flex w-full items-center justify-center gap-1 rounded-lg border border-white/10 py-2 text-sm text-muted-foreground transition-colors hover:border-white/20 hover:text-foreground"
-                >
-                  查看更早的 {changelog.length - VISIBLE_COUNT} 个版本
-                  <ChevronDown size={14} />
-                </button>
-              )}
-            </div>
-
-            <div className="border-t border-white/5 px-5 py-3.5">
-              <button
-                onClick={close}
-                className="w-full gold-button-base px-4 py-2 text-sm"
-              >
-                知道了
-              </button>
-            </div>
-          </motion.div>
+    <Modal
+      open={open}
+      onClose={close}
+      title={
+        <>
+          <Sparkles size={18} className="text-accent" /> 更新日志
+        </>
+      }
+      footer={
+        <Button variant="primary" className="w-full" onClick={close}>
+          知道了
+        </Button>
+      }
+    >
+      {visibleEntries.map((entry) => (
+        <div key={entry.version} className="mb-5 last:mb-0">
+          <div className="mb-2 flex items-baseline gap-2">
+            <span className="text-base font-bold text-accent">v{entry.version}</span>
+            <span className="text-xs text-muted-foreground">{entry.date}</span>
+          </div>
+          <ul className="space-y-1.5">
+            {entry.changes.map((change, i) => (
+              <li key={i} className="flex gap-2 text-sm text-foreground/90">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                {change}
+              </li>
+            ))}
+          </ul>
         </div>
+      ))}
+
+      {hasMore && !expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="flex w-full items-center justify-center gap-1 rounded-lg border border-white/10 py-2 text-sm text-muted-foreground transition-colors hover:border-white/20 hover:text-foreground"
+        >
+          查看更早的 {changelog.length - VISIBLE_COUNT} 个版本
+          <ChevronDown size={14} />
+        </button>
       )}
-    </AnimatePresence>
+    </Modal>
   );
 }

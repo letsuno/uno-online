@@ -6,6 +6,8 @@ import { apiPatch, apiPost } from '@/shared/api';
 import AvatarUpload from '../components/AvatarUpload';
 import AuthLayout from '../components/AuthLayout';
 import { Button } from '@/shared/components/ui/Button';
+import { Input } from '@/shared/components/ui/Input';
+import { User, Pencil } from 'lucide-react';
 import { useBgm } from '@/shared/sound/useBgm';
 
 export default function ProfileSetupPage() {
@@ -62,19 +64,19 @@ export default function ProfileSetupPage() {
 
         <div>
           <label className="block text-xs text-muted-foreground mb-1.5 tracking-wide">用户名（登录用）</label>
-          <input
+          <Input
+            icon={<User size={20} />}
             value={username}
             onChange={(e) => { setUsername(e.target.value); setFieldError(''); }}
-            className="glass-input w-full text-foreground"
           />
         </div>
 
         <div>
           <label className="block text-xs text-muted-foreground mb-1.5 tracking-wide">昵称（游戏中显示）</label>
-          <input
+          <Input
+            icon={<Pencil size={20} />}
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
-            className="glass-input w-full text-foreground"
             placeholder="留空则使用用户名"
           />
         </div>

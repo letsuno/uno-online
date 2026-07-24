@@ -20,7 +20,7 @@ interface Props {
 export default function AuthLayout({ title, subtitle, showLogo = true, footer, children }: Props) {
   return (
     <GamePageShell>
-      <FitScaler align="center" maxScale={0.8} className="absolute left-5 right-5 portrait:left-[6%] portrait:right-[6%] top-[28px] bottom-[88px] z-[2]">
+      <FitScaler align="center" maxScale={1} className="absolute left-5 right-5 portrait:left-[6%] portrait:right-[6%] top-[28px] bottom-[88px]">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -48,7 +48,7 @@ export default function AuthLayout({ title, subtitle, showLogo = true, footer, c
         </div>
 
         {footer && (
-          <div className="mt-[26px] text-center text-[17px] text-[#c8d0e6]">
+          <div className="mt-[26px] text-center text-[17px] text-muted-foreground">
             {footer}
           </div>
         )}

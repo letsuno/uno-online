@@ -1,0 +1,213 @@
+/* ==========================================================================
+   @utility 组件样式 —— 基于 tokens.css 的可复用样式单元
+   ========================================================================== */
+
+@utility font-game {
+  font-family: var(--font-game);
+}
+
+/* ---- 文字阴影 ---- */
+@utility text-shadow-card {
+  text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2);
+}
+@utility text-shadow-bold {
+  text-shadow: 3px 4px 0px rgba(0, 0, 0, 0.3);
+}
+@utility text-shadow-heavy {
+  text-shadow: 4px 5px 0px rgba(0, 0, 0, 0.4);
+}
+@utility text-shadow-glow {
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+/* ---- 滚动条 ---- */
+@utility scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.5);
+  }
+}
+
+/* ---- 玻璃面板 ---- */
+@utility glass-panel {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.06), transparent 46%),
+    linear-gradient(180deg, rgba(22, 29, 54, 0.9), rgba(10, 15, 30, 0.84));
+  border: 1px solid rgba(246, 190, 62, 0.26);
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(18px);
+  border-radius: var(--radius-panel-ui);
+}
+@utility glass-panel-sm {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.06), transparent 46%),
+    linear-gradient(180deg, rgba(22, 29, 54, 0.9), rgba(10, 15, 30, 0.84));
+  border: 1px solid rgba(246, 190, 62, 0.26);
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(18px);
+  border-radius: var(--radius-xl);
+}
+@utility glass-modal-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+/* ---- 输入框 ---- */
+@utility glass-input {
+  background: rgba(8, 13, 28, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 20px;
+  padding: 18px 20px;
+  color: var(--foreground);
+  font-size: 16px;
+  outline: none;
+  transition: all 0.2s;
+  &::placeholder {
+    color: rgba(210, 218, 240, 0.42);
+    letter-spacing: 1px;
+    font-size: 14px;
+  }
+  &:focus {
+    border-color: rgba(246, 190, 62, 0.58);
+    box-shadow: 0 0 0 4px rgba(246, 190, 62, 0.10);
+  }
+}
+@utility themed-input {
+  border: 1px solid rgba(127, 154, 225, 0.32);
+  background: rgba(13, 20, 39, 0.64);
+  color: var(--foreground);
+  outline: none;
+  transition: all 0.2s;
+  &::placeholder {
+    color: rgba(216, 224, 245, 0.38);
+  }
+  &:focus {
+    border-color: rgba(246, 190, 62, 0.6);
+    box-shadow: var(--shadow-input-focus);
+  }
+}
+
+/* ---- 按钮 ---- */
+@utility icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--secondary);
+  border: 1px solid var(--line);
+  color: #c7d0ec;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover {
+    color: var(--gold);
+    border-color: rgba(246, 190, 62, 0.46);
+  }
+}
+@utility gold-button-base {
+  border: 0;
+  border-radius: var(--radius-btn);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 24%),
+    linear-gradient(135deg, var(--gold-2), var(--gold) 52%, #f1a72d);
+  color: var(--primary-foreground);
+  font-weight: 900;
+  box-shadow: 0 0 26px rgba(246, 190, 62, 0.34), 0 10px 30px rgba(0, 0, 0, 0.35);
+  &:hover {
+    filter: brightness(1.05);
+  }
+}
+
+/* ---- 牌面 ---- */
+@utility bg-wild-gradient {
+  background: conic-gradient(#ff3366 0deg 90deg, #4488ff 90deg 180deg, #33cc66 180deg 270deg, #fbbf24 270deg 360deg);
+}
+
+/* ---- 特效字号 ---- */
+@utility text-effect {
+  font-size: var(--font-size-effect);
+}
+@utility text-effect-xl {
+  font-size: var(--font-size-effect-xl);
+}
+@utility text-throw {
+  font-size: var(--font-size-throw);
+}
+@utility text-title-responsive {
+  font-size: var(--font-size-title-responsive);
+}
+@utility text-direction {
+  font-size: var(--font-size-direction);
+}
+@utility text-card-number {
+  font-size: var(--font-size-card-number);
+}
+@utility text-card-number-md {
+  font-size: var(--font-size-card-number-md);
+}
+@utility text-card-symbol {
+  font-size: var(--font-size-card-symbol);
+}
+@utility text-card-symbol-md {
+  font-size: var(--font-size-card-symbol-md);
+}
+@utility text-card-draw {
+  font-size: var(--font-size-card-draw);
+}
+@utility text-card-wild {
+  font-size: var(--font-size-card-wild);
+}
+@utility text-card-wild4 {
+  font-size: var(--font-size-card-wild4);
+}
+@utility text-card-back {
+  font-size: var(--font-size-card-back);
+}
+@utility text-timer-critical {
+  font-size: var(--font-size-timer-critical);
+}
+@utility text-uno-call {
+  font-size: var(--font-size-uno-call);
+}
+@utility text-heading-xl {
+  font-size: var(--font-size-heading-xl);
+}
+@utility text-heading-lg {
+  font-size: var(--font-size-heading-lg);
+}
+
+/* ---- 圆角转发 ---- */
+@utility rounded-btn {
+  border-radius: var(--radius-btn);
+}
+@utility rounded-input {
+  border-radius: var(--radius-input);
+}
+@utility rounded-card-ui {
+  border-radius: var(--radius-card-ui);
+}
+@utility rounded-panel-ui {
+  border-radius: var(--radius-panel-ui);
+}
+
+/* ---- 金色发光阴影 ---- */
+@utility shadow-tech {
+  box-shadow: var(--border-glow);
+}

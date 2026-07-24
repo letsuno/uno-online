@@ -4,441 +4,205 @@ Design system and UI/UX standards for UNO Online.
 
 ---
 
-## 1. TailwindCSS Usage Rules
+## 0. 第一原则：这是游戏，不是网页
 
-### Token-First Tailwind
+屏幕适配用**游戏画布思路**，不用响应式网页思路：
 
-Prefer named theme tokens for reusable values, design-system colors, z-indexes, card sizes, shadows, radii, and repeated layout dimensions. Arbitrary bracket syntax `[...]` is allowed for isolated one-off values or CSS features that Tailwind does not expose cleanly, but do not hard-code colors, z-indexes, or repeated dimensions when an existing token fits.
+1. **固定逻辑尺寸**：每个页面的中心内容用固定 px 布局（逻辑画布），禁止 `vw` / `clamp` / 百分比流式尺寸。
+2. **FitScaler 整体等比缩放**：外层用 `FitScaler`（`shared/components/FitScaler.tsx`）把逻辑画布 `transform: scale()` 缩放到可用区域，永不裁切。这等价于 Unity CanvasScaler 的 "scale with screen size"。
+3. **断点只用于布局模式切换**：`portrait:`（横竖屏）和对局的 `useGameLayoutMode`（table / strip）只允许切换布局**形态**，不允许用 `max-sm:` / `md:` 做尺寸流式重排（遗留代码逐步清除）。
+4. **HUD 四角锚定**：顶栏、状态栏、用户胶囊等 HUD 锚定屏幕边缘，各自用 `FitScaler mode="width"` 按宽度整体缩放，避免窄屏溢出。
+5. **弹窗兜底**：内容超过 `max-h` 时内部滚动（`ui/Modal` 自带），滚动也是完整的可达性。
 
-```diff
-- className="text-[#ff3366] z-[100] w-[52px]"
-+ className="text-uno-red z-modal w-card-w"
-```
+---
 
-If a value appears in more than one component, add a token to the theme before reusing it.
+## 1. 样式体系结构
 
-### Adding New Tokens
+样式文件在 `packages/client/src/styles/` 下拆分，`index.css` 只做装配：
 
-Add tokens to `@theme inline` in `packages/client/src/index.css`, following the namespace convention:
+| 文件 | 内容 |
+|------|------|
+| `styles/tokens.css` | 全部设计 token（`@theme inline` + `:root` 语义值）——颜色/半径/间距/字号/阴影/z-index 的**唯一定义处** |
+| `styles/utilities.css` | `@utility` 组件样式（glass-panel、themed-input、icon-button、gold-button-base 等） |
+| `styles/effects.css` | 特效层原生 CSS（弹幕、反作弊 Toast、作弊遮罩） |
 
-| CSS Custom Property Namespace | Tailwind Utility Prefix | Example |
+### Token 命名空间
+
+| CSS 变量命名空间 | Tailwind 前缀 | 示例 |
 |-------------------------------|------------------------|---------|
-| `--spacing-*` | `w-*`, `h-*`, `p-*`, `m-*`, `gap-*` | `--spacing-card-w: 60px` -> `w-card-w` |
-| `--font-size-*` | `text-*` | `--font-size-card-number: 1.5rem` -> `text-card-number` |
-| `--shadow-*` | `shadow-*` | `--shadow-card: 3px 4px ...` -> `shadow-card` |
-| `--radius-*` | `rounded-*` | `--radius-card: 0.5rem` -> `rounded-card` |
-| `--z-index-*` | `z-*` | `--z-index-modal: 100` -> `z-modal` |
-| `--color-*` | `bg-*`, `text-*`, `border-*` | `--color-uno-red: #ff3366` -> `bg-uno-red` |
-| `--animate-*` | `animate-*` | `--animate-shake: shake 0.3s` -> `animate-shake` |
-| `--font-*` (family) | `font-*` | `--font-game: 'Comic Sans MS', ...` -> `font-game` |
+| `--spacing-*` | `w-*`, `h-*`, `p-*`, `m-*`, `gap-*` | `--spacing-card-w: 52px` → `w-card-w` |
+| `--font-size-*` | `text-*` | `--font-size-card-number` → `text-card-number` |
+| `--shadow-*` | `shadow-*` | `--shadow-card` → `shadow-card` |
+| `--radius-*` | `rounded-*` | `--radius-panel-ui` → `rounded-panel-ui` |
+| `--z-index-*` | `z-*` | `--z-index-modal: 100` → `z-modal` |
+| `--color-*` | `bg-*`, `text-*`, `border-*` | `--color-uno-red` → `bg-uno-red` |
+| `--animate-*` | `animate-*` | `--animate-shake` → `animate-shake` |
+| `--font-*` (family) | `font-*` | `--font-game` → `font-game` |
 
-### Conditional Class Merging
+### Token-First 规则
 
-Always use `cn()` for conditional class merging. In the client app import it from `@/shared/lib/utils`; in the admin app import it from `@/lib/utils`.
-
-```tsx
-import { cn } from "@/shared/lib/utils";
-
-<div className={cn(
-  "rounded-lg p-4 bg-card",
-  isActive && "shadow-glow-active",
-  isDisabled && "opacity-50 pointer-events-none"
-)} />
-```
-
-### Component Variants with CVA
-
-Use `class-variance-authority` (CVA) for components with multiple variants:
-
-```tsx
-import { cva } from "class-variance-authority";
-
-const buttonVariants = cva("rounded-lg font-game transition-colors", {
-  variants: {
-    variant: {
-      primary: "bg-primary text-primary-foreground hover:opacity-90",
-      danger: "bg-destructive text-destructive-foreground",
-      secondary: "bg-secondary text-secondary-foreground",
-      ghost: "bg-transparent text-foreground hover:bg-white/10",
-      outline: "bg-transparent text-primary border-2 border-primary/50",
-      game: "bg-primary text-primary-foreground font-game",
-    },
-    size: {
-      sm: "px-3 py-1 text-sm",
-      md: "px-4 py-2 text-base",
-      lg: "px-6 py-3 text-lg",
-    },
-  },
-  defaultVariants: {
-    variant: "primary",
-    size: "md",
-  },
-});
-```
-
-### Custom Utility Classes
-
-Use the `@utility` directive for custom utility classes:
-
-```css
-@utility font-game {
-  font-family: var(--font-game);
-}
-```
+- **禁止硬编码颜色**（hex / rgba）：文字、背景、描边一律语义类（`text-primary` / `text-foreground` / `text-muted-foreground` / `bg-secondary` / `border-border` / `text-destructive`…）或 CSS 变量（`var(--gold)`）。
+- **例外**：金色辉光氛围（`rgba(246,190,62,…)` 的 boxShadow / 渐变光晕）允许内联，属于"打光"不属于"颜色"。
+- **禁止裸 z-index**（`z-[100]`、`z-50`）：只能用下表的 token。
+- 一个值出现在两个以上组件中 → 先加 token 再用。
 
 ---
 
-## 2. Color System Reference
+## 2. 颜色系统
 
-### UNO Card Colors
-
-| Token | Value | Usage | Tailwind Class |
-|-------|-------|-------|----------------|
-| `uno-red` | `#ff3366` | Red cards | `bg-uno-red`, `text-uno-red`, `border-uno-red` |
-| `uno-blue` | `#4488ff` | Blue cards | `bg-uno-blue`, `text-uno-blue`, `border-uno-blue` |
-| `uno-green` | `#33cc66` | Green cards | `bg-uno-green`, `text-uno-green`, `border-uno-green` |
-| `uno-yellow` | `#fbbf24` | Yellow cards | `bg-uno-yellow`, `text-uno-yellow`, `border-uno-yellow` |
-
-### Semantic UI Colors
+### 语义色
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `background` | `#070b16` | Main app background |
-| `card` | `#0b1021` | Card/panel surfaces |
-| `popover` / `muted` | `#12172b` | Secondary surfaces |
-| `primary` | `#f6be3e` | Accent/highlight (golden) |
-| `destructive` | `#ff5c83` | Danger actions |
-| `foreground` | `#f4f7ff` | Primary text |
-| `muted-foreground` | `#8b95b3` | Secondary text |
-| `secondary` | `rgba(255,255,255,0.045)` | Subtle fills, chips, icon buttons |
+| `background` | `#070b16` | 主背景 |
+| `card` | `#0b1021` | 卡片/面板 |
+| `popover` / `muted` | `#12172b` | 次级表面 |
+| `primary` | `#f6be3e` | 主强调（金色） |
+| `destructive` | `#ff5c83` | 危险操作 |
+| `foreground` | `#f4f7ff` | 主文字 |
+| `muted-foreground` | `#8b95b3` | 次级文字 |
+| `secondary` | `rgba(255,255,255,0.045)` | 微弱填充、chips、图标按钮 |
 
-Gold theme extensions (CSS variables in `:root`): `--gold` / `--gold-2` / `--gold-3` (gold ramp), `--panel` / `--panel-strong` (glass panel backgrounds), `--line` / `--line-gold` (borders). Prefer the `@utility` classes built on them (`glass-panel`, `gold-button-base`, `glass-input`, `glass-modal-backdrop`) over raw values.
+金色扩展（`:root` CSS 变量）：`--gold` / `--gold-2` / `--gold-3`（金色阶梯）、`--panel` / `--panel-strong`、`--line` / `--line-gold`。优先用建立在它们之上的 `@utility` 类。
 
-### Feedback Colors
+### UNO 牌色
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `toast-info` | `rgba(59,130,246,0.9)` | Info notifications |
-| `toast-error` | `rgba(239,68,68,0.9)` | Error notifications |
-| `toast-success` | `rgba(34,197,94,0.9)` | Success notifications |
-| `effect-skip` | `#ff6b6b` | Skip card effect |
-| `error-text` | `#ef4444` | Error labels |
-| `speaking` | `#22c55e` | Voice speaking indicator |
+`uno-red #ff3366` / `uno-blue #4488ff` / `uno-green #33cc66` / `uno-yellow #fbbf24`
 
-### Voice Panel Colors
+### 功能色
 
-| Token | Usage |
-|-------|-------|
-| `voice-active` | Active voice panel background |
-| `voice-active-border` | Active voice panel border |
-| `voice-inactive` | Inactive voice panel background |
-| `voice-inactive-border` | Inactive voice panel border |
-| `voice-leave` | Leave voice button background |
-| `voice-leave-border` | Leave voice button border |
-
-### Avatar Palette (9 colors)
-
-| Token | Usage |
-|-------|-------|
-| `avatar-1` through `avatar-9` | Player avatar background colors, assigned by join order |
+toast-info/error/success、voice-*（语音面板）、speaking、error-text、effect-skip、card-back-from/to、avatar-1~9（头像底色，按加入顺序分配）。
 
 ---
 
-## 3. Typography
-
-### Font Families
+## 3. 字体
 
 | Token | Stack | Usage |
 |-------|-------|-------|
-| `font-game` | `'Fredoka Variable', 'Microsoft YaHei', 'PingFang SC', sans-serif` | Game text: card values, headings, effect labels, buttons. Fredoka is self-hosted via `@fontsource-variable/fredoka` (imported in `app/main.tsx`); CJK falls back to system fonts |
-| `font-ui` (default) | `system-ui, -apple-system, sans-serif` | Interface elements: inputs, body text, labels |
+| `font-game` | `'Fredoka Variable', 'Microsoft YaHei', 'PingFang SC', sans-serif` | 游戏文字：牌面、标题、特效、按钮。Fredoka 自托管（`@fontsource-variable/fredoka`，`app/main.tsx` 引入），中文回落系统字体 |
+| `font-ui`（默认） | `system-ui, -apple-system, sans-serif` | 界面元素：输入框、正文、标签 |
 
-### Named Size Tokens
+字号 token：`text-2xs/xs/sm/caption` + `text-heading-lg/xl` + 牌面专用（`text-card-number/symbol/draw/wild/wild4`）+ 特效（`text-effect/throw/timer-critical/uno-call`）。
+
+---
+
+## 4. 圆角
+
+两套语义，不要混用：
+
+- **牌面**：`rounded-card`（14px）/ `rounded-card-md`（18px）/ `rounded-panel`（20px）
+- **界面控件**：`rounded-btn`（18px）/ `rounded-input`（16px）/ `rounded-card-ui`（22px）/ `rounded-panel-ui`（28px）
+
+通用刻度 `rounded-sm/md/lg/xl` 用于小组件。
+
+---
+
+## 5. 阴影
 
 | Token | Usage |
 |-------|-------|
-| `text-2xs` | Tiny labels |
-| `text-xs` | Small secondary text |
-| `text-sm` | Compact UI text |
-| `text-caption` | Captions, timestamps |
-| `text-base` | Default body text |
-| `text-lg` | Emphasized text |
-| `text-xl` | Sub-headings |
-| `text-heading-lg` | Section headings |
-| `text-heading-xl` | Page headings |
-
-### Card-Specific Sizes
-
-| Token | Usage |
-|-------|-------|
-| `text-card-number` | Number card values |
-| `text-card-symbol` | Action card symbols (skip, reverse) |
-| `text-card-draw` | Draw card values (+2) |
-| `text-card-wild` | Wild card text |
-| `text-card-wild4` | Wild Draw Four text |
+| `shadow-card` / `shadow-card-sm` | 卡牌投影 |
+| `shadow-card-playable` | 可出牌金色发光 |
+| `shadow-glow-active` | 当前玩家头像发光 |
+| `shadow-draw-ready` | 摸牌堆脉冲发光 |
+| `shadow-toast` | 通知阴影 |
+| `shadow-input-focus` | 输入框聚焦金环 |
+| `shadow-tech` | 金色辉光 + 投影（重要面板） |
 
 ---
 
-## 4. Spacing & Sizing
+## 6. Z-Index（唯一合法集合）
 
-### Card Dimensions
-
-| Token | Size | Context |
-|-------|------|---------|
-| `card-w` / `card-h` | 52 x 76px | Default mobile card size |
-| `card-w-md` / `card-h-md` | 70 x 100px | Desktop card size via `md:` prefix |
-| `card-mini-w` / `card-mini-h` | 22 x 32px | Last-played card on player node |
-| `card-log-w` / `card-log-h` | 20 x 28px | Inline card icons in game log |
-| `card-sm-w` / `card-sm-h` | 28 x 40px | Compact card previews |
-
-### Standard Padding
-
-Use Tailwind's built-in spacing scale for padding and margin:
-
-| Class | Value | Common Use |
-|-------|-------|------------|
-| `p-1` | 4px | Tight inner spacing |
-| `p-2` | 8px | Compact padding |
-| `p-3` | 12px | Default card/button padding |
-| `p-4` | 16px | Standard section padding |
-| `p-6` | 24px | Generous panel padding |
-| `p-8` | 32px | Large section padding |
-| `p-10` | 40px | Page-level spacing |
+| Token | Value | Usage |
+|-------|-------|-------|
+| `z-card` | 1 | 桌面卡牌、画布内容层 |
+| `z-topbar` | 10 | 顶栏 HUD |
+| `z-actions` | 20 | 游戏操作按钮、下拉菜单 |
+| `z-fab` | 50 | 浮动按钮、信息抽屉 |
+| `z-autopilot` | 60 | 托管遮罩 |
+| `z-confetti` | 85 | 胜利彩带 |
+| `z-effects` | 90 | 特效文字 |
+| `z-timer-overlay` | 95 | 计时遮罩 |
+| `z-modal` | 100 | 弹窗、抽屉遮罩 |
+| `z-connection` | 200 | 断线重连遮罩 |
+| `z-toast` | 300 | 通知 |
+| `z-ace` | 310 | 反作弊 Toast |
+| `z-cheat` | 400 | 作弊遮罩 |
+| `z-cheat-flash` | 410 | 作弊闪屏 |
 
 ---
 
-## 5. Shadow System
+## 7. 屏幕适配（详见第 0 节）
 
-| Token | Usage |
-|-------|-------|
-| `shadow-card` | Standard card/button drop shadow |
-| `shadow-card-sm` | Smaller shadow for compact elements |
-| `shadow-card-playable` | Golden glow for playable cards |
-| `shadow-glow-active` | Active player avatar glow |
-| `shadow-draw-ready` | Pulsing glow on draw pile when it's your turn |
-| `shadow-toast` | Notification toast shadow |
-| `shadow-input-focus` | Focus ring for text inputs (gold halo) |
-| `shadow-tech` | Gold glow + drop shadow for prominent panels |
+### 布局模式
 
----
+| Hook / 变体 | 用途 |
+|------------|------|
+| `useIsPortrait()`（shared/hooks） | 竖屏布局模式（房间页等） |
+| `useGameLayoutMode()`（game/hooks） | 对局 `table` / `strip`：竖屏**或高度 < 560** → strip |
+| `portrait:` Tailwind 变体 | CSS 层横竖屏切换（仅限画布尺寸切换，如 `w-[760px] portrait:w-[440px]`） |
 
-## 6. Z-Index Scale
+### 对局页结构（单一组件树）
 
-| Layer | Token | Value | Usage |
-|-------|-------|-------|-------|
-| Base | `z-card` | 1 | Cards on table |
-| TopBar | `z-topbar` | 10 | Game header bar |
-| Actions | `z-actions` | 20 | Game action buttons |
-| FAB | `z-fab` | 50 | Mobile floating action buttons |
-| Confetti | `z-confetti` | 85 | Victory confetti particles |
-| Effects | `z-effects` | 90 | Game effect text (skip, reverse, etc.) |
-| Timer | `z-timer-overlay` | 95 | Countdown overlay |
-| Modal | `z-modal` | 100 | Dialogs, score board, color picker |
-| Connection | `z-connection` | 200 | Reconnection overlay |
-| Toast | `z-toast` | 300 | Notifications (topmost) |
+`GamePage` 只有一棵树：`GameHUD`（table/strip 两种密度）+ 中央区（table=椭圆牌桌 1200×720 逻辑画布 / strip=玩家条+牌区）+ 共享 `GameActions`/`PlayerHand` + 一份覆盖层。不要新增"桌面版/移动版"平行组件。
 
 ---
 
-## 7. Responsive Design
+## 8. 基础组件（shared/components/ui/）
 
-### Breakpoint
+一律优先使用，不要手写重复样式：
 
-A single breakpoint is used:
+| 组件 | 用途 |
+|------|------|
+| `Button`（CVA） | variant=primary/danger/secondary/ghost/outline/game，带 `sound` prop |
+| `Input` | themed-input 封装，`icon` prop 左侧图标，`inputSize=sm/md/lg` |
+| `IconButton` | 图标按钮，`size=sm/md/lg`，`active` 金色高亮 |
+| `Modal` | 统一弹窗骨架：`open/onClose/title/footer/width`，毛玻璃背景 + glass-panel + 头/可滚内容/底部 |
+| `Switch` | 金色开关，`size=sm/md`，`role="switch"` |
+| `Tabs` | 下划线 Tab |
 
-| Prefix | Min Width | Target |
-|--------|-----------|--------|
-| (none) | 0px | Mobile (default) |
-| `md:` | 768px | Desktop |
+### 常用 @utility
 
-### Mobile-First Approach
+`glass-panel` / `glass-panel-sm`（玻璃面板）、`glass-modal-backdrop`（弹窗背景）、`themed-input` / `glass-input`（输入框）、`icon-button`（图标按钮）、`gold-button-base`（金色主按钮）、`scrollbar-thin` / `scrollbar-hidden`、`text-shadow-*`、`bg-wild-gradient`、`font-game`。
 
-All styles are written mobile-first. Desktop overrides use the `md:` prefix:
+### 交互态要求
 
-```tsx
-<div className="p-2 text-sm md:p-4 md:text-base" />
-<Card className="w-card-w h-card-h md:w-card-w-md md:h-card-h-md" />
-```
-
-### Game Table Adaptation
-
-The elliptical game table adapts its dimensions based on viewport:
-
-- **Desktop** (>=768px): `rx = 40vw`, `ry = 35vh` (wide ellipse)
-- **Mobile** (<768px): `rx = 42vw`, `ry = 30vh` (narrower, flatter)
+所有可交互元素：hover 反馈、active 反馈、focus-visible 指示；触控目标逻辑尺寸 ≥ 40px（缩放前）。
 
 ---
 
-## 8. Animation Guidelines
+## 9. 动画
 
-### Technology Choice
+| 类型 | 技术 |
+|------|------|
+| 进出场/布局变化 | framer-motion |
+| 拖拽/手势 | framer-motion |
+| 循环动画（脉冲、旋转） | CSS `@keyframes` + `animate-*` token |
 
-| Animation Type | Technology | When to Use |
-|----------------|-----------|-------------|
-| Enter/exit transitions | framer-motion | Component mount/unmount, layout changes |
-| Interactive animations | framer-motion | Drag, hover, tap, gestures |
-| Repeating/looping animations | CSS `@keyframes` + `animate-*` tokens | Pulsing glows, spinning, shaking |
-| Scroll-linked animations | CSS or framer-motion `useScroll` | Parallax, scroll-triggered reveals |
+弹簧默认值 `stiffness: 300, damping: 25`（卡牌按钮 400/20）；入场 200-400ms、出场 150-300ms；尊重 `prefers-reduced-motion`。
 
-### Spring Animation Defaults
-
-```tsx
-// Standard interactive spring
-transition={{ type: "spring", stiffness: 300, damping: 25 }}
-
-// Snappy spring (cards, buttons)
-transition={{ type: "spring", stiffness: 400, damping: 20 }}
-```
-
-### Duration Limits
-
-| Category | Duration | Example |
-|----------|----------|---------|
-| Entrance | 200-400ms | Card fan-in, panel slide-up |
-| Exit | 150-300ms | Panel close, card discard |
-| Effects | 500-1500ms | Skip effect, reverse animation, throw impact |
-| Looping | 1000-2000ms per cycle | Active player glow, draw pile pulse |
-
-### Reduced Motion
-
-Always respect `prefers-reduced-motion`:
-
-```tsx
-const prefersReducedMotion = window.matchMedia(
-  "(prefers-reduced-motion: reduce)"
-).matches;
-
-<motion.div
-  animate={{ scale: prefersReducedMotion ? 1 : [1, 1.1, 1] }}
-  transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
-/>
-```
-
-### Existing CSS Keyframes
-
-| Animation | Usage |
-|-----------|-------|
-| `shake` | Error shake on invalid card play |
-| `timerFlash` | Timer flash when time is low |
-| `spin` | Loading spinner |
-| `drawReadyPulse` | Draw pile golden glow pulse |
+已有 keyframes：`shake` / `timerFlash` / `spin` / `drawReadyPulse` / `breathe`（index.css）+ 特效层（effects.css）。
 
 ---
 
-## 9. Component Patterns
+## 10. 可访问性
 
-### Conditional Classes with `cn()`
-
-All components must use `cn()` for conditional className merging:
-
-```tsx
-import { cn } from "@/shared/lib/utils";
-
-function Card({ color, isPlayable, className }: CardProps) {
-  return (
-    <div className={cn(
-      "rounded-lg shadow-card font-game",
-      color === "red" && "bg-uno-red",
-      color === "blue" && "bg-uno-blue",
-      isPlayable && "shadow-card-playable cursor-pointer",
-      className
-    )} />
-  );
-}
-```
-
-### Button Component (CVA)
-
-Use the CVA `Button` component for all buttons. Available variants:
-
-| Variant | Usage |
-|---------|-------|
-| `primary` | Main actions (play card, start game, confirm) |
-| `danger` | Destructive actions (leave room, cancel) |
-| `secondary` | Secondary actions (toggle panels, settings) |
-| `ghost` | Low-emphasis inline actions |
-| `outline` | Secondary outlined actions |
-| `game` | Prominent game-themed actions |
-
-### Card Component
-
-The `Card` component accepts a `className` prop for size overrides:
-
-```tsx
-// Standard size (uses default card-w/card-h)
-<Card card={card} />
-
-// Mini card for player node last-played display
-<Card card={card} className="w-card-mini-w h-card-mini-h" />
-
-// Log card for game diary inline display
-<Card card={card} className="w-card-log-w h-card-log-h" />
-```
-
-### Interactive State Requirements
-
-All interactive elements must have:
-
-- **Hover state** (`hover:`) - visual feedback on mouse over
-- **Active state** (`active:`) - pressed/clicked feedback
-- **Focus state** (`focus-visible:`) - keyboard navigation indicator
-
-### Fixed Position Panels
-
-Panels (game log, house rules) use fixed positioning with z-index tokens:
-
-```tsx
-// PC: fixed bottom-left panel
-<div className="fixed left-4 bottom-24 z-fab w-70 max-h-[60vh] overflow-y-auto">
-
-// PC: fixed bottom-right panel
-<div className="fixed right-4 bottom-24 z-fab w-70 max-h-[60vh] overflow-y-auto">
-```
+- **色盲模式**：卡牌叠加图案纹理作为颜色之外的第二通道（设置中开关）。
+- **键盘**：可交互元素必须可 Tab 到达；用原生 `<button>` / `<a>` / `<input>`，不用 `<div onClick>`。
+- **图标按钮**必须有 `title` 或 `aria-label`。
+- **语义 HTML**：section/aside/nav 优先于 div 堆叠。
+- 游戏状态变化适当使用 `aria-live`。
 
 ---
 
-## 10. Accessibility
+## 11. E2E 视觉验证
 
-### Color-Blind Mode
+`packages/e2e` 提供截图级验证（详见其 README/代码）：
 
-A color-blind mode toggle exists in the game settings. When enabled:
-
-- Cards display pattern overlays (stripes, dots, crosshatch, diamonds) in addition to color
-- Patterns provide a secondary visual channel to distinguish card colors
-
-### Touch Targets
-
-| Context | Minimum Size |
-|---------|-------------|
-| Mobile | 36 x 36px |
-| Desktop | 32 x 32px |
-
-### Keyboard Accessibility
-
-- All interactive elements must be reachable via Tab key
-- Buttons, links, and controls must use native semantic HTML elements (`<button>`, `<a>`, `<input>`)
-- Do not use `<div>` or `<span>` as interactive elements
-- Custom interactive components must include `tabIndex`, `role`, and keyboard event handlers
-
-### Screen Reader Support
-
-- Icon-only buttons must have a `title` or `aria-label` attribute:
-
-```tsx
-<button aria-label="Open game log" title="Open game log">
-  <BookIcon />
-</button>
+```bash
+cd packages/e2e
+node visual.mjs --tag myrun                     # 8 种分辨率 × 全部场景
+node visual.mjs --stages lobby,game --res 390x844,844x390
 ```
 
-- Game state changes should be announced via `aria-live` regions where appropriate
-- Card descriptions should be readable (e.g., "Red Skip", "Blue 7", "Wild Draw Four")
-
-### Semantic HTML
-
-Prefer semantic elements over generic containers:
-
-| Instead of | Use |
-|-----------|-----|
-| `<div onClick>` | `<button>` |
-| `<div>` for sections | `<section>`, `<aside>`, `<nav>` |
-| `<span>` for links | `<a>` |
-| `<div>` for lists | `<ul>`, `<ol>` |
+场景：login / lobby / room / settings / profile / game / scoreboard。输出 `output/<tag>-*.png` + `<tag>-report.json`（DOM 溢出检测 + console 错误）。**任何 UI 改动后都应跑一遍确认零溢出、零 console 错误。**

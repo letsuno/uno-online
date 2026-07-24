@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
+import Modal from '@/shared/components/ui/Modal';
 import { HOTKEY_ACTIONS, formatBinding, useHotkeyStore } from '../stores/hotkey-store';
 import type { HotkeyOverride } from '../stores/hotkey-store';
 
@@ -50,73 +50,55 @@ export default function HotkeySettingsModal({ open, onClose }: Props) {
   }, [open]);
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-modal flex items-center justify-center glass-modal-backdrop"
-        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      >
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
-          className="glass-panel w-full max-w-sm mx-4"
-        >
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
-            <h3 className="text-sm font-bold text-foreground">快捷键设置</h3>
-            <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-              <X size={16} />
-            </button>
-          </div>
-
-          <div className="px-5 py-3 space-y-1">
-            {HOTKEY_ACTIONS.map((action) => {
-              const isListening = listening === action.id;
-              const hasOverride = action.id in overrides;
-              return (
-                <div key={action.id} className="flex items-center justify-between py-2">
-                  <span className="text-sm text-foreground">{action.label}</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setListening(isListening ? null : action.id)}
-                      className={`min-w-[72px] px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer border ${
-                        isListening
-                          ? 'bg-accent/20 border-accent text-accent animate-pulse'
-                          : 'bg-white/5 border-white/15 text-foreground hover:bg-white/10'
-                      }`}
-                    >
-                      {isListening ? '按下按键…' : formatBinding(action, overrides)}
-                    </button>
-                    {hasOverride && (
-                      <button
-                        onClick={() => resetHotkey(action.id)}
-                        className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                        title="恢复默认"
-                      >
-                        <RotateCcw size={12} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="px-5 py-3 border-t border-white/5 flex justify-between items-center">
-            <button
-              onClick={resetAll}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              全部恢复默认
-            </button>
-            <span className="text-2xs text-muted-foreground/50">按 Esc 取消录入</span>
-          </div>
-        </motion.div>
-      </motion.div>
-      )}
-    </AnimatePresence>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="快捷键设置"
+      width={384}
+      footer={
+        <div className="flex justify-between items-center">
+          <button
+            onClick={resetAll}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          >
+            全部恢复默认
+          </button>
+          <span className="text-2xs text-muted-foreground/50">按 Esc 取消录入</span>
+        </div>
+      }
+    >
+      <div className="space-y-1">
+        {HOTKEY_ACTIONS.map((action) => {
+          const isListening = listening === action.id;
+          const hasOverride = action.id in overrides;
+          return (
+            <div key={action.id} className="flex items-center justify-between py-2">
+              <span className="text-sm text-foreground">{action.label}</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setListening(isListening ? null : action.id)}
+                  className={`min-w-[72px] px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer border ${
+                    isListening
+                      ? 'bg-accent/20 border-accent text-accent animate-pulse'
+                      : 'bg-white/5 border-white/15 text-foreground hover:bg-white/10'
+                  }`}
+                >
+                  {isListening ? '按下按键…' : formatBinding(action, overrides)}
+                </button>
+                {hasOverride && (
+                  <button
+                    onClick={() => resetHotkey(action.id)}
+                    className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    title="恢复默认"
+                  >
+                    <RotateCcw size={12} />
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Modal>
   );
 }

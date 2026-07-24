@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { Edit3, Save, Lock, Key, Copy, Trash2, Bell, X, Fingerprint } from 'lucide-react';
 import { browserSupportsWebAuthn } from '@simplewebauthn/browser';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { apiGet, apiPatch, apiPost, apiDelete } from '@/shared/api';
-import { getRoleColor } from '@/shared/lib/utils';
+import { getRoleColor, cn } from '@/shared/lib/utils';
 import AvatarUpload from '@/features/auth/components/AvatarUpload';
 import { Button } from '@/shared/components/ui/Button';
+import { Input } from '@/shared/components/ui/Input';
+import { IconButton } from '@/shared/components/ui/IconButton';
+import { Switch } from '@/shared/components/ui/Switch';
+import Modal from '@/shared/components/ui/Modal';
 import { useNotificationStore, type NotificationEventType } from '@/shared/stores/notification-store';
 import { useProfileModalStore } from '@/shared/stores/profile-modal-store';
 import { showConfirm } from '@/shared/stores/confirm-store';
@@ -14,6 +17,14 @@ import { showConfirm } from '@/shared/stores/confirm-store';
 interface ProfileData {
   user: { id: string; username: string; nickname: string; avatarUrl: string | null; githubId?: string | null; role?: string };
 }
+
+const TABS = [
+  { id: 'notification', icon: Bell, label: '通知' },
+  { id: 'security', icon: Lock, label: '安全' },
+  { id: 'apikeys', icon: Key, label: 'API Keys' },
+] as const;
+
+type TabId = (typeof TABS)[number]['id'];
 
 export default function ProfileModal() {
   const isOpen = useProfileModalStore((s) => s.isOpen);
@@ -38,7 +49,7 @@ export default function ProfileModal() {
   const [registeringPasskey, setRegisteringPasskey] = useState(false);
   const [passkeyError, setPasskeyError] = useState('');
   const [passkeySuccess, setPasskeySuccess] = useState('');
-  const [activeTab, setActiveTab] = useState<'notification' | 'security' | 'apikeys'>('notification');
+  const [activeTab, setActiveTab] = useState<TabId>('notification');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -172,296 +183,252 @@ export default function ProfileModal() {
 
   const profileRoleColor = getRoleColor(profile?.user.role);
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-modal glass-modal-backdrop"
-            onClick={close}
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-modal flex items-center justify-center pointer-events-none"
-          >
-            <div
-              className="pointer-events-auto w-[min(1110px,calc(100vw-72px))] h-[min(820px,calc(100svh-80px))] grid grid-cols-[270px_1fr] max-md:grid-cols-1 rounded-[24px] overflow-hidden border border-white/[0.12] shadow-[0_26px_80px_rgba(0,0,0,0.48)]"
-              style={{
-                background: `
-                  radial-gradient(circle at 84% 14%, rgba(246,190,62,0.08), transparent 28%),
-                  linear-gradient(180deg, rgba(23,30,56,0.94), rgba(12,17,34,0.94))
-                `,
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Left: Sidebar */}
-              <div className="border-r border-white/[0.08] p-[34px_22px] bg-white/[0.025] flex flex-col max-md:hidden">
-                <div className="self-stretch flex items-center gap-3 text-[26px] font-black mb-8">
-                  <span className="text-[var(--gold)]">♠</span>
-                  <span>设置</span>
-                </div>
-
-                {profile && (
-                  <div className="text-center mb-8">
-                    <div className="flex justify-center">
-                      <AvatarUpload avatarUrl={profile.user.avatarUrl} size={100} onUpload={handleAvatarUpload} />
-                    </div>
-                    <div className="mt-[18px]">
-                      {editingNickname ? (
-                        <div className="flex items-center gap-2 justify-center">
-                          <input value={nickname} onChange={(e) => setNickname(e.target.value)}
-                            className="themed-input h-[42px] w-32 rounded-[12px] px-3 text-sm" />
-                          <Button variant="primary" size="sm" onClick={handleSaveNickname} disabled={saving} sound="click">
-                            <Save size={14} />
-                          </Button>
-                        </div>
-                      ) : (
-                        <p className="text-[var(--gold)] text-[30px] font-black cursor-pointer inline-flex items-center gap-2"
-                          onClick={() => setEditingNickname(true)}
-                          style={profileRoleColor ? { color: profileRoleColor } : undefined}>
-                          {profile.user.nickname}
-                          <Edit3 size={16} className="text-[#8b95b3]" />
-                        </p>
-                      )}
-                      <p className="text-[#8b95b3] mt-1">@{profile.user.username}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Tab navigation */}
-                <nav className="flex flex-col gap-1">
-                  {([
-                    { id: 'notification', icon: Bell, label: '通知' },
-                    { id: 'security', icon: Lock, label: '安全' },
-                    { id: 'apikeys', icon: Key, label: 'API Keys' },
-                  ] as const).map(({ id, icon: Icon, label }) => (
-                    <button
-                      key={id}
-                      onClick={() => setActiveTab(id)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-[14px] text-[15px] font-bold transition-all text-left cursor-pointer ${
-                        activeTab === id
-                          ? 'bg-[rgba(246,190,62,0.10)] text-[var(--gold)] border border-[rgba(246,190,62,0.28)]'
-                          : 'text-[#8b95b3] border border-transparent hover:bg-white/[0.04] hover:text-[#c7d0ec]'
-                      }`}
-                    >
-                      <Icon size={18} />
-                      {label}
-                    </button>
-                  ))}
-                </nav>
-
-                <div className="flex-1" />
-                <Button variant="ghost" className="w-full text-[#b6c0da]" onClick={close} sound="click">关闭</Button>
-              </div>
-
-              {/* Right: Settings main */}
-              <div className="relative p-[42px_34px_36px] max-md:p-[22px_18px_36px] overflow-y-auto scrollbar-thin">
-                {/* Close button */}
-                <button
-                  onClick={close}
-                  className="absolute top-6 right-6 w-[44px] h-[44px] rounded-[14px] grid place-items-center border border-white/[0.1] text-[#b8c2df] bg-white/[0.04] cursor-pointer transition-all hover:bg-white/[0.08] max-md:hidden"
-                >
-                  <X size={20} />
-                </button>
-
-                {/* Mobile header */}
-                <div className="hidden max-md:flex items-center justify-between mb-[26px]">
-                  <button onClick={close} className="w-14 h-14 rounded-[18px] border border-[rgba(246,190,62,0.46)] bg-white/[0.04] text-[var(--gold)] grid place-items-center">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="m15 18-6-6 6-6"/></svg>
-                  </button>
-                  <h1 className="text-[34px] font-black">设置</h1>
-                  <div className="w-14" />
-                </div>
-
-                {/* Mobile profile card */}
-                {profile && (
-                  <div className="hidden max-md:flex items-center gap-[22px] rounded-[24px] p-[26px_24px] mb-[18px] border border-[rgba(246,190,62,0.22)]"
-                    style={{ background: 'radial-gradient(circle at 82% 70%, rgba(246,190,62,0.12), transparent 28%), rgba(255,255,255,0.035)' }}>
-                    <AvatarUpload avatarUrl={profile.user.avatarUrl} size={92} onUpload={handleAvatarUpload} />
-                    <div>
-                      {editingNickname ? (
-                        <div className="flex items-center gap-2">
-                          <input value={nickname} onChange={(e) => setNickname(e.target.value)}
-                            className="themed-input h-[42px] w-32 rounded-[12px] px-3 text-sm" />
-                          <Button variant="primary" size="sm" onClick={handleSaveNickname} disabled={saving} sound="click">
-                            <Save size={14} />
-                          </Button>
-                        </div>
-                      ) : (
-                        <p className="text-[var(--gold)] text-[30px] font-black cursor-pointer inline-flex items-center gap-2"
-                          onClick={() => setEditingNickname(true)}
-                          style={profileRoleColor ? { color: profileRoleColor } : undefined}>
-                          {profile.user.nickname}
-                          <Edit3 size={16} className="text-[#8b95b3]" />
-                        </p>
-                      )}
-                      <p className="text-[#8b95b3] mt-1">@{profile.user.username}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Mobile tab bar */}
-                <div className="hidden max-md:flex gap-2 mb-[18px] overflow-x-auto scrollbar-thin">
-                  {([
-                    { id: 'notification', icon: Bell, label: '通知' },
-                    { id: 'security', icon: Lock, label: '安全' },
-                    { id: 'apikeys', icon: Key, label: 'API Keys' },
-                  ] as const).map(({ id, icon: Icon, label }) => (
-                    <button
-                      key={id}
-                      onClick={() => setActiveTab(id)}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
-                        activeTab === id
-                          ? 'bg-[rgba(246,190,62,0.12)] text-[var(--gold)] border border-[rgba(246,190,62,0.32)]'
-                          : 'text-[#8b95b3] border border-white/[0.10] bg-white/[0.03]'
-                      }`}
-                    >
-                      <Icon size={15} />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Notification settings section */}
-                {activeTab === 'notification' && <NotificationSettingsInline />}
-
-                {/* Security section (Password + Passkey) */}
-                {activeTab === 'security' && <>
-                <div className="rounded-[22px] p-[22px_26px_26px] mb-[18px] bg-white/[0.035] border border-white/[0.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                  <h2 className="flex items-center gap-3 text-[#eaf0ff] text-[22px] font-black mb-4">
-                    <Lock size={22} /> 设置密码
-                  </h2>
-                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="新密码"
-                    className="themed-input w-full h-14 rounded-[14px] px-[18px] mb-3"
-                    autoComplete="new-password" />
-                  <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} placeholder="确认密码"
-                    className="themed-input w-full h-14 rounded-[14px] px-[18px] mb-3"
-                    autoComplete="new-password" />
-                  {passwordMsg && (
-                    <p className={`text-xs mb-3 ${passwordMsg.includes('成功') ? 'text-uno-green' : 'text-destructive'}`}>{passwordMsg}</p>
-                  )}
-                  <Button variant="game" className="w-full h-[58px] text-base tracking-[0.08em]" onClick={handleSetPassword} sound="click">保存密码</Button>
-                </div>
-
-                {/* Passkey section */}
-                {browserSupportsWebAuthn() && (
-                  <div className="rounded-[22px] p-[22px_26px_26px] mb-[18px] bg-white/[0.035] border border-white/[0.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                    <h2 className="flex items-center gap-3 text-[#eaf0ff] text-[22px] font-black mb-4">
-                      <Fingerprint size={22} /> Passkey
-                    </h2>
-                    <p className="text-[#c7d0e7] mb-3.5 leading-[1.7]">绑定 Passkey 后可免密码登录，支持指纹、面容或安全密钥</p>
-
-                    {passkeyError && <p className="text-xs text-destructive mb-2">{passkeyError}</p>}
-                    {passkeySuccess && <p className="text-xs text-uno-green mb-2">{passkeySuccess}</p>}
-
-                    <input
-                      type="text"
-                      placeholder="Passkey 名称（如：我的 MacBook）"
-                      value={newPasskeyName}
-                      onChange={(e) => setNewPasskeyName(e.target.value)}
-                      maxLength={50}
-                      className="themed-input w-full h-14 rounded-[14px] px-[18px] mb-3"
-                    />
-                    <Button
-                      variant="game"
-                      className="w-full h-[58px] text-base tracking-[0.08em]"
-                      onClick={handleRegisterPasskey}
-                      disabled={registeringPasskey || !newPasskeyName.trim()}
-                      sound="click"
-                    >
-                      {registeringPasskey ? '注册中...' : '添加 Passkey'}
-                    </Button>
-
-                    {passkeys.length > 0 && (
-                      <div className="flex flex-col gap-2 mt-4">
-                        {passkeys.map((pk) => (
-                          <div key={pk.id} className="flex items-center justify-between rounded-[14px] border border-white/[0.10] px-4 py-3 bg-white/[0.02]">
-                            <div>
-                              <span className="text-sm font-medium">{pk.name}</span>
-                              <span className="ml-2 text-xs text-[#8b95b3]">{new Date(pk.createdAt).toLocaleDateString()}</span>
-                            </div>
-                            <button onClick={() => handleDeletePasskey(pk.id)} className="text-[#8b95b3] hover:text-destructive transition-colors" aria-label="删除 Passkey">
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                </>}
-
-                {/* API Keys section */}
-                {activeTab === 'apikeys' && (
-                <div className="rounded-[22px] p-[22px_26px_26px] mb-[18px] bg-white/[0.035] border border-white/[0.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                  <h2 className="flex items-center gap-3 text-[#eaf0ff] text-[22px] font-black mb-4">
-                    <Key size={22} /> API Keys
-                  </h2>
-                  <p className="text-[#c7d0e7] mb-3.5 leading-[1.7]">用于连接 MCP 客户端（如 Claude Code），让 AI 代你玩游戏</p>
-
-                  {newKeyFull && (
-                    <div className="mb-3 rounded-[14px] border border-uno-green/30 bg-uno-green/10 p-4">
-                      <p className="text-xs text-uno-green mb-2">Key 已生成，请立即复制（仅显示一次）：</p>
-                      <div className="flex items-center gap-2">
-                        <code className="flex-1 break-all rounded-lg bg-black/30 px-3 py-1.5 text-xs">{newKeyFull}</code>
-                        <Button size="sm" variant="secondary" onClick={handleCopyKey} sound="click">
-                          <Copy size={12} /> {keyCopied ? '已复制' : ''}
-                        </Button>
-                      </div>
-                      {keyCopied && (
-                        <button onClick={handleDismissKey} className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                          我已保存，关闭此提示
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {keyError && (
-                    <p className="text-xs text-destructive mb-2">{keyError}</p>
-                  )}
-
-                  <input
-                    type="text"
-                    placeholder="Key 名称（如：我的 Claude）"
-                    value={newKeyName}
-                    onChange={(e) => setNewKeyName(e.target.value)}
-                    maxLength={50}
-                    className="themed-input w-full h-14 rounded-[14px] px-[18px] mb-3"
-                  />
-                  <Button variant="game" className="w-full h-[58px] text-base tracking-[0.08em]" onClick={handleCreateKey} disabled={creatingKey || !newKeyName.trim()} sound="click">
-                    生成 Key
-                  </Button>
-
-                  {apiKeys.length > 0 && (
-                    <div className="flex flex-col gap-2 mt-4">
-                      {apiKeys.map((k) => (
-                        <div key={k.id} className="flex items-center justify-between rounded-[14px] border border-white/[0.10] px-4 py-3 bg-white/[0.02]">
-                          <div>
-                            <span className="text-sm font-medium">{k.name}</span>
-                            <code className="ml-2 text-xs text-[#8b95b3]">{k.keyPreview}</code>
-                          </div>
-                          <button onClick={() => handleDeleteKey(k.id)} className="text-[#8b95b3] hover:text-destructive transition-colors" aria-label="删除 Key">
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        </>
+  const nicknameBlock = (
+    <>
+      {editingNickname ? (
+        <div className="flex items-center gap-2 justify-center">
+          <Input inputSize="sm" className="w-32" value={nickname} onChange={(e) => setNickname(e.target.value)} />
+          <Button variant="primary" size="sm" onClick={handleSaveNickname} disabled={saving} sound="click">
+            <Save size={14} />
+          </Button>
+        </div>
+      ) : (
+        <p className="text-primary text-[30px] font-black cursor-pointer inline-flex items-center gap-2"
+          onClick={() => setEditingNickname(true)}
+          style={profileRoleColor ? { color: profileRoleColor } : undefined}>
+          {profile?.user.nickname}
+          <Edit3 size={16} className="text-muted-foreground" />
+        </p>
       )}
-    </AnimatePresence>
+      <p className="text-muted-foreground mt-1">@{profile?.user.username}</p>
+    </>
+  );
+
+  return (
+    <Modal
+      open={isOpen}
+      onClose={close}
+      width={1110}
+      className="h-[min(820px,calc(100svh-80px))] overflow-hidden"
+    >
+      {/* 全出血布局：抵消 Modal 内容区内边距，保持左右分栏结构 */}
+      <div className="absolute inset-0 grid grid-cols-[270px_1fr] max-md:grid-cols-1">
+        {/* Left: Sidebar */}
+        <div className="border-r border-white/[0.08] p-[34px_22px] bg-white/[0.025] flex flex-col max-md:hidden overflow-y-auto scrollbar-thin shrink-0">
+          <div className="self-stretch flex items-center gap-3 text-[26px] font-black mb-8">
+            <span className="text-primary">♠</span>
+            <span>设置</span>
+          </div>
+
+          {profile && (
+            <div className="text-center mb-8">
+              <div className="flex justify-center">
+                <AvatarUpload avatarUrl={profile.user.avatarUrl} size={100} onUpload={handleAvatarUpload} />
+              </div>
+              <div className="mt-[18px]">{nicknameBlock}</div>
+            </div>
+          )}
+
+          {/* Tab navigation */}
+          <nav className="flex flex-col gap-1">
+            {TABS.map(({ id, icon: Icon, label }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-3 rounded-[14px] text-[15px] font-bold transition-all text-left cursor-pointer border',
+                  activeTab === id
+                    ? 'bg-primary/10 text-primary border-primary/28'
+                    : 'text-muted-foreground border-transparent hover:bg-white/[0.04] hover:text-foreground',
+                )}
+              >
+                <Icon size={18} />
+                {label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="flex-1" />
+          <Button variant="ghost" className="w-full text-muted-foreground" onClick={close} sound="click">关闭</Button>
+        </div>
+
+        {/* Right: Settings main */}
+        <div className="relative p-[42px_34px_36px] max-md:p-[22px_18px_36px] overflow-y-auto scrollbar-thin">
+          {/* Close button */}
+          <IconButton
+            size="md"
+            onClick={close}
+            title="关闭"
+            className="absolute top-6 right-6 max-md:hidden"
+          >
+            <X size={20} />
+          </IconButton>
+
+          {/* Mobile header */}
+          <div className="hidden max-md:flex items-center justify-between mb-[26px]">
+            <IconButton size="lg" active onClick={close} title="返回">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="m15 18-6-6 6-6"/></svg>
+            </IconButton>
+            <h1 className="text-[34px] font-black">设置</h1>
+            <div className="w-14" />
+          </div>
+
+          {/* Mobile profile card */}
+          {profile && (
+            <div className="hidden max-md:flex items-center gap-[22px] rounded-[24px] p-[26px_24px] mb-[18px] border border-primary/22 bg-white/[0.035]">
+              <AvatarUpload avatarUrl={profile.user.avatarUrl} size={92} onUpload={handleAvatarUpload} />
+              <div>{nicknameBlock}</div>
+            </div>
+          )}
+
+          {/* Mobile tab bar */}
+          <div className="hidden max-md:flex gap-2 mb-[18px] overflow-x-auto scrollbar-thin">
+            {TABS.map(({ id, icon: Icon, label }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all cursor-pointer border',
+                  activeTab === id
+                    ? 'bg-primary/[0.12] text-primary border-primary/32'
+                    : 'text-muted-foreground border-white/[0.10] bg-white/[0.03]',
+                )}
+              >
+                <Icon size={15} />
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Notification settings section */}
+          {activeTab === 'notification' && <NotificationSettingsInline />}
+
+          {/* Security section (Password + Passkey) */}
+          {activeTab === 'security' && <>
+          <div className="rounded-[22px] p-[22px_26px_26px] mb-[18px] bg-white/[0.035] border border-white/[0.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <h2 className="flex items-center gap-3 text-foreground text-[22px] font-black mb-4">
+              <Lock size={22} /> 设置密码
+            </h2>
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="新密码"
+              className="mb-3" autoComplete="new-password" />
+            <Input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} placeholder="确认密码"
+              className="mb-3" autoComplete="new-password" />
+            {passwordMsg && (
+              <p className={cn('text-xs mb-3', passwordMsg.includes('成功') ? 'text-uno-green' : 'text-destructive')}>{passwordMsg}</p>
+            )}
+            <Button variant="game" className="w-full h-[58px] text-base tracking-[0.08em]" onClick={handleSetPassword} sound="click">保存密码</Button>
+          </div>
+
+          {/* Passkey section */}
+          {browserSupportsWebAuthn() && (
+            <div className="rounded-[22px] p-[22px_26px_26px] mb-[18px] bg-white/[0.035] border border-white/[0.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <h2 className="flex items-center gap-3 text-foreground text-[22px] font-black mb-4">
+                <Fingerprint size={22} /> Passkey
+              </h2>
+              <p className="text-foreground/80 mb-3.5 leading-[1.7]">绑定 Passkey 后可免密码登录，支持指纹、面容或安全密钥</p>
+
+              {passkeyError && <p className="text-xs text-destructive mb-2">{passkeyError}</p>}
+              {passkeySuccess && <p className="text-xs text-uno-green mb-2">{passkeySuccess}</p>}
+
+              <Input
+                type="text"
+                placeholder="Passkey 名称（如：我的 MacBook）"
+                value={newPasskeyName}
+                onChange={(e) => setNewPasskeyName(e.target.value)}
+                maxLength={50}
+                className="mb-3"
+              />
+              <Button
+                variant="game"
+                className="w-full h-[58px] text-base tracking-[0.08em]"
+                onClick={handleRegisterPasskey}
+                disabled={registeringPasskey || !newPasskeyName.trim()}
+                sound="click"
+              >
+                {registeringPasskey ? '注册中...' : '添加 Passkey'}
+              </Button>
+
+              {passkeys.length > 0 && (
+                <div className="flex flex-col gap-2 mt-4">
+                  {passkeys.map((pk) => (
+                    <div key={pk.id} className="flex items-center justify-between rounded-[14px] border border-white/[0.10] px-4 py-3 bg-white/[0.02]">
+                      <div>
+                        <span className="text-sm font-medium">{pk.name}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">{new Date(pk.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <button onClick={() => handleDeletePasskey(pk.id)} className="text-muted-foreground hover:text-destructive transition-colors" aria-label="删除 Passkey">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          </>}
+
+          {/* API Keys section */}
+          {activeTab === 'apikeys' && (
+          <div className="rounded-[22px] p-[22px_26px_26px] mb-[18px] bg-white/[0.035] border border-white/[0.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <h2 className="flex items-center gap-3 text-foreground text-[22px] font-black mb-4">
+              <Key size={22} /> API Keys
+            </h2>
+            <p className="text-foreground/80 mb-3.5 leading-[1.7]">用于连接 MCP 客户端（如 Claude Code），让 AI 代你玩游戏</p>
+
+            {newKeyFull && (
+              <div className="mb-3 rounded-[14px] border border-uno-green/30 bg-uno-green/10 p-4">
+                <p className="text-xs text-uno-green mb-2">Key 已生成，请立即复制（仅显示一次）：</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 break-all rounded-lg bg-black/30 px-3 py-1.5 text-xs">{newKeyFull}</code>
+                  <Button size="sm" variant="secondary" onClick={handleCopyKey} sound="click">
+                    <Copy size={12} /> {keyCopied ? '已复制' : ''}
+                  </Button>
+                </div>
+                {keyCopied && (
+                  <button onClick={handleDismissKey} className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    我已保存，关闭此提示
+                  </button>
+                )}
+              </div>
+            )}
+
+            {keyError && (
+              <p className="text-xs text-destructive mb-2">{keyError}</p>
+            )}
+
+            <Input
+              type="text"
+              placeholder="Key 名称（如：我的 Claude）"
+              value={newKeyName}
+              onChange={(e) => setNewKeyName(e.target.value)}
+              maxLength={50}
+              className="mb-3"
+            />
+            <Button variant="game" className="w-full h-[58px] text-base tracking-[0.08em]" onClick={handleCreateKey} disabled={creatingKey || !newKeyName.trim()} sound="click">
+              生成 Key
+            </Button>
+
+            {apiKeys.length > 0 && (
+              <div className="flex flex-col gap-2 mt-4">
+                {apiKeys.map((k) => (
+                  <div key={k.id} className="flex items-center justify-between rounded-[14px] border border-white/[0.10] px-4 py-3 bg-white/[0.02]">
+                    <div>
+                      <span className="text-sm font-medium">{k.name}</span>
+                      <code className="ml-2 text-xs text-muted-foreground">{k.keyPreview}</code>
+                    </div>
+                    <button onClick={() => handleDeleteKey(k.id)} className="text-muted-foreground hover:text-destructive transition-colors" aria-label="删除 Key">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          )}
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -487,12 +454,12 @@ function NotificationSettingsInline() {
 
   return (
     <div className="rounded-[22px] p-[22px_26px_26px] mb-[18px] bg-white/[0.035] border border-white/[0.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-      <h2 className="flex items-center gap-3 text-[#eaf0ff] text-[22px] font-black mb-4">
+      <h2 className="flex items-center gap-3 text-foreground text-[22px] font-black mb-4">
         <Bell size={22} /> 通知设置
       </h2>
 
       {permission !== 'granted' && (
-        <div className="mb-4 rounded-[14px] border border-[rgba(246,190,62,0.26)] bg-[rgba(246,190,62,0.06)] px-4 py-3">
+        <div className="mb-4 rounded-[14px] border border-primary/26 bg-primary/[0.06] px-4 py-3">
           {permission === 'denied' ? (
             <p className="text-sm text-destructive/80">
               通知权限已被拒绝，请在浏览器地址栏左侧的网站设置中手动开启。
@@ -500,7 +467,7 @@ function NotificationSettingsInline() {
           ) : (
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">尚未开启通知权限</p>
-              <button onClick={handleRequest} className="text-sm font-bold text-[var(--gold)] hover:opacity-80 transition-opacity">
+              <button onClick={handleRequest} className="text-sm font-bold text-primary hover:opacity-80 transition-opacity">
                 开启
               </button>
             </div>
@@ -512,19 +479,11 @@ function NotificationSettingsInline() {
         {NOTIFICATION_LABELS.map(({ key, label }) => (
           <label key={key} className="flex items-center justify-between cursor-pointer min-h-[48px] border-b border-white/[0.07] last:border-b-0 text-[17px]">
             <span>{label}</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={preferences[key]}
-              onClick={() => setPreference(key, !preferences[key])}
-              className="relative w-[58px] h-[30px] rounded-full p-[3px] transition-all"
-              style={{
-                background: preferences[key] ? 'linear-gradient(135deg, var(--gold-2), var(--gold))' : 'rgba(255,255,255,0.15)',
-                boxShadow: preferences[key] ? '0 0 15px rgba(246,190,62,0.26)' : 'none',
-              }}
-            >
-              <span className={`block w-6 h-6 rounded-full bg-white shadow-[0_3px_8px_rgba(0,0,0,0.25)] transition-transform ${preferences[key] ? 'translate-x-7' : ''}`} />
-            </button>
+            <Switch
+              checked={preferences[key]}
+              onChange={(checked) => setPreference(key, checked)}
+              label={label}
+            />
           </label>
         ))}
       </div>

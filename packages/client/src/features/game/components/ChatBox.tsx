@@ -100,7 +100,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
   }
 
   return (
-    <div className="hidden md:flex fixed bottom-chat-bottom right-3 w-chat-w h-chat-h rounded-xl border border-[rgba(246,190,62,0.18)] backdrop-blur-xl flex-col z-fab overflow-hidden select-text" style={{ background: 'linear-gradient(180deg, rgba(23,30,56,0.96), rgba(12,17,34,0.97))' }} data-allow-selection>
+    <div className="hidden md:flex fixed bottom-chat-bottom right-3 w-chat-w h-chat-h glass-panel !rounded-xl flex-col z-fab overflow-hidden select-text" data-allow-selection>
       <div className="px-3 py-2 border-b border-border flex justify-between items-center">
         <span className="text-caption font-bold">聊天</span>
         <button onClick={() => setOpen(false)} className="bg-transparent text-muted-foreground text-base cursor-pointer flex items-center border-none">

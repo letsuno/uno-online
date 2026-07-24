@@ -37,7 +37,7 @@ export default function AntiCheatToast() {
     <div className={`ace-container ${phase === 'running' ? '' : ''}`}>
       {phase === 'loading' && (
         <div className="ace-loading">
-          <div className="ace-loading-shimmer" />
+          <div className="ace-loading-shimmer" data-allow-overflow />
           <div className="ace-header">
             <div className="ace-logo-icon">U</div>
             <div className="ace-header-text">

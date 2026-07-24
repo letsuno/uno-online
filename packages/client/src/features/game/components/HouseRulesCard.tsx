@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ClipboardList } from 'lucide-react';
 import type { HouseRules } from '@uno-online/shared';
 import { DEFAULT_HOUSE_RULES, HOUSE_RULE_DEFINITIONS } from '@uno-online/shared';
 import { useGameStore } from '../stores/game-store';
@@ -56,8 +57,8 @@ export default function HouseRulesCard({ embedded = false }: HouseRulesCardProps
           className="flex items-center justify-between cursor-pointer mb-2"
           onClick={() => setCollapsed((c) => !c)}
         >
-          <h3 className="text-sm font-game font-bold text-accent">
-            {'📋'} 本局村规
+          <h3 className="text-sm font-game font-bold text-accent flex items-center gap-1.5">
+            <ClipboardList size={14} /> 本局村规
           </h3>
           <button className="text-xs text-muted-foreground hover:text-foreground transition-colors">
             {collapsed ? '展开' : '收起'}

@@ -41,7 +41,8 @@ packages/client/src/
     lobby/
     profile/
   shared/                 # 跨功能共享模块
-    components/ui/        # 通用 UI 组件（Button, Input, GoogleRing）
+    components/ui/        # 通用 UI 组件（Button, Input, IconButton, Modal, Switch, Tabs, AiBadge, GoogleRing）
+    hooks/                # 跨功能 hook（useIsPortrait）
     components/           # 共享布局组件（Toast, ProtectedRoute, ServerButton, ServerSelectModal, ChangelogModal）
     lib/                  # 工具函数（cn, getRoleColor）
     stores/               # 全局 store（toast, settings, room, server）；room store 包含 `seats: RoomSeats`、`spectators: RoomSpectator[]`（替代原 `players: RoomPlayer[]`）
@@ -53,8 +54,11 @@ packages/client/src/
     socket.ts             # Socket.IO 单例
     env.ts                # 环境变量
     build-info.ts         # 构建版本与时间
-  index.css               # Tailwind 主题 + 自定义样式 + 自定义 utility
+  index.css               # 样式装配入口（@import tailwindcss + styles/*）
+  styles/                 # 设计系统：tokens.css（token 唯一定义处）、utilities.css（@utility）、effects.css（特效层）
 ```
+
+> 屏幕适配与 UI 规范详见根目录 [UIUX-GUIDELINES.md](../UIUX-GUIDELINES.md)：游戏画布思路（FitScaler 整体等比缩放 + 布局模式切换），禁止断点流式重排。
 
 ## 命名规范
 
@@ -105,7 +109,7 @@ import type { PlayerInfo } from '../stores/game-store';
 - 使用 Tailwind 工具类，不写行内 CSS（除非动态计算的值）
 - 条件类名用 `cn()` 工具函数
 - 组件变体用 `class-variance-authority`（cva）
-- 自定义主题 token 在 `index.css` 的 `@theme inline` 中定义
+- 自定义主题 token 在 `styles/tokens.css` 的 `@theme inline` 中定义，颜色/层级/半径一律用 token，禁止硬编码
 
 ### 状态管理
 - 全局状态用 Zustand store

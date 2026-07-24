@@ -374,7 +374,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
       <AnimatePresence>
         {shufflePhase !== 'idle' && dimensions.width > 0 && (
           <motion.div
-            className="absolute left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+            className="absolute left-1/2 -translate-x-1/2 z-fab pointer-events-none"
             style={{ top: dimensions.height / 2 - 100 }}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
