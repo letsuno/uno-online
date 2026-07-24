@@ -39,7 +39,7 @@ export default function MobileFAB() {
             key={panel}
             onClick={() => toggle(panel)}
             className={cn(
-              'w-10 h-10 rounded-full bg-black/40 border border-white/20 flex items-center justify-center text-base cursor-pointer transition-colors',
+              'w-10 h-10 rounded-full bg-white/[0.045] border border-white/[0.12] backdrop-blur-md flex items-center justify-center text-base cursor-pointer transition-colors',
               activePanel === panel && 'bg-primary/30 border-primary',
             )}
           >
@@ -49,8 +49,8 @@ export default function MobileFAB() {
       </div>
       {activePanel && (
         <>
-          <div className="hidden md:flex fixed right-16 top-16 bottom-4 w-[360px] max-w-[calc(100vw-6rem)] z-fab flex-col rounded-xl border border-white/15 bg-slate-950/90 backdrop-blur-xl shadow-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-white/10 font-game font-bold text-accent">
+          <div className="hidden md:flex fixed right-16 top-16 bottom-4 w-[360px] max-w-[calc(100vw-6rem)] z-fab flex-col rounded-xl border border-[rgba(246,190,62,0.18)] backdrop-blur-xl shadow-card overflow-hidden" style={{ background: 'linear-gradient(180deg, rgba(23,30,56,0.96), rgba(12,17,34,0.97))' }}>
+            <div className="px-4 py-3 border-b border-border font-game font-bold text-accent">
               {PANEL_TITLES[activePanel]}
             </div>
             <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">

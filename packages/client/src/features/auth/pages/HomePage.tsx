@@ -103,18 +103,18 @@ export default function HomePage() {
   // dev 模式：只一栏用户名 + 登录按钮
   if (authConfig?.devMode) {
     return (
-      <AuthLayout title="登录" footer={<span className="text-sm text-[#8b95b3]">开发模式</span>}>
+      <AuthLayout title="登录" footer={<span className="text-sm text-muted-foreground">开发模式</span>}>
         <div className="flex flex-col gap-5">
           <div>
             <label className="block text-[#dce5ff] text-[18px] font-bold mb-2.5">用户名</label>
             <div className="relative">
-              <svg className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--gold)]" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
+              <svg className="absolute left-5 top-1/2 -translate-y-1/2 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
               <input
                 value={devUsername}
                 onChange={(e) => { setDevUsername(e.target.value); setFieldError(''); }}
                 onKeyDown={(e) => e.key === 'Enter' && handleDevLogin()}
                 placeholder="输入用户名"
-                className="h-[68px] w-full rounded-[16px] border border-[rgba(127,154,225,0.32)] bg-[rgba(13,20,39,0.64)] text-foreground outline-0 pl-14 pr-5 text-base placeholder:text-[rgba(216,224,245,0.38)] focus:border-[rgba(246,190,62,0.6)] focus:shadow-[0_0_0_4px_rgba(246,190,62,0.10)] transition-all"
+                className="themed-input h-[68px] w-full rounded-input pl-14 pr-5 text-base"
               />
             </div>
           </div>
@@ -131,13 +131,13 @@ export default function HomePage() {
   return (
     <AuthLayout
       title="登录"
-      footer={<>没有账号？ <Link to="/register" className="text-[var(--gold)] font-extrabold no-underline hover:opacity-80">立即注册</Link></>}
+      footer={<>没有账号？ <Link to="/register" className="text-primary font-extrabold no-underline hover:opacity-80">立即注册</Link></>}
     >
       <div className="flex flex-col gap-5">
         {/* GitHub OAuth 主 CTA */}
         <a
           href={loginUrl}
-          className="w-full h-[76px] rounded-[18px] border border-[rgba(246,190,62,0.62)] text-[#f3f6ff] bg-white/[0.03] flex justify-center items-center gap-3.5 text-[22px] font-extrabold no-underline shadow-[0_0_22px_rgba(246,190,62,0.12)] transition-all hover:bg-white/[0.06] hover:border-[rgba(246,190,62,0.8)]"
+          className="w-full h-[76px] rounded-btn border border-primary/62 text-[#f3f6ff] bg-white/[0.03] flex justify-center items-center gap-3.5 text-[22px] font-extrabold no-underline shadow-[0_0_22px_rgba(246,190,62,0.12)] transition-all hover:bg-white/[0.06] hover:border-primary/80"
         >
           <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.2.8-.6v-2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.8.1-.8.1-.8 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.4 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.3 1.2-3.2-.1-.3-.5-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.4 11.4 0 0 1 6 0C17.3 4.5 18.3 4.8 18.3 4.8c.6 1.6.2 2.9.1 3.2.8.9 1.2 1.9 1.2 3.2 0 4.5-2.7 5.5-5.3 5.8.5.4.9 1.1.9 2.2v4.1c0 .4.2.7.8.6A12 12 0 0 0 12 .5Z"/></svg>
           GitHub 登录
@@ -155,12 +155,12 @@ export default function HomePage() {
           <div>
             <label className="block text-[#dce5ff] text-[18px] font-bold mb-2.5">用户名</label>
             <div className="relative">
-              <svg className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--gold)]" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
+              <svg className="absolute left-5 top-1/2 -translate-y-1/2 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
               <input
                 value={loginUsername}
                 onChange={(e) => { setLoginUsername(e.target.value); setFieldError(''); }}
                 placeholder="请输入用户名"
-                className="h-[68px] w-full rounded-[16px] border border-[rgba(127,154,225,0.32)] bg-[rgba(13,20,39,0.64)] text-foreground outline-0 pl-14 pr-5 text-base placeholder:text-[rgba(216,224,245,0.38)] focus:border-[rgba(246,190,62,0.6)] focus:shadow-[0_0_0_4px_rgba(246,190,62,0.10)] transition-all"
+                className="themed-input h-[68px] w-full rounded-input pl-14 pr-5 text-base"
                 autoComplete="username"
               />
             </div>
@@ -168,13 +168,13 @@ export default function HomePage() {
           <div>
             <label className="block text-[#dce5ff] text-[18px] font-bold mb-2.5">密码</label>
             <div className="relative">
-              <svg className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--gold)]" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+              <svg className="absolute left-5 top-1/2 -translate-y-1/2 text-primary" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
               <input
                 type="password"
                 value={loginPassword}
                 onChange={(e) => { setLoginPassword(e.target.value); setFieldError(''); }}
                 placeholder="请输入密码"
-                className="h-[68px] w-full rounded-[16px] border border-[rgba(127,154,225,0.32)] bg-[rgba(13,20,39,0.64)] text-foreground outline-0 pl-14 pr-5 text-base placeholder:text-[rgba(216,224,245,0.38)] focus:border-[rgba(246,190,62,0.6)] focus:shadow-[0_0_0_4px_rgba(246,190,62,0.10)] transition-all"
+                className="themed-input h-[68px] w-full rounded-input pl-14 pr-5 text-base"
                 autoComplete="current-password"
               />
             </div>

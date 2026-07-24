@@ -260,7 +260,7 @@ function PlayerNode({
           <div
             className={cn(
               'absolute -bottom-0.5 -left-0.5 w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-background',
-              isSpeaking ? 'bg-green-500' : voiceState.micEnabled ? 'bg-slate-600' : 'bg-red-500/80',
+              isSpeaking ? 'bg-green-500' : voiceState.micEnabled ? 'bg-muted-foreground/70' : 'bg-red-500/80',
             )}
           >
             {voiceState.micEnabled

@@ -25,15 +25,15 @@ export default function AuthLayout({ title, subtitle, showLogo = true, footer, c
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
-        className="glass-panel w-[644px] portrait:w-[460px] rounded-[28px] px-[52px] portrait:px-[30px] py-[44px] portrait:py-[38px]"
+        className="glass-panel w-[644px] portrait:w-[460px] rounded-panel-ui px-[52px] portrait:px-[30px] py-[44px] portrait:py-[38px]"
       >
         {showLogo && (
           <div className="text-center">
-            <div className="flex justify-center items-center gap-2.5 text-[var(--gold)] font-black text-[28px]" style={{ textShadow: '0 0 18px rgba(246,190,62,0.36)' }}>
+            <div className="flex justify-center items-center gap-2.5 text-primary font-black text-[28px]" style={{ textShadow: '0 0 18px rgba(246,190,62,0.36)' }}>
               <span>♠</span><span>UNO</span>
             </div>
             {title && (
-              <h1 className="mt-3 text-[var(--gold)] text-[48px] font-black tracking-[0.12em]">
+              <h1 className="mt-3 text-primary text-[48px] font-black tracking-[0.12em]">
                 {title}
               </h1>
             )}

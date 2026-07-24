@@ -216,7 +216,7 @@ export default function ProfileModal() {
                       {editingNickname ? (
                         <div className="flex items-center gap-2 justify-center">
                           <input value={nickname} onChange={(e) => setNickname(e.target.value)}
-                            className="h-[42px] w-32 rounded-[12px] border border-[rgba(127,154,225,0.32)] bg-[rgba(12,18,36,0.62)] text-foreground outline-0 px-3 text-sm focus:border-[rgba(246,190,62,0.58)] focus:shadow-[0_0_0_4px_rgba(246,190,62,0.10)] transition-all" />
+                            className="themed-input h-[42px] w-32 rounded-[12px] px-3 text-sm" />
                           <Button variant="primary" size="sm" onClick={handleSaveNickname} disabled={saving} sound="click">
                             <Save size={14} />
                           </Button>
@@ -288,7 +288,7 @@ export default function ProfileModal() {
                       {editingNickname ? (
                         <div className="flex items-center gap-2">
                           <input value={nickname} onChange={(e) => setNickname(e.target.value)}
-                            className="h-[42px] w-32 rounded-[12px] border border-[rgba(127,154,225,0.32)] bg-[rgba(12,18,36,0.62)] text-foreground outline-0 px-3 text-sm focus:border-[rgba(246,190,62,0.58)] transition-all" />
+                            className="themed-input h-[42px] w-32 rounded-[12px] px-3 text-sm" />
                           <Button variant="primary" size="sm" onClick={handleSaveNickname} disabled={saving} sound="click">
                             <Save size={14} />
                           </Button>
@@ -338,10 +338,10 @@ export default function ProfileModal() {
                     <Lock size={22} /> 设置密码
                   </h2>
                   <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="新密码"
-                    className="w-full h-14 rounded-[14px] border border-[rgba(127,154,225,0.32)] bg-[rgba(12,18,36,0.62)] text-foreground outline-0 px-[18px] mb-3 placeholder:text-[rgba(216,224,245,0.38)] focus:border-[rgba(246,190,62,0.58)] focus:shadow-[0_0_0_4px_rgba(246,190,62,0.10)] transition-all"
+                    className="themed-input w-full h-14 rounded-[14px] px-[18px] mb-3"
                     autoComplete="new-password" />
                   <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} placeholder="确认密码"
-                    className="w-full h-14 rounded-[14px] border border-[rgba(127,154,225,0.32)] bg-[rgba(12,18,36,0.62)] text-foreground outline-0 px-[18px] mb-3 placeholder:text-[rgba(216,224,245,0.38)] focus:border-[rgba(246,190,62,0.58)] focus:shadow-[0_0_0_4px_rgba(246,190,62,0.10)] transition-all"
+                    className="themed-input w-full h-14 rounded-[14px] px-[18px] mb-3"
                     autoComplete="new-password" />
                   {passwordMsg && (
                     <p className={`text-xs mb-3 ${passwordMsg.includes('成功') ? 'text-uno-green' : 'text-destructive'}`}>{passwordMsg}</p>
@@ -366,7 +366,7 @@ export default function ProfileModal() {
                       value={newPasskeyName}
                       onChange={(e) => setNewPasskeyName(e.target.value)}
                       maxLength={50}
-                      className="w-full h-14 rounded-[14px] border border-[rgba(127,154,225,0.32)] bg-[rgba(12,18,36,0.62)] text-foreground outline-0 px-[18px] mb-3 placeholder:text-[rgba(216,224,245,0.38)] focus:border-[rgba(246,190,62,0.58)] focus:shadow-[0_0_0_4px_rgba(246,190,62,0.10)] transition-all"
+                      className="themed-input w-full h-14 rounded-[14px] px-[18px] mb-3"
                     />
                     <Button
                       variant="game"
@@ -433,7 +433,7 @@ export default function ProfileModal() {
                     value={newKeyName}
                     onChange={(e) => setNewKeyName(e.target.value)}
                     maxLength={50}
-                    className="w-full h-14 rounded-[14px] border border-[rgba(127,154,225,0.32)] bg-[rgba(12,18,36,0.62)] text-foreground outline-0 px-[18px] mb-3 placeholder:text-[rgba(216,224,245,0.38)] focus:border-[rgba(246,190,62,0.58)] focus:shadow-[0_0_0_4px_rgba(246,190,62,0.10)] transition-all"
+                    className="themed-input w-full h-14 rounded-[14px] px-[18px] mb-3"
                   />
                   <Button variant="game" className="w-full h-[58px] text-base tracking-[0.08em]" onClick={handleCreateKey} disabled={creatingKey || !newKeyName.trim()} sound="click">
                     生成 Key

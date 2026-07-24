@@ -50,7 +50,7 @@ export default function MobileMenuSheet({ open, onClose }: MobileMenuSheetProps)
         <Item icon={<Eye size={16} />} label={colorBlindMode ? '关闭色盲模式' : '开启色盲模式'} active={colorBlindMode} onClick={() => { toggleColorBlind(); onClose(); }} />
         <Item icon={<Music size={16} />} label={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'} active={bgmEnabled} onClick={() => { toggleBgm(); onClose(); }} />
         <Item icon={soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />} label={soundEnabled ? '关闭音效' : '开启音效'} active={soundEnabled} onClick={() => { toggleSound(); onClose(); }} />
-        <div className="h-px bg-white/10 my-1" />
+        <div className="h-px bg-border my-1" />
         <Item icon={isHost ? <DoorOpen size={16} /> : <LogOut size={16} />} label={isHost ? '离开并转让房主' : '退出对局'} danger onClick={handleLeave} />
         {isHost && <Item icon={<Trash2 size={16} />} label="解散房间" danger onClick={handleDissolve} />}
       </div>

@@ -44,7 +44,7 @@ export default function MobileStatusBar({ onOpenMenu }: MobileStatusBarProps) {
   const showCard = topCard && currentColor && phase !== 'round_end' && phase !== 'game_over';
 
   return (
-    <div className="flex items-center justify-between px-3 py-1.5 bg-black/40 text-xs z-topbar">
+    <div className="flex items-center justify-between px-3 py-1.5 bg-[rgba(7,11,22,0.6)] backdrop-blur-md text-xs z-topbar">
       <div className="flex items-center gap-2">
         {showCard && (
           <div
@@ -66,7 +66,7 @@ export default function MobileStatusBar({ onOpenMenu }: MobileStatusBarProps) {
           </span>
         )}
         {phase && PHASE_LABEL[phase] && (
-          <span className="rounded-full bg-white/10 text-muted-foreground px-2 py-0.5 font-game">
+          <span className="rounded-full bg-secondary text-muted-foreground px-2 py-0.5 font-game">
             {PHASE_LABEL[phase]}
           </span>
         )}
@@ -75,7 +75,7 @@ export default function MobileStatusBar({ onOpenMenu }: MobileStatusBarProps) {
         <TurnTimer />
         <button
           onClick={onOpenMenu}
-          className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/10 text-muted-foreground active:bg-white/20"
+          className="w-7 h-7 flex items-center justify-center rounded-lg bg-secondary text-muted-foreground active:bg-white/10"
         >
           <Menu size={14} />
         </button>

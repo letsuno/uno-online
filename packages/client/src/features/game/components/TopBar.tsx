@@ -14,6 +14,7 @@ import { getSocket } from '@/shared/socket';
 import { useServerStore } from '@/shared/stores/server-store';
 import { showConfirm } from '@/shared/stores/confirm-store';
 import { cn } from '@/shared/lib/utils';
+import { getPingColor } from '@/shared/lib/ping';
 import { BUILD_VERSION } from '@/shared/build-info';
 
 const PHASE_LABEL: Record<string, string> = {
@@ -44,20 +45,13 @@ function getCardLabel(card: Card): string {
   }
 }
 
-function getPingColor(ms: number | null | undefined) {
-  if (ms == null) return { dot: '#666', text: 'text-muted-foreground' };
-  if (ms < 50) return { dot: '#22c55e', text: 'text-green-400' };
-  if (ms <= 150) return { dot: '#fbbf24', text: 'text-yellow-400' };
-  return { dot: '#ef4444', text: 'text-red-400' };
-}
-
 function LatencyIndicator() {
   const currentServerId = useServerStore((s) => s.currentServerId);
   const latency = useServerStore((s) => s.latencyMap[currentServerId]);
   const ping = getPingColor(latency);
 
   return (
-    <span className={cn('hidden sm:inline-flex items-center gap-1 text-xs', ping.text)} title="网络延迟">
+    <span className="hidden sm:inline-flex items-center gap-1 text-xs" style={{ color: ping.text }} title="网络延迟">
       <Wifi size={12} />
       <span
         className="w-1.5 h-1.5 rounded-full"
@@ -119,7 +113,7 @@ function GameStatus() {
         </span>
       )}
       {phase && PHASE_LABEL[phase] && (
-        <span className="rounded-full bg-white/10 text-muted-foreground px-2 py-1 font-game">
+        <span className="rounded-full bg-secondary text-muted-foreground px-2 py-1 font-game">
           {PHASE_LABEL[phase]}
         </span>
       )}
@@ -174,7 +168,7 @@ export default function TopBar({ roomCode, onOpenHotkeys }: TopBarProps) {
   };
 
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center px-4 py-2 bg-black/30 text-caption z-topbar">
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center px-4 py-2 bg-[rgba(7,11,22,0.6)] backdrop-blur-md text-caption z-topbar">
       <div className="flex items-center gap-3">
         <span className="font-bold text-primary font-game"><Spade size={18} className="inline align-middle" /> UNO Online</span>
         <span className="text-muted-foreground">房间: {roomCode}</span>

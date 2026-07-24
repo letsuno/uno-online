@@ -11,9 +11,9 @@ interface GameLogProps {
 function RoundSeparator({ roundNumber }: { roundNumber: number }) {
   return (
     <div className="flex items-center gap-2 py-1.5">
-      <div className="flex-1 border-t border-white/10" />
+      <div className="flex-1 border-t border-border" />
       <span className="text-2xs text-muted-foreground whitespace-nowrap">第{roundNumber}回合</span>
-      <div className="flex-1 border-t border-white/10" />
+      <div className="flex-1 border-t border-border" />
     </div>
   );
 }
@@ -58,7 +58,7 @@ export default function GameLog({ embedded = false }: GameLogProps) {
   }
 
   return (
-    <div className="hidden md:block fixed right-4 bottom-24 w-chat-w z-fab bg-card/80 backdrop-blur-sm rounded-xl border border-white/10" ref={scrollRef}>
+    <div className="hidden md:block fixed right-4 bottom-24 w-chat-w z-fab bg-card/80 backdrop-blur-sm rounded-xl border border-border" ref={scrollRef}>
       <button
         onClick={() => setCollapsed((c) => !c)}
         className="flex items-center justify-between w-full px-3 py-2 cursor-pointer text-left"

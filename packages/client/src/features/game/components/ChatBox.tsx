@@ -72,7 +72,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
         <div className="flex gap-1 flex-wrap shrink-0">
           {QUICK_PHRASES.map((phrase) => (
             <button key={phrase} onClick={() => sendPhrase(phrase)}
-              className="bg-white/10 rounded-lg text-2xs px-2 py-0.5 text-foreground cursor-pointer transition-colors duration-150 hover:bg-white/20">
+              className="bg-secondary rounded-lg text-2xs px-2 py-0.5 text-foreground cursor-pointer transition-colors duration-150 hover:bg-white/10">
               {phrase}
             </button>
           ))}
@@ -80,7 +80,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
         <div className="flex gap-1 shrink-0">
           <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()}
             placeholder="发送消息..."
-            className="flex-1 px-2.5 py-1.5 rounded-lg border border-white/20 bg-muted text-foreground text-xs"
+            className="flex-1 px-2.5 py-1.5 rounded-lg border border-input bg-muted text-foreground text-xs"
           />
           <button onClick={send} className="bg-primary text-primary-foreground px-3 py-1.5 rounded-3xl text-xs font-bold">发送</button>
         </div>
@@ -92,7 +92,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="hidden md:flex fixed bottom-chat-bottom right-3 w-10 h-10 rounded-full bg-black/30 border border-white/20 text-foreground text-lg cursor-pointer z-fab items-center justify-center"
+        className="hidden md:flex fixed bottom-chat-bottom right-3 w-10 h-10 rounded-full bg-white/[0.045] border border-white/[0.12] backdrop-blur-md text-foreground text-lg cursor-pointer z-fab items-center justify-center"
       >
         <MessageCircle size={18} />
       </button>
@@ -100,8 +100,8 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
   }
 
   return (
-    <div className="hidden md:flex fixed bottom-chat-bottom right-3 w-chat-w h-chat-h bg-card rounded-xl border border-white/15 flex-col z-fab overflow-hidden select-text" data-allow-selection>
-      <div className="px-3 py-2 bg-muted flex justify-between items-center">
+    <div className="hidden md:flex fixed bottom-chat-bottom right-3 w-chat-w h-chat-h rounded-xl border border-[rgba(246,190,62,0.18)] backdrop-blur-xl flex-col z-fab overflow-hidden select-text" style={{ background: 'linear-gradient(180deg, rgba(23,30,56,0.96), rgba(12,17,34,0.97))' }} data-allow-selection>
+      <div className="px-3 py-2 border-b border-border flex justify-between items-center">
         <span className="text-caption font-bold">聊天</span>
         <button onClick={() => setOpen(false)} className="bg-transparent text-muted-foreground text-base cursor-pointer flex items-center border-none">
           <X size={16} />
@@ -127,7 +127,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
       <div className="flex gap-1 px-1.5 py-0.5 flex-wrap">
         {QUICK_PHRASES.map((phrase) => (
           <button key={phrase} onClick={() => sendPhrase(phrase)}
-            className="bg-white/10 rounded-lg text-2xs px-2 py-0.5 text-foreground cursor-pointer transition-colors duration-150 hover:bg-white/20">
+            className="bg-secondary rounded-lg text-2xs px-2 py-0.5 text-foreground cursor-pointer transition-colors duration-150 hover:bg-white/10">
             {phrase}
           </button>
         ))}
@@ -135,7 +135,7 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
       <div className="flex p-1.5 gap-1">
         <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()}
           placeholder="发送消息..."
-          className="flex-1 px-2.5 py-1.5 rounded-lg border border-white/20 bg-muted text-foreground text-xs"
+          className="flex-1 px-2.5 py-1.5 rounded-lg border border-input bg-muted text-foreground text-xs"
         />
         <button onClick={send} className="bg-primary text-primary-foreground px-3 py-1.5 rounded-3xl text-xs font-bold">发送</button>
       </div>

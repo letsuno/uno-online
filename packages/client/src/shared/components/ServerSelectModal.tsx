@@ -6,13 +6,7 @@ import { useServerStore } from '../stores/server-store';
 import type { ServerEntry } from '../stores/server-store';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { disconnectSocket } from '../socket';
-
-function getLatencyColor(ms: number | null | undefined): string {
-  if (ms === null || ms === undefined) return '#666';
-  if (ms < 50) return '#4ade80';
-  if (ms <= 150) return '#fbbf24';
-  return '#ef4444';
-}
+import { getPingColor } from '../lib/ping';
 
 function formatUptime(seconds: number): string {
   if (seconds < 60) return `${seconds}秒`;
@@ -43,8 +37,8 @@ function ServerCard({
       onClick={onSelect}
       className="cursor-pointer rounded-xl border p-3.5 transition-colors"
       style={{
-        background: isSelected ? 'rgba(251,191,36,0.08)' : 'rgba(255,255,255,0.04)',
-        borderColor: isSelected ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.1)',
+        background: isSelected ? 'rgba(246,190,62,0.08)' : 'rgba(255,255,255,0.04)',
+        borderColor: isSelected ? 'rgba(246,190,62,0.3)' : 'rgba(255,255,255,0.1)',
         borderWidth: isSelected ? '1.5px' : '1px',
         opacity: isOnline ? 1 : 0.5,
       }}
@@ -103,7 +97,7 @@ function ServerCard({
           </div>
           <span
             className="flex items-center gap-1 font-medium"
-            style={{ color: getLatencyColor(latency) }}
+            style={{ color: getPingColor(latency).text }}
           >
             <Signal size={12} /> {latency !== null && latency !== undefined ? `${latency}ms` : '--'}
           </span>
@@ -163,7 +157,7 @@ export function ServerSelectModal() {
   return (
     <AnimatePresence>
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div className="fixed inset-0 z-modal flex items-center justify-center px-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -220,7 +214,7 @@ export function ServerSelectModal() {
                 <button
                   onClick={handleAdd}
                   disabled={adding}
-                  className="flex items-center gap-1 whitespace-nowrap rounded-lg bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] px-3.5 py-2 text-[13px] font-bold text-[#1a1a2e] transition-colors hover:opacity-90 disabled:opacity-50"
+                  className="flex items-center gap-1 whitespace-nowrap gold-button-base px-3.5 py-2 text-[13px] disabled:opacity-50"
                 >
                   <Plus size={14} /> {adding ? '添加中...' : '添加'}
                 </button>

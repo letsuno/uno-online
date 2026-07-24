@@ -76,10 +76,10 @@ export default function ConfirmDialog() {
                 onClick={() => resolve(true)}
                 autoFocus
                 className={cn(
-                  'rounded-lg px-4 py-2 text-sm font-bold transition-colors',
+                  'px-4 py-2 text-sm transition-colors',
                   current.variant === 'danger'
-                    ? 'bg-destructive/90 text-white hover:bg-destructive'
-                    : 'bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] text-[#1a1a2e] hover:opacity-90',
+                    ? 'rounded-lg bg-destructive/90 font-bold text-white hover:bg-destructive'
+                    : 'gold-button-base',
                 )}
               >
                 {current.confirmText}

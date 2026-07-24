@@ -26,14 +26,14 @@ export default function SpinningCard({ size = 80 }: Props) {
         <rect
           x="2" y="2" width="76" height="108" rx="8"
           fill="rgba(20,20,28,0.95)"
-          stroke="rgb(251,191,36)"
+          stroke="var(--color-uno-yellow)"
           strokeWidth="2"
         />
         {/* 中央 ♠ UNO 字样 */}
         <text
           x="40" y="58"
           textAnchor="middle"
-          fill="rgb(251,191,36)"
+          fill="var(--color-uno-yellow)"
           fontFamily="var(--font-game, sans-serif)"
           fontSize="28"
           fontWeight="bold"
@@ -43,7 +43,7 @@ export default function SpinningCard({ size = 80 }: Props) {
         <text
           x="40" y="82"
           textAnchor="middle"
-          fill="rgb(251,191,36)"
+          fill="var(--color-uno-yellow)"
           fontFamily="var(--font-game, sans-serif)"
           fontSize="14"
           fontWeight="bold"

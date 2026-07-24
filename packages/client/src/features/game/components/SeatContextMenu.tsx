@@ -37,7 +37,7 @@ export function SeatContextMenu({
 
   if (!player) {
     return (
-      <div ref={ref} style={{ position: 'fixed', left: clampedX, top: clampedY, zIndex: 50 }} className="glass-panel !rounded-xl py-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-100">
+      <div ref={ref} style={{ position: 'fixed', left: clampedX, top: clampedY, zIndex: 50 }} className="glass-panel-sm py-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-100">
         <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-white/5">{seatIndex + 1}号位</div>
         <button
           className={menuItemClass}
@@ -47,7 +47,7 @@ export function SeatContextMenu({
         </button>
         {isOwner && (
           <>
-            <div className="px-3 py-1 text-xs text-white/40">添加人机</div>
+            <div className="px-3 py-1 text-xs text-muted-foreground">添加人机</div>
             {DIFFICULTY_LIST.map((d) => (
               <button
                 key={d.value}
@@ -69,7 +69,7 @@ export function SeatContextMenu({
 
   if (player.isBot) {
     return (
-      <div ref={ref} style={{ position: 'fixed', left: clampedX, top: clampedY, zIndex: 50 }} className="glass-panel !rounded-xl py-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-100">
+      <div ref={ref} style={{ position: 'fixed', left: clampedX, top: clampedY, zIndex: 50 }} className="glass-panel-sm py-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-100">
         <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-white/5">{seatIndex + 1}号位 · {player.nickname}</div>
         {isMeSeated && (
           <button
@@ -81,7 +81,7 @@ export function SeatContextMenu({
         )}
         {isOwner && (
           <>
-            <div className="px-3 py-1 text-xs text-white/40">调整难度</div>
+            <div className="px-3 py-1 text-xs text-muted-foreground">调整难度</div>
             {DIFFICULTY_LIST.map((d) => (
               <button
                 key={d.value}

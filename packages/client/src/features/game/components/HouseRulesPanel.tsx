@@ -66,13 +66,18 @@ export default function HouseRulesPanel({ houseRules, onChange, disabled = false
               onClick={() => toggle(rule.key)}
               disabled={disabled}
               className={cn(
-                'w-11 h-6 rounded-xl border-none relative transition-colors duration-200',
+                'w-11 h-6 rounded-full border-none relative transition-all duration-200',
                 disabled ? 'cursor-default' : 'cursor-pointer',
-                houseRules[rule.key] ? 'bg-accent' : 'bg-switch-off'
               )}
+              style={{
+                background: houseRules[rule.key]
+                  ? 'linear-gradient(135deg, var(--gold-2), var(--gold))'
+                  : 'rgba(255,255,255,0.15)',
+                boxShadow: houseRules[rule.key] ? '0 0 12px rgba(246,190,62,0.26)' : 'none',
+              }}
             >
               <div className={cn(
-                'w-toggle-knob h-toggle-knob rounded-full bg-white absolute top-toggle-off transition-[left] duration-200',
+                'w-toggle-knob h-toggle-knob rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] absolute top-toggle-off transition-[left] duration-200',
                 houseRules[rule.key] ? 'left-toggle-on' : 'left-toggle-off'
               )} />
             </button>
@@ -84,7 +89,7 @@ export default function HouseRulesPanel({ houseRules, onChange, disabled = false
                 setValue(rule.key, v === 'null' ? null : Number(v));
               }}
               disabled={disabled}
-              className="bg-white/[0.06] text-foreground border border-white/10 rounded-xl px-3 py-1.5 text-xs outline-none cursor-pointer"
+              className="bg-white/[0.06] text-foreground border border-border rounded-xl px-3 py-1.5 text-xs outline-none cursor-pointer"
             >
               {rule.options?.map((opt) => (
                 <option key={String(opt.value)} value={String(opt.value ?? 'null')}>{opt.label}</option>

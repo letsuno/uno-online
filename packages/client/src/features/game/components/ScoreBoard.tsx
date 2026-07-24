@@ -134,8 +134,8 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
   );
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-modal">
-      <div className="bg-card rounded-panel px-10 py-8 min-w-room-min text-center">
+    <div className="fixed inset-0 glass-modal-backdrop flex items-center justify-center z-modal">
+      <div className="glass-panel px-10 py-8 min-w-room-min text-center">
         <h2 className="font-game text-accent mb-4">
           {isGameOver ? <><Trophy size={20} className="inline align-middle" /> 游戏结束!</> : <><BarChart3 size={20} className="inline align-middle" /> 本轮结束</>}
         </h2>
@@ -157,7 +157,7 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
                   <td className="px-2 py-1.5 text-left">
                     {p.id === winnerId && <Crown size={14} className="inline align-middle mr-1" />}
                     <span className={cn(disconnected && 'opacity-50')}>{p.name}</span>
-                    {p.id === ownerId && <span title="房主"><Crown size={12} className="inline align-middle ml-1 text-yellow-500" /></span>}
+                    {p.id === ownerId && <span title="房主"><Crown size={12} className="inline align-middle ml-1 text-primary" /></span>}
                     {p.isBot && <AiBadge className="ml-1" />}
                     {disconnected && <WifiOff size={12} className="inline align-middle ml-1 text-destructive" />}
                     {canTransfer && !isSelf && !p.isBot && (
@@ -168,7 +168,7 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
                             if (!res?.success) useToastStore.getState().addToast(res?.error ?? '移交失败', 'error');
                           });
                         }}
-                        className="ml-1 text-yellow-500/50 hover:text-yellow-500 cursor-pointer bg-transparent border-none transition-colors"
+                        className="ml-1 text-primary/50 hover:text-primary cursor-pointer bg-transparent border-none transition-colors"
                         title="移交房主"
                       >
                         <ArrowRightLeft size={12} className="inline align-middle" />
@@ -192,7 +192,7 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
           </tbody>
         </table>
         {isSpectatorOwner && (
-          <div className="mb-3 flex items-center gap-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 text-xs text-yellow-300">
+          <div className="mb-3 flex items-center gap-2 rounded-lg bg-primary/10 border border-primary/30 px-3 py-2 text-xs text-primary">
             <Crown size={14} className="shrink-0" />
             <span>{spectatorQueued ? '你将在下一轮入座，或将房主移交给在座的玩家' : '你是房主但处于观战状态，请入座或将房主移交给在座的玩家'}</span>
           </div>

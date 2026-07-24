@@ -39,9 +39,9 @@ export default function PlayerListPanel() {
       dragElastic={0}
       className="absolute top-12 right-3 pointer-events-auto"
     >
-      <div className="rounded-card-ui bg-card/80 backdrop-blur-sm shadow-card shadow-tech border border-white/10 w-48">
+      <div className="rounded-card-ui bg-card/80 backdrop-blur-sm shadow-card shadow-tech border border-border w-48">
         <div
-          className="px-3 py-2 border-b border-white/10 text-xs text-muted-foreground font-bold flex items-center gap-1 cursor-grab active:cursor-grabbing select-none"
+          className="px-3 py-2 border-b border-border text-xs text-muted-foreground font-bold flex items-center gap-1 cursor-grab active:cursor-grabbing select-none"
           onPointerDown={(e) => dragControls.start(e)}
         >
           <GripHorizontal size={12} className="shrink-0 opacity-40" />
@@ -129,7 +129,7 @@ export default function PlayerListPanel() {
                             isMe && !isActive && 'text-primary',
                             !isActive && !isMe && 'text-foreground',
                           )} style={(!isActive && !isMe && roleColor) ? { color: roleColor } : undefined}>
-                            {p.name}{isMe ? ' (你)' : ''}{p.id === ownerId && <Crown size={10} className="inline align-middle ml-1 text-yellow-500" />}{p.isBot && <AiBadge className="ml-1" />}
+                            {p.name}{isMe ? ' (你)' : ''}{p.id === ownerId && <Crown size={10} className="inline align-middle ml-1 text-primary" />}{p.isBot && <AiBadge className="ml-1" />}
                           </div>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
@@ -142,7 +142,7 @@ export default function PlayerListPanel() {
                                   if (!res?.success) useToastStore.getState().addToast(res?.error ?? '移交失败', 'error');
                                 });
                               }}
-                              className="text-yellow-500/40 hover:text-yellow-500 cursor-pointer transition-colors"
+                              className="text-primary/40 hover:text-primary cursor-pointer transition-colors"
                               title="移交房主"
                             >
                               <ArrowRightLeft size={10} />
@@ -158,7 +158,7 @@ export default function PlayerListPanel() {
                 </div>
                 {spectators.length > 0 && (
                   <>
-                    <div className="px-3 py-2 border-t border-white/10 text-xs text-muted-foreground font-bold">
+                    <div className="px-3 py-2 border-t border-border text-xs text-muted-foreground font-bold">
                       观众 ({spectators.length})
                     </div>
                     <div className="py-1">

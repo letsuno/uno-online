@@ -39,7 +39,7 @@ export default function ServerUpdateDialog() {
             <div className="border-t border-white/5 px-5 py-3.5">
               <button
                 onClick={handleRefresh}
-                className="w-full rounded-lg bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] px-4 py-2 text-sm font-bold text-[#1a1a2e] transition-colors hover:opacity-90"
+                className="w-full gold-button-base px-4 py-2 text-sm"
               >
                 刷新页面
               </button>

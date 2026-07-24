@@ -34,7 +34,7 @@ export default function SwapRequestDialog({
   }, [totalSeconds, onRespond]);
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 glass-modal-backdrop z-50 flex items-center justify-center">
       <div className="glass-panel p-6 w-[320px] max-w-[90vw] flex flex-col items-center gap-4">
         {/* Title */}
         <div className="text-center">

@@ -95,7 +95,7 @@ export default function Seat({ index, player, isMe, isOwnerSeat, compact = false
         {isOwnerSeat && (
           <Crown
             size={compact ? 10 : 13}
-            className="absolute -top-1.5 -left-1 text-yellow-400 drop-shadow fill-yellow-400"
+            className="absolute -top-1.5 -left-1 text-primary drop-shadow fill-primary"
           />
         )}
 
