@@ -135,7 +135,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
     () => calculateHandLayout(
       sorted.length,
       containerWidth,
-      (boundaryOffsets[boundaryOffsets.length - 1] ?? 0) + NEAR_EXPAND,
+      (boundaryOffsets[boundaryOffsets.length - 1] ?? 0) + NEAR_EXPAND * 2,
     ),
     [sorted.length, containerWidth, boundaryOffsets],
   );

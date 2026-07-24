@@ -2,6 +2,8 @@ import { X, Settings } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { getSocket } from '@/shared/socket';
 import { Button } from '@/shared/components/ui/Button';
+import { IconButton } from '@/shared/components/ui/IconButton';
+import { Switch } from '@/shared/components/ui/Switch';
 import { DEFAULT_HOUSE_RULES, HOUSE_RULES_PRESETS, HOUSE_RULE_DEFINITIONS } from '@uno-online/shared';
 import type { HouseRules, HouseRuleDefinition } from '@uno-online/shared';
 
@@ -80,23 +82,19 @@ export default function SettingsDrawer({
       {/* Panel */}
       <div
         className={cn(
-          'fixed right-0 top-0 h-full w-[320px] max-w-[75vw] z-modal flex flex-col border-l border-[rgba(246,190,62,0.18)] backdrop-blur-xl shadow-[-20px_0_60px_rgba(0,0,0,0.45)]',
+          'fixed right-0 top-0 h-full w-[320px] max-w-[75vw] z-modal flex flex-col glass-panel !rounded-none',
           'transition-transform duration-300',
           open ? 'translate-x-0' : 'translate-x-full',
         )}
-        style={{ background: 'linear-gradient(180deg, rgba(23,30,56,0.96), rgba(12,17,34,0.97))' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <span className="flex items-center gap-2 text-base font-black text-foreground">
-            <Settings size={16} className="text-[var(--gold)]" /> 房间设置
+            <Settings size={16} className="text-primary" /> 房间设置
           </span>
-          <button
-            onClick={onClose}
-            className="icon-button w-8 h-8 rounded-[10px]"
-          >
+          <IconButton size="sm" onClick={onClose} title="关闭">
             <X size={15} />
-          </button>
+          </IconButton>
         </div>
 
         {/* Scrollable content */}
@@ -107,39 +105,18 @@ export default function SettingsDrawer({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-sm">允许观战</label>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={room?.settings?.allowSpectators ?? true}
-                  onClick={() => {
-                    if (isOwner) {
-                      getSocket().emit('room:update_settings', { allowSpectators: !(room?.settings?.allowSpectators ?? true) });
-                    }
-                  }}
+                <Switch
+                  size="sm"
+                  checked={room?.settings?.allowSpectators ?? true}
+                  onChange={(v) => getSocket().emit('room:update_settings', { allowSpectators: v })}
                   disabled={!isOwner}
-                  className={cn(
-                    'w-11 h-6 rounded-full relative transition-all duration-200',
-                    !isOwner ? 'cursor-default opacity-50' : 'cursor-pointer',
-                  )}
-                  style={{
-                    background: (room?.settings?.allowSpectators ?? true)
-                      ? 'linear-gradient(135deg, var(--gold-2), var(--gold))'
-                      : 'rgba(255,255,255,0.15)',
-                    boxShadow: (room?.settings?.allowSpectators ?? true) ? '0 0 12px rgba(246,190,62,0.26)' : 'none',
-                  }}
-                >
-                  <span
-                    className={cn(
-                      'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform',
-                      (room?.settings?.allowSpectators ?? true) ? 'translate-x-5' : '',
-                    )}
-                  />
-                </button>
+                  label="允许观战"
+                />
               </div>
               {(room?.settings?.allowSpectators ?? true) && (
                 <div className="flex items-center justify-between">
                   <label className="text-sm">观战模式</label>
-                  <div className={cn('flex rounded-xl bg-white/[0.06] border border-border p-0.5', !isOwner && 'opacity-50')}>
+                  <div className={cn('flex rounded-xl bg-secondary border border-border p-0.5', !isOwner && 'opacity-50')}>
                     {([['hidden', '只看出牌'], ['full', '全透视']] as const).map(([value, label]) => {
                       const active = (room?.settings?.spectatorMode ?? 'hidden') === value;
                       return (
@@ -151,7 +128,7 @@ export default function SettingsDrawer({
                           className={cn(
                             'px-3 py-1 rounded-lg text-sm font-medium transition-colors',
                             isOwner ? 'cursor-pointer' : 'cursor-default',
-                            active ? 'bg-accent text-[#161513]' : 'text-muted-foreground hover:text-foreground',
+                            active ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground',
                           )}
                         >
                           {label}
@@ -185,27 +162,13 @@ export default function SettingsDrawer({
                     <div className="text-xs text-muted-foreground">{rule.description}</div>
                   </div>
                   {rule.type === 'boolean' ? (
-                    <button
-                      onClick={() => toggleRule(rule.key)}
+                    <Switch
+                      size="sm"
+                      checked={Boolean(houseRules[rule.key])}
+                      onChange={() => toggleRule(rule.key)}
                       disabled={!isOwner}
-                      className={cn(
-                        'w-11 h-6 rounded-full border-none relative transition-all duration-200',
-                        !isOwner ? 'cursor-default' : 'cursor-pointer',
-                      )}
-                      style={{
-                        background: houseRules[rule.key]
-                          ? 'linear-gradient(135deg, var(--gold-2), var(--gold))'
-                          : 'rgba(255,255,255,0.15)',
-                        boxShadow: houseRules[rule.key] ? '0 0 12px rgba(246,190,62,0.26)' : 'none',
-                      }}
-                    >
-                      <div
-                        className={cn(
-                          'w-toggle-knob h-toggle-knob rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] absolute top-toggle-off transition-[left] duration-200',
-                          houseRules[rule.key] ? 'left-toggle-on' : 'left-toggle-off',
-                        )}
-                      />
-                    </button>
+                      label={rule.label}
+                    />
                   ) : (
                     <select
                       value={String(houseRules[rule.key] ?? 'null')}
@@ -214,7 +177,7 @@ export default function SettingsDrawer({
                         setRuleValue(rule.key, v === 'null' ? null : Number(v));
                       }}
                       disabled={!isOwner}
-                      className="bg-white/[0.06] text-foreground border border-border rounded-xl px-3 py-1.5 text-xs outline-none cursor-pointer"
+                      className="bg-secondary text-foreground border border-border rounded-xl px-3 py-1.5 text-xs outline-none cursor-pointer"
                     >
                       {rule.options?.map((opt) => (
                         <option key={String(opt.value)} value={String(opt.value ?? 'null')}>{opt.label}</option>

@@ -97,8 +97,8 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
   return (
     <div
       ref={ref}
-      style={{ position: 'fixed', left: clampedX, top: clampedY, zIndex: 50 }}
-      className="glass-panel-sm py-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
+      style={{ position: 'fixed', left: clampedX, top: clampedY }}
+      className="z-fab glass-panel-sm py-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
     >
       <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-white/5 truncate">
         {target.nickname}

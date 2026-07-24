@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGameLogStore } from '../stores/game-log-store';
 import { useGameStore } from '../stores/game-store';
 import GameLogEntry from './GameLogEntry';
@@ -63,8 +63,8 @@ export default function GameLog({ embedded = false }: GameLogProps) {
         onClick={() => setCollapsed((c) => !c)}
         className="flex items-center justify-between w-full px-3 py-2 cursor-pointer text-left"
       >
-        <h3 className="text-sm font-game font-bold text-accent m-0">
-          {'📖'} 游戏日记 {roundNumber > 0 && <span className="text-2xs text-muted-foreground font-normal">第{roundNumber}回合</span>}
+        <h3 className="text-sm font-game font-bold text-accent m-0 flex items-center gap-1.5">
+          <BookOpen size={14} /> 游戏日记 {roundNumber > 0 && <span className="text-2xs text-muted-foreground font-normal">第{roundNumber}回合</span>}
         </h3>
         {collapsed ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
       </button>

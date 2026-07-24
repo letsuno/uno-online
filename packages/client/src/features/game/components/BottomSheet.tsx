@@ -22,8 +22,7 @@ export default function BottomSheet({ open, onClose, title, children }: BottomSh
             onClick={onClose}
           />
           <motion.div
-            className="absolute bottom-0 left-0 right-0 max-h-sheet-max-h rounded-t-2xl border-t border-[rgba(246,190,62,0.22)] backdrop-blur-xl flex flex-col overflow-hidden"
-            style={{ background: 'linear-gradient(180deg, rgba(23,30,56,0.97), rgba(12,17,34,0.98))' }}
+            className="absolute bottom-0 left-0 right-0 max-h-sheet-max-h glass-panel-sm !rounded-b-none !rounded-t-2xl flex flex-col overflow-hidden"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}

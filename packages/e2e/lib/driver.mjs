@@ -42,6 +42,8 @@ export async function newAuthedPage(browser, { username, width, height }) {
       const text = msg.text();
       // e2e 环境没有 mumble-gateway，语音 WS 连接失败属预期噪声
       if (text.includes('64737')) return;
+      // DEV_MODE 不注册 /api/profile 路由，404 属环境噪声
+      if (text.includes('404') && (msg.location()?.url ?? '').includes('/api/profile')) return;
       errors.push(`console.error: ${text}`);
     }
   });
@@ -162,6 +164,7 @@ export function checkOverflow(page) {
           el: `${el.tagName.toLowerCase()}${id}${cls ? '.' + cls : ''}`,
           sides: Object.keys(over).filter((k) => over[k]),
           rect: { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) },
+          html: el.outerHTML.slice(0, 160),
         });
       }
     }
