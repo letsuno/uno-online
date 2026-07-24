@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
-import { Server, X, Users, Home, Clock, Signal, Plus, Trash2 } from 'lucide-react';
+import { Server, Users, Home, Clock, Signal, Plus, Trash2 } from 'lucide-react';
+import Modal from '@/shared/components/ui/Modal';
+import { Button } from '@/shared/components/ui/Button';
+import { Input } from '@/shared/components/ui/Input';
+import { cn } from '@/shared/lib/utils';
 import { useServerStore } from '../stores/server-store';
 import type { ServerEntry } from '../stores/server-store';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
@@ -35,20 +38,22 @@ function ServerCard({
   return (
     <div
       onClick={onSelect}
-      className="cursor-pointer rounded-xl border p-3.5 transition-colors"
-      style={{
-        background: isSelected ? 'rgba(246,190,62,0.08)' : 'rgba(255,255,255,0.04)',
-        borderColor: isSelected ? 'rgba(246,190,62,0.3)' : 'rgba(255,255,255,0.1)',
-        borderWidth: isSelected ? '1.5px' : '1px',
-        opacity: isOnline ? 1 : 0.5,
-      }}
+      className={cn(
+        'cursor-pointer rounded-xl border p-3.5 transition-colors',
+        isSelected
+          ? 'border-primary/30 bg-primary/[0.08]'
+          : 'border-white/10 bg-white/[0.04]',
+        !isOnline && 'opacity-50',
+      )}
     >
       {/* Header row */}
       <div className="mb-1.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span
-            className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-            style={{ background: isOnline ? '#4ade80' : '#ef4444' }}
+            className={cn(
+              'inline-block h-2.5 w-2.5 shrink-0 rounded-full',
+              isOnline ? 'bg-uno-green' : 'bg-destructive',
+            )}
           />
           <span className="text-[15px] font-bold text-foreground">
             {info?.name ?? server.name}
@@ -155,77 +160,55 @@ export function ServerSelectModal() {
   };
 
   return (
-    <AnimatePresence>
-      {isModalOpen && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center px-4">
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="absolute inset-0 glass-modal-backdrop"
-            onClick={closeModal}
-          />
-
-          {/* Modal */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.2 }}
-            className="relative w-full max-w-[460px] glass-panel"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
-              <div className="flex items-center gap-2 text-lg font-bold">
-                <Server size={18} /> 选择服务器
-              </div>
-              <button onClick={closeModal} className="p-1 text-muted-foreground hover:text-foreground">
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Server list */}
-            <div className="flex max-h-[340px] flex-col gap-2 overflow-y-auto p-4">
-              {servers.map((server) => (
-                <ServerCard
-                  key={server.id}
-                  server={server}
-                  isSelected={server.id === currentServerId}
-                  onSelect={() => handleSelect(server.id)}
-                  onRemove={server.isDefault ? undefined : () => removeServer(server.id)}
-                  info={serverInfoMap[server.id] ?? null}
-                  latency={latencyMap[server.id]}
-                />
-              ))}
-            </div>
-
-            {/* Add custom server */}
-            <div className="border-t border-white/5 px-4 pb-4 pt-3">
-              <div className="flex gap-2">
-                <input
-                  value={newAddress}
-                  onChange={(e) => { setNewAddress(e.target.value); setAddError(''); }}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-                  placeholder="输入服务器地址  如 uno.example.com"
-                  className="flex-1 glass-input px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
-                />
-                <button
-                  onClick={handleAdd}
-                  disabled={adding}
-                  className="flex items-center gap-1 whitespace-nowrap gold-button-base px-3.5 py-2 text-[13px] disabled:opacity-50"
-                >
-                  <Plus size={14} /> {adding ? '添加中...' : '添加'}
-                </button>
-              </div>
-              {addError && (
-                <p className="mt-1.5 text-xs text-destructive">{addError}</p>
-              )}
-            </div>
-          </motion.div>
+    <Modal
+      open={isModalOpen}
+      onClose={closeModal}
+      width={460}
+      title={
+        <>
+          <Server size={18} /> 选择服务器
+        </>
+      }
+      footer={
+        <div>
+          <div className="flex gap-2">
+            <Input
+              inputSize="sm"
+              className="flex-1"
+              value={newAddress}
+              onChange={(e) => { setNewAddress(e.target.value); setAddError(''); }}
+              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+              placeholder="输入服务器地址  如 uno.example.com"
+            />
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleAdd}
+              disabled={adding}
+              className="whitespace-nowrap"
+            >
+              <Plus size={14} /> {adding ? '添加中...' : '添加'}
+            </Button>
+          </div>
+          {addError && (
+            <p className="mt-1.5 text-xs text-destructive">{addError}</p>
+          )}
         </div>
-      )}
-    </AnimatePresence>
+      }
+    >
+      <div className="flex flex-col gap-2">
+        {servers.map((server) => (
+          <ServerCard
+            key={server.id}
+            server={server}
+            isSelected={server.id === currentServerId}
+            onSelect={() => handleSelect(server.id)}
+            onRemove={server.isDefault ? undefined : () => removeServer(server.id)}
+            info={serverInfoMap[server.id] ?? null}
+            latency={latencyMap[server.id]}
+          />
+        ))}
+      </div>
+    </Modal>
   );
 }

@@ -3,12 +3,12 @@ import { SEAT_COUNT } from '@uno-online/shared';
 import { Layers } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useRoomStore } from '@/shared/stores/room-store';
+import { useIsPortrait } from '@/shared/hooks/useIsPortrait';
 import Seat from './Seat';
 
 interface SeatCircleProps {
   seats: RoomSeats;
   onSeatClick: (seatIndex: number, e?: React.MouseEvent) => void;
-  compact?: boolean;
 }
 
 function getSeatPosition(index: number, total: number, rx: number, ry: number) {
@@ -16,13 +16,18 @@ function getSeatPosition(index: number, total: number, rx: number, ry: number) {
   return { x: rx * Math.cos(angle), y: ry * Math.sin(angle) };
 }
 
-export default function SeatCircle({ seats, onSeatClick, compact = false }: SeatCircleProps) {
+/**
+ * 圆桌座位。固定逻辑尺寸（横屏大椭圆 / 竖屏小椭圆两种布局模式），
+ * 实际屏幕适配由外层 FitScaler 整体缩放完成。
+ */
+export default function SeatCircle({ seats, onSeatClick }: SeatCircleProps) {
   const userId = useAuthStore((s) => s.user?.id);
   const ownerId = useRoomStore((s) => s.room?.ownerId);
+  const portrait = useIsPortrait();
 
-  const rx = compact ? 120 : 190;
-  const ry = compact ? 90 : 140;
-  const seatOffset = compact ? 24 : 36;
+  const rx = portrait ? 140 : 190;
+  const ry = portrait ? 105 : 140;
+  const seatOffset = portrait ? 30 : 36;
 
   // Container dimensions: center at (rx + seatOffset, ry + seatOffset)
   const cx = rx + seatOffset;
@@ -43,7 +48,7 @@ export default function SeatCircle({ seats, onSeatClick, compact = false }: Seat
           backdropFilter: 'blur(6px)',
         }}
       >
-        <Layers size={compact ? 24 : 32} className="text-[var(--gold)]/55" strokeWidth={1.5} />
+        <Layers size={portrait ? 24 : 32} className="text-primary/55" strokeWidth={1.5} />
       </div>
 
       {/* Seats positioned around the ellipse */}
@@ -66,7 +71,7 @@ export default function SeatCircle({ seats, onSeatClick, compact = false }: Seat
               player={player}
               isMe={!!userId && player?.userId === userId}
               isOwnerSeat={!!ownerId && player?.userId === ownerId}
-              compact={compact}
+              compact={portrait}
               onClick={(e) => onSeatClick(index, e)}
             />
           </div>

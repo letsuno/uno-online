@@ -47,7 +47,7 @@ export default function ColorWave() {
           transition={{ duration: 0.15 }}
         >
           <motion.div
-            className="absolute rounded-full"
+            className="absolute rounded-full" data-allow-overflow
             style={{
               left: '50%',
               top: '50%',
@@ -63,7 +63,7 @@ export default function ColorWave() {
             transition={{ duration: 1, ease: 'easeOut' }}
           />
           <motion.div
-            className="absolute rounded-full"
+            className="absolute rounded-full" data-allow-overflow
             style={{
               left: '50%',
               top: '50%',

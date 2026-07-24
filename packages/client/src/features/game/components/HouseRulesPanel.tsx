@@ -1,7 +1,7 @@
 import type { HouseRules, HouseRuleDefinition } from '@uno-online/shared';
 import { DEFAULT_HOUSE_RULES, HOUSE_RULES_PRESETS, HOUSE_RULE_DEFINITIONS } from '@uno-online/shared';
-import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/Button';
+import { Switch } from '@/shared/components/ui/Switch';
 
 interface RuleDef extends HouseRuleDefinition {
   type: 'boolean' | 'select';
@@ -62,25 +62,13 @@ export default function HouseRulesPanel({ houseRules, onChange, disabled = false
             <div className="text-xs text-muted-foreground">{rule.description}</div>
           </div>
           {rule.type === 'boolean' ? (
-            <button
-              onClick={() => toggle(rule.key)}
+            <Switch
+              size="sm"
+              checked={Boolean(houseRules[rule.key])}
+              onChange={() => toggle(rule.key)}
               disabled={disabled}
-              className={cn(
-                'w-11 h-6 rounded-full border-none relative transition-all duration-200',
-                disabled ? 'cursor-default' : 'cursor-pointer',
-              )}
-              style={{
-                background: houseRules[rule.key]
-                  ? 'linear-gradient(135deg, var(--gold-2), var(--gold))'
-                  : 'rgba(255,255,255,0.15)',
-                boxShadow: houseRules[rule.key] ? '0 0 12px rgba(246,190,62,0.26)' : 'none',
-              }}
-            >
-              <div className={cn(
-                'w-toggle-knob h-toggle-knob rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] absolute top-toggle-off transition-[left] duration-200',
-                houseRules[rule.key] ? 'left-toggle-on' : 'left-toggle-off'
-              )} />
-            </button>
+              label={rule.label}
+            />
           ) : (
             <select
               value={String(houseRules[rule.key] ?? 'null')}
@@ -89,7 +77,7 @@ export default function HouseRulesPanel({ houseRules, onChange, disabled = false
                 setValue(rule.key, v === 'null' ? null : Number(v));
               }}
               disabled={disabled}
-              className="bg-white/[0.06] text-foreground border border-border rounded-xl px-3 py-1.5 text-xs outline-none cursor-pointer"
+              className="bg-secondary text-foreground border border-border rounded-xl px-3 py-1.5 text-xs outline-none cursor-pointer"
             >
               {rule.options?.map((opt) => (
                 <option key={String(opt.value)} value={String(opt.value ?? 'null')}>{opt.label}</option>

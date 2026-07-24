@@ -9,7 +9,7 @@ const CARDS = [
 
 export default function DecoCards() {
   return (
-    <div className="absolute inset-0 pointer-events-none z-[1] overflow-hidden">
+    <div className="absolute inset-0 pointer-events-none z-card overflow-hidden">
       {CARDS.map((card, i) => (
         <div
           key={i}

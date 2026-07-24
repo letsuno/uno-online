@@ -219,6 +219,17 @@ export function setupSocketHandlers(
   io.on('connection', async (socket) => {
     const userId = socket.data.user.userId;
 
+    // 安全防护：任何事件处理器抛错（包括客户端传错参数形态）都不能让进程崩溃
+    const rawOn = socket.on.bind(socket);
+    socket.on = ((event: string, handler: (...args: never[]) => unknown) =>
+      rawOn(event, async (...args: unknown[]) => {
+        try {
+          await handler(...(args as never[]));
+        } catch (err) {
+          console.error(`[socket] handler error on "${event}" (user ${userId}):`, err);
+        }
+      })) as typeof socket.on;
+
     socket.emit('server:version', { version: serverStartTime, serverTime: Date.now() });
 
     socket.on('ping:latency', (callback) => callback());

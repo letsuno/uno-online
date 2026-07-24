@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import { IconButton } from '@/shared/components/ui/IconButton';
+import { Tabs } from '@/shared/components/ui/Tabs';
 import { useGameStore } from '../stores/game-store';
 import type { InfoDrawerTab } from '../stores/game-store';
 import HouseRulesCard from './HouseRulesCard';
@@ -33,8 +35,7 @@ export default function InfoDrawer() {
           onClick={toggleInfoDrawer}
         />
         <motion.div
-          className="hidden md:flex fixed right-0 top-0 bottom-0 w-[360px] z-fab flex-col border-l border-[rgba(246,190,62,0.18)] backdrop-blur-xl shadow-[-20px_0_60px_rgba(0,0,0,0.45)]"
-          style={{ background: 'linear-gradient(180deg, rgba(23,30,56,0.96), rgba(12,17,34,0.97))' }}
+          className="flex fixed right-0 top-0 bottom-0 w-[360px] z-fab flex-col glass-panel !rounded-none"
           initial={{ x: '100%' }}
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
@@ -43,31 +44,13 @@ export default function InfoDrawer() {
           {/* Header */}
           <div className="flex items-center justify-between px-4 pt-3 pb-1">
             <span className="text-sm font-bold text-foreground">游戏信息</span>
-            <button
-              onClick={toggleInfoDrawer}
-              className="icon-button w-7 h-7 rounded-[10px]"
-            >
+            <IconButton size="sm" onClick={toggleInfoDrawer} title="关闭" className="w-7 h-7">
               <X size={14} />
-            </button>
+            </IconButton>
           </div>
 
           {/* Tabs */}
-          <div className="flex px-4 border-b border-border">
-            {TABS.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setInfoDrawerTab(tab.key)}
-                className={cn(
-                  'px-3.5 py-2 text-sm cursor-pointer transition-colors bg-transparent border-0',
-                  activeTab === tab.key
-                    ? 'text-[var(--gold)] font-medium border-b-2 border-[var(--gold)]'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          <Tabs tabs={TABS} active={activeTab} onChange={setInfoDrawerTab} className="px-4" />
 
           {/* Content */}
           <div className={cn(

@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, X, ClipboardPaste, Music, Volume2, VolumeX, ArrowRight, BookOpen, Sparkles } from 'lucide-react';
+import { Upload, X, ClipboardPaste, Music, Volume2, VolumeX, ArrowRight, BookOpen, Sparkles, Hash, Plus } from 'lucide-react';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { SEAT_COUNT } from '@uno-online/shared';
 import { useSettingsStore } from '@/shared/stores/settings-store';
 import { loadCardPack, clearCardPack, isPackLoaded } from '@/shared/utils/card-images';
 import { getSocket, connectSocket } from '@/shared/socket';
 import { Button } from '@/shared/components/ui/Button';
-import { cn } from '@/shared/lib/utils';
+import { IconButton } from '@/shared/components/ui/IconButton';
 import { ServerSelectModal } from '@/shared/components/ServerSelectModal';
 import { useBgm } from '@/shared/sound/useBgm';
 import TutorialModal from '@/shared/components/TutorialModal';
@@ -111,94 +111,62 @@ export default function LobbyPage() {
     });
   };
 
-  const ctrlIconBase =
-    'w-14 h-14 max-sm:w-12 max-sm:h-12 shrink-0 rounded-btn max-sm:rounded-card bg-secondary border border-white/[0.12] flex items-center justify-center cursor-pointer text-[#c7d0ec] transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_22px_rgba(0,0,0,0.26)] hover:text-primary hover:border-primary/46 hover:shadow-[0_0_24px_rgba(246,190,62,0.14),inset_0_1px_0_rgba(255,255,255,0.08)]';
-  const ctrlIconActive =
-    'text-primary border-primary/46 shadow-[0_0_24px_rgba(246,190,62,0.14),inset_0_1px_0_rgba(255,255,255,0.08)]';
-  const ctrlHideMobile = 'max-sm:hidden';
-
   return (
     <GamePageShell>
-      {/* Top bar */}
+      {/* 顶栏控件（HUD，左上） */}
       <GameTopBar
         leftControls={
           <>
-            {/* Music toggle */}
-            <button
-              onClick={toggleBgm}
-              className={cn(ctrlIconBase, bgmEnabled && ctrlIconActive)}
-              title={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
-            >
+            <IconButton size="lg" onClick={toggleBgm} active={bgmEnabled} title={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}>
               {bgmEnabled ? <Volume2 size={24} /> : <VolumeX size={24} />}
-            </button>
-
-            {/* Music hall */}
-            <button
-              onClick={() => setMusicHall(true)}
-              className={ctrlIconBase}
-              title="音乐厅"
-            >
+            </IconButton>
+            <IconButton size="lg" onClick={() => setMusicHall(true)} title="音乐厅">
               <Music size={24} />
-            </button>
-
-            {/* Card pack (hidden on mobile — file picker is impractical there) */}
-            {cardImagePack && isPackLoaded() ? (
-              <button
-                onClick={() => { clearCardPack(); setCardImagePack(false); }}
-                className={`${ctrlIconBase} ${ctrlHideMobile}`}
-                title="卸载资源包"
-              >
-                <X size={24} />
-              </button>
-            ) : (
-              <label className={`${ctrlIconBase} ${ctrlHideMobile}`} title="加载卡面资源包">
-                <Upload size={24} />
-                <input
-                  type="file"
-                  accept=".zip"
-                  hidden
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    try {
-                      await loadCardPack(file);
-                      setCardImagePack(true);
-                    } catch {
-                      setCardImagePack(false);
-                    }
-                    e.target.value = '';
-                  }}
-                />
-              </label>
-            )}
-
-            {/* Tutorial */}
-            <button
-              onClick={() => setShowTutorial(true)}
-              className={ctrlIconBase}
-              title="游戏教程"
-            >
+            </IconButton>
+            {/* 卡面包（移动端隐藏——文件选择器在触屏上不实用） */}
+            <span className="contents max-sm:hidden">
+              {cardImagePack && isPackLoaded() ? (
+                <IconButton size="lg" onClick={() => { clearCardPack(); setCardImagePack(false); }} title="卸载资源包">
+                  <X size={24} />
+                </IconButton>
+              ) : (
+                <label className="icon-button shrink-0 w-14 h-14 rounded-btn cursor-pointer" title="加载卡面资源包">
+                  <Upload size={24} />
+                  <input
+                    type="file"
+                    accept=".zip"
+                    hidden
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        await loadCardPack(file);
+                        setCardImagePack(true);
+                      } catch {
+                        setCardImagePack(false);
+                      }
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              )}
+            </span>
+            <IconButton size="lg" onClick={() => setShowTutorial(true)} title="游戏教程">
               <BookOpen size={24} />
-            </button>
-
-            {/* Changelog */}
-            <button
-              onClick={openChangelog}
-              className={ctrlIconBase}
-              title="更新日志"
-            >
+            </IconButton>
+            <IconButton size="lg" onClick={openChangelog} title="更新日志">
               <Sparkles size={24} />
-            </button>
+            </IconButton>
           </>
         }
       />
 
-      {/* Center content — fixed logical layout, scaled to always fit (game-style canvas) */}
-      <FitScaler align="center" maxScale={0.8} className="absolute left-5 right-5 portrait:left-[6%] portrait:right-[6%] top-[92px] bottom-[84px] z-[2]">
+      {/* 中心内容——固定逻辑尺寸，整体等比缩放（游戏画布思路） */}
+      <FitScaler align="center" maxScale={1} className="absolute left-5 right-5 portrait:left-[6%] portrait:right-[6%] top-[92px] bottom-[84px]">
         <div className="flex flex-col items-center w-[760px] portrait:w-[440px]">
-          {/* Brand */}
+          {/* 品牌 */}
           <section className="text-center grid justify-items-center gap-3.5 mb-9 portrait:mb-7">
-            <div className="flex items-center justify-center gap-7 portrait:gap-5" style={{ color: 'var(--gold)', textShadow: '0 0 26px rgba(246, 190, 62, 0.42)' }}>
+            <div className="flex items-center justify-center gap-7 portrait:gap-5 text-primary" style={{ textShadow: '0 0 26px rgba(246, 190, 62, 0.42)' }}>
               <span className="text-[120px] portrait:text-[74px] leading-none">♠</span>
               <span
                 className="text-[120px] portrait:text-[74px] font-black leading-[0.9] tracking-[0.03em]"
@@ -215,14 +183,13 @@ export default function LobbyPage() {
               className="h-px w-[520px] portrait:w-[300px] shadow-[0_0_16px_rgba(246,190,62,0.55)]"
               style={{ background: 'linear-gradient(90deg, transparent, rgba(246,190,62,0.52), transparent)' }}
             />
-            <div className="text-[#7f89a8] tracking-[0.72em] portrait:tracking-[0.45em] text-[18px] portrait:text-[15px]" style={{ textIndent: '0.72em' }}>
+            <div className="text-muted-foreground tracking-[0.72em] portrait:tracking-[0.45em] text-[18px] portrait:text-[15px]" style={{ textIndent: '0.72em' }}>
               ONLINE CARD GAME
             </div>
           </section>
 
-          {/* Glass panel actions */}
-          <section className="glass-panel w-[760px] portrait:w-[440px] rounded-[34px] portrait:rounded-panel-ui px-[70px] py-[60px] portrait:px-[28px] portrait:py-[44px]">
-            {/* Create room */}
+          {/* 操作面板 */}
+          <section className="glass-panel w-[760px] portrait:w-[440px] px-[70px] py-[60px] portrait:px-[28px] portrait:py-[44px]">
             <Button
               variant="game"
               size="lg"
@@ -231,33 +198,33 @@ export default function LobbyPage() {
               disabled={loading}
               sound="ready"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-[38px] h-[38px]" strokeWidth={2}><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+              <Plus size={38} strokeWidth={2.5} />
               {loading ? '创建中...' : '创建房间'}
             </Button>
 
-            {/* Divider */}
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-[22px] my-[36px] text-[#c6cee4] tracking-[0.28em]">
+            {/* 分割线 */}
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-[22px] my-[36px] text-muted-foreground tracking-[0.28em]">
               <div className="h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(246,190,62,0.48), transparent)' }} />
               <span>或加入房间</span>
               <div className="h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(246,190,62,0.48), transparent)' }} />
             </div>
 
-            {/* Join row */}
+            {/* 加入行 */}
             <div className="grid grid-cols-[minmax(0,1fr)_82px_82px] gap-[18px]">
-              <label className="min-h-[74px] rounded-panel flex items-center gap-4 px-5 bg-[rgba(8,13,28,0.56)] border border-input text-[#d7def1] focus-within:border-primary/58 focus-within:shadow-input-focus transition-all">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="shrink-0 text-[#d7def1]"><path d="M10 3 8 21"/><path d="M16 3l-2 18"/><path d="M4 9h17"/><path d="M3 15h17"/></svg>
+              <label className="min-h-[74px] rounded-panel flex items-center gap-4 px-5 bg-[rgba(8,13,28,0.56)] border border-input text-foreground focus-within:border-primary/58 focus-within:shadow-input-focus transition-all">
+                <Hash size={26} className="shrink-0 text-muted-foreground" />
                 <input
                   value={joinCode}
                   onChange={(e) => { setJoinCode(extractRoomCode(e.target.value)); setError(''); }}
                   onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
                   placeholder="房间码或链接"
                   maxLength={100}
-                  className="min-w-0 flex-1 h-full border-0 outline-0 text-foreground bg-transparent uppercase tracking-[4px] text-base placeholder:text-[rgba(210,218,240,0.42)] placeholder:tracking-normal placeholder:normal-case"
+                  className="min-w-0 flex-1 h-full border-0 outline-0 text-foreground bg-transparent uppercase tracking-[4px] text-base placeholder:text-muted-foreground/60 placeholder:tracking-normal placeholder:normal-case"
                 />
               </label>
               <button
                 onClick={handlePaste}
-                className="min-h-[74px] rounded-panel grid place-items-center border border-white/[0.13] bg-secondary text-[#cbd5ef] cursor-pointer transition-all hover:bg-white/[0.08] hover:text-[#dbe3f8]"
+                className="min-h-[74px] rounded-panel grid place-items-center border border-input bg-secondary text-foreground/80 cursor-pointer transition-all hover:bg-white/[0.08] hover:text-foreground"
                 title="从剪贴板粘贴"
               >
                 <ClipboardPaste size={22} />
@@ -273,62 +240,60 @@ export default function LobbyPage() {
             </div>
 
             {error && <p className="text-sm text-destructive text-center mt-4">{error}</p>}
+
+            {/* 进行中的对战（并入画布，任何分辨率随整体缩放可见） */}
+            {activeRooms.length > 0 && (
+              <div className="mt-[36px]">
+                <div className="flex items-center gap-2.5 mb-3.5 px-1">
+                  <span className="w-[9px] h-[9px] rounded-full bg-uno-green shadow-[0_0_10px_var(--color-uno-green)] animate-pulse" />
+                  <span className="text-sm font-semibold text-muted-foreground">正在进行的对战</span>
+                  <span className="ml-auto text-xs text-muted-foreground bg-secondary px-2.5 py-0.5 rounded-xl">
+                    {activeRooms.length} 场
+                  </span>
+                </div>
+                <div className="flex flex-col gap-2 max-h-[220px] overflow-y-auto scrollbar-thin">
+                  {activeRooms.map((room) => (
+                    <div
+                      key={room.roomCode}
+                      className="group bg-secondary rounded-input p-3.5 cursor-pointer transition-all border border-border hover:bg-white/[0.06] hover:border-primary/26"
+                      onClick={() => {
+                        connectSocket();
+                        navigate(`/game/${room.roomCode}`);
+                      }}
+                    >
+                      <div className="text-sm font-semibold text-foreground">
+                        {room.players.map(p => p.nickname).join(' vs ')}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1 flex justify-between items-center">
+                        <span>{room.playerCount} 人 · {room.spectatorCount} 人观战 · <GameDuration startedAt={room.gameStartedAt} /></span>
+                        <span className="text-primary text-xs font-semibold opacity-0 -translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-x-0">
+                          观战 ›
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         </div>
       </FitScaler>
 
-      {/* Floating live games panel */}
-      {activeRooms.length > 0 && (
-        <div className="absolute right-8 top-1/2 -translate-y-1/2 w-[280px] glass-panel p-5 z-[5] hidden xl:block">
-          {/* Header */}
-          <div className="flex items-center gap-2.5 mb-4 px-1">
-            <span className="w-[9px] h-[9px] rounded-full bg-[#4dff73] shadow-[0_0_10px_#4dff73] animate-pulse" />
-            <span className="text-sm font-semibold text-muted-foreground">正在进行的对战</span>
-            <span className="ml-auto text-xs text-muted-foreground bg-white/[0.04] px-2.5 py-0.5 rounded-xl">
-              {activeRooms.length} 场
-            </span>
-          </div>
-          {/* List */}
-          <div className="flex flex-col gap-2 max-h-[340px] overflow-y-auto scrollbar-thin">
-            {activeRooms.map((room) => (
-              <div
-                key={room.roomCode}
-                className="group bg-white/[0.035] rounded-[16px] p-3.5 cursor-pointer transition-all border border-white/[0.10] hover:bg-white/[0.06] hover:border-primary/26"
-                onClick={() => {
-                  connectSocket();
-                  navigate(`/game/${room.roomCode}`);
-                }}
-              >
-                <div className="text-sm font-semibold text-[#eaf0ff]">
-                  {room.players.map(p => p.nickname).join(' vs ')}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1 flex justify-between items-center">
-                  <span>{room.playerCount} 人 · {room.spectatorCount} 人观战 · <GameDuration startedAt={room.gameStartedAt} /></span>
-                  <span className="text-primary text-xs font-semibold opacity-0 -translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-x-0">
-                    观战 ›
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Bottom left: server status */}
+      {/* 左下：服务器状态 */}
       <ServerStatusBar />
 
-      {/* Bottom right: GitHub */}
+      {/* 右下：GitHub */}
       <a
         href="https://github.com/letsuno/uno-online"
         target="_blank"
         rel="noopener noreferrer"
-        className="absolute bottom-7 max-sm:bottom-5 right-8 max-sm:right-5 z-[5] flex items-center justify-center gap-2.5 h-[44px] max-sm:h-[38px] px-[18px] max-sm:px-0 max-sm:w-[38px] rounded-full bg-secondary border border-white/[0.12] transition-all hover:bg-white/[0.07] hover:border-white/[0.18] text-[#dbe3f8] text-sm font-medium no-underline backdrop-blur-[16px] shadow-[0_16px_40px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.05)]"
+        className="absolute bottom-7 right-8 z-card flex items-center justify-center gap-2.5 h-[44px] px-[18px] rounded-full bg-secondary border border-border transition-all hover:bg-white/[0.07] text-foreground/85 text-sm font-medium no-underline backdrop-blur-[16px]"
       >
         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" className="shrink-0"><path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.2.8-.6v-2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.8.1-.8.1-.8 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.4 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.3 1.2-3.2-.1-.3-.5-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.4 11.4 0 0 1 6 0C17.3 4.5 18.3 4.8 18.3 4.8c.6 1.6.2 2.9.1 3.2.8.9 1.2 1.9 1.2 3.2 0 4.5-2.7 5.5-5.3 5.8.5.4.9 1.1.9 2.2v4.1c0 .4.2.7.8.6A12 12 0 0 0 12 .5Z"/></svg>
-        <span className="max-sm:hidden">GitHub</span>
+        <span className="portrait:hidden">GitHub</span>
       </a>
 
-      {/* Modals */}
+      {/* 弹窗 */}
       <ServerSelectModal />
       <TutorialModal open={showTutorial} onClose={() => { setShowTutorial(false); localStorage.setItem('tutorialShown', 'true'); }} />
       <BgmToast song={songName} />

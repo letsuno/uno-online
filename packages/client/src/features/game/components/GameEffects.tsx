@@ -244,11 +244,11 @@ export default function GameEffects() {
               exit={{ scale: 2, opacity: 0, y: -30 }}
               transition={{ type: 'spring', stiffness: 300, damping: 15 }}
               className={cn(
-                'absolute font-game font-black whitespace-nowrap flex flex-col items-center gap-2 text-shadow-bold text-white',
+                'absolute font-game font-black max-w-[94vw] text-center flex flex-col items-center gap-2 text-shadow-bold text-white',
                 effect.type === 'victory' ? 'text-effect-xl' : 'text-effect',
               )}
             >
-              <span className="flex items-center gap-2">
+              <span className="flex items-center justify-center gap-2 [&>svg]:shrink-0 [&>svg]:w-[min(120px,26vw)] [&>svg]:h-auto">
                 {effect.type === 'skip' && <Ban size={120} />}
                 {effect.type === 'reverse' && <RotateCcw size={120} />}
                 {effect.type === 'victory' && <Trophy size={140} />}
@@ -257,8 +257,8 @@ export default function GameEffects() {
                 {effect.type === 'accept' && <ShieldCheck size={120} />}
                 {effect.type === 'challenge' && effect.text.includes('成功') && <ShieldAlert size={120} />}
                 {effect.type === 'challenge' && effect.text.includes('失败') && <ShieldX size={120} />}
-                {effect.text}
               </span>
+              <span className="[overflow-wrap:anywhere]">{effect.text}</span>
               {effect.type === 'uno_call' && effect.targetName && (
                 <motion.div
                   initial={{ y: -10, opacity: 0 }}

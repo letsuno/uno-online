@@ -57,7 +57,7 @@ function DeckBack({ count, label, canDraw, onDraw }: {
           !canDraw && count > 0 && 'opacity-50',
         )}
         style={{
-          width: 44, height: 62,
+          width: 52, height: 74,
           background: 'linear-gradient(135deg, var(--color-card-back-from), var(--color-card-back-to))',
           cursor: canDraw ? 'pointer' : 'default',
         }}
@@ -104,11 +104,11 @@ export default function MobileGameCenter({ onDraw }: MobileGameCenterProps) {
       <div className="flex flex-col items-center gap-2">
         <div className="relative">
           {topCard ? (
-            <div style={{ width: 64, height: 92 }}>
-              <Card card={topCard} mini style={{ width: 64, height: 92 }} />
+            <div style={{ width: 76, height: 110 }}>
+              <Card card={topCard} mini style={{ width: 76, height: 110 }} />
             </div>
           ) : (
-            <div className="rounded-xl bg-white/5 border border-dashed border-white/20" style={{ width: 64, height: 92 }} />
+            <div className="rounded-xl bg-white/5 border border-dashed border-white/20" style={{ width: 76, height: 110 }} />
           )}
           {drawStack > 0 && (
             <span className="absolute -top-2 -right-2 bg-destructive text-white text-[10px] font-bold rounded-full min-w-5 h-5 flex items-center justify-center px-1 shadow-lg">

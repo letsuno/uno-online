@@ -20,6 +20,7 @@ export default function GamePageShell({ children, showDecoCards = true }: Props)
     >
       {/* Decorative ring arcs */}
       <div
+        data-allow-overflow
         className="absolute pointer-events-none"
         style={{
           inset: '-20% -10% auto',
@@ -33,6 +34,7 @@ export default function GamePageShell({ children, showDecoCards = true }: Props)
       />
       {/* Bottom glow */}
       <div
+        data-allow-overflow
         className="absolute bottom-0 left-0 right-0 h-[190px] pointer-events-none"
         style={{
           opacity: 0.55,
@@ -44,6 +46,7 @@ export default function GamePageShell({ children, showDecoCards = true }: Props)
       />
       {/* Central breathing glow */}
       <div
+        data-allow-overflow
         className="absolute top-[42%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] rounded-full pointer-events-none animate-[breathe_6s_ease-in-out_infinite]"
         style={{ background: 'radial-gradient(circle, rgba(246,190,62,0.08) 0%, rgba(246,190,62,0.03) 30%, transparent 60%)' }}
       />

@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
+import Modal from '@/shared/components/ui/Modal';
+import { Button } from '@/shared/components/ui/Button';
 import { useConfirmStore } from '../stores/confirm-store';
-import { cn } from '../lib/utils';
 
 /**
  * Top-level mount for in-app confirm/alert dialogs. Reads from `confirm-store`
@@ -29,65 +29,41 @@ export default function ConfirmDialog() {
   }, [current, resolve]);
 
   return (
-    <AnimatePresence>
-      {current && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center px-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="absolute inset-0 glass-modal-backdrop"
-            onClick={() => resolve(current.type === 'alert')}
-          />
-
-          <motion.div
-            key={current.id}
-            initial={{ opacity: 0, scale: 0.92, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 8 }}
-            transition={{ duration: 0.18 }}
-            className="relative w-full max-w-[420px] glass-panel"
-          >
-            <div className="flex items-start gap-3 px-6 pt-5">
-              {current.variant === 'danger' && (
-                <AlertTriangle size={20} className="mt-0.5 shrink-0 text-destructive" />
-              )}
-              <div className="flex-1">
-                <h3 className="text-base font-bold text-foreground">{current.title}</h3>
-                {current.message && (
-                  <p className="mt-2 text-sm text-foreground/80 whitespace-pre-line">
-                    {current.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-5 flex items-center justify-end gap-2 border-t border-white/5 px-5 py-3.5">
-              {current.type === 'confirm' && (
-                <button
-                  onClick={() => resolve(false)}
-                  className="rounded-lg bg-white/[0.06] px-4 py-2 text-sm font-semibold text-foreground/80 transition-colors hover:bg-white/[0.10]"
-                >
-                  {current.cancelText}
-                </button>
-              )}
-              <button
-                onClick={() => resolve(true)}
-                autoFocus
-                className={cn(
-                  'px-4 py-2 text-sm transition-colors',
-                  current.variant === 'danger'
-                    ? 'rounded-lg bg-destructive/90 font-bold text-white hover:bg-destructive'
-                    : 'gold-button-base',
-                )}
-              >
-                {current.confirmText}
-              </button>
-            </div>
-          </motion.div>
-        </div>
+    <Modal
+      open={!!current}
+      onClose={() => current && resolve(current.type === 'alert')}
+      title={
+        current && (
+          <>
+            {current.variant === 'danger' && (
+              <AlertTriangle size={20} className="shrink-0 text-destructive" />
+            )}
+            {current.title}
+          </>
+        )
+      }
+      footer={
+        current && (
+          <div className="flex items-center justify-end gap-2">
+            {current.type === 'confirm' && (
+              <Button variant="secondary" onClick={() => resolve(false)}>
+                {current.cancelText}
+              </Button>
+            )}
+            <Button
+              variant={current.variant === 'danger' ? 'danger' : 'primary'}
+              onClick={() => resolve(true)}
+              autoFocus
+            >
+              {current.confirmText}
+            </Button>
+          </div>
+        )
+      }
+    >
+      {current?.message && (
+        <p className="text-sm text-foreground/80 whitespace-pre-line">{current.message}</p>
       )}
-    </AnimatePresence>
+    </Modal>
   );
 }
