@@ -4,6 +4,8 @@ import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
 import { loadImage, cropAndCompress, revokeImageSrc } from '@/shared/utils/image-compress';
 import { Button } from '@/shared/components/ui/Button';
+import { IconButton } from '@/shared/components/ui/IconButton';
+import Modal from '@/shared/components/ui/Modal';
 
 interface Props {
   avatarUrl: string | null;
@@ -70,7 +72,7 @@ export default function AvatarUpload({ avatarUrl, size = 96, onUpload }: Props) 
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="group relative w-full h-full rounded-full overflow-hidden border-2 border-white/15 bg-white/5 transition-all duration-200 hover:scale-[1.04] hover:border-primary/60 hover:shadow-[0_0_32px_rgba(251,191,36,0.25)] disabled:opacity-60 disabled:cursor-wait"
+          className="group relative w-full h-full rounded-full overflow-hidden border-2 border-white/15 bg-white/5 transition-all duration-200 hover:scale-[1.04] hover:border-primary/60 hover:shadow-glow-active disabled:opacity-60 disabled:cursor-wait"
         >
           {avatarUrl ? (
             <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
@@ -93,68 +95,66 @@ export default function AvatarUpload({ avatarUrl, size = 96, onUpload }: Props) 
         <input ref={inputRef} type="file" accept="image/*" hidden onChange={handleFileSelect} />
       </div>
 
-      {imageSrc && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center glass-modal-backdrop">
-          <div className="glass-panel flex flex-col w-80 rounded-2xl overflow-hidden">
-            <div className="relative w-full h-72">
-              <Cropper
-                image={imageSrc}
-                crop={crop}
-                zoom={zoom}
-                rotation={rotation}
-                aspect={1}
-                cropShape="round"
-                showGrid={false}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onRotationChange={setRotation}
-                onCropComplete={onCropComplete}
-              />
-            </div>
-            <div className="flex flex-col gap-3 p-4">
-              <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  min={1}
-                  max={3}
-                  step={0.1}
-                  value={zoom}
-                  onChange={(e) => setZoom(Number(e.target.value))}
-                  className="flex-1 accent-primary"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  min={0}
-                  max={360}
-                  step={1}
-                  value={rotation}
-                  onChange={(e) => setRotation(Number(e.target.value))}
-                  className="flex-1 accent-primary"
-                />
-                <span className="shrink-0 w-9 text-right text-xs tabular-nums text-muted-foreground">{rotation}°</span>
-                <button
-                  type="button"
-                  onClick={() => setRotation((r) => (r + 90) % 360)}
-                  className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-white hover:bg-white/10 transition-colors"
-                  title="旋转 90°"
-                >
-                  <RotateCw size={18} />
-                </button>
-              </div>
-              <div className="flex gap-2">
-                <Button type="button" variant="ghost" className="flex-1" onClick={handleCancel} sound="click">
-                  取消
-                </Button>
-                <Button type="button" variant="game" className="flex-1" onClick={handleConfirm} sound="click">
-                  确认
-                </Button>
-              </div>
-            </div>
+      <Modal open={!!imageSrc} onClose={handleCancel} width={320} title="裁切头像">
+        <div className="relative w-full h-72">
+          {imageSrc && (
+            <Cropper
+              image={imageSrc}
+              crop={crop}
+              zoom={zoom}
+              rotation={rotation}
+              aspect={1}
+              cropShape="round"
+              showGrid={false}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onRotationChange={setRotation}
+              onCropComplete={onCropComplete}
+            />
+          )}
+        </div>
+        <div className="flex flex-col gap-3 pt-4">
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min={1}
+              max={3}
+              step={0.1}
+              value={zoom}
+              onChange={(e) => setZoom(Number(e.target.value))}
+              className="flex-1 accent-primary"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min={0}
+              max={360}
+              step={1}
+              value={rotation}
+              onChange={(e) => setRotation(Number(e.target.value))}
+              className="flex-1 accent-primary"
+            />
+            <span className="shrink-0 w-9 text-right text-xs tabular-nums text-muted-foreground">{rotation}°</span>
+            <IconButton
+              type="button"
+              size="sm"
+              onClick={() => setRotation((r) => (r + 90) % 360)}
+              title="旋转 90°"
+            >
+              <RotateCw size={16} />
+            </IconButton>
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="ghost" className="flex-1" onClick={handleCancel} sound="click">
+              取消
+            </Button>
+            <Button type="button" variant="game" className="flex-1" onClick={handleConfirm} sound="click">
+              确认
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
     </>
   );
 }

@@ -400,7 +400,7 @@ export default function RoomPage() {
 
       {/* Settings gear (top-right, HUD) */}
       <IconButton
-        className="absolute top-5 right-5 w-11 h-11 rounded-[14px]"
+        className="absolute top-5 right-5 w-11 h-11 rounded-[14px] z-topbar"
         onClick={() => setSettingsOpen(true)}
         title="房间设置"
       >

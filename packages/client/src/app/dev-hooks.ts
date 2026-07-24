@@ -3,6 +3,7 @@ import { getSocket } from '@/shared/socket';
 import { useGameStore } from '@/features/game/stores/game-store';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
+import { useProfileModalStore } from '@/shared/stores/profile-modal-store';
 
 declare global {
   interface Window {
@@ -11,10 +12,11 @@ declare global {
       useGameStore: typeof useGameStore;
       useRoomStore: typeof useRoomStore;
       useAuthStore: typeof useAuthStore;
+      useProfileModalStore: typeof useProfileModalStore;
     };
   }
 }
 
 if (import.meta.env.DEV) {
-  window.__uno = { getSocket, useGameStore, useRoomStore, useAuthStore };
+  window.__uno = { getSocket, useGameStore, useRoomStore, useAuthStore, useProfileModalStore };
 }

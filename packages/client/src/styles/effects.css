@@ -339,3 +339,14 @@
 .animate-spin-cw { animation: spin-cw 3s linear infinite; }
 .animate-spin-ccw { animation: spin-ccw 3s linear infinite; }
 .animate-fade-in { animation: fade-in 0.3s ease-out; }
+
+/* 窄屏：反作弊 Toast 移到顶部（避免遮挡底部手牌） */
+@media (max-width: 640px) {
+  .ace-container {
+    top: 52px;
+    bottom: auto;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+}

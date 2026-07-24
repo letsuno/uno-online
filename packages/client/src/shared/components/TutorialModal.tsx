@@ -2,15 +2,17 @@ import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Spade, ChevronRight, ChevronLeft, Megaphone, Trophy, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import { Button } from '@/shared/components/ui/Button';
+import { IconButton } from '@/shared/components/ui/IconButton';
 
 function Card({ color, label }: { color: string; label: string }) {
   const bg: Record<string, string> = {
     red: 'bg-uno-red', blue: 'bg-uno-blue', green: 'bg-uno-green',
     yellow: 'bg-uno-yellow', wild: 'bg-wild-gradient',
-    dark: 'bg-[#232a45] border border-white/25',
+    dark: 'bg-muted border border-white/25',
   };
   return (
-    <div className={cn('inline-flex items-center justify-center w-14 h-20 rounded-lg text-white text-lg font-bold shrink-0 shadow-xl', bg[color] ?? 'bg-[#232a45]')}>
+    <div className={cn('inline-flex items-center justify-center w-14 h-20 rounded-lg text-white text-lg font-bold shrink-0 shadow-xl', bg[color] ?? 'bg-muted')}>
       {label}
     </div>
   );
@@ -20,10 +22,10 @@ function SmallCard({ color, label }: { color: string; label: string }) {
   const bg: Record<string, string> = {
     red: 'bg-uno-red', blue: 'bg-uno-blue', green: 'bg-uno-green',
     yellow: 'bg-uno-yellow', wild: 'bg-wild-gradient',
-    dark: 'bg-[#232a45] border border-white/25',
+    dark: 'bg-muted border border-white/25',
   };
   return (
-    <div className={cn('inline-flex items-center justify-center w-9 h-13 rounded text-white text-xs font-bold shrink-0 shadow-md', bg[color] ?? 'bg-[#232a45]')}>
+    <div className={cn('inline-flex items-center justify-center w-9 h-13 rounded text-white text-xs font-bold shrink-0 shadow-md', bg[color] ?? 'bg-muted')}>
       {label}
     </div>
   );
@@ -125,11 +127,11 @@ const PAGES: PageDef[] = [
           </div>
           <div className="space-y-3">
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-500/20 text-red-400 text-xs font-bold shrink-0">!</span>
+              <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-uno-red/20 text-uno-red text-xs font-bold shrink-0">!</span>
               <p className="text-sm text-foreground/80">手中只剩 <strong className="text-foreground">1 张牌</strong>时必须喊「UNO」</p>
             </div>
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-500/20 text-red-400 text-xs font-bold shrink-0">!</span>
+              <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-uno-red/20 text-uno-red text-xs font-bold shrink-0">!</span>
               <p className="text-sm text-foreground/80">未喊被抓到 → 罚摸 <strong className="text-foreground">2 张</strong></p>
             </div>
           </div>
@@ -184,23 +186,23 @@ export default function TutorialModal({ open, onClose }: { open: boolean; onClos
           className="fixed inset-0 z-modal flex flex-col"
           style={{
             background: `
-              radial-gradient(circle at 50% 42%, rgba(246, 190, 62, 0.12), transparent 30%),
-              radial-gradient(circle at 50% 100%, rgba(246, 190, 62, 0.12), transparent 26%),
-              linear-gradient(180deg, #0a1020 0%, #15172a 52%, #080d19 100%)
+              radial-gradient(circle at 50% 42%, color-mix(in oklab, var(--primary) 12%, transparent), transparent 30%),
+              radial-gradient(circle at 50% 100%, color-mix(in oklab, var(--primary) 12%, transparent), transparent 26%),
+              linear-gradient(180deg, var(--card) 0%, var(--popover) 52%, var(--background) 100%)
             `,
           }}
         >
           <div
             className="absolute top-[42%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] rounded-full pointer-events-none animate-[breathe_6s_ease-in-out_infinite]"
-            style={{ background: 'radial-gradient(circle, rgba(246,190,62,0.08) 0%, rgba(246,190,62,0.03) 30%, transparent 60%)' }}
+            style={{ background: 'radial-gradient(circle, color-mix(in oklab, var(--primary) 8%, transparent) 0%, color-mix(in oklab, var(--primary) 3%, transparent) 30%, transparent 60%)' }}
           />
-          <button
+          <IconButton
             onClick={close}
-            className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-muted-foreground transition-all hover:bg-white/[0.08] hover:text-foreground cursor-pointer z-topbar"
+            className="absolute top-6 right-6 z-topbar"
             title="关闭"
           >
             <X size={18} />
-          </button>
+          </IconButton>
           <div className="flex flex-col flex-1 items-center justify-center px-6 py-6 overflow-hidden">
             <div className="flex flex-col items-center gap-2 mb-8">
               <motion.div
@@ -245,19 +247,21 @@ export default function TutorialModal({ open, onClose }: { open: boolean; onClos
             </div>
             <div className="flex gap-3 max-w-xs mx-auto">
               {page > 0 && (
-                <button
+                <Button
+                  variant="secondary"
+                  className="flex-1 py-3"
                   onClick={() => go(page - 1)}
-                  className="flex-1 rounded-xl border border-white/15 px-5 py-3 text-sm font-bold text-foreground transition-colors hover:bg-white/5"
                 >
                   <ChevronLeft size={14} className="mr-1 inline" /> 上一页
-                </button>
+                </Button>
               )}
-              <button
+              <Button
+                variant="primary"
+                className="flex-1 py-3"
                 onClick={isLast ? close : () => go(page + 1)}
-                className="flex-1 gold-button-base px-5 py-3 text-sm"
               >
                 {isLast ? '开始游戏' : <>下一页 <ChevronRight size={14} className="ml-1 inline" /></>}
-              </button>
+              </Button>
             </div>
           </div>
         </motion.div>

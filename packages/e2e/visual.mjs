@@ -80,8 +80,9 @@ async function run() {
         }
 
         let roomCode = null;
-        if (STAGES.includes('room') || STAGES.includes('game')) {
-          await waitSocketConnected(page).catch(() => page.reload({ waitUntil: 'domcontentloaded' }));
+        if (STAGES.some((s) => ['room', 'game', 'settings', 'scoreboard'].includes(s))) {
+          // 前面的阶段可能没跑（如 --stages game），确保已在站内
+          await page.goto(`${CLIENT_URL}/`, { waitUntil: 'domcontentloaded' });
           await waitSocketConnected(page);
           const created = await emit(page, 'room:create', {});
           if (!created.success) throw new Error(`room:create 失败: ${created.error}`);
@@ -92,6 +93,23 @@ async function run() {
 
         if (STAGES.includes('room')) {
           await shot(page, 'room', w, h, errors);
+        }
+
+        if (STAGES.includes('settings')) {
+          await page.getByTitle('房间设置').click();
+          await page.waitForTimeout(600);
+          await shot(page, 'settings', w, h, errors);
+          // 点遮罩（抽屉左侧区域）关闭
+          await page.mouse.click(8, Math.round(h / 2));
+          await page.waitForTimeout(400);
+        }
+
+        if (STAGES.includes('profile')) {
+          await page.evaluate(() => window.__uno?.useProfileModalStore?.getState?.().open());
+          await page.waitForTimeout(600);
+          await shot(page, 'profile', w, h, errors);
+          await page.evaluate(() => window.__uno?.useProfileModalStore?.getState?.().close());
+          await page.waitForTimeout(300);
         }
 
         if (STAGES.includes('game')) {
@@ -123,6 +141,22 @@ async function run() {
           await dismissGameOverlays(page);
           await page.waitForTimeout(800);
           await shot(page, 'game', w, h, errors);
+        }
+
+        if (STAGES.includes('scoreboard') && roomCode) {
+          // 合成 round_end 状态，验证记分板布局
+          await page.evaluate(() => {
+            const store = window.__uno?.useGameStore;
+            if (!store) return;
+            const s = store.getState();
+            store.setState({
+              phase: 'round_end',
+              winnerId: s.players[0]?.id ?? null,
+              players: s.players.map((p, i) => ({ ...p, score: (i + 1) * 37, roundWins: i })),
+            });
+          });
+          await page.waitForTimeout(800);
+          await shot(page, 'scoreboard', w, h, errors);
         }
       } catch (err) {
         report.errors.push({ res: `${w}x${h}`, error: String(err) });

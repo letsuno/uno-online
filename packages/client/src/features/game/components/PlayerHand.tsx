@@ -49,7 +49,7 @@ function isColorBoundary(sorted: CardType[], index: number): boolean {
   return false;
 }
 
-function calculateHandLayout(count: number, containerWidth: number): HandLayout {
+function calculateHandLayout(count: number, containerWidth: number, reserved = 0): HandLayout {
   const isMobile = containerWidth > 0 && containerWidth < 768;
   const cardWidth = isMobile ? CARD_WIDTH_SM : CARD_WIDTH;
   const cardHeight = isMobile ? CARD_HEIGHT_SM : CARD_HEIGHT;
@@ -64,7 +64,8 @@ function calculateHandLayout(count: number, containerWidth: number): HandLayout 
   const stride = Math.min(COMFORTABLE_STRIDE, Math.max(minStride, fitStride));
   const baseWidth = cardWidth + stride * (count - 1);
   const scrollable = isMobile && baseWidth > available;
-  const padX = scrollable ? HAND_SIDE_PADDING : Math.max(HAND_SIDE_PADDING, (containerWidth - baseWidth) / 2);
+  // 居中时为右侧的边界间隙与悬停扩展预留 reserved，保证内容不超出容器
+  const padX = scrollable ? HAND_SIDE_PADDING : Math.max(8, (containerWidth - baseWidth - reserved) / 2);
 
   return { cardWidth, cardHeight, stride, baseWidth, padX, scrollable };
 }
@@ -122,9 +123,21 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   const isMobile = containerWidth > 0 && containerWidth < 768;
   const activeLift = isMobile ? 34 : 20;
 
+  const boundaryGap = Math.min(10, Math.max(3, 78 * 0.35));
+  const boundaryOffsets = useMemo(() => {
+    let offset = 0;
+    return sorted.map((_, index) => {
+      if (isColorBoundary(sorted, index)) offset += boundaryGap;
+      return offset;
+    });
+  }, [sorted, boundaryGap]);
   const layout = useMemo(
-    () => calculateHandLayout(sorted.length, containerWidth),
-    [sorted.length, containerWidth],
+    () => calculateHandLayout(
+      sorted.length,
+      containerWidth,
+      (boundaryOffsets[boundaryOffsets.length - 1] ?? 0) + NEAR_EXPAND,
+    ),
+    [sorted.length, containerWidth, boundaryOffsets],
   );
 
   useEffect(() => {
@@ -247,17 +260,9 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
     onPlayCard(card.id);
   };
 
-  const handHeight = layout.cardHeight + activeLift + (isMobile ? 28 : 8);
+  const handHeight = layout.cardHeight + activeLift + (isMobile ? 20 : 8);
   const spreadAngle = getSpreadAngle(sorted.length);
   const center = (sorted.length - 1) / 2;
-  const boundaryGap = Math.min(10, Math.max(3, layout.stride * 0.35));
-  const boundaryOffsets = useMemo(() => {
-    let offset = 0;
-    return sorted.map((_, index) => {
-      if (isColorBoundary(sorted, index)) offset += boundaryGap;
-      return offset;
-    });
-  }, [sorted, boundaryGap]);
   const contentWidth = Math.max(
     containerWidth,
     layout.baseWidth + layout.padX * 2 + (boundaryOffsets[boundaryOffsets.length - 1] ?? 0) + NEAR_EXPAND * 2,

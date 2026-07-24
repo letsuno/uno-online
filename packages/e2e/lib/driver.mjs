@@ -130,8 +130,12 @@ export function checkOverflow(page) {
       if (rect.width === 0 || rect.height === 0) continue;
       // 计算有效裁剪区：视口与所有 overflow 非 visible 祖先的交集
       let clip = { left: 0, top: 0, right: vw, bottom: vh };
+      let scrollable = false;
       for (let p = el.parentElement; p; p = p.parentElement) {
         const ps = getComputedStyle(p);
+        if (/(scroll|auto)/.test(`${ps.overflowX}${ps.overflowY}`) && (p.scrollHeight > p.clientHeight + 2 || p.scrollWidth > p.clientWidth + 2)) {
+          scrollable = true; // 在真实可滚容器内，边缘裁切可通过滚动到达，不算缺陷
+        }
         if (/(hidden|scroll|auto|clip)/.test(`${ps.overflow}${ps.overflowX}${ps.overflowY}`)) {
           const pr = p.getBoundingClientRect();
           clip = {
@@ -144,6 +148,7 @@ export function checkOverflow(page) {
       }
       // 完全在裁剪区外 = 离屏停靠（如关闭态抽屉），不可见也不算问题
       if (rect.right <= clip.left || rect.left >= clip.right || rect.bottom <= clip.top || rect.top >= clip.bottom) continue;
+      if (scrollable) continue;
       const over = {
         left: rect.left < clip.left - 2,
         top: rect.top < clip.top - 2,
