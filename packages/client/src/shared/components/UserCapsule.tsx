@@ -43,7 +43,7 @@ export default function UserCapsule() {
         </span>
       </button>
 
-      <div className={`absolute top-[calc(100%+8px)] right-0 w-[180px] glass-panel p-1.5 z-20 transition-all duration-200 ${
+      <div className={`absolute top-[calc(100%+8px)] right-0 w-[180px] glass-panel p-1.5 z-actions transition-all duration-200 ${
         open ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' : 'opacity-0 -translate-y-2 scale-[0.96] pointer-events-none'
       }`}>
         {!user?.id.startsWith('ephemeral_') && (

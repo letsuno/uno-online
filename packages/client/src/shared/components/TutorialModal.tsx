@@ -196,7 +196,7 @@ export default function TutorialModal({ open, onClose }: { open: boolean; onClos
           />
           <button
             onClick={close}
-            className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-muted-foreground transition-all hover:bg-white/[0.08] hover:text-foreground cursor-pointer z-10"
+            className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-muted-foreground transition-all hover:bg-white/[0.08] hover:text-foreground cursor-pointer z-topbar"
             title="关闭"
           >
             <X size={18} />

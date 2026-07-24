@@ -94,7 +94,7 @@ export default function AvatarUpload({ avatarUrl, size = 96, onUpload }: Props) 
       </div>
 
       {imageSrc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+        <div className="fixed inset-0 z-modal flex items-center justify-center glass-modal-backdrop">
           <div className="glass-panel flex flex-col w-80 rounded-2xl overflow-hidden">
             <div className="relative w-full h-72">
               <Cropper

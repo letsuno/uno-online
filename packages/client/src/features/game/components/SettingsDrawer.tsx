@@ -72,7 +72,7 @@ export default function SettingsDrawer({
       {/* Overlay */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/50 z-40"
+          className="fixed inset-0 glass-modal-backdrop z-modal"
           onClick={onClose}
         />
       )}
@@ -80,7 +80,7 @@ export default function SettingsDrawer({
       {/* Panel */}
       <div
         className={cn(
-          'fixed right-0 top-0 h-full w-[320px] max-w-[75vw] z-50 flex flex-col border-l border-[rgba(246,190,62,0.18)] backdrop-blur-xl shadow-[-20px_0_60px_rgba(0,0,0,0.45)]',
+          'fixed right-0 top-0 h-full w-[320px] max-w-[75vw] z-modal flex flex-col border-l border-[rgba(246,190,62,0.18)] backdrop-blur-xl shadow-[-20px_0_60px_rgba(0,0,0,0.45)]',
           'transition-transform duration-300',
           open ? 'translate-x-0' : 'translate-x-full',
         )}
