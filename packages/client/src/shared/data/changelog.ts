@@ -6,6 +6,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.11.0-beta.0',
+    date: '2026-07-24',
+    changes: [
+      '游戏字体更换为 Fredoka，跨平台显示更一致',
+      '个人设置弹窗新增左侧 Tab 导航',
+      '游戏信息抽屉打开时牌桌自动让位',
+      '通知权限弹窗不再重复打扰，可在设置中调整',
+      '全局 UI 颜色与样式统一',
+    ],
+  },
+  {
     version: '0.10.0',
     date: '2026-05-22',
     changes: [
