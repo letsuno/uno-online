@@ -40,12 +40,13 @@ function useCanDraw(side: 'left' | 'right') {
     && (isPenaltyDrawing || (!hasDrawnThisTurn && canStartDrawUntilPlayable) || canContinueDrawUntilPlayable);
 }
 
-function DeckBack({ count, label, canDraw, onDraw }: {
-  count: number; label: string; canDraw: boolean; onDraw: () => void;
+function DeckBack({ count, label, side, canDraw, onDraw }: {
+  count: number; label: string; side: string; canDraw: boolean; onDraw: () => void;
 }) {
   return (
     <div className="flex flex-col items-center gap-1">
       <button
+        data-draw-pile={side}
         onClick={canDraw ? onDraw : undefined}
         disabled={!canDraw}
         className={cn(
@@ -99,7 +100,7 @@ export default function MobileGameCenter({ onDraw }: MobileGameCenterProps) {
 
   return (
     <div className="flex items-center justify-center gap-6 flex-1 min-h-0">
-      <DeckBack count={deckLeftCount} label="左牌堆" canDraw={canDrawLeft} onDraw={() => onDraw('left')} />
+      <DeckBack count={deckLeftCount} label="左牌堆" side="left" canDraw={canDrawLeft} onDraw={() => onDraw('left')} />
 
       <div className="flex flex-col items-center gap-2">
         <div className="relative">
@@ -131,7 +132,7 @@ export default function MobileGameCenter({ onDraw }: MobileGameCenterProps) {
         </div>
       </div>
 
-      <DeckBack count={deckRightCount} label="右牌堆" canDraw={canDrawRight} onDraw={() => onDraw('right')} />
+      <DeckBack count={deckRightCount} label="右牌堆" side="right" canDraw={canDrawRight} onDraw={() => onDraw('right')} />
     </div>
   );
 }

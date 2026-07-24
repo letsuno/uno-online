@@ -48,6 +48,7 @@ export default function ColorPicker({ onPick }: ColorPickerProps) {
           <div className="flex gap-3">
             {COLORS.map(({ color, bgClass, label }) => (
               <motion.button
+                data-color={color}
                 key={color}
                 whileHover={{ scale: 1.15 }}
                 whileTap={{ scale: 0.9 }}
