@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/fredoka": "^5.3.0",
     "@simplewebauthn/browser": "^13.3.0",
     "@tailwindcss/vite": "^4.3.0",
     "@uno-online/shared": "workspace:*",

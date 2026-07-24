@@ -7,6 +7,7 @@ import { useSettingsStore } from '@/shared/stores/settings-store';
 import { loadCardPack, clearCardPack, isPackLoaded } from '@/shared/utils/card-images';
 import { getSocket, connectSocket } from '@/shared/socket';
 import { Button } from '@/shared/components/ui/Button';
+import { cn } from '@/shared/lib/utils';
 import { ServerSelectModal } from '@/shared/components/ServerSelectModal';
 import { useBgm } from '@/shared/sound/useBgm';
 import TutorialModal from '@/shared/components/TutorialModal';
@@ -111,9 +112,9 @@ export default function LobbyPage() {
   };
 
   const ctrlIconBase =
-    'w-14 h-14 max-sm:w-12 max-sm:h-12 shrink-0 rounded-[18px] max-sm:rounded-[14px] bg-white/[0.045] border border-white/[0.12] flex items-center justify-center cursor-pointer text-[#c7d0ec] transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_22px_rgba(0,0,0,0.26)] hover:text-[var(--gold)] hover:border-[rgba(246,190,62,0.46)] hover:shadow-[0_0_24px_rgba(246,190,62,0.14),inset_0_1px_0_rgba(255,255,255,0.08)]';
+    'w-14 h-14 max-sm:w-12 max-sm:h-12 shrink-0 rounded-btn max-sm:rounded-card bg-secondary border border-white/[0.12] flex items-center justify-center cursor-pointer text-[#c7d0ec] transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_22px_rgba(0,0,0,0.26)] hover:text-primary hover:border-primary/46 hover:shadow-[0_0_24px_rgba(246,190,62,0.14),inset_0_1px_0_rgba(255,255,255,0.08)]';
   const ctrlIconActive =
-    'text-[var(--gold)] border-[rgba(246,190,62,0.46)] shadow-[0_0_24px_rgba(246,190,62,0.14),inset_0_1px_0_rgba(255,255,255,0.08)]';
+    'text-primary border-primary/46 shadow-[0_0_24px_rgba(246,190,62,0.14),inset_0_1px_0_rgba(255,255,255,0.08)]';
   const ctrlHideMobile = 'max-sm:hidden';
 
   return (
@@ -125,7 +126,7 @@ export default function LobbyPage() {
             {/* Music toggle */}
             <button
               onClick={toggleBgm}
-              className={`${ctrlIconBase} ${bgmEnabled ? ctrlIconActive : ''}`}
+              className={cn(ctrlIconBase, bgmEnabled && ctrlIconActive)}
               title={bgmEnabled ? '关闭背景音乐' : '开启背景音乐'}
             >
               {bgmEnabled ? <Volume2 size={24} /> : <VolumeX size={24} />}
@@ -220,7 +221,7 @@ export default function LobbyPage() {
           </section>
 
           {/* Glass panel actions */}
-          <section className="glass-panel w-[760px] portrait:w-[440px] rounded-[34px] portrait:rounded-[28px] px-[70px] py-[60px] portrait:px-[28px] portrait:py-[44px]">
+          <section className="glass-panel w-[760px] portrait:w-[440px] rounded-[34px] portrait:rounded-panel-ui px-[70px] py-[60px] portrait:px-[28px] portrait:py-[44px]">
             {/* Create room */}
             <Button
               variant="game"
@@ -243,7 +244,7 @@ export default function LobbyPage() {
 
             {/* Join row */}
             <div className="grid grid-cols-[minmax(0,1fr)_82px_82px] gap-[18px]">
-              <label className="min-h-[74px] rounded-[20px] flex items-center gap-4 px-5 bg-[rgba(8,13,28,0.56)] border border-white/[0.13] text-[#d7def1] focus-within:border-[rgba(246,190,62,0.58)] focus-within:shadow-[0_0_0_4px_rgba(246,190,62,0.10)] transition-all">
+              <label className="min-h-[74px] rounded-panel flex items-center gap-4 px-5 bg-[rgba(8,13,28,0.56)] border border-input text-[#d7def1] focus-within:border-primary/58 focus-within:shadow-input-focus transition-all">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="shrink-0 text-[#d7def1]"><path d="M10 3 8 21"/><path d="M16 3l-2 18"/><path d="M4 9h17"/><path d="M3 15h17"/></svg>
                 <input
                   value={joinCode}
@@ -256,7 +257,7 @@ export default function LobbyPage() {
               </label>
               <button
                 onClick={handlePaste}
-                className="min-h-[74px] rounded-[20px] grid place-items-center border border-white/[0.13] bg-white/[0.045] text-[#cbd5ef] cursor-pointer transition-all hover:bg-white/[0.08] hover:text-[#dbe3f8]"
+                className="min-h-[74px] rounded-panel grid place-items-center border border-white/[0.13] bg-secondary text-[#cbd5ef] cursor-pointer transition-all hover:bg-white/[0.08] hover:text-[#dbe3f8]"
                 title="从剪贴板粘贴"
               >
                 <ClipboardPaste size={22} />
@@ -264,7 +265,7 @@ export default function LobbyPage() {
               <button
                 onClick={handleJoin}
                 disabled={loading}
-                className="min-h-[74px] rounded-[20px] grid place-items-center border border-[rgba(246,190,62,0.72)] bg-[rgba(246,190,62,0.08)] text-[var(--gold)] cursor-pointer transition-all shadow-[0_0_22px_rgba(246,190,62,0.16)] hover:bg-[rgba(246,190,62,0.14)] hover:border-[rgba(246,190,62,0.9)] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="min-h-[74px] rounded-panel grid place-items-center border border-primary/72 bg-primary/8 text-primary cursor-pointer transition-all shadow-[0_0_22px_rgba(246,190,62,0.16)] hover:bg-primary/14 hover:border-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="加入房间"
               >
                 <ArrowRight size={28} />
@@ -282,8 +283,8 @@ export default function LobbyPage() {
           {/* Header */}
           <div className="flex items-center gap-2.5 mb-4 px-1">
             <span className="w-[9px] h-[9px] rounded-full bg-[#4dff73] shadow-[0_0_10px_#4dff73] animate-pulse" />
-            <span className="text-sm font-semibold text-[#8b95b3]">正在进行的对战</span>
-            <span className="ml-auto text-xs text-[#8b95b3] bg-white/[0.04] px-2.5 py-0.5 rounded-xl">
+            <span className="text-sm font-semibold text-muted-foreground">正在进行的对战</span>
+            <span className="ml-auto text-xs text-muted-foreground bg-white/[0.04] px-2.5 py-0.5 rounded-xl">
               {activeRooms.length} 场
             </span>
           </div>
@@ -292,7 +293,7 @@ export default function LobbyPage() {
             {activeRooms.map((room) => (
               <div
                 key={room.roomCode}
-                className="group bg-white/[0.035] rounded-[16px] p-3.5 cursor-pointer transition-all border border-white/[0.10] hover:bg-white/[0.06] hover:border-[rgba(246,190,62,0.26)]"
+                className="group bg-white/[0.035] rounded-[16px] p-3.5 cursor-pointer transition-all border border-white/[0.10] hover:bg-white/[0.06] hover:border-primary/26"
                 onClick={() => {
                   connectSocket();
                   navigate(`/game/${room.roomCode}`);
@@ -301,9 +302,9 @@ export default function LobbyPage() {
                 <div className="text-sm font-semibold text-[#eaf0ff]">
                   {room.players.map(p => p.nickname).join(' vs ')}
                 </div>
-                <div className="text-xs text-[#8b95b3] mt-1 flex justify-between items-center">
+                <div className="text-xs text-muted-foreground mt-1 flex justify-between items-center">
                   <span>{room.playerCount} 人 · {room.spectatorCount} 人观战 · <GameDuration startedAt={room.gameStartedAt} /></span>
-                  <span className="text-[var(--gold)] text-xs font-semibold opacity-0 -translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-x-0">
+                  <span className="text-primary text-xs font-semibold opacity-0 -translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-x-0">
                     观战 ›
                   </span>
                 </div>
@@ -321,7 +322,7 @@ export default function LobbyPage() {
         href="https://github.com/letsuno/uno-online"
         target="_blank"
         rel="noopener noreferrer"
-        className="absolute bottom-7 max-sm:bottom-5 right-8 max-sm:right-5 z-[5] flex items-center justify-center gap-2.5 h-[44px] max-sm:h-[38px] px-[18px] max-sm:px-0 max-sm:w-[38px] rounded-full bg-white/[0.045] border border-white/[0.12] transition-all hover:bg-white/[0.07] hover:border-white/[0.18] text-[#dbe3f8] text-sm font-medium no-underline backdrop-blur-[16px] shadow-[0_16px_40px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.05)]"
+        className="absolute bottom-7 max-sm:bottom-5 right-8 max-sm:right-5 z-[5] flex items-center justify-center gap-2.5 h-[44px] max-sm:h-[38px] px-[18px] max-sm:px-0 max-sm:w-[38px] rounded-full bg-secondary border border-white/[0.12] transition-all hover:bg-white/[0.07] hover:border-white/[0.18] text-[#dbe3f8] text-sm font-medium no-underline backdrop-blur-[16px] shadow-[0_16px_40px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.05)]"
       >
         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" className="shrink-0"><path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.2.8-.6v-2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.8.1-.8.1-.8 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.4 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.3 1.2-3.2-.1-.3-.5-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.4 11.4 0 0 1 6 0C17.3 4.5 18.3 4.8 18.3 4.8c.6 1.6.2 2.9.1 3.2.8.9 1.2 1.9 1.2 3.2 0 4.5-2.7 5.5-5.3 5.8.5.4.9 1.1.9 2.2v4.1c0 .4.2.7.8.6A12 12 0 0 0 12 .5Z"/></svg>
         <span className="max-sm:hidden">GitHub</span>

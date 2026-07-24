@@ -5,7 +5,7 @@ import { playSound } from '@/shared/sound/sound-manager';
 import type { ButtonSound } from '@/shared/sound/sound-manager';
 
 const buttonVariants = cva(
-  'font-bold transition-all duration-150 cursor-pointer rounded-btn shadow-tech',
+  'font-bold transition-all duration-150 cursor-pointer rounded-btn',
   {
     variants: {
       variant: {
@@ -20,7 +20,7 @@ const buttonVariants = cva(
         outline:
           'bg-transparent text-primary border-2 border-primary/50 px-5 py-2 text-sm hover:bg-primary/10',
         game:
-          'gold-button-base text-[#161513] px-6 py-[22px] text-xl font-[family-name:var(--font-game)] tracking-[6px] hover:translate-y-[-2px] active:translate-y-[-1px] relative overflow-hidden',
+          'gold-button-base text-primary-foreground px-6 py-[22px] text-xl font-[family-name:var(--font-game)] tracking-[6px] hover:translate-y-[-2px] active:translate-y-[-1px] relative overflow-hidden',
       },
       size: {
         default: '',

@@ -87,13 +87,13 @@ export default function SettingsDrawer({
         style={{ background: 'linear-gradient(180deg, rgba(23,30,56,0.96), rgba(12,17,34,0.97))' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <span className="flex items-center gap-2 text-base font-black text-foreground">
             <Settings size={16} className="text-[var(--gold)]" /> 房间设置
           </span>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-[10px] bg-white/[0.045] border border-white/[0.12] flex items-center justify-center text-[#c7d0ec] hover:text-[var(--gold)] hover:border-[rgba(246,190,62,0.46)] cursor-pointer transition-all"
+            className="icon-button w-8 h-8 rounded-[10px]"
           >
             <X size={15} />
           </button>
@@ -139,7 +139,7 @@ export default function SettingsDrawer({
               {(room?.settings?.allowSpectators ?? true) && (
                 <div className="flex items-center justify-between">
                   <label className="text-sm">观战模式</label>
-                  <div className={cn('flex rounded-xl bg-white/[0.06] border border-white/10 p-0.5', !isOwner && 'opacity-50')}>
+                  <div className={cn('flex rounded-xl bg-white/[0.06] border border-border p-0.5', !isOwner && 'opacity-50')}>
                     {([['hidden', '只看出牌'], ['full', '全透视']] as const).map(([value, label]) => {
                       const active = (room?.settings?.spectatorMode ?? 'hidden') === value;
                       return (
@@ -214,7 +214,7 @@ export default function SettingsDrawer({
                         setRuleValue(rule.key, v === 'null' ? null : Number(v));
                       }}
                       disabled={!isOwner}
-                      className="bg-white/[0.06] text-foreground border border-white/10 rounded-xl px-3 py-1.5 text-xs outline-none cursor-pointer"
+                      className="bg-white/[0.06] text-foreground border border-border rounded-xl px-3 py-1.5 text-xs outline-none cursor-pointer"
                     >
                       {rule.options?.map((opt) => (
                         <option key={String(opt.value)} value={String(opt.value ?? 'null')}>{opt.label}</option>

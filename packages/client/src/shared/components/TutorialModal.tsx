@@ -7,10 +7,10 @@ function Card({ color, label }: { color: string; label: string }) {
   const bg: Record<string, string> = {
     red: 'bg-uno-red', blue: 'bg-uno-blue', green: 'bg-uno-green',
     yellow: 'bg-uno-yellow', wild: 'bg-wild-gradient',
-    dark: 'bg-slate-700 border border-slate-500',
+    dark: 'bg-[#232a45] border border-white/25',
   };
   return (
-    <div className={cn('inline-flex items-center justify-center w-14 h-20 rounded-lg text-white text-lg font-bold shrink-0 shadow-xl', bg[color] ?? 'bg-slate-600')}>
+    <div className={cn('inline-flex items-center justify-center w-14 h-20 rounded-lg text-white text-lg font-bold shrink-0 shadow-xl', bg[color] ?? 'bg-[#232a45]')}>
       {label}
     </div>
   );
@@ -20,10 +20,10 @@ function SmallCard({ color, label }: { color: string; label: string }) {
   const bg: Record<string, string> = {
     red: 'bg-uno-red', blue: 'bg-uno-blue', green: 'bg-uno-green',
     yellow: 'bg-uno-yellow', wild: 'bg-wild-gradient',
-    dark: 'bg-slate-700 border border-slate-500',
+    dark: 'bg-[#232a45] border border-white/25',
   };
   return (
-    <div className={cn('inline-flex items-center justify-center w-9 h-13 rounded text-white text-xs font-bold shrink-0 shadow-md', bg[color] ?? 'bg-slate-600')}>
+    <div className={cn('inline-flex items-center justify-center w-9 h-13 rounded text-white text-xs font-bold shrink-0 shadow-md', bg[color] ?? 'bg-[#232a45]')}>
       {label}
     </div>
   );
@@ -196,7 +196,7 @@ export default function TutorialModal({ open, onClose }: { open: boolean; onClos
           />
           <button
             onClick={close}
-            className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-[#475569] transition-all hover:bg-white/[0.08] hover:text-[#94a3b8] cursor-pointer z-10"
+            className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-muted-foreground transition-all hover:bg-white/[0.08] hover:text-foreground cursor-pointer z-10"
             title="关闭"
           >
             <X size={18} />
@@ -254,7 +254,7 @@ export default function TutorialModal({ open, onClose }: { open: boolean; onClos
               )}
               <button
                 onClick={isLast ? close : () => go(page + 1)}
-                className="flex-1 rounded-xl bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] px-5 py-3 text-sm font-bold text-[#1a1a2e] shadow-[0_4px_20px_rgba(251,191,36,0.25)] transition-colors hover:opacity-90"
+                className="flex-1 gold-button-base px-5 py-3 text-sm"
               >
                 {isLast ? '开始游戏' : <>下一页 <ChevronRight size={14} className="ml-1 inline" /></>}
               </button>

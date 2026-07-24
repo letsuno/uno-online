@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Loader2, Eye, LogOut, UserPlus, X } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useGameStore } from '../stores/game-store';
+import { cn } from '@/shared/lib/utils';
 import { useIsMyTurn } from '../hooks/useIsMyTurn';
 import { usePlayableCardIds } from '../hooks/usePlayableCardIds';
 import { useGameSocket } from '../hooks/useGameSocket';
@@ -49,6 +50,7 @@ export default function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
   const phase = useGameStore((s) => s.phase);
+  const infoDrawerOpen = useGameStore((s) => s.infoDrawerOpen);
   const roundNumber = useGameStore((s) => s.roundNumber);
   const settings = useGameStore((s) => s.settings);
   const toggleInfoDrawer = useGameStore((s) => s.toggleInfoDrawer);
@@ -169,7 +171,10 @@ export default function GamePage() {
   }
 
   return (
-    <div className="flex h-screen flex-col relative overflow-hidden">
+    <div className={cn(
+      'flex h-screen flex-col relative overflow-hidden transition-[padding] duration-300',
+      infoDrawerOpen && 'md:pr-[360px]',
+    )}>
 
       {connectionStatus !== 'connected' && (
         <div className="fixed inset-0 z-connection flex flex-col items-center justify-center gap-3 bg-black/75">
@@ -350,21 +355,21 @@ function SpectatorBar({ phase, onBackToLobby, onJoined }: { phase: string | null
       {queued ? (
         <button
           onClick={toggleQueue}
-          className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-xs text-foreground transition-colors hover:bg-white/20"
+          className="ml-1 inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-foreground transition-colors hover:bg-white/10"
         >
           <X size={12} /> 取消加入
         </button>
       ) : (
         <button
           onClick={toggleQueue}
-          className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/80 px-2 py-1 text-xs text-white transition-colors hover:bg-primary"
+          className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/80 px-2 py-1 text-xs text-primary-foreground transition-colors hover:bg-primary"
         >
           <UserPlus size={12} /> 下局加入
         </button>
       )}
       <button
         onClick={onBackToLobby}
-        className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-xs text-foreground transition-colors hover:bg-white/20"
+        className="ml-1 inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-foreground transition-colors hover:bg-white/10"
       >
         <LogOut size={12} /> 退出
       </button>

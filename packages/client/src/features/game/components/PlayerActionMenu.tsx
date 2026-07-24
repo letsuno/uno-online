@@ -98,7 +98,7 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
     <div
       ref={ref}
       style={{ position: 'fixed', left: clampedX, top: clampedY, zIndex: 50 }}
-      className="glass-panel !rounded-xl py-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
+      className="glass-panel-sm py-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
     >
       <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-white/5 truncate">
         {target.nickname}
@@ -125,7 +125,7 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
       )}
       {hasBotItems && (
         <>
-          <div className="px-3 py-1 text-xs text-white/40">调整难度</div>
+          <div className="px-3 py-1 text-xs text-muted-foreground">调整难度</div>
           {DIFFICULTY_LIST.map((d) => (
             <button
               key={d.value}

@@ -13,7 +13,8 @@ export default function NotificationPermissionDialog() {
     if (typeof Notification === 'undefined') return;
     const current = Notification.permission;
     setPermission(current);
-    if (current !== 'granted') {
+    // 已拒绝/已关闭过弹窗就不再自动弹出，用户可随时在「设置 → 通知」中调整
+    if (current !== 'granted' && !localStorage.getItem('notificationPromptDismissed')) {
       setOpen(true);
     }
   }, [token]);
@@ -22,12 +23,16 @@ export default function NotificationPermissionDialog() {
     if (typeof Notification === 'undefined') return;
     const result = await Notification.requestPermission();
     setPermission(result);
+    localStorage.setItem('notificationPromptDismissed', 'true');
     if (result === 'granted') {
       setOpen(false);
     }
   };
 
-  const close = () => setOpen(false);
+  const close = () => {
+    localStorage.setItem('notificationPromptDismissed', 'true');
+    setOpen(false);
+  };
 
   if (permission === 'unsupported') return null;
 
@@ -99,7 +104,7 @@ export default function NotificationPermissionDialog() {
               ) : (
                 <button
                   onClick={handleRequest}
-                  className="w-full rounded-lg bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] px-4 py-2 text-sm font-bold text-[#1a1a2e] transition-colors hover:opacity-90"
+                  className="w-full gold-button-base px-4 py-2 text-sm"
                 >
                   允许通知
                 </button>
