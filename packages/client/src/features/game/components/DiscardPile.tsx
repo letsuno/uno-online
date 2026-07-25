@@ -107,14 +107,11 @@ function DiscardPile() {
               </span>
             )}
             {isWaitingForColor && (
-              <motion.span
-                className="absolute -bottom-1 -right-1 text-xs font-game font-black px-1 py-0.5 rounded bg-black/65 leading-none whitespace-nowrap text-white"
-                initial={{ opacity: 0.6, scale: 0.96 }}
-                animate={{ opacity: [0.6, 1, 0.6], scale: [0.96, 1, 0.96] }}
-                transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
+              <span
+                className="absolute -bottom-1 -right-1 text-xs font-game font-black px-1 py-0.5 rounded bg-black/65 leading-none whitespace-nowrap text-white animate-pending-pulse"
               >
                 待选色
-              </motion.span>
+              </span>
             )}
         </div>
       </div>

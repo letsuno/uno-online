@@ -11,7 +11,7 @@ import QuickReaction from './QuickReaction';
 import ThrowItemPicker from './ThrowItemPicker';
 import { cn, getRoleColor } from '@/shared/lib/utils';
 import { AiBadge } from '@/shared/components/ui/AiBadge';
-import { useCountdown } from '../hooks/useCountdown';
+import { useCountdownPrecise } from '../hooks/useCountdown';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import { DIFFICULTY_DISPLAY } from '../constants/bot-difficulty';
 import type { PlayerInfo } from '../stores/game-store';
@@ -55,7 +55,7 @@ function PlayerNode({
   onReaction,
   onThrowItem,
 }: PlayerNodeProps) {
-  const secondsLeft = useCountdown(isActive ? turnEndTime : null);
+  const secondsLeft = useCountdownPrecise(isActive ? turnEndTime : null);
   const [showReaction, setShowReaction] = useState(false);
   const [showThrowPicker, setShowThrowPicker] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState({ x: 0, y: 0 });
@@ -153,7 +153,7 @@ function PlayerNode({
       <div
         ref={avatarRef}
         data-player-id={player.id}
-        className="relative pointer-events-auto"
+        className={cn('relative pointer-events-auto', isActive && 'animate-draw-pulse rounded-full')}
         style={{ width: avatarSize, height: avatarSize }}
         onClick={handleClick}
         onTouchEnd={handleTouchEnd}
@@ -176,7 +176,7 @@ function PlayerNode({
             'relative',
             'text-sm md:text-lg',
             'transition-[box-shadow] duration-300 ease-in-out',
-            isActive && 'animate-draw-pulse shadow-glow-active',
+            isActive && 'shadow-glow-active',
             isSpeaking && 'ring-2 ring-green-400 shadow-[0_0_10px_rgba(74,222,128,0.6)]',
           )}
           style={{
