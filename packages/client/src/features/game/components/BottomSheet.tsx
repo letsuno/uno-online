@@ -24,9 +24,8 @@ export default function BottomSheet({ open, onClose, title, children }: BottomSh
           <motion.div
             className="absolute bottom-0 left-0 right-0 max-h-sheet-max-h glass-panel-sm !rounded-b-none !rounded-t-2xl flex flex-col overflow-hidden"
             initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            animate={{ y: 0, transition: { type: 'spring', damping: 30, stiffness: 300 } }}
+            exit={{ y: '100%', transition: { duration: 0.18 } }}
             drag="y"
             dragConstraints={{ top: 0 }}
             dragElastic={0.2}

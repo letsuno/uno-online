@@ -27,6 +27,7 @@ export default function BgmToast({ song }: Props) {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.3 }}
+          data-allow-overflow
           className="fixed top-4 left-4 z-toast flex items-center gap-2 rounded-lg bg-black/60 px-3 py-1.5 backdrop-blur-sm pointer-events-none"
         >
           <Music size={12} className="text-accent shrink-0" />

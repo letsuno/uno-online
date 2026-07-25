@@ -26,7 +26,6 @@ import ScoreBoard from '../components/ScoreBoard';
 import VoicePanel from '@/shared/voice/VoicePanel';
 import GameEffects from '../components/GameEffects';
 import Confetti from '../components/Confetti';
-import MobileFAB from '../components/MobileFAB';
 import InfoDrawer from '../components/InfoDrawer';
 import PlayerListPanel from '../components/PlayerListPanel';
 import DanmakuLayer from '../components/DanmakuLayer';
@@ -39,9 +38,9 @@ import ColorWave from '../components/ColorWave';
 import HotkeySettingsModal from '../components/HotkeySettingsModal';
 import OwnerTransferBanner from '../components/OwnerTransferBanner';
 import AutopilotOverlay from '../components/AutopilotOverlay';
-import MobilePlayerStrip from '../components/MobilePlayerStrip';
-import MobileGameCenter from '../components/MobileGameCenter';
 import MobileMenuSheet from '../components/MobileMenuSheet';
+import MobileGameScreen from '../components/mobile/MobileGameScreen';
+import InfoSheet from '../components/mobile/InfoSheet';
 import { useGameLayoutMode } from '../hooks/useGameLayoutMode';
 import FitScaler from '@/shared/components/FitScaler';
 
@@ -85,6 +84,7 @@ export default function GamePage() {
   const [showStartRules, setShowStartRules] = useState(false);
   const [showHotkeys, setShowHotkeys] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showMobileInfo, setShowMobileInfo] = useState(false);
   const shownStartRulesRef = useRef<string | null>(null);
   const [antiCheatKey, setAntiCheatKey] = useState<string | null>(null);
   const shownAntiCheatRef = useRef<string | null>(null);
@@ -187,39 +187,54 @@ export default function GamePage() {
         mode={mode}
         onOpenHotkeys={() => setShowHotkeys(true)}
         onOpenMenu={() => setShowMobileMenu(true)}
+        onOpenInfo={() => setShowMobileInfo(true)}
       />
 
       {/* 桌面牌桌侧栏 */}
       {mode === 'table' && <PlayerListPanel />}
 
       <LayoutGroup>
-        {/* 中央区域：table = 椭圆牌桌；strip = 玩家条 + 牌区 */}
-        {mode === 'strip' && <MobilePlayerStrip />}
-        <div className="relative flex flex-col flex-1 min-h-0">
-          {mode === 'table' ? (
+        {/* 中央区域：table = 椭圆牌桌（逻辑画布缩放）；strip = 全新移动端布局 */}
+        {mode === 'strip' ? (
+          <MobileGameScreen onDraw={myAutopilot ? noop : drawCard}>
+            <DanmakuLayer />
+            <AnimatePresence>
+              {showTurnBanner && isMyTurn && phase === 'playing' && (
+                <motion.div
+                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-actions pointer-events-none font-game text-4xl font-black text-white text-shadow-bold"
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
+                >
+                  轮到你了
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </MobileGameScreen>
+        ) : (
+          <div className="relative flex flex-col flex-1 min-h-0">
             <FitScaler align="center" maxScale={1} className="absolute inset-0">
               <div className="w-[1200px] h-[720px] flex flex-col">
                 <GameTable onDraw={myAutopilot ? noop : drawCard} />
               </div>
             </FitScaler>
-          ) : (
-            <MobileGameCenter onDraw={myAutopilot ? noop : drawCard} />
-          )}
-          <DanmakuLayer />
-          <AnimatePresence>
-            {showTurnBanner && isMyTurn && phase === 'playing' && (
-              <motion.div
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-actions pointer-events-none font-game text-4xl font-black text-white text-shadow-bold"
-                initial={{ opacity: 0, scale: 0.92 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.96 }}
-                transition={{ duration: 0.22, ease: 'easeOut' }}
-              >
-                轮到你了
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+            <DanmakuLayer />
+            <AnimatePresence>
+              {showTurnBanner && isMyTurn && phase === 'playing' && (
+                <motion.div
+                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-actions pointer-events-none font-game text-4xl font-black text-white text-shadow-bold"
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
+                >
+                  轮到你了
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
         {!isSpectator && !myAutopilot && (
           <GameActions
@@ -249,7 +264,7 @@ export default function GamePage() {
 
       {/* 共享覆盖层（只渲染一份） */}
       <VoicePanel />
-      {mode === 'table' ? <InfoDrawer /> : <MobileFAB />}
+      {mode === 'table' ? <InfoDrawer /> : <InfoSheet open={showMobileInfo} onClose={() => setShowMobileInfo(false)} />}
       <MobileMenuSheet open={showMobileMenu} onClose={() => setShowMobileMenu(false)} />
       <GameStartRulesModal
         open={showStartRules}

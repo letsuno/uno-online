@@ -37,9 +37,9 @@ export default function Modal({ open, onClose, title, footer, width = 420, child
             className={cn('glass-panel relative flex flex-col w-full max-h-[calc(100vh-2rem)]', className)}
             style={{ maxWidth: width }}
             initial={{ scale: 0.92, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 26 }}
+            animate={{ scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 300, damping: 26 } }}
+            // 退出用快速 tween：spring 退出期间隐形遮罩会滞留 ~1s 拦截点击
+            exit={{ scale: 0.95, opacity: 0, transition: { duration: 0.15 } }}
           >
             {title !== undefined && (
               <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border shrink-0">

@@ -18,6 +18,7 @@
   right: 24px;
   width: 300px;
   z-index: var(--z-index-ace);
+  pointer-events: none; /* 纯提示，永不阻挡交互 */
   animation: ace-slide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @keyframes ace-slide-in {

@@ -7,7 +7,7 @@ interface CardBackProps {
   style?: React.CSSProperties;
 }
 
-export default function CardBack({ small = false, onClick, className = '', style }: CardBackProps) {
+export default function CardBack({ small = false, onClick, className = '', style, ...rest }: CardBackProps & Record<string, unknown>) {
   return (
     <div
       className={cn(
@@ -28,6 +28,7 @@ export default function CardBack({ small = false, onClick, className = '', style
       )}
       onClick={onClick}
       style={style}
+      {...rest}
     >
       {!small && 'UNO'}
     </div>
