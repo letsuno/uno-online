@@ -207,6 +207,19 @@ async function runScenario(browser, { tag, width, height, touch }) {
   await shot(p, `${tag}-6-game`);
   console.log('  ✓ 开始游戏（含关闭开局规则弹窗）');
 
+  // ── 5.5 strip 模式追加：点对手 → 互动面板 → 发表情 ──
+  if (touch) {
+    const opp = await centerOf(p, '.overflow-x-auto button', { timeout: 4000 }).catch(() => null);
+    await tap(opp, '对手卡片');
+    await p.waitForTimeout(700);
+    const hasSheet = await p.evaluate(() => document.body.textContent.includes('快捷表情'));
+    if (!hasSheet) throw new Error('对手互动面板未打开');
+    await shot(p, `${tag}-6b-opponent`);
+    await tap(await centerOf(p, 'button:has-text("👍")'), '表情👍');
+    await p.waitForTimeout(500);
+    console.log('  ✓ 对手互动面板打开并发送表情');
+  }
+
   // ── 6. 对局：真人出牌 / 摸牌 / 选色，打 6 个动作 ──
   let actions = 0;
   const deadline = Date.now() + 90_000;
@@ -225,6 +238,17 @@ async function runScenario(browser, { tag, width, height, touch }) {
       await p.waitForTimeout(500);
       continue;
     }
+    if (st.phase === 'challenging') {
+      const accept = await centerOf(p, 'button:has-text("接受")', { timeout: 3000 }).catch(() => null);
+      if (accept) {
+        await tap(accept, '接受按钮');
+        console.log('  ✓ 坐标点击接受质疑');
+        await p.waitForTimeout(700);
+        continue;
+      }
+      await p.waitForTimeout(500);
+      continue;
+    }
     if (st.phase !== 'playing') break;
     if (!st.isMyTurn) { await p.waitForTimeout(400); continue; }
 
@@ -232,15 +256,27 @@ async function runScenario(browser, { tag, width, height, touch }) {
     if (cardId) {
       const pt = await centerOf(p, `[data-card-id="${cardId}"]`).catch(() => null);
       await tap(pt, `手牌 ${cardId}`);
-      actions++;
-      console.log(`  ✓ 坐标点击出牌（剩 ${st.handCount - 1} 张）`);
       await p.waitForTimeout(800);
+      // 验证状态真的推进（手牌减少 / 阶段变化 / 回合易主），否则视为无效点击
+      const after = await state(p);
+      const progressed = after.handCount < st.handCount || after.phase !== st.phase || !after.isMyTurn;
+      if (progressed) {
+        actions++;
+        console.log(`  ✓ 坐标点击出牌（剩 ${after.handCount} 张）`);
+      } else {
+        console.log('  … 出牌未生效（可能被拒），下轮改摸牌');
+      }
     } else if (!st.hasDrawnThisTurn) {
       const pile = await centerOf(p, '[data-draw-pile="left"]').catch(() => null);
       await tap(pile, '左牌堆摸牌');
-      actions++;
-      console.log('  ✓ 坐标点击摸牌');
       await p.waitForTimeout(800);
+      const afterDraw = await state(p);
+      if (afterDraw.handCount > st.handCount || afterDraw.hasDrawnThisTurn) {
+        actions++;
+        console.log('  ✓ 坐标点击摸牌');
+      } else {
+        console.log('  … 摸牌未生效');
+      }
     } else {
       // 跳过按钮（GameActions）
       const pass = await centerOf(p, 'button:has-text("跳过")', { timeout: 1500 }).catch(() => null);

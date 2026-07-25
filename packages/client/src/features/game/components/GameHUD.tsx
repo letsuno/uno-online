@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, Volume2, VolumeX, Music, Spade, DoorOpen, LogOut, Bot, HelpCircle, Keyboard, Trash2, Wifi, Clock, RotateCw, Menu } from 'lucide-react';
+import { Eye, Volume2, VolumeX, Music, Spade, DoorOpen, LogOut, Bot, HelpCircle, Keyboard, Trash2, Wifi, Clock, RotateCw, Menu, Info } from 'lucide-react';
 import { AUTOPILOT_TOGGLE_COOLDOWN_MS } from '@uno-online/shared';
 import type { Card, Color } from '@uno-online/shared';
 import TurnTimer from './TurnTimer';
@@ -152,13 +152,15 @@ interface GameHUDProps {
   mode: 'table' | 'strip';
   onOpenHotkeys: () => void;
   onOpenMenu: () => void;
+  /** strip 模式：打开信息面板（玩法/村规/日志/聊天） */
+  onOpenInfo?: () => void;
 }
 
 /**
  * 统一对局顶栏（合并原 TopBar / MobileStatusBar）。
  * table 模式三段：品牌信息 | 中央状态 | 操作按钮组，两侧组窄屏按宽度等比缩小。
  */
-export default function GameHUD({ roomCode, mode, onOpenHotkeys, onOpenMenu }: GameHUDProps) {
+export default function GameHUD({ roomCode, mode, onOpenHotkeys, onOpenMenu, onOpenInfo }: GameHUDProps) {
   const { colorBlindMode, toggleColorBlind, soundEnabled, toggleSound, bgmEnabled, toggleBgm } = useSettingsStore();
   const ownerId = useRoomStore((s) => s.room?.ownerId);
   const userId = useEffectiveUserId();
@@ -195,6 +197,13 @@ export default function GameHUD({ roomCode, mode, onOpenHotkeys, onOpenMenu }: G
         <GameStatus withPhase />
         <div className="flex items-center gap-2">
           <TurnTimer />
+          <button
+            onClick={onOpenInfo}
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-secondary text-muted-foreground active:bg-white/10"
+            title="游戏信息"
+          >
+            <Info size={15} />
+          </button>
           <button
             onClick={onOpenMenu}
             className="w-8 h-8 flex items-center justify-center rounded-lg bg-secondary text-muted-foreground active:bg-white/10"
