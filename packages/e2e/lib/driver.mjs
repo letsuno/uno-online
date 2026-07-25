@@ -28,6 +28,7 @@ export async function newAuthedPage(browser, { username, width, height }) {
   });
   await context.addInitScript((t) => {
     localStorage.setItem('token', t);
+    localStorage.setItem('uno-e2e', '1'); // 生产构建下也暴露 window.__uno（仅供 e2e 驱动）
     localStorage.setItem('app-last-seen-version', window.__CLIENT_VERSION__); // 屏蔽更新日志弹窗
     localStorage.setItem('notificationPromptDismissed', 'true');
     sessionStorage.setItem('start-screen-passed', '1'); // 跳过启动屏

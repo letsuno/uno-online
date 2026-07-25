@@ -42,12 +42,21 @@ const browser = await launchBrowser();
 let failures = 0;
 const shots = [];
 
-/** 取元素屏幕中心坐标（boundingBox，即人眼看到的位置；支持 playwright 选择器引擎） */
+/** 取元素屏幕中心坐标（boundingBox；等动画稳定后取值，支持 playwright 选择器引擎） */
 async function centerOf(page, selector, { timeout = 8000 } = {}) {
   const loc = page.locator(selector).first();
   await loc.waitFor({ state: 'visible', timeout });
-  const box = await loc.boundingBox();
-  return box ? { x: box.x + box.width / 2, y: box.y + box.height / 2, w: box.width, h: box.height } : null;
+  let prev = null;
+  for (let i = 0; i < 6; i++) {
+    const box = await loc.boundingBox();
+    if (box) {
+      const pt = { x: box.x + box.width / 2, y: box.y + box.height / 2, w: box.width, h: box.height };
+      if (prev && Math.abs(pt.x - prev.x) < 4 && Math.abs(pt.y - prev.y) < 4) return pt;
+      prev = pt;
+    }
+    await page.waitForTimeout(150);
+  }
+  return prev;
 }
 
 /** 拟人点击：移动到坐标 → 按下 → 抬起（真实 pointer 事件链） */
@@ -209,15 +218,23 @@ async function runScenario(browser, { tag, width, height, touch }) {
 
   // ── 5.5 strip 模式追加：点对手 → 互动面板 → 发表情 ──
   if (touch) {
-    const opp = await centerOf(p, '.overflow-x-auto button', { timeout: 4000 }).catch(() => null);
-    await tap(opp, '对手卡片');
-    await p.waitForTimeout(700);
-    const hasSheet = await p.evaluate(() => document.body.textContent.includes('快捷表情'));
-    if (!hasSheet) throw new Error('对手互动面板未打开');
+    const oppId = await p.evaluate(() => {
+      const s = window.__uno.useGameStore.getState();
+      return s.players.find((pl) => pl.id !== s.viewerId)?.id ?? null;
+    });
+    // 关闭开局弹窗的退出动画有短暂遮罩残留，点击可能被吞——失败重试一次（真人同理会再点）
+    let hasPicker = false;
+    for (let attempt = 0; attempt < 3 && !hasPicker; attempt++) {
+      const opp = oppId ? await centerOf(p, `[data-player-id="${oppId}"]`, { timeout: 4000 }).catch(() => null) : null;
+      await tap(opp, '对手卡片');
+      await p.waitForTimeout(700);
+      hasPicker = await p.evaluate(() => document.body.textContent.includes('番茄') || document.body.textContent.includes('鸡蛋'));
+    }
+    if (!hasPicker) throw new Error('对手投掷选择器未打开');
     await shot(p, `${tag}-6b-opponent`);
-    await tap(await centerOf(p, 'button:has-text("👍")'), '表情👍');
+    await tap(await centerOf(p, 'button:has-text("👍")'), '投掷👍');
     await p.waitForTimeout(500);
-    console.log('  ✓ 对手互动面板打开并发送表情');
+    console.log('  ✓ 对手投掷选择器打开并投掷道具');
   }
 
   // ── 6. 对局：真人出牌 / 摸牌 / 选色，打 6 个动作 ──
@@ -254,8 +271,15 @@ async function runScenario(browser, { tag, width, height, touch }) {
 
     const cardId = await pickPlayableId(p);
     if (cardId) {
+      // 真人会先把手牌滑到目标牌，再点——先滚入视野再取坐标
+      await p.evaluate((id) => {
+        document.querySelector(`[data-card-id="${id}"]`)?.scrollIntoView({ behavior: 'instant', inline: 'nearest', block: 'nearest' });
+      }, cardId);
+      await p.waitForTimeout(300);
       const pt = await centerOf(p, `[data-card-id="${cardId}"]`).catch(() => null);
       await tap(pt, `手牌 ${cardId}`);
+      await p.waitForTimeout(250);
+      await tap(pt, `手牌 ${cardId}（确认）`);
       await p.waitForTimeout(800);
       // 验证状态真的推进（手牌减少 / 阶段变化 / 回合易主），否则视为无效点击
       const after = await state(p);

@@ -72,7 +72,7 @@ export default function Card({ card, playable = false, clickable = playable, dim
               'cursor-pointer',
               !disableHoverLift && 'hover:-translate-y-3 hover:scale-105',
             ],
-            dimmed && 'opacity-40',
+            dimmed && 'brightness-[0.45] saturate-[0.7]',
             className,
           )}
           onClick={clickable ? onClick : undefined}
@@ -94,7 +94,7 @@ export default function Card({ card, playable = false, clickable = playable, dim
     <div
       className={cn(
         'w-card-w h-card-h md:w-card-w-md md:h-card-h-md rounded-card md:rounded-card-md',
-        'border-card-border md:border-4 border-white',
+        'border-3 md:border-4 border-white',
         'flex items-center justify-center',
         'font-game font-black text-white select-none shrink-0 relative',
         'transition-[transform,box-shadow,opacity] duration-200',
@@ -107,7 +107,7 @@ export default function Card({ card, playable = false, clickable = playable, dim
           'cursor-pointer',
           !disableHoverLift && 'hover:-translate-y-3 hover:scale-105',
         ],
-        dimmed && 'opacity-40',
+        dimmed && 'brightness-[0.45] saturate-[0.7]',
         className,
       )}
       onClick={clickable ? onClick : undefined}

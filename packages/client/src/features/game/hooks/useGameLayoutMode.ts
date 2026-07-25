@@ -21,3 +21,16 @@ export function useGameLayoutMode(): GameLayoutMode {
   const compact = useSyncExternalStore(subscribe, () => window.matchMedia(QUERY).matches);
   return compact ? 'strip' : 'table';
 }
+
+const SHORT_LANDSCAPE_QUERY = '(orientation: landscape) and (max-height: 559px)';
+
+function subscribeShort(cb: () => void) {
+  const mql = window.matchMedia(SHORT_LANDSCAPE_QUERY);
+  mql.addEventListener('change', cb);
+  return () => mql.removeEventListener('change', cb);
+}
+
+/** 短横屏（如 844×390 手机横握）：strip 的紧凑变体——更小的对手栏、操作按钮悬浮、无倒计时期 */
+export function useShortLandscape(): boolean {
+  return useSyncExternalStore(subscribeShort, () => window.matchMedia(SHORT_LANDSCAPE_QUERY).matches);
+}
