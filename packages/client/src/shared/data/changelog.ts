@@ -6,6 +6,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.11.0-beta.1',
+    date: '2026-07-26',
+    changes: [
+      '移动端玩家罗盘：当前回合玩家自动居中，复用桌面端玩家组件',
+      '移动端观战全新布局，底部控制坞集中操作',
+      '动画系统重写：摸牌/出牌/投掷飞行与状态同步，不再割裂',
+      '性能大幅优化：消除每帧重绘，对局更流畅、更省电',
+      '修复开新局后移动端玩家环挤压的问题',
+    ],
+  },
+  {
     version: '0.11.0-beta.0',
     date: '2026-07-24',
     changes: [
