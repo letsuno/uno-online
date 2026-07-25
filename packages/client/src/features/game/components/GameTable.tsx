@@ -5,10 +5,9 @@ import DrawPile from './DrawPile';
 import DiscardPile from './DiscardPile';
 import PlayerNode from './PlayerNode';
 import TurnIndicator from './TurnIndicator';
-import HandSwapAnimation from './HandSwapAnimation';
 import DirectionIndicator from './DirectionIndicator';
-import ThrowAnimation from './ThrowAnimation';
 import SpectatorSeats from './SpectatorSeats';
+import CriticalCountdown from './CriticalCountdown';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useIsMyTurn } from '../hooks/useIsMyTurn';
@@ -18,24 +17,14 @@ import { getSocket } from '@/shared/socket';
 import { useToastStore } from '@/shared/stores/toast-store';
 import { useGatewayStore } from '@/shared/voice/gateway-store';
 import { useMemo } from 'react';
-import { playThrowHitSound } from '@/shared/sound/sound-manager';
 import { usePlayerLayout } from '../hooks/usePlayerLayout';
+import { useLastPlayedCards } from '../hooks/useLastPlayedCards';
 import { useSeatShuffleAnimation } from '../hooks/useSeatShuffleAnimation';
-import { useDrawAnimation } from '../hooks/useDrawAnimation';
-import { useChatBubbles } from '../hooks/useChatBubbles';
-
-interface ActiveThrow {
-  id: string;
-  from: { x: number; y: number };
-  to: { x: number; y: number };
-  item: string;
-}
+import { useHandEffects } from '../hooks/useHandEffects';
 
 interface GameTableProps {
   onDraw: (side: 'left' | 'right') => void;
 }
-
-let throwIdCounter = 0;
 
 export default function GameTable({ onDraw }: GameTableProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,10 +60,6 @@ export default function GameTable({ onDraw }: GameTableProps) {
   }, [mumbleUsersById, mumbleSpeakingByUserId]);
 
   // Chat messages per player
-  const chatMessages = useChatBubbles();
-
-  // Active throw animations
-  const [activeThrows, setActiveThrows] = useState<ActiveThrow[]>([]);
 
   // Track container dimensions with ResizeObserver
   useEffect(() => {
@@ -94,38 +79,8 @@ export default function GameTable({ onDraw }: GameTableProps) {
     return () => observer.disconnect();
   }, []);
 
-  // Track last played cards per player
-  const [lastPlayedCards, setLastPlayedCards] = useState<
-    Map<string, { card: CardType; time: number }>
-  >(new Map());
-
-  useEffect(() => {
-    if (
-      lastAction?.type === 'PLAY_CARD' &&
-      lastAction.playerId
-    ) {
-      const discardPile = useGameStore.getState().discardPile;
-      const topCard = discardPile[discardPile.length - 1];
-      if (topCard) {
-        setLastPlayedCards((prev) => {
-          const next = new Map(prev);
-          next.set(lastAction.playerId, { card: topCard, time: Date.now() });
-          return next;
-        });
-
-        const playerId = lastAction.playerId;
-        const timer = window.setTimeout(() => {
-          setLastPlayedCards((prev) => {
-            const next = new Map(prev);
-            next.delete(playerId);
-            return next;
-          });
-        }, 5000);
-
-        return () => window.clearTimeout(timer);
-      }
-    }
-  }, [lastAction]);
+  // 每个玩家最近打出的牌（共享 hook，移动端 OpponentRow 也用）
+  const { lastPlayedCards, clearLastPlayed } = useLastPlayedCards();
 
   // Track skipped player
   const [skippedPlayerId, setSkippedPlayerId] = useState<string | null>(null);
@@ -153,12 +108,7 @@ export default function GameTable({ onDraw }: GameTableProps) {
         const skippedId = ps[skippedIdx]?.id ?? null;
         setSkippedPlayerId(skippedId);
         if (skippedId) {
-          setLastPlayedCards((prev) => {
-            if (!prev.has(skippedId)) return prev;
-            const next = new Map(prev);
-            next.delete(skippedId);
-            return next;
-          });
+          clearLastPlayed(skippedId);
         }
         const timer = window.setTimeout(() => setSkippedPlayerId(null), 1000);
         return () => window.clearTimeout(timer);
@@ -179,19 +129,13 @@ export default function GameTable({ onDraw }: GameTableProps) {
     shuffleSeatsEnabled,
   );
 
-  // Draw animation and hand swap animation
+  // 手牌指示效果（+N 提示、换手抖动、摸到能出计数；飞行动画由 fx/ViewportFxLayer 统一接管）
   const {
-    drawAnimLeft,
-    drawAnimRight,
     drawUntilCount,
     handGainBumps,
-    activeHandSwaps,
     handSwapEffects,
-    handleHandSwapComplete,
-  } = useDrawAnimation(
+  } = useHandEffects(
     players,
-    dimensions,
-    userId,
     lastAction,
     settings,
     direction,
@@ -200,40 +144,6 @@ export default function GameTable({ onDraw }: GameTableProps) {
     phase,
     currentPlayerIndex,
   );
-
-  const spectatorFallbackPos = useMemo(() => {
-    if (dimensions.width === 0) return null;
-    return { x: dimensions.width / 2, y: dimensions.height - 24 };
-  }, [dimensions]);
-
-  // Listen for throw:item events from socket
-  useEffect(() => {
-    const socket = getSocket();
-    const handler = (data: { fromId: string; targetId: string; item: string }) => {
-      const fromPos = getPlayerPosition(data.fromId) ?? spectatorFallbackPos;
-      const toPos = getPlayerPosition(data.targetId);
-      if (!fromPos || !toPos) return;
-      if (data.targetId === userId) {
-        playThrowHitSound(data.item);
-      }
-
-      const rect = containerRef.current?.getBoundingClientRect();
-      const ox = rect?.left ?? 0;
-      const oy = rect?.top ?? 0;
-
-      const id = `throw_${++throwIdCounter}`;
-      setActiveThrows((prev) => [...prev, {
-        id,
-        from: { x: fromPos.x + ox, y: fromPos.y + oy },
-        to: { x: toPos.x + ox, y: toPos.y + oy },
-        item: data.item,
-      }]);
-    };
-
-    socket.on('throw:item', handler);
-    return () => { socket.off('throw:item', handler); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [players, dimensions]); // spectatorFallbackPos derives from dimensions
 
   // Handle reaction from quick reaction menu
   const handleReaction = useCallback((emoji: string) => {
@@ -247,11 +157,6 @@ export default function GameTable({ onDraw }: GameTableProps) {
         useToastStore.getState().addToast(res.error, 'error');
       }
     });
-  }, []);
-
-  // Remove completed throw animation
-  const handleThrowComplete = useCallback((id: string) => {
-    setActiveThrows((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
@@ -303,9 +208,6 @@ export default function GameTable({ onDraw }: GameTableProps) {
             side="left"
             isPortrait={isPortrait}
             onDraw={onDraw}
-            drawAnimTrigger={drawAnimLeft.trigger}
-            drawTargetX={drawAnimLeft.targetX}
-            drawTargetY={drawAnimLeft.targetY}
             drawUntilCount={drawUntilCount}
           />
           <DiscardPile />
@@ -313,12 +215,26 @@ export default function GameTable({ onDraw }: GameTableProps) {
             side="right"
             isPortrait={isPortrait}
             onDraw={onDraw}
-            drawAnimTrigger={drawAnimRight.trigger}
-            drawTargetX={drawAnimRight.targetX}
-            drawTargetY={drawAnimRight.targetY}
           />
         </div>
       )}
+
+      {/* 大倒计时：动态定位在「最上方玩家 ↔ 牌堆顶」的中点（随牌桌缩放） */}
+      {dimensions.width > 0 && phase !== 'round_end' && phase !== 'game_over' && (() => {
+        const pilesTop = dimensions.height / 2 - 90;
+        const topMostY = Math.min(...playerPositions.map((p) => p.y));
+        const gapTop = topMostY + 60; // 对手头像+名字的实际下缘
+        if (pilesTop - gapTop < 40) return null; // 空间不足就不显示，避免挤压
+        const midY = gapTop + (pilesTop - gapTop) / 2;
+        return (
+          <div
+            className="absolute z-timer-overlay pointer-events-none"
+            style={{ left: dimensions.width / 2, top: midY, transform: 'translate(-50%, -50%)' }}
+          >
+            <CriticalCountdown />
+          </div>
+        );
+      })()}
 
       {/* Current turn indicator below center */}
       {dimensions.width > 0 && (() => {
@@ -411,7 +327,6 @@ export default function GameTable({ onDraw }: GameTableProps) {
             turnEndTime={isActive ? turnEndTime : null}
             turnTimeLimit={settings ? (settings.houseRules?.fastMode ? Math.floor(settings.turnTimeLimit / 2) : settings.turnTimeLimit) : undefined}
             lastPlayedCard={lastPlayed?.card ?? null}
-            chatMessage={chatMessages.get(player.id) ?? null}
             handGain={handGainBumps.get(player.id) ?? null}
             handSwap={handSwapEffects.get(player.id) ?? null}
             onReaction={handleReaction}
@@ -419,30 +334,6 @@ export default function GameTable({ onDraw }: GameTableProps) {
           />
         );
       })}
-
-      {/* Throw animations */}
-      <AnimatePresence>
-        {activeThrows.map((t) => (
-          <ThrowAnimation
-            key={t.id}
-            from={t.from}
-            to={t.to}
-            item={t.item}
-            onComplete={() => handleThrowComplete(t.id)}
-          />
-        ))}
-      </AnimatePresence>
-
-      {/* Hand swap animations */}
-      <AnimatePresence>
-        {activeHandSwaps.map((swap) => (
-          <HandSwapAnimation
-            key={swap.id}
-            swap={swap}
-            onComplete={() => handleHandSwapComplete(swap.id)}
-          />
-        ))}
-      </AnimatePresence>
 
       {/* Spectator seats */}
       {dimensions.width > 0 && <SpectatorSeats top={dimensions.height / 2 - 168} />}

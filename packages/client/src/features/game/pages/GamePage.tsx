@@ -25,11 +25,11 @@ import ColorPicker from '../components/ColorPicker';
 import ScoreBoard from '../components/ScoreBoard';
 import VoicePanel from '@/shared/voice/VoicePanel';
 import GameEffects from '../components/GameEffects';
+import ViewportFxLayer from '../fx/ViewportFxLayer';
 import Confetti from '../components/Confetti';
 import InfoDrawer from '../components/InfoDrawer';
 import PlayerListPanel from '../components/PlayerListPanel';
 import DanmakuLayer from '../components/DanmakuLayer';
-import SpectatorActions from '../components/SpectatorActions';
 import AntiCheatToast from '../components/AntiCheatToast';
 import { useSpectatorStore } from '../stores/spectator-store';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
@@ -40,8 +40,11 @@ import OwnerTransferBanner from '../components/OwnerTransferBanner';
 import AutopilotOverlay from '../components/AutopilotOverlay';
 import MobileMenuSheet from '../components/MobileMenuSheet';
 import MobileGameScreen from '../components/mobile/MobileGameScreen';
+import SpectatorActions from '../components/SpectatorActions';
+import SpectatorView from '../components/mobile/SpectatorView';
+import MobileHand from '../components/mobile/MobileHand';
 import InfoSheet from '../components/mobile/InfoSheet';
-import { useGameLayoutMode } from '../hooks/useGameLayoutMode';
+import { useGameLayoutMode, useShortLandscape } from '../hooks/useGameLayoutMode';
 import FitScaler from '@/shared/components/FitScaler';
 
 export default function GamePage() {
@@ -81,6 +84,8 @@ export default function GamePage() {
   const bgmSongName = useBgm('game');
   // 布局模式：strip（竖屏/短屏：玩家条 + 中央牌区），table（横屏：椭圆牌桌）
   const mode = useGameLayoutMode();
+  // 短横屏（横握手机）：操作按钮悬浮不占布局高度
+  const shortLandscape = useShortLandscape();
   const [showStartRules, setShowStartRules] = useState(false);
   const [showHotkeys, setShowHotkeys] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -196,6 +201,15 @@ export default function GamePage() {
       <LayoutGroup>
         {/* 中央区域：table = 椭圆牌桌（逻辑画布缩放）；strip = 全新移动端布局 */}
         {mode === 'strip' ? (
+          isSpectator ? (
+            <SpectatorView
+              onDraw={noop}
+              onBackToLobby={backToLobby}
+              onJoined={() => { setSpectator(false); clearSpectators(); }}
+            >
+              <DanmakuLayer />
+            </SpectatorView>
+          ) : (
           <MobileGameScreen onDraw={myAutopilot ? noop : drawCard}>
             <DanmakuLayer />
             <AnimatePresence>
@@ -212,6 +226,7 @@ export default function GamePage() {
               )}
             </AnimatePresence>
           </MobileGameScreen>
+          )
         ) : (
           <div className="relative flex flex-col flex-1 min-h-0">
             <FitScaler align="center" maxScale={1} className="absolute inset-0">
@@ -236,25 +251,57 @@ export default function GamePage() {
           </div>
         )}
 
-        {!isSpectator && !myAutopilot && (
-          <GameActions
-            onCallUno={callUno}
-            onCatchUno={catchUno}
-            onChallenge={challenge}
-            onAccept={accept}
-            onPass={pass}
-            onSwapTarget={swapTarget}
-          />
+        {mode === 'strip' ? (
+          shortLandscape ? (
+            <div className="absolute bottom-[136px] left-0 right-0 z-actions flex items-center justify-center pointer-events-none [&_button]:h-10 [&_button]:px-5 [&_button]:text-sm [&_button]:rounded-full [&_button]:pointer-events-auto">
+              {!isSpectator && !myAutopilot && (
+                <GameActions
+                  onCallUno={callUno}
+                  onCatchUno={catchUno}
+                  onChallenge={challenge}
+                  onAccept={accept}
+                  onPass={pass}
+                  onSwapTarget={swapTarget}
+                />
+              )}
+            </div>
+          ) : (
+          <div className="relative z-actions min-h-[60px] flex items-center justify-center shrink-0 [&_button]:h-11 [&_button]:px-5 [&_button]:text-base [&_button]:rounded-full">
+            {!isSpectator && !myAutopilot && (
+              <GameActions
+                onCallUno={callUno}
+                onCatchUno={catchUno}
+                onChallenge={challenge}
+                onAccept={accept}
+                onPass={pass}
+                onSwapTarget={swapTarget}
+              />
+            )}
+          </div>
+          )
+        ) : (
+          !isSpectator && !myAutopilot && (
+            <GameActions
+              onCallUno={callUno}
+              onCatchUno={catchUno}
+              onChallenge={challenge}
+              onAccept={accept}
+              onPass={pass}
+              onSwapTarget={swapTarget}
+            />
+          )
         )}
-        {!isSpectator && <PlayerHand onPlayCard={myAutopilot ? noop : playCard} />}
+        {!isSpectator && (mode === 'strip'
+          ? <MobileHand onPlayCard={myAutopilot ? noop : playCard} />
+          : <PlayerHand onPlayCard={myAutopilot ? noop : playCard} />
+        )}
       </LayoutGroup>
 
-      {isSpectator && (
+      {isSpectator && mode === 'table' && (
         <>
           <SpectatorActions onCatchUno={catchUno} />
           {!showScoreBoard && (
             <SpectatorBar
-              phase={phase}
               onBackToLobby={backToLobby}
               onJoined={() => { setSpectator(false); clearSpectators(); }}
             />
@@ -272,6 +319,7 @@ export default function GamePage() {
         onClose={() => setShowStartRules(false)}
       />
       <GameEffects />
+      <ViewportFxLayer />
       <ColorWave />
       {antiCheatKey && <AntiCheatToast key={antiCheatKey} />}
       {!isSpectator && <AutopilotOverlay />}
@@ -295,7 +343,8 @@ export default function GamePage() {
   );
 }
 
-function SpectatorBar({ phase, onBackToLobby, onJoined }: { phase: string | null; onBackToLobby: () => void; onJoined: () => void }) {
+/** PC 悬浮观战条：顶部居中胶囊（下局加入/取消 + 退出） */
+function SpectatorBar({ onBackToLobby, onJoined }: { onBackToLobby: () => void; onJoined: () => void }) {
   const [queued, setQueued] = useState(false);
   const pendingJoinQueue = useSpectatorStore((s) => s.pendingJoinQueue);
 

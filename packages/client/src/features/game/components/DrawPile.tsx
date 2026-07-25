@@ -1,7 +1,6 @@
 import { memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CardBack from './CardBack';
-import DrawCardAnimation from './DrawCardAnimation';
 import { useGameStore } from '../stores/game-store';
 import { useIsMyTurn } from '../hooks/useIsMyTurn';
 import { usePlayableCardIds } from '../hooks/usePlayableCardIds';
@@ -11,13 +10,10 @@ interface DrawPileProps {
   side: 'left' | 'right';
   isPortrait: boolean;
   onDraw: (side: 'left' | 'right') => void;
-  drawTargetX?: number;
-  drawTargetY?: number;
-  drawAnimTrigger?: number;
   drawUntilCount?: number;
 }
 
-function DrawPile({ side, isPortrait, onDraw, drawTargetX, drawTargetY, drawAnimTrigger = 0, drawUntilCount = 0 }: DrawPileProps) {
+function DrawPile({ side, isPortrait, onDraw, drawUntilCount = 0 }: DrawPileProps) {
   const deckCount = useGameStore((s) => side === 'left' ? s.deckLeftCount : s.deckRightCount);
   const discardPileLength = useGameStore((s) => s.discardPile.length);
   const phase = useGameStore((s) => s.phase);
@@ -48,7 +44,6 @@ function DrawPile({ side, isPortrait, onDraw, drawTargetX, drawTargetY, drawAnim
 
   return (
     <div className="flex flex-col items-center gap-1.5 z-card relative min-w-draw-pile-min">
-      <DrawCardAnimation trigger={drawAnimTrigger} targetX={drawTargetX} targetY={drawTargetY} />
       <CardBack
         data-draw-pile={side}
         onClick={canDraw ? handleClick : undefined}
