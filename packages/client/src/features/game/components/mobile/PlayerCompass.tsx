@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { RotateCw, RotateCcw } from 'lucide-react';
 import PlayerNode from '../PlayerNode';
@@ -76,16 +76,23 @@ export default function PlayerCompass({ compact = false }: PlayerCompassProps) {
   }, []);
 
   // 容器宽度（按宽度收缩弧，保证两翼不出屏）
-  const containerRef = useRef<HTMLDivElement>(null);
+  // 用 callback ref 而非 useEffect+useRef：round_end 时本组件 return null 会卸载容器 div，
+  // 新一局重新渲染出的是新 DOM 节点，callback ref 会在新节点挂载时重新测量+观察；
+  // 而 useEffect([]) 不会重跑，ResizeObserver 会一直盯着已卸载的旧节点，宽度永远停在 0。
   const [containerW, setContainerW] = useState(0);
-  useEffect(() => {
-    const el = containerRef.current;
+  const observerRef = useRef<ResizeObserver | null>(null);
+  const containerRef = useCallback((el: HTMLDivElement | null) => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
     if (!el) return;
-    const update = () => setContainerW(el.clientWidth);
+    const update = () => {
+      if (!el.isConnected) return; // 卸载瞬间 RO 会以 0×0 补发一帧，忽略
+      setContainerW(el.clientWidth);
+    };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(el);
-    return () => observer.disconnect();
+    observerRef.current = observer;
   }, []);
 
   if (phase === 'round_end' || phase === 'game_over' || players.length === 0) return null;
