@@ -50,6 +50,7 @@ function DrawPile({ side, isPortrait, onDraw, drawTargetX, drawTargetY, drawAnim
     <div className="flex flex-col items-center gap-1.5 z-card relative min-w-draw-pile-min">
       <DrawCardAnimation trigger={drawAnimTrigger} targetX={drawTargetX} targetY={drawTargetY} />
       <CardBack
+        data-draw-pile={side}
         onClick={canDraw ? handleClick : undefined}
         className={cn(
           emphasizeDraw && [

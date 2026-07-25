@@ -40,6 +40,7 @@ const AnimatedCard = forwardRef<HTMLDivElement, AnimatedCardProps>(
       <motion.div
         ref={ref}
         layoutId={layoutId}
+        data-card-id={card.id}
         className={cn('inline-block', className)}
         initial={{ scale: 0.8, opacity: 0, y: 20 }}
         animate={animate ?? { scale: 1, opacity: 1, y: 0 }}

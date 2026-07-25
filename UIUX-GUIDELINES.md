@@ -206,3 +206,12 @@ node visual.mjs --stages lobby,game --res 390x844,844x390
 ```
 
 场景：login / lobby / room / settings / profile / game / scoreboard。输出 `output/<tag>-*.png` + `<tag>-report.json`（DOM 溢出检测 + console 错误）。**任何 UI 改动后都应跑一遍确认零溢出、零 console 错误。**
+
+另有拟人交互测试（坐标级，不走 socket emit / 元素点击豁免）：
+
+```bash
+node human.mjs   # 桌面 1920×1080 + 短横屏 844×390 + 触屏 390×844 三场景
+node smoke.mjs   # socket 层对局冒烟（快速回归用）
+```
+
+`human.mjs` 全部用 `page.mouse` / `touchscreen` 在元素屏幕坐标上操作（真人输入登录、点座位/菜单加 Bot、坐标点击出牌/摸牌/选色、BottomSheet 开关），命中被遮挡或坐标出屏即失败——专门防"自动化能做、真人做不了"的问题。可交互元素如需脚本定位，加 `data-*` 属性（如 `data-card-id`、`data-draw-pile`、`data-color`）。
