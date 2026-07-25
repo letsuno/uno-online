@@ -76,12 +76,20 @@ export default function ThrowItemPicker({ onSelect, onClose, anchorX, anchorY }:
     };
   }, [stopRepeat]);
 
+  // 视口内钳位：锚点靠边（如罗盘两翼玩家）时选择器不出屏；
+  // 锚点太高（顶部罗盘区）时改为在锚点下方弹出
+  const PICKER_W = 280;
+  const PICKER_H = 120;
+  const clampedX = Math.max(PICKER_W / 2 + 8, Math.min(anchorX, window.innerWidth - PICKER_W / 2 - 8));
+  const below = anchorY - PICKER_H < 8;
+  // 注意：framer-motion 会接管 transform，居中和钳位都必须烘焙进 left/top
+
   return createPortal(
     <AnimatePresence>
       <motion.div
         ref={containerRef}
         className="fixed z-modal pointer-events-auto"
-        style={{ left: anchorX, top: anchorY, transform: 'translate(-50%, -100%)' }}
+        style={{ left: clampedX - PICKER_W / 2, top: below ? anchorY + 12 : anchorY - PICKER_H }}
         initial={{ opacity: 0, scale: 0.7, y: 6 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.7, y: 6 }}

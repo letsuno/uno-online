@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { Timer } from 'lucide-react';
 import { useGameStore } from '../stores/game-store';
 import { useCountdown } from '../hooks/useCountdown';
@@ -20,24 +19,13 @@ export default function TurnTimer() {
 
   if (secondsLeft === null) return null;
   const isWarning = secondsLeft <= 10;
-  const isCritical = secondsLeft <= 5;
   return (
-    <>
-      <span className={cn(
-        isWarning
-          ? 'text-destructive font-bold animate-timer-flash'
-          : 'text-muted-foreground font-normal'
-      )}>
-        <Timer size={14} className="inline align-middle" /> {secondsLeft}s
-      </span>
-      {isCritical && secondsLeft > 0 && createPortal(
-        <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-timer-overlay">
-          <span className="text-timer-critical font-black font-game text-destructive animate-timer-flash opacity-80 text-shadow-bold">
-            {secondsLeft}
-          </span>
-        </div>,
-        document.body,
-      )}
-    </>
+    <span className={cn(
+      isWarning
+        ? 'text-destructive font-bold animate-timer-flash'
+        : 'text-muted-foreground font-normal'
+    )}>
+      <Timer size={14} className="inline align-middle" /> {secondsLeft}s
+    </span>
   );
 }

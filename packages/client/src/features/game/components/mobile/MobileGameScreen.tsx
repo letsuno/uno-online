@@ -1,30 +1,32 @@
-import { useState } from 'react';
-import OpponentRow from './OpponentRow';
-import TableCenter from './TableCenter';
-import OpponentSheet from './OpponentSheet';
+import PlayerCompass from './PlayerCompass';
+import StageCenter from './StageCenter';
+import { useShortLandscape } from '../../hooks/useGameLayoutMode';
 
 interface MobileGameScreenProps {
   onDraw: (side: 'left' | 'right') => void;
-  /** 渲染在中央区相对容器内的覆盖层（弹幕、回合横幅） */
+  /** 渲染在牌桌区相对容器内的覆盖层（弹幕、回合横幅） */
   children?: React.ReactNode;
 }
 
 /**
- * 移动端（strip 模式）对局主体：
- * 对手栏（可点互动）+ 中央牌区（FitScaler 按高度缩放）。
- * 顶栏由 GameHUD、底部由 GameActions/PlayerHand 提供（GamePage 统一装配）。
+ * 移动端（strip 模式）对局主体——分区布局：
+ * 对手区（固定高）+ 牌桌区（flex-1 居中）+ 操作区/手牌区（GamePage 装配）。
+ * 每个分区内部居中，垂直节奏均匀，不留死区。
  */
 export default function MobileGameScreen({ onDraw, children }: MobileGameScreenProps) {
-  const [target, setTarget] = useState<{ id: string; name: string } | null>(null);
+  const compact = useShortLandscape();
 
   return (
     <>
-      <OpponentRow onSelect={(id, name) => setTarget({ id, name })} />
+      {/* 玩家罗盘 */}
+      <div className="shrink-0 py-1.5">
+        <PlayerCompass compact={compact} />
+      </div>
+      {/* 牌桌区（覆盖层挂这里） */}
       <div className="relative flex flex-col flex-1 min-h-0">
-        <TableCenter onDraw={onDraw} />
+        <StageCenter compact={compact} onDraw={onDraw} />
         {children}
       </div>
-      <OpponentSheet target={target} onClose={() => setTarget(null)} />
     </>
   );
 }

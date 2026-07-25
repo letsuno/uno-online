@@ -32,4 +32,19 @@ export default defineConfig({
       },
     },
   },
+  // 生产构建本地预览（vite preview）：与 dev 相同的代理，用于局域网真机验证生产性能
+  preview: {
+    port: 4173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/socket.io': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        ws: true,
+      },
+    },
+  },
 });

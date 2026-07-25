@@ -4,6 +4,7 @@ import type { Card as CardType, Color } from '@uno-online/shared';
 import { sortHand, isWildCard } from '@uno-online/shared';
 import AnimatedCard from './AnimatedCard';
 import { useGameStore } from '../stores/game-store';
+import { useFxStore } from '../fx/fx-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useIsMyTurn } from '../hooks/useIsMyTurn';
 import { usePlayableCardIds } from '../hooks/usePlayableCardIds';
@@ -24,13 +25,23 @@ interface HandLayout {
 
 const CARD_WIDTH = 70;
 const CARD_HEIGHT = 100;
-const CARD_WIDTH_SM = 64;
-const CARD_HEIGHT_SM = 92;
 const HAND_SIDE_PADDING = 20;
 const COMFORTABLE_STRIDE = 78;
 const ACTIVE_SCALE = 1.12;
 const NEAR_EXPAND = 16;
 const TOUCH_DRAG_THRESHOLD = 5;
+
+/**
+ * 移动端手牌尺寸档位：牌越多单张越小，保证任何牌数下全部牌都在屏内、
+ * 相邻牌距（可点区域）不小于档位的最小 stride。超过 24 张才退化为横向滚动。
+ */
+const MOBILE_TIERS = [
+  { max: 7, w: 84, h: 120, minStride: 40 },
+  { max: 10, w: 70, h: 102, minStride: 32 },
+  { max: 14, w: 56, h: 82, minStride: 26 },
+  { max: 20, w: 44, h: 66, minStride: 20 },
+  { max: Infinity, w: 36, h: 52, minStride: 14 },
+] as const;
 
 function getSpreadAngle(count: number): number {
   if (count <= 5) return 5;
@@ -51,23 +62,40 @@ function isColorBoundary(sorted: CardType[], index: number): boolean {
 
 function calculateHandLayout(count: number, containerWidth: number, reserved = 0): HandLayout {
   const isMobile = containerWidth > 0 && containerWidth < 768;
-  const cardWidth = isMobile ? CARD_WIDTH_SM : CARD_WIDTH;
-  const cardHeight = isMobile ? CARD_HEIGHT_SM : CARD_HEIGHT;
-  const minStride = isMobile ? 18 : 10;
 
+  if (isMobile) {
+    const tier = MOBILE_TIERS.find((t) => count <= t.max) ?? MOBILE_TIERS[MOBILE_TIERS.length - 1];
+    const cardWidth = tier.w;
+    const cardHeight = tier.h;
+    if (count <= 0 || containerWidth <= 0) {
+      return { cardWidth, cardHeight, stride: cardWidth, baseWidth: cardWidth, padX: 8, scrollable: false };
+    }
+    const available = Math.max(cardWidth, containerWidth - 16);
+    // fitStride 同时扣除扩展预留（边界间隙 + 悬停扩展），保证极端情况也不出屏
+    const fitStride = count === 1 ? cardWidth : (available - cardWidth - reserved) / (count - 1);
+    // 舒适间距不超过牌宽 80%；放不下时压到 fitStride（始终保证全部在屏内）
+    const comfortable = Math.max(tier.minStride, Math.min(cardWidth * 0.8, fitStride));
+    const stride = Math.max(10, comfortable);
+    const baseWidth = cardWidth + stride * (count - 1);
+    const scrollable = baseWidth > available;
+    const padX = scrollable ? 8 : Math.max(8, (containerWidth - baseWidth - reserved) / 2);
+    return { cardWidth, cardHeight, stride, baseWidth, padX, scrollable };
+  }
+
+  const cardWidth = CARD_WIDTH;
+  const cardHeight = CARD_HEIGHT;
   if (count <= 0 || containerWidth <= 0) {
     return { cardWidth, cardHeight, stride: cardWidth, baseWidth: cardWidth, padX: HAND_SIDE_PADDING, scrollable: false };
   }
 
   const available = Math.max(cardWidth, containerWidth - HAND_SIDE_PADDING * 2);
   const fitStride = count === 1 ? cardWidth : (available - cardWidth) / (count - 1);
-  const stride = Math.min(COMFORTABLE_STRIDE, Math.max(minStride, fitStride));
+  const stride = Math.min(COMFORTABLE_STRIDE, Math.max(10, fitStride));
   const baseWidth = cardWidth + stride * (count - 1);
-  const scrollable = isMobile && baseWidth > available;
   // 居中时为右侧的边界间隙与悬停扩展预留 reserved，保证内容不超出容器
-  const padX = scrollable ? HAND_SIDE_PADDING : Math.max(8, (containerWidth - baseWidth - reserved) / 2);
+  const padX = Math.max(8, (containerWidth - baseWidth - reserved) / 2);
 
-  return { cardWidth, cardHeight, stride, baseWidth, padX, scrollable };
+  return { cardWidth, cardHeight, stride, baseWidth, padX, scrollable: false };
 }
 
 function getNearestCardIndex(
@@ -103,6 +131,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
     hasDragged: false,
     suppressClick: false,
   });
+  const hiddenHandCardIds = useFxStore((s) => s.hiddenHandCardIds);
   const userId = useEffectiveUserId();
   const players = useGameStore((s) => s.players);
   const phase = useGameStore((s) => s.phase);
@@ -121,7 +150,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   const [isDraggingHand, setIsDraggingHand] = useState(false);
 
   const isMobile = containerWidth > 0 && containerWidth < 768;
-  const activeLift = isMobile ? 34 : 20;
+  const activeLift = isMobile ? 44 : 20;
 
   const boundaryGap = Math.min(10, Math.max(3, 78 * 0.35));
   const boundaryOffsets = useMemo(() => {
@@ -257,6 +286,10 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
       setPendingColorCardId(card.id);
       return;
     }
+    // 出牌前记录精确槽位，飞牌从这里起飞
+    const el = handViewportRef.current?.querySelector(`[data-card-id="${card.id}"]`);
+    const rect = el?.getBoundingClientRect();
+    if (rect) useFxStore.getState().setPlayOrigin(card.id, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
     onPlayCard(card.id);
   };
 
@@ -271,7 +304,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
   if (!me) return null;
 
   return (
-    <div className="relative z-actions overflow-visible pt-8 -mt-8 pointer-events-none">
+    <div data-player-id={me.id} className="relative z-actions overflow-visible pt-8 -mt-8 pointer-events-none">
       {pendingColorCardId && (
         <ColorPicker
           onPick={(color) => {
@@ -319,13 +352,12 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
                   );
               const boundaryOffset = boundaryOffsets[i] ?? 0;
               const x = layout.padX + i * layout.stride + boundaryOffset + localExpand;
-              const angle = isActive ? 0 : (i - center) * spreadAngle * Math.min(1, layout.stride / 36);
+              const angle = isActive ? 0 : (i - center) * (isMobile ? Math.min(spreadAngle, 1.2) : spreadAngle) * Math.min(1, layout.stride / 36);
               const y = isActive ? 0 : (isPlayable ? activeLift - 10 : activeLift);
 
               return (
                 <AnimatedCard
                   key={card.id}
-                  layoutId={card.id}
                   card={card}
                   playable={hintedIds.has(card.id)}
                   clickable={false}
@@ -339,7 +371,7 @@ export default function PlayerHand({ onPlayCard }: PlayerHandProps) {
                     y,
                     rotate: angle,
                     scale: isActive ? ACTIVE_SCALE : 1,
-                    opacity: 1,
+                    opacity: hiddenHandCardIds.has(card.id) ? 0 : 1,
                     zIndex: isActive ? 300 : isPlayable ? 120 + i : i,
                   }}
                   transition={{ type: 'spring', stiffness: 360, damping: 32, mass: 0.8 }}

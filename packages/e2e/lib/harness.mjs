@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const outDir = resolve(root, 'packages/e2e/output');
 
-export const CLIENT_URL = 'http://127.0.0.1:5173';
+export const CLIENT_URL = process.env.UNO_CLIENT_URL ?? 'http://127.0.0.1:5173';
 
 async function waitFor(url, timeoutMs = 90000) {
   const deadline = Date.now() + timeoutMs;

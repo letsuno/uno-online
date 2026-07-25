@@ -26,11 +26,15 @@ export default function QuickReaction({ onSelect, onClose, anchorX, anchorY }: Q
     onClose();
   };
 
+  // 视口内钳位（framer-motion 接管 transform，钳位烘焙进 left）
+  const PICKER_W = 240;
+  const clampedX = Math.max(PICKER_W / 2 + 8, Math.min(anchorX, window.innerWidth - PICKER_W / 2 - 8));
+
   return createPortal(
     <AnimatePresence>
       <motion.div
         className="fixed z-modal pointer-events-auto"
-        style={{ left: anchorX, top: anchorY, transform: 'translate(-50%, -100%)' }}
+        style={{ left: clampedX - PICKER_W / 2, top: anchorY - 100 }}
         initial={{ opacity: 0, scale: 0.7, y: 6 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.7, y: 6 }}

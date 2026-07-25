@@ -17,6 +17,8 @@ declare global {
   }
 }
 
-if (import.meta.env.DEV) {
+// 开发环境默认暴露 socket 与 stores 到 window.__uno，供 e2e 脚本驱动；
+// 生产构建下仅在 localStorage.uno-e2e=1 时暴露（e2e 验证生产包用，正常用户无影响）
+if (import.meta.env.DEV || localStorage.getItem('uno-e2e') === '1') {
   window.__uno = { getSocket, useGameStore, useRoomStore, useAuthStore, useProfileModalStore };
 }

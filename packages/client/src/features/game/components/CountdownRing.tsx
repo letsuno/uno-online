@@ -1,5 +1,3 @@
-import { cn } from '@/shared/lib/utils';
-
 interface CountdownRingProps {
   totalSeconds: number;
   remainingSeconds: number;
@@ -40,10 +38,7 @@ export default function CountdownRing({
         r={radius}
         fill="none"
         strokeWidth={strokeWidth}
-        className={cn(
-          colorClass,
-          'transition-[stroke-dashoffset] duration-1000 ease-linear',
-        )}
+        className={colorClass}
         strokeDasharray={circumference}
         strokeDashoffset={offset}
         strokeLinecap="round"

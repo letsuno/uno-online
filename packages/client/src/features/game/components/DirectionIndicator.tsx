@@ -88,22 +88,14 @@ function DirectionIndicator({
       width={dimensions.width}
       height={dimensions.height}
     >
-      <motion.path
+      {/* 虚线行进用 CSS 动画（animate-dash-march-*），避免 framer-motion JS 逐帧写 style */}
+      <path
         d={directionArc.fullPath}
         fill="none"
         stroke="rgba(251, 191, 36, 0.15)"
         strokeWidth={2}
         strokeDasharray="8 6"
-        animate={{
-          strokeDashoffset: isClockwise
-            ? [0, -28]
-            : [0, 28],
-        }}
-        transition={{
-          duration: 1.5,
-          repeat: Infinity,
-          ease: 'linear',
-        }}
+        className={isClockwise ? 'animate-dash-march-cw' : 'animate-dash-march-ccw'}
       />
       <motion.path
         key={currentPlayerIndex}
@@ -112,15 +104,10 @@ function DirectionIndicator({
         stroke="rgba(251, 191, 36, 0.5)"
         strokeWidth={2}
         strokeDasharray="8 6"
+        className="animate-dash-march-cw"
         initial={{ opacity: 0 }}
-        animate={{
-          opacity: 1,
-          strokeDashoffset: [0, -28],
-        }}
-        transition={{
-          opacity: { duration: 0.3 },
-          strokeDashoffset: { duration: 1.5, repeat: Infinity, ease: 'linear' },
-        }}
+        animate={{ opacity: 1 }}
+        transition={{ opacity: { duration: 0.3 } }}
       />
       {/* Arrowhead at end of highlight arc */}
       {(() => {

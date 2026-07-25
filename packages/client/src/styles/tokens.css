@@ -162,7 +162,7 @@
 
   /* ---- 动画 ---- */
   --animate-timer-flash: timerFlash 0.5s ease-in-out infinite alternate;
-  --animate-draw-pulse: drawReadyPulse 1s ease-in-out infinite alternate;
+  /* animate-draw-pulse 不用 Tailwind token：在 index.css 手写（伪元素+opacity 呼吸，可走合成器） */
   --animate-shake: shake 0.1s ease-in-out 3;
 
   --scale-click: 0.97;

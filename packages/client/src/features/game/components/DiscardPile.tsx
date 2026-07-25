@@ -1,9 +1,9 @@
 import { memo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { isWildCard } from '@uno-online/shared';
 import Card from './Card';
 import { useGameStore } from '../stores/game-store';
-import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
+import { useFxStore } from '../fx/fx-store';
 
 const VISIBLE_DISCARD_STACK = 8;
 
@@ -15,45 +15,20 @@ function hashCardId(id: string): number {
   return Math.abs(hash);
 }
 
-/**
- * Compute the initial animation offset based on the seat position
- * of the player who played the card.
- * Self (bottom) -> handled by layoutId shared animation.
- * Opponents -> fly from their approximate screen direction.
- */
-function getPlayOrigin(
-  playerId: string | undefined,
-  players: { id: string }[],
-  selfId: string | undefined,
-): { x: number; y: number } {
-  if (!playerId || playerId === selfId) return { x: 0, y: 120 }; // self: from bottom
-  const opponents = players.filter((p) => p.id !== selfId);
-  const idx = opponents.findIndex((p) => p.id === playerId);
-  if (idx < 0) return { x: 0, y: -120 };
-  const count = opponents.length;
-  const arcStart = -150 * (Math.PI / 180);
-  const arcEnd = 150 * (Math.PI / 180);
-  const angle = count === 1 ? 0 : arcStart + ((arcEnd - arcStart) / (count - 1)) * idx;
-  // Map angle to screen offset (sin = horizontal, -cos = vertical from top)
-  return { x: Math.sin(angle) * 200, y: -Math.cos(angle) * 160 };
-}
-
 function DiscardPile() {
   const discardPile = useGameStore((s) => s.discardPile);
   const discardPileCount = useGameStore((s) => s.discardPileCount);
   const drawStack = useGameStore((s) => s.drawStack);
   const phase = useGameStore((s) => s.phase);
   const currentColor = useGameStore((s) => s.currentColor);
-  const lastAction = useGameStore((s) => s.lastAction);
-  const players = useGameStore((s) => s.players);
-  const selfId = useEffectiveUserId();
-  const topCard = discardPile[discardPile.length - 1];
+  const hiddenDiscardCardIds = useFxStore((s) => s.hiddenDiscardCardIds);
+  // 飞牌在途时仍显示上一张顶牌，落地瞬间才更新
+  const topCardRaw = discardPile[discardPile.length - 1];
+  const topCard = topCardRaw && hiddenDiscardCardIds.has(topCardRaw.id) && discardPile.length > 1
+    ? discardPile[discardPile.length - 2]
+    : topCardRaw;
   if (!topCard) return null;
   const visibleStack = discardPile.slice(-VISIBLE_DISCARD_STACK);
-
-  const playedBy = lastAction?.type === 'PLAY_CARD' ? lastAction.playerId : undefined;
-  const origin = getPlayOrigin(playedBy, players, selfId);
-  const isSelf = playedBy === selfId;
 
   const wild = isWildCard(topCard);
   const isWaitingForColor = wild && !topCard.chosenColor && phase === 'choosing_color';
@@ -100,22 +75,17 @@ function DiscardPile() {
             </div>
           );
         })}
-        <AnimatePresence mode="popLayout">
-          <motion.div
-            key={topCard.id}
-            layoutId={isSelf ? topCard.id : undefined}
-            initial={{ opacity: 0, x: origin.x, y: origin.y, scale: 0.6 }}
-            animate={{ scale: 1, rotate: 3, opacity: 1, x: 0, y: 0 }}
-            exit={{ opacity: 0, transition: { duration: 0.3, delay: 0.15 } }}
-            transition={{ duration: 0.35, ease: 'easeOut' }}
-            style={{
+        {/* 出牌过渡由特效层 PlayCardFlight 呈现，这里只渲染最新牌面 */}
+        <div
+          data-discard-slot
+          key={topCard.id}
+          style={{
               position: 'absolute',
               top: '50%',
               left: '50%',
-              marginLeft: '-41px',
-              marginTop: '-56px',
               zIndex: visibleStack.length,
               borderRadius: '18px',
+              transform: 'translate(-50%, -50%) rotate(3deg)',
               ...(chosenColor ? {
                 boxShadow: `0 0 18px 4px ${colorGlowMap[chosenColor] ?? 'transparent'}`,
                 outline: `2.5px solid ${colorBorderMap[chosenColor] ?? 'transparent'}`,
@@ -137,17 +107,13 @@ function DiscardPile() {
               </span>
             )}
             {isWaitingForColor && (
-              <motion.span
-                className="absolute -bottom-1 -right-1 text-xs font-game font-black px-1 py-0.5 rounded bg-black/65 leading-none whitespace-nowrap text-white"
-                initial={{ opacity: 0.6, scale: 0.96 }}
-                animate={{ opacity: [0.6, 1, 0.6], scale: [0.96, 1, 0.96] }}
-                transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
+              <span
+                className="absolute -bottom-1 -right-1 text-xs font-game font-black px-1 py-0.5 rounded bg-black/65 leading-none whitespace-nowrap text-white animate-pending-pulse"
               >
                 待选色
-              </motion.span>
+              </span>
             )}
-          </motion.div>
-        </AnimatePresence>
+        </div>
       </div>
       {drawStack > 0 && (
         <motion.div
