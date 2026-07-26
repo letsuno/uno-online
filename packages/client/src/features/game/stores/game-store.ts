@@ -55,6 +55,8 @@ interface GameState {
   nextRoundVote: NextRoundVoteState | null;
   roundEndAt: number | null;
   gameOverAt: number | null;
+  /** 终局展示窗剩余秒数：>0 时压住结算板、保留牌桌（可继续扔表情、查看最后一张牌） */
+  endRevealLeft: number;
   cheatDetected: boolean;
   dissolvedReason: string | null;
   ownerTransferAt: number | null;
@@ -73,6 +75,7 @@ interface GameState {
   setNextRoundVote: (vote: NextRoundVoteState | null) => void;
   setRoundEndAt: (t: number | null) => void;
   setGameOverAt: (t: number | null) => void;
+  setEndRevealLeft: (n: number) => void;
   setDrawnCard: (card: Card | null) => void;
   setTurnEndTime: (t: number | null) => void;
   clearGame: () => void;
@@ -104,6 +107,7 @@ export const useGameStore = create<GameState>((set) => ({
   nextRoundVote: null,
   roundEndAt: null,
   gameOverAt: null,
+  endRevealLeft: 0,
   cheatDetected: false,
   dissolvedReason: null,
   ownerTransferAt: null,
@@ -165,12 +169,14 @@ export const useGameStore = create<GameState>((set) => ({
         nextRoundVote: phase === 'round_end' ? state.nextRoundVote : null,
         roundEndAt: phase === 'round_end' ? state.roundEndAt : null,
         gameOverAt: phase === 'game_over' ? state.gameOverAt : null,
+        endRevealLeft: phase === 'round_end' || phase === 'game_over' ? state.endRevealLeft : 0,
         ...spectatorChange,
       };
     }),
   setNextRoundVote: (vote) => set({ nextRoundVote: vote }),
   setRoundEndAt: (t) => set({ roundEndAt: t }),
   setGameOverAt: (t) => set({ gameOverAt: t }),
+  setEndRevealLeft: (n) => set({ endRevealLeft: n }),
   setDrawnCard: (card) => set({ lastDrawnCard: card, hasDrawnThisTurn: true }),
   setTurnEndTime: (t) => set({ turnEndTime: t }),
   clearGame: () =>
@@ -200,6 +206,7 @@ export const useGameStore = create<GameState>((set) => ({
       nextRoundVote: null,
       roundEndAt: null,
       gameOverAt: null,
+      endRevealLeft: 0,
       cheatDetected: false,
       dissolvedReason: null,
       ownerTransferAt: null,

@@ -1,7 +1,7 @@
 import type { Server as SocketIOServer, Socket } from 'socket.io';
 import { ROLE_CONFIG, type UserRole } from '@uno-online/shared';
 
-const VALID_ITEMS = ['🥚', '🍅', '🌹', '💩', '👍', '💖'];
+const VALID_ITEMS = ['🥚', '🍅', '🌹', '💩', '🐷', '👍', '💖'];
 const MIN_THROW_INTERVAL_MS = 300;
 
 const throwTimestamps = new Map<string, number>();

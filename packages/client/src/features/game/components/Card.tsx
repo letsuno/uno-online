@@ -9,11 +9,29 @@ function getCardLabel(card: CardType): string {
   switch (card.type) {
     case 'number': return String(card.value);
     case 'skip': return '⊘';
-    case 'reverse': return '⟲';
+    case 'reverse': return '转向';
     case 'draw_two': return '+2';
     case 'wild': return 'W';
     case 'wild_draw_four': return '+4';
   }
+}
+
+/** 经典双箭头转向符号——文字字形 ⟲ 与禁止 ⊘ 形近，改用 SVG 区分 */
+function ReverseIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      className={cn('inline-block w-[1em] h-[1em]', className)}
+      style={{ filter: 'drop-shadow(2px 2px 0px rgba(0, 0, 0, 0.2))' }}
+    >
+      <g transform="rotate(45 12 12)">
+        <path d="M4 7h8V4l7 5-7 5v-3H4z" />
+        <path d="M20 17h-8v3l-7-5 7-5v3h8z" />
+      </g>
+    </svg>
+  );
 }
 
 const colorClasses: Record<string, string> = {
@@ -55,6 +73,7 @@ export default function Card({ card, playable = false, clickable = playable, dim
     : colorClasses[card.color!] ?? '';
 
   const label = getCardLabel(card);
+  const symbol = card.type === 'reverse' ? <ReverseIcon /> : label;
   const showCorners = (!isWild || forceCornerLabel) && !mini;
 
   if (cardImagePack && isPackLoaded()) {
@@ -81,7 +100,7 @@ export default function Card({ card, playable = false, clickable = playable, dim
           <img src={imgUrl} alt={label} className="w-full h-full object-contain pointer-events-none" draggable={false} />
           {forceCornerLabel && (
             <span className="absolute top-0.5 left-1 leading-none text-white text-shadow-card">
-              <span className="text-2xs font-bold">{label}</span>
+              <span className="text-2xs font-bold">{symbol}</span>
             </span>
           )}
           {colorBlindMode && card.color && <ColorBlindOverlay color={card.color} />}
@@ -115,17 +134,17 @@ export default function Card({ card, playable = false, clickable = playable, dim
     >
       {showCorners && (
         <span className="absolute top-0.5 left-1 leading-none">
-          <span className="text-2xs font-bold">{label}</span>
+          <span className="text-2xs font-bold">{symbol}</span>
         </span>
       )}
 
       <span className={mini ? 'text-2xs font-bold leading-none' : typeFontClasses[card.type] ?? ''}>
-        {label}
+        {symbol}
       </span>
 
       {showCorners && (
         <span className="absolute bottom-0.5 right-1 leading-none rotate-180">
-          <span className="text-2xs font-bold">{label}</span>
+          <span className="text-2xs font-bold">{symbol}</span>
         </span>
       )}
 

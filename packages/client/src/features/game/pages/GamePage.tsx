@@ -46,6 +46,10 @@ import MobileHand from '../components/mobile/MobileHand';
 import InfoSheet from '../components/mobile/InfoSheet';
 import { useGameLayoutMode, useShortLandscape } from '../hooks/useGameLayoutMode';
 import FitScaler from '@/shared/components/FitScaler';
+import EndRevealBanner from '../components/EndRevealBanner';
+
+/** 终局展示窗时长：最后一张牌打出后保留牌桌的秒数（与结算板 10s 开局冷却完全重叠，不拖慢节奏） */
+const END_REVEAL_S = 10;
 
 export default function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -67,7 +71,32 @@ export default function GamePage() {
   const playableIds = usePlayableCardIds();
   const noop = () => {};
   const needsColorPick = phase === 'choosing_color' && isMyTurn && !myAutopilot;
-  const showScoreBoard = phase === 'round_end' || phase === 'game_over';
+
+  // 终局展示窗：现场经历"对局 → 终局"切换时，先保留牌桌若干秒再进结算板；
+  // 中途加入/刷新（prev 不是对局中 phase）则直接显示结算板。
+  const revealLeft = useGameStore((s) => s.endRevealLeft);
+  const setEndRevealLeft = useGameStore((s) => s.setEndRevealLeft);
+  const prevPhaseRef = useRef<typeof phase>(null);
+  const isEndPhase = phase === 'round_end' || phase === 'game_over';
+
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = phase;
+    const isEnd = phase === 'round_end' || phase === 'game_over';
+    const wasInGame = prev === 'playing' || prev === 'challenging' || prev === 'choosing_color' || prev === 'choosing_swap_target';
+    if (isEnd && wasInGame) {
+      setEndRevealLeft(END_REVEAL_S);
+      const interval = window.setInterval(() => {
+        const left = Math.max(0, useGameStore.getState().endRevealLeft - 1);
+        setEndRevealLeft(left);
+        if (left <= 0) window.clearInterval(interval);
+      }, 1000);
+      return () => window.clearInterval(interval);
+    }
+  }, [phase, setEndRevealLeft]);
+
+  const endRevealing = isEndPhase && revealLeft > 0;
+  const showScoreBoard = isEndPhase && !endRevealing;
 
   const connectionStatus = useGameSocket(roomCode);
 
@@ -325,6 +354,13 @@ export default function GamePage() {
       {!isSpectator && <AutopilotOverlay />}
       {(phase === 'round_end' || phase === 'game_over') && <Confetti />}
       {needsColorPick && <ColorPicker onPick={chooseColor} />}
+      {endRevealing && (
+        <EndRevealBanner
+          secondsLeft={revealLeft}
+          onSkip={() => setEndRevealLeft(0)}
+          placement={mode === 'strip' ? 'lower' : 'top'}
+        />
+      )}
       {showScoreBoard && (
         <ScoreBoard
           isSpectator={isSpectator}

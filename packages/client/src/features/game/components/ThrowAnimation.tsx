@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 
-const ROTATING_ITEMS = new Set(['🥚', '🍅']);
+const ROTATING_ITEMS = new Set(['🥚', '🍅', '🐷']);
 
 interface ThrowAnimationProps {
   from: { x: number; y: number };
@@ -16,6 +16,7 @@ function getParticleColors(item: string): string[] {
     case '🍅': return ['#ef4444', '#f87171', '#dc2626'];
     case '🌹': return ['#ec4899', '#f472b6', '#be185d'];
     case '💩': return ['#92400e', '#a16207', '#78350f'];
+    case '🐷': return ['#f9a8d4', '#f472b6', '#fda4af'];
     case '👍': return ['#fbbf24', '#f59e0b', '#d97706'];
     case '💖': return ['#ec4899', '#f472b6', '#f9a8d4'];
     default: return ['#fbbf24', '#f59e0b', '#d97706'];

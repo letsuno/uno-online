@@ -7,6 +7,7 @@ const ITEMS = [
   { emoji: '🍅', label: '番茄' },
   { emoji: '🌹', label: '玫瑰' },
   { emoji: '💩', label: '便便' },
+  { emoji: '🐷', label: '猪猪' },
   { emoji: '👍', label: '点赞' },
   { emoji: '💖', label: '爱心' },
 ];
