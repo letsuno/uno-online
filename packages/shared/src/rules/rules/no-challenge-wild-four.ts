@@ -28,9 +28,9 @@ export const noChallengeWildFour: HouseRulePlugin = {
       const penaltyPlayerIndex = afterColor.players.findIndex(p => p.id === penaltyPlayerId);
       if (penaltyPlayerIndex === -1) return { handled: true, state: afterColor };
 
-      const nextPlayerIndex = ctx.getNextPlayerIndex(
+      const nextPlayerIndex = ctx.getNextAliveIndex(
+        afterColor.players,
         penaltyPlayerIndex,
-        afterColor.players.length,
         afterColor.direction,
       );
 

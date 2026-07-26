@@ -3,10 +3,10 @@ import type { Color, Card } from '../../types/card.js';
 import type { BotConfig } from '../../types/bot.js';
 import { getPlayableCards, canPlayCard, isExactJumpInMatch, isValidWildDrawFour } from '../validation.js';
 import { isWildCard, isColoredCard, getEffectiveColor } from '../../types/card.js';
-import { getNextPlayerIndex, reverseDirection } from '../turn.js';
+import { getNextAliveIndex } from '../turn.js';
 import { DIFFICULTY_PARAMS } from './difficulty-params.js';
 import { PERSONALITY_WEIGHTS } from './personality-weights.js';
-import { evaluateCards, bestColorForHand, evaluateHandQuality, electLeadBot } from './card-evaluator.js';
+import { evaluateCards, bestColorsForHand, evaluateHandQuality, electLeadBot } from './card-evaluator.js';
 
 function isFinishBlocked(card: Card, hand: Card[], hr: { noWildFinish: boolean; noFunctionCardFinish: boolean }): boolean {
   if (hand.length !== 1) return false;
@@ -107,19 +107,18 @@ function chooseBestColor(state: GameState, botId: string, hand: Card[], playedCa
 
       let allyBonus = 0;
       let oppPenalty = 0;
-      let idx = getNextPlayerIndex(botIndex, state.players.length, state.direction);
+      // Walk alive seats in turn order; weight decays per acting player
+      let idx = getNextAliveIndex(state.players, botIndex, state.direction);
       let weight = 1.0;
-      for (let i = 0; i < state.players.length - 1; i++) {
+      for (let i = 0; i < state.players.length && idx !== botIndex; i++) {
         const p = state.players[idx]!;
-        if (!p.eliminated && p.id !== botId) {
-          const colorCount = p.hand.filter(c => isColoredCard(c) && c.color === color).length;
-          if (isAlly(p)) {
-            allyBonus += colorCount * weight;
-          } else {
-            oppPenalty += colorCount * weight;
-          }
+        const colorCount = p.hand.filter(c => isColoredCard(c) && c.color === color).length;
+        if (isAlly(p)) {
+          allyBonus += colorCount * weight;
+        } else {
+          oppPenalty += colorCount * weight;
         }
-        idx = getNextPlayerIndex(idx, state.players.length, state.direction);
+        idx = getNextAliveIndex(state.players, idx, state.direction);
         weight *= 0.5;
       }
 
@@ -140,8 +139,10 @@ function chooseBestColor(state: GameState, botId: string, hand: Card[], playedCa
     return scores.sort((a, b) => b.score - a.score)[0]!.color;
   }
 
-  // Normal/easy: pick best color for own hand (excluding the played card)
-  return bestColorForHand(hand, playedCardId);
+  // Normal/easy: pick best color for own hand (excluding the played card);
+  // random among ties so the choice can't be predicted from color order
+  const best = bestColorsForHand(hand, playedCardId);
+  return best[Math.floor(Math.random() * best.length)]!;
 }
 
 /**
@@ -236,12 +237,11 @@ function handleChallenging(state: GameState, playerId: string, config: BotConfig
     return [{ type: 'ACCEPT', playerId }];
   }
 
-  // Hard bot: peek at previous player's hand to determine if WD4 was valid
+  // Hard bot: peek at the WD4 player's hand to determine if the play was valid.
+  // During the challenging phase currentPlayerIndex is still the WD4 player
+  // (the engine resolves challenges the same way), which also covers jump-in WD4s.
   if (config.difficulty === 'hard' && params.infoAccess.canSeeOpponentHands) {
-    // Find the player who played the WD4 (the one before the current player in turn order)
-    const botIndex = state.players.findIndex(p => p.id === playerId);
-    const prevIndex = getNextPlayerIndex(botIndex, state.players.length, reverseDirection(state.direction));
-    const prevPlayer = state.players[prevIndex];
+    const prevPlayer = state.players[state.currentPlayerIndex];
 
     // Determine what color was active before the WD4 was played.
     // The second-to-last card in the discard pile tells us the color.
@@ -310,8 +310,6 @@ function handleChoosingSwapTarget(state: GameState, playerId: string, config: Bo
     };
 
     const myQuality = evaluateHandQuality(player.hand, state);
-    const allyBots = state.players.filter(p => p.isBot && !p.eliminated);
-    const lead = allyBots.length > 0 ? electLeadBot(allyBots, state) : null;
 
     let bestTarget: typeof targets[number] | null = null;
     let bestDelta = -Infinity;
@@ -326,8 +324,6 @@ function handleChoosingSwapTarget(state: GameState, playerId: string, config: Bo
         // Extra bonus if our hand is large (dumping junk on human)
         if (player.hand.length > t.hand.length + 2) delta += 4;
       }
-      // Bonus if this bot is the lead — swap to get even closer to winning
-      if (lead && lead.id === player.id) delta += 5;
       if (delta > bestDelta) { bestDelta = delta; bestTarget = t; }
     }
     if (bestTarget) {
@@ -346,8 +342,15 @@ function handleChoosingSwapTarget(state: GameState, playerId: string, config: Bo
 
 const ALL_COLORS: Color[] = ['red', 'blue', 'green', 'yellow'];
 
-function solveEndgame(hand: Card[], topCard: Card, currentColor: Color, hr: { noWildFinish: boolean; noFunctionCardFinish: boolean }): Card | null {
-  if (hand.length > 3 || hand.length === 0) return null;
+/**
+ * Endgame solver: return every card that starts at least one winning
+ * sequence, assuming the state does not change between the bot's plays.
+ * The caller ranks the returned candidates with the evaluator, so the
+ * strategically best line wins instead of whichever card happens to sit
+ * first in the hand.
+ */
+function solveEndgame(hand: Card[], topCard: Card, currentColor: Color, hr: { noWildFinish: boolean; noFunctionCardFinish: boolean }): Card[] {
+  if (hand.length > 3 || hand.length === 0) return [];
 
   function canWin(remaining: Card[], top: Card, color: Color): boolean {
     if (remaining.length === 0) return true;
@@ -368,24 +371,23 @@ function solveEndgame(hand: Card[], topCard: Card, currentColor: Color, hr: { no
     return false;
   }
 
+  const winningStarts: Card[] = [];
   for (let i = 0; i < hand.length; i++) {
     const card = hand[i]!;
     if (!canPlayCard(card, topCard, currentColor)) continue;
     const rest = hand.filter((_, j) => j !== i);
     if (rest.length === 0) {
-      if (isFinishBlocked(card, hand, hr)) continue;
-      return card;
+      if (!isFinishBlocked(card, hand, hr)) winningStarts.push(card);
+      continue;
     }
     if (isWildCard(card)) {
-      for (const c of ALL_COLORS) {
-        if (canWin(rest, card, c)) return card;
-      }
+      if (ALL_COLORS.some(c => canWin(rest, card, c))) winningStarts.push(card);
     } else {
       const nextColor = isColoredCard(card) ? card.color : currentColor;
-      if (canWin(rest, card, nextColor)) return card;
+      if (canWin(rest, card, nextColor)) winningStarts.push(card);
     }
   }
-  return null;
+  return winningStarts;
 }
 
 function handlePlaying(state: GameState, playerId: string, config: BotConfig): GameAction[] {
@@ -510,12 +512,16 @@ function handlePlaying(state: GameState, playerId: string, config: BotConfig): G
     return playCardActions(playerId, pick, color, false);
   }
 
-  // Hard bot endgame solver: enumerate winning sequences when hand is small
+  // Hard bot endgame solver: restrict candidates to cards that start a
+  // winning sequence, then let the evaluator pick the strongest of them
+  // (e.g. prefer a draw-two that guarantees the follow-up over a gamble).
   if (config.difficulty === 'hard' && player.hand.length <= 3 && topCard && state.currentColor) {
-    const winCard = solveEndgame(player.hand, topCard, state.currentColor, hr);
-    if (winCard) {
-      const color = chooseBestColor(state, playerId, player.hand, winCard.id, config);
-      return playCardActions(playerId, winCard, color, false);
+    const winningStarts = solveEndgame(player.hand, topCard, state.currentColor, hr);
+    if (winningStarts.length > 0) {
+      const scored = evaluateCards(player.hand, winningStarts, state, playerId, params, weights);
+      const pick = applyMistake(scored, params.mistakeRate);
+      const color = chooseBestColor(state, playerId, player.hand, pick.id, config);
+      return playCardActions(playerId, pick, color, false);
     }
   }
 
@@ -544,9 +550,19 @@ function handlePlaying(state: GameState, playerId: string, config: BotConfig): G
       } else {
         chainCount = Math.ceil(sameValue.length * params.specialCardAwareness);
       }
+      // Order the chain: dump scarce colors first and finish on the color
+      // the bot holds most of — the last card played sets the table color.
+      const restAfterChain = player.hand.filter(c =>
+        c.id !== pick.id && !sameValue.some(s => s.id === c.id));
+      const remainingColorCount = (card: Card): number =>
+        isColoredCard(card)
+          ? restAfterChain.filter(c => isColoredCard(c) && c.color === card.color).length
+          : 0;
+      const orderedSameValue = [...sameValue].sort((a, b) => remainingColorCount(a) - remainingColorCount(b));
+
       // Cap chain to avoid leaving a single finish-blocked card
       if (params.finishRestrictionAwareness && (hr.noWildFinish || hr.noFunctionCardFinish)) {
-        const playedIds = new Set([pick.id, ...sameValue.slice(0, chainCount).map(c => c.id)]);
+        const playedIds = new Set([pick.id, ...orderedSameValue.slice(0, chainCount).map(c => c.id)]);
         const afterChain = player.hand.filter(c => !playedIds.has(c.id));
         if (afterChain.length === 1 && isFinishBlocked(afterChain[0]!, afterChain, hr)) {
           chainCount = Math.max(0, chainCount - 1);
@@ -554,7 +570,7 @@ function handlePlaying(state: GameState, playerId: string, config: BotConfig): G
       }
       if (chainCount > 0) {
         for (let i = 0; i < chainCount; i++) {
-          actions.push({ type: 'PLAY_CARD', playerId, cardId: sameValue[i]!.id });
+          actions.push({ type: 'PLAY_CARD', playerId, cardId: orderedSameValue[i]!.id });
         }
         actions.push({ type: 'PASS', playerId });
       }
@@ -625,7 +641,7 @@ export function chooseBotJumpInAction(state: GameState, playerId: string): GameA
     // Close to winning — always worth it
     if (afterCount > 1) {
       const botIndex = state.players.findIndex(p => p.id === playerId);
-      const nextIdx = getNextPlayerIndex(botIndex, state.players.length, state.direction);
+      const nextIdx = getNextAliveIndex(state.players, botIndex, state.direction);
       const nextAfterJump = state.players[nextIdx];
       const hitsHuman = nextAfterJump && !nextAfterJump.isBot && !nextAfterJump.eliminated;
       const isOffensive = (card.type === 'draw_two' || card.type === 'skip') && hitsHuman;
@@ -643,7 +659,7 @@ export function chooseBotJumpInAction(state: GameState, playerId: string): GameA
   // and the card is just a number)
   if (params.botCoalition && !currentPlayer.isBot && card.type === 'number') {
     const botIndex = state.players.findIndex(p => p.id === playerId);
-    const nextIdx = getNextPlayerIndex(botIndex, state.players.length, state.direction);
+    const nextIdx = getNextAliveIndex(state.players, botIndex, state.direction);
     const nextAfterJump = state.players[nextIdx];
     if (nextAfterJump && !nextAfterJump.isBot && !nextAfterJump.eliminated && nextAfterJump.hand.length <= 2) {
       if (player.hand.length > 3) return [];
