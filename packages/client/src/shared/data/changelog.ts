@@ -6,6 +6,18 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.13.0',
+    date: '2026-07-26',
+    changes: [
+      '曲库上新 3 首原创 BGM：大厅华尔兹 Carousel、对决曲 Showdown、摇摆爵士 Cardsharp',
+      'Carousel 是曲库第一首 3/4 拍圆舞曲，Cardsharp 是第一首摇摆爵士',
+      '结算板焕新：奖牌色排名徽章 + 冠军皇冠，胜负一目了然',
+      '对局玩家列表焕新：回合指示条、UNO 红色告警、断线红点',
+      '个人信息弹窗重构为分组卡片，信息更清晰',
+      '修复游戏曲 Pulse 鼓点与旋律错位的问题',
+    ],
+  },
+  {
     version: '0.12.0',
     date: '2026-07-26',
     changes: [
