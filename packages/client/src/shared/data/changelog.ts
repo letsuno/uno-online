@@ -6,6 +6,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.13.1',
+    date: '2026-07-26',
+    changes: [
+      '人机变聪明了：不再乱打会被必胜质疑的 +4，残局还会算必胜出牌顺序',
+      '人机连打同数字时零散色先甩、主色收尾，选色也不再固定偏红',
+      '修复淘汰制：被淘汰的玩家不再「诈尸」获得回合摸牌',
+      '修复淘汰制下 0 牌轮转、连环炸弹、7 牌换手会波及已淘汰玩家的问题',
+    ],
+  },
+  {
     version: '0.13.0',
     date: '2026-07-26',
     changes: [
