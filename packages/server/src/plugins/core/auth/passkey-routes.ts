@@ -20,26 +20,27 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
   const preHandler = authPreHandler(config.jwtSecret);
   const loginLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
 
-  function getRpId(request: { hostname: string }): string | string[] {
-    if (!config.webauthnRpId) return request.hostname.split(':')[0]!;
-    return config.webauthnRpId.includes(',')
-      ? config.webauthnRpId.split(',').map((s) => s.trim())
-      : config.webauthnRpId;
+  function getRpId(): string | string[] {
+    if (config.webauthnRpId) {
+      return config.webauthnRpId.includes(',')
+        ? config.webauthnRpId.split(',').map((s) => s.trim())
+        : config.webauthnRpId;
+    }
+    return new URL(config.clientUrl).hostname;
   }
 
-  function getFirstRpId(request: { hostname: string }): string {
-    const rpId = getRpId(request);
+  function getFirstRpId(): string {
+    const rpId = getRpId();
     return Array.isArray(rpId) ? rpId[0]! : rpId;
   }
 
-  function getOrigin(request: { protocol: string; hostname: string }): string | string[] {
-    if (!config.webauthnOrigin) {
-      const proto = request.protocol ?? 'https';
-      return `${proto}://${request.hostname}`;
+  function getOrigin(): string | string[] {
+    if (config.webauthnOrigin) {
+      return config.webauthnOrigin.includes(',')
+        ? config.webauthnOrigin.split(',').map((s) => s.trim())
+        : config.webauthnOrigin;
     }
-    return config.webauthnOrigin.includes(',')
-      ? config.webauthnOrigin.split(',').map((s) => s.trim())
-      : config.webauthnOrigin;
+    return new URL(config.clientUrl).origin;
   }
 
   // ── Registration (authenticated) ──
@@ -50,7 +51,7 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
 
     const options = await generateRegistrationOptions({
       rpName: config.webauthnRpName ?? 'UNO Online',
-      rpID: getFirstRpId(request),
+      rpID: getFirstRpId(),
       userName: username,
       attestationType: 'none',
       excludeCredentials: userPasskeys.map((pk) => ({
@@ -89,10 +90,11 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
         verification = await verifyRegistrationResponse({
           response: credential as any,
           expectedChallenge,
-          expectedOrigin: getOrigin(request),
-          expectedRPID: getRpId(request),
+          expectedOrigin: getOrigin(),
+          expectedRPID: getRpId(),
         });
-      } catch {
+      } catch (err) {
+        fastify.log.warn({ err }, 'Passkey registration verification failed');
         return reply.code(400).send({ error: '验证失败' });
       }
 
@@ -120,7 +122,7 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
 
   fastify.post('/auth/passkey/login-options', async (request) => {
     const options = await generateAuthenticationOptions({
-      rpID: getFirstRpId(request),
+      rpID: getFirstRpId(),
       userVerification: 'preferred',
       allowCredentials: [],
     });
@@ -158,8 +160,8 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
         verification = await verifyAuthenticationResponse({
           response: credential as any,
           expectedChallenge,
-          expectedOrigin: getOrigin(request),
-          expectedRPID: getRpId(request),
+          expectedOrigin: getOrigin(),
+          expectedRPID: getRpId(),
           credential: {
             id: passkey.id,
             publicKey: isoBase64URL.toBuffer(passkey.publicKey),
@@ -167,7 +169,8 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
             transports: passkey.transports ? (JSON.parse(passkey.transports) as AuthenticatorTransportFuture[]) : undefined,
           },
         });
-      } catch {
+      } catch (err) {
+        fastify.log.warn({ err }, 'Passkey login verification failed');
         return reply.code(401).send({ error: '验证失败' });
       }
 
