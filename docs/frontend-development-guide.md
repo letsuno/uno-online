@@ -150,6 +150,16 @@ card(1) → topbar(10) → actions(20) → fab(50) → confetti(85)
 → effects(90) → timer-overlay(95) → modal(100) → connection(200) → toast(300)
 ```
 
+### 卡面主题资源
+
+内置卡面主题（复古经典 / 极简扁平 / 霓虹暗黑）由生成脚本产出，**产物提交进仓库**，构建部署零感知：
+
+- 生成脚本：`packages/client/scripts/generate-card-themes.mjs` —— 单一设计源（模板函数），数字/字母用 Fredoka 经 fontkit 转为路径（`<img>` 内 SVG 无法使用页面 webfont，转路径保证全设备一致）
+- 产物：`public/card-themes/<key>.zip`（54 张 SVG，索引与 `shared/utils/card-images.ts` 的 `cardToImageIndex` 严格一致：0-3 +2、4-43 数字 9→0、44 +4、45 万能、46-49 禁止、50-53 转向）+ `<key>-preview.svg`（选择器缩略图）
+- 运行时：`loadBuiltinTheme()` fetch zip → 复用自定义资源包管线（unzip → blob URL → `<img>`）；SVG 卡面带 `isSvg` 标记，自带圆角与角标，跳过容器裁切与角标叠加
+- 修改主题设计后：改模板 → 重新运行脚本 → 提交新 zip；卡面圆角须保持与默认卡面一致的 26% 宽度比例
+- 选择 `<img>` 而非内联 SVG 是性能决策：浏览器栅格化一次即缓存，避免辉光滤镜成为逐帧 DOM 滤镜（移动端发热教训）
+
 ## 测试
 
 当前客户端无测试框架。新增测试时使用 Vitest + React Testing Library。

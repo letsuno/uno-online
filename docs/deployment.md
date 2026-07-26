@@ -53,6 +53,16 @@ docker push djkcyl/uno-online-server:latest
 docker push djkcyl/uno-online-caddy:latest
 ```
 
+## 静态资源说明（卡面主题）
+
+内置卡面主题资源包（`packages/client/public/card-themes/*.zip` 与预览图）是**提交进仓库的静态产物**，由 `packages/client/scripts/generate-card-themes.mjs` 在开发期生成。构建/部署链路无需任何额外步骤：vite build 自动将 `public/` 拷入 dist，caddy 镜像原样伺服。
+
+只有修改主题设计时才需要重新生成并提交：
+
+```bash
+node packages/client/scripts/generate-card-themes.mjs
+```
+
 ## 反向代理说明
 
 Caddy 会把这些路径转发到后端或语音网关：
