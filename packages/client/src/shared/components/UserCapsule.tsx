@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, LogOut, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
-import { getRoleColor } from '@/shared/lib/utils';
+import { getRoleColor, cn } from '@/shared/lib/utils';
 import { useProfileModalStore } from '@/shared/stores/profile-modal-store';
 
 export default function UserCapsule() {
@@ -22,44 +22,66 @@ export default function UserCapsule() {
   }, []);
 
   const roleColor = getRoleColor(user?.role);
-  const initial = (user?.nickname ?? user?.username ?? '?')[0]!.toUpperCase();
+  const nickname = user?.nickname ?? user?.username ?? '?';
+  const initial = nickname[0]!.toUpperCase();
+  const isEphemeral = !!user?.id.startsWith('ephemeral_');
+
+  const avatar = (size: string) => (
+    <span className={cn(
+      size,
+      'rounded-full bg-gradient-to-br from-[#ffd66d] to-[#f6be3e] flex items-center justify-center font-bold text-background overflow-hidden shrink-0',
+      'border-2 border-primary/55 shadow-[0_0_18px_rgba(246,190,62,0.28)]',
+    )}>
+      {user?.avatarUrl
+        ? <img src={user.avatarUrl} alt={initial} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+        : initial}
+    </span>
+  );
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-3 cursor-pointer h-[58px] max-sm:h-12 px-[22px] max-sm:px-0 pr-[10px] max-sm:pr-0 rounded-full bg-white/[0.045] max-sm:bg-transparent border border-white/[0.12] max-sm:border-0 transition-all hover:bg-white/[0.07] hover:border-white/[0.18] shadow-[0_18px_40px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)] max-sm:shadow-none"
+        className={cn(
+          'flex items-center gap-2.5 cursor-pointer h-[58px] max-sm:h-12 pl-5 pr-2 max-sm:p-0 rounded-full transition-colors',
+          'bg-white/5 border border-white/10 hover:bg-white/[0.08] hover:border-white/[0.18]',
+          'max-sm:bg-transparent max-sm:border-0',
+          open && 'bg-white/[0.08] border-white/[0.18]',
+        )}
       >
-        <span className="text-[14px] text-[#d7def2] max-sm:hidden">
-          欢迎, <b className="text-[var(--gold)]" style={roleColor ? { color: roleColor } : undefined}>
-            {user?.nickname ?? user?.username}
-          </b>
+        <span className="text-sm font-bold max-sm:hidden" style={roleColor ? { color: roleColor } : undefined}>
+          <span className={roleColor ? undefined : 'text-primary'}>{nickname}</span>
         </span>
-        <ChevronDown size={16} className={`text-[#d7def2] transition-transform max-sm:hidden ${open ? 'rotate-180' : ''}`} />
-        <span className="w-[46px] h-[46px] max-sm:w-12 max-sm:h-12 rounded-full bg-gradient-to-br from-[#ffd66d] to-[#f6be3e] flex items-center justify-center text-base font-bold text-[#161513] overflow-hidden border-2 border-[rgba(246,190,62,0.55)] shadow-[0_0_22px_rgba(246,190,62,0.32)]">
-          {user?.avatarUrl
-            ? <img src={user.avatarUrl} alt={initial} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-            : initial}
-        </span>
+        <ChevronDown size={15} className={cn('text-muted-foreground transition-transform max-sm:hidden', open && 'rotate-180')} />
+        {avatar('w-[42px] h-[42px] max-sm:w-12 max-sm:h-12 text-base')}
       </button>
 
-      <div className={`absolute top-[calc(100%+8px)] right-0 w-[180px] glass-panel p-1.5 z-actions transition-all duration-200 ${
-        open ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' : 'opacity-0 -translate-y-2 scale-[0.96] pointer-events-none'
-      }`}>
-        {!user?.id.startsWith('ephemeral_') && (
-          <>
-            <button
-              onClick={() => { setOpen(false); openProfile(); }}
-              className="flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-[10px] text-[13px] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-all cursor-pointer"
-            >
-              <User size={15} /> 个人信息
-            </button>
-            <div className="h-px bg-white/[0.06] mx-2 my-1" />
-          </>
+      <div className={cn(
+        'absolute top-[calc(100%+8px)] right-0 w-[236px] glass-panel p-2.5 z-actions transition-all duration-200 origin-top-right',
+        open ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' : 'opacity-0 -translate-y-1.5 scale-[0.96] pointer-events-none',
+      )}>
+        {/* 身份头 */}
+        <div className="flex items-center gap-3 px-2.5 pt-1.5 pb-2.5">
+          {avatar('w-10 h-10 text-sm')}
+          <div className="min-w-0">
+            <p className="text-sm font-bold truncate" style={roleColor ? { color: roleColor } : undefined}>{nickname}</p>
+            <p className="text-xs text-muted-foreground truncate">{isEphemeral ? '临时用户' : `@${user?.username}`}</p>
+          </div>
+        </div>
+        <div className="h-px bg-white/[0.07] mx-1 mb-1.5" />
+
+        {/* 菜单项圆角与面板同心：28px 外圆角 − 10px 内边距 = 18px（rounded-btn） */}
+        {!isEphemeral && (
+          <button
+            onClick={() => { setOpen(false); openProfile(); }}
+            className="flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-btn text-[13px] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-colors cursor-pointer"
+          >
+            <User size={15} /> 个人信息
+          </button>
         )}
         <button
           onClick={() => { setOpen(false); logout(); navigate('/'); }}
-          className="flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-[10px] text-[13px] text-muted-foreground hover:bg-[rgba(255,51,102,0.08)] hover:text-[#ff6b8a] transition-all cursor-pointer"
+          className="flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-btn text-[13px] text-muted-foreground hover:bg-destructive/10 hover:text-[#ff6b8a] transition-colors cursor-pointer"
         >
           <LogOut size={15} /> 退出登录
         </button>

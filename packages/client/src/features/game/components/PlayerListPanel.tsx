@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion, useDragControls, AnimatePresence } from 'framer-motion';
-import { ArrowRightLeft, Bot, ChevronDown, Crown, Eye, GripHorizontal, UserPlus } from 'lucide-react';
+import { ArrowRightLeft, ChevronDown, Crown, Eye, GripHorizontal, UserPlus, Users } from 'lucide-react';
 import { getSocket } from '@/shared/socket';
 import { showConfirm } from '@/shared/stores/confirm-store';
 import { useToastStore } from '@/shared/stores/toast-store';
@@ -8,13 +8,15 @@ import { useGameStore } from '../stores/game-store';
 import { useSpectatorStore } from '../stores/spectator-store';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
-import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
-import { DIFFICULTY_DISPLAY } from '../constants/bot-difficulty';
-import GoogleRing from '@/shared/components/ui/GoogleRing';
+import PlayerAvatar from './PlayerAvatar';
 import PlayerVoiceStatus from '@/shared/voice/PlayerVoiceStatus';
 import { cn, getRoleColor } from '@/shared/lib/utils';
 import { AiBadge } from '@/shared/components/ui/AiBadge';
 
+/**
+ * 对局内右上角玩家列表（桌面 table 模式）：可拖拽、可折叠。
+ * 当前回合玩家：左侧主色条 + 行高亮 + 头像主色描边；手牌数用迷你卡片型徽记，剩 1 张时红色告警（UNO 时刻）。
+ */
 export default function PlayerListPanel() {
   const players = useGameStore((s) => s.players);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
@@ -30,158 +32,167 @@ export default function PlayerListPanel() {
 
   return (
     <div ref={constraintsRef} className="fixed inset-0 pointer-events-none z-fab hidden md:block">
-    <motion.div
-      drag
-      dragConstraints={constraintsRef}
-      dragControls={dragControls}
-      dragListener={false}
-      dragMomentum={false}
-      dragElastic={0}
-      className="absolute top-12 right-3 pointer-events-auto"
-    >
-      <div className="rounded-card-ui bg-card/80 backdrop-blur-sm shadow-card shadow-tech border border-border w-48">
-        <div
-          className="px-3 py-2 border-b border-border text-xs text-muted-foreground font-bold flex items-center gap-1 cursor-grab active:cursor-grabbing select-none"
-          onPointerDown={(e) => dragControls.start(e)}
-        >
-          <GripHorizontal size={12} className="shrink-0 opacity-40" />
-          <span className="flex-1">玩家 ({players.length})</span>
-          <button
-            type="button"
-            className="p-0.5 rounded hover:bg-white/10 transition-colors cursor-pointer"
-            onClick={() => setCollapsed((c) => !c)}
-            onPointerDown={(e) => e.stopPropagation()}
+      <motion.div
+        drag
+        dragConstraints={constraintsRef}
+        dragControls={dragControls}
+        dragListener={false}
+        dragMomentum={false}
+        dragElastic={0}
+        className="absolute top-12 right-3 pointer-events-auto"
+      >
+        <div className="glass-panel-sm w-[228px] overflow-hidden">
+          {/* 头部：拖拽手柄 + 标题 + 折叠 */}
+          <div
+            className="pl-3.5 pr-2 py-2.5 flex items-center gap-2 cursor-grab active:cursor-grabbing select-none"
+            onPointerDown={(e) => dragControls.start(e)}
           >
-            <ChevronDown size={12} className={cn('transition-transform', !collapsed && 'rotate-180')} />
-          </button>
-        </div>
-        <AnimatePresence initial={false}>
-          {!collapsed && (
-            <motion.div
-              initial={{ height: 0 }}
-              animate={{ height: 'auto' }}
-              exit={{ height: 0 }}
-              transition={{ duration: 0.15, ease: 'easeInOut' }}
-              className="overflow-hidden"
+            <GripHorizontal size={13} className="shrink-0 text-muted-foreground/40" />
+            <span className="flex-1 flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
+              <Users size={12} /> 玩家
+              <span className="rounded-full bg-white/[0.07] px-1.5 py-px text-[10px] tabular-nums">{players.length}</span>
+            </span>
+            <button
+              type="button"
+              className="p-1 rounded-md text-muted-foreground hover:bg-white/10 hover:text-foreground transition-colors cursor-pointer"
+              onClick={() => setCollapsed((c) => !c)}
+              onPointerDown={(e) => e.stopPropagation()}
+              title={collapsed ? '展开' : '折叠'}
             >
-              <div className="max-h-64 overflow-y-auto scrollbar-thin">
-                <div className="py-1">
-                  {players.map((p, i: number) => {
-                    const isActive = i === currentPlayerIndex;
-                    const isMe = p.id === userId;
-                    const roleColor = getRoleColor(p.role);
-                    return (
-                      <div
-                        key={p.id}
-                        className={cn(
-                          'flex items-center gap-2 px-3 py-1.5 transition-colors',
-                          isActive && 'bg-primary/10',
-                          p.eliminated && 'opacity-40',
-                        )}
-                      >
-                        {(() => {
-                          const isConfiguredBot = p.isBot && !!p.botConfig;
-                          const botDisplay = isConfiguredBot ? DIFFICULTY_DISPLAY[p.botConfig!.difficulty] : undefined;
-                          return (
-                            <div
-                              className="relative w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 overflow-hidden"
-                              style={{
-                                background: botDisplay
-                                  ? botDisplay.avatarBg
-                                  : AVATAR_COLORS[i % AVATAR_COLORS.length],
-                              }}
+              <ChevronDown size={13} className={cn('transition-transform duration-200', !collapsed && 'rotate-180')} />
+            </button>
+          </div>
+
+          <AnimatePresence initial={false}>
+            {!collapsed && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.18, ease: 'easeInOut' }}
+                className="overflow-hidden"
+              >
+                <div className="max-h-72 overflow-y-auto scrollbar-thin border-t border-white/[0.07]">
+                  <div className="py-1.5 px-1.5 flex flex-col gap-0.5">
+                    {players.map((p, i: number) => {
+                      const isActive = i === currentPlayerIndex;
+                      const isMe = p.id === userId;
+                      const roleColor = getRoleColor(p.role);
+                      const unoAlert = p.handCount === 1 && !p.eliminated;
+                      return (
+                        <div
+                          key={p.id}
+                          className={cn(
+                            // 行圆角与面板同心：16px 外圆角 − 6px 内边距 = 10px
+                            'group relative flex items-center gap-2.5 pl-3 pr-2 py-1.5 rounded-[10px] transition-colors duration-200',
+                            isActive && 'bg-primary/[0.09]',
+                            p.eliminated && 'opacity-40',
+                            !p.connected && 'opacity-60',
+                          )}
+                        >
+                          {/* 当前回合指示条 */}
+                          <span className={cn(
+                            'absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-0 rounded-full bg-primary transition-all duration-300',
+                            isActive && 'h-[60%]',
+                          )} />
+
+                          {/* 头像（Bot 用难度配色，掉线红点角标） */}
+                          <div className="relative shrink-0">
+                            <PlayerAvatar
+                              index={i}
+                              name={p.name}
+                              avatarUrl={p.avatarUrl}
+                              isBot={p.isBot}
+                              botConfig={p.botConfig}
+                              size={28}
+                              highlighted={isActive}
+                            />
+                            {!p.connected && (
+                              <span className="absolute -bottom-px -right-px w-2 h-2 rounded-full bg-destructive border-2 border-[#141a2e]" title="已断线" />
+                            )}
+                          </div>
+
+                          {/* 名字 + 徽记 */}
+                          <div className="flex-1 min-w-0 flex items-center gap-1">
+                            <span
+                              className={cn(
+                                'text-xs truncate transition-colors',
+                                isActive ? 'text-primary font-bold' : isMe ? 'text-foreground font-bold' : 'text-foreground/85',
+                              )}
+                              style={(!isActive && roleColor) ? { color: roleColor } : undefined}
                             >
-                              {isConfiguredBot ? (
-                                <Bot size={13} className="text-white drop-shadow-sm" />
-                              ) : (
-                                <>
-                                  <span>{AVATAR_EMOJIS[i % AVATAR_EMOJIS.length]}</span>
-                                  {p.avatarUrl && (
-                                    <img
-                                      src={p.avatarUrl}
-                                      alt={p.name}
-                                      className="absolute inset-0 w-full h-full object-cover"
-                                      referrerPolicy="no-referrer"
-                                      onError={(e) => {
-                                        e.currentTarget.style.display = 'none';
-                                      }}
-                                    />
-                                  )}
-                                </>
+                              {p.name}
+                            </span>
+                            {isMe && <span className="shrink-0 inline-flex items-center rounded bg-primary/15 text-primary text-[10px] leading-none px-1 py-0.5">你</span>}
+                            {p.id === ownerId && <Crown size={10} className="shrink-0 text-primary" />}
+                            {p.isBot && <AiBadge className="shrink-0" />}
+                          </div>
+
+                          {/* 右侧：语音（闲置隐藏）、移交房主（hover 显示）、手牌数徽记 */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <PlayerVoiceStatus playerId={p.id} playerName={p.name} isSelf={isMe} hideIdle />
+                            {ownerId === userId && !isMe && !p.isBot && (
+                              <button
+                                onClick={async () => {
+                                  if (!(await showConfirm({ title: '移交房主', message: `确定要将房主移交给 ${p.name} 吗？`, confirmText: '移交' }))) return;
+                                  getSocket().emit('room:transfer_owner', { targetId: p.id }, (res: { success?: boolean; error?: string }) => {
+                                    if (!res?.success) useToastStore.getState().addToast(res?.error ?? '移交失败', 'error');
+                                  });
+                                }}
+                                className="opacity-0 group-hover:opacity-100 text-primary/50 hover:text-primary cursor-pointer transition-all"
+                                title="移交房主"
+                              >
+                                <ArrowRightLeft size={11} />
+                              </button>
+                            )}
+                            <span
+                              className={cn(
+                                'w-[19px] h-[25px] rounded-[5px] border flex items-center justify-center text-[10px] font-bold tabular-nums transition-colors duration-300',
+                                unoAlert
+                                  ? 'border-destructive/60 bg-destructive/15 text-destructive shadow-[0_0_8px_rgba(255,51,102,0.35)]'
+                                  : isActive
+                                    ? 'border-primary/40 bg-primary/10 text-primary'
+                                    : 'border-white/[0.13] bg-white/[0.05] text-muted-foreground',
                               )}
-                              {botDisplay ? (
-                                <div
-                                  className="absolute inset-0 rounded-full pointer-events-none"
-                                  style={{
-                                    border: `1.5px solid ${botDisplay.ringColor}`,
-                                  }}
-                                />
-                              ) : (
-                                <GoogleRing size={0} className="w-full h-full" />
-                              )}
+                              title={`剩余 ${p.handCount} 张`}
+                            >
+                              {p.handCount}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {spectators.length > 0 && (
+                    <>
+                      <div className="mx-3.5 pt-2 pb-1 border-t border-white/[0.07] flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground/70">
+                        <Eye size={11} /> 观众
+                        <span className="rounded-full bg-white/[0.07] px-1.5 py-px tabular-nums">{spectators.length}</span>
+                      </div>
+                      <div className="pb-2 px-1.5">
+                        {spectators.map((s) => {
+                          const queued = pendingJoinQueue.includes(s.nickname);
+                          return (
+                            <div key={s.nickname} className={cn('flex items-center gap-2 pl-3 pr-2 py-1 text-xs text-muted-foreground', !s.connected && 'opacity-50')}>
+                              {queued
+                                ? <UserPlus size={12} className="shrink-0 text-accent" />
+                                : <span className="w-1 h-1 rounded-full bg-muted-foreground/40 mx-[5px] shrink-0" />}
+                              <span className={cn('truncate flex-1', queued && 'text-accent')}>{s.nickname}</span>
+                              {!s.connected && <span className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />}
+                              {queued && <span className="text-[10px] text-accent shrink-0">下局加入</span>}
                             </div>
                           );
-                        })()}
-                        <div className="flex-1 min-w-0">
-                          <div className={cn(
-                            'text-xs truncate',
-                            isActive && 'text-primary font-bold',
-                            isMe && !isActive && 'text-primary',
-                            !isActive && !isMe && 'text-foreground',
-                          )} style={(!isActive && !isMe && roleColor) ? { color: roleColor } : undefined}>
-                            {p.name}{isMe ? ' (你)' : ''}{p.id === ownerId && <Crown size={10} className="inline align-middle ml-1 text-primary" />}{p.isBot && <AiBadge className="ml-1" />}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <PlayerVoiceStatus playerId={p.id} playerName={p.name} isSelf={isMe} />
-                          {ownerId === userId && !isMe && !p.isBot && (
-                            <button
-                              onClick={async () => {
-                                if (!(await showConfirm({ title: '移交房主', message: `确定要将房主移交给 ${p.name} 吗？`, confirmText: '移交' }))) return;
-                                getSocket().emit('room:transfer_owner', { targetId: p.id }, (res: { success?: boolean; error?: string }) => {
-                                  if (!res?.success) useToastStore.getState().addToast(res?.error ?? '移交失败', 'error');
-                                });
-                              }}
-                              className="text-primary/40 hover:text-primary cursor-pointer transition-colors"
-                              title="移交房主"
-                            >
-                              <ArrowRightLeft size={10} />
-                            </button>
-                          )}
-                          <span className="text-2xs text-muted-foreground">{p.handCount}</span>
-                          {!p.connected && <span className="w-1.5 h-1.5 rounded-full bg-destructive" />}
-                          {isActive && <span className="text-2xs">◀</span>}
-                        </div>
+                        })}
                       </div>
-                    );
-                  })}
+                    </>
+                  )}
                 </div>
-                {spectators.length > 0 && (
-                  <>
-                    <div className="px-3 py-2 border-t border-border text-xs text-muted-foreground font-bold">
-                      观众 ({spectators.length})
-                    </div>
-                    <div className="py-1">
-                      {spectators.map((s) => {
-                        const queued = pendingJoinQueue.includes(s.nickname);
-                        return (
-                          <div key={s.nickname} className={cn('flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground', !s.connected && 'opacity-50')}>
-                            {queued ? <UserPlus size={12} className="shrink-0 text-accent" /> : <Eye size={12} className="shrink-0" />}
-                            <span className={cn('truncate', queued && 'text-accent')}>{s.nickname}</span>
-                            {!s.connected && <span className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0 ml-auto" />}
-                            {queued && <span className="text-2xs text-accent ml-auto shrink-0">加入中</span>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
     </div>
   );
 }

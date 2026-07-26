@@ -3,6 +3,7 @@ import { Trophy, BarChart3, Crown, Check, UserX, UserPlus, WifiOff, Eye, X, Arro
 import { showConfirm } from '@/shared/stores/confirm-store';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
+import PlayerAvatar from './PlayerAvatar';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { useSpectatorStore } from '../stores/spectator-store';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
@@ -29,6 +30,7 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
   const players = useGameStore((s) => s.players);
   const winnerId = useGameStore((s) => s.winnerId);
   const phase = useGameStore((s) => s.phase);
+  const roundNumber = useGameStore((s) => s.roundNumber);
   const vote = useGameStore((s) => s.nextRoundVote);
   const roundEndAt = useGameStore((s) => s.roundEndAt);
   const gameOverAt = useGameStore((s) => s.gameOverAt);
@@ -135,62 +137,95 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
 
   return (
     <div className="fixed inset-0 glass-modal-backdrop flex items-center justify-center z-modal">
-      <div className="glass-panel px-10 py-8 min-w-room-min text-center">
-        <h2 className="font-game text-accent mb-4">
-          {isGameOver ? <><Trophy size={20} className="inline align-middle" /> 游戏结束!</> : <><BarChart3 size={20} className="inline align-middle" /> 本轮结束</>}
+      <div className="glass-panel w-[460px] max-w-[94vw] px-7 py-6 max-md:px-5 text-center">
+        <h2 className="font-game text-lg font-black text-accent mb-5 inline-flex items-center gap-2">
+          {isGameOver
+            ? <><Trophy size={18} /> 游戏结束</>
+            : <><BarChart3 size={18} /> {roundNumber > 0 ? `第 ${roundNumber} 轮结束` : '本轮结束'}</>}
         </h2>
-        <table className="w-full border-collapse mb-5">
-          <thead>
-            <tr className="text-muted-foreground text-xs">
-              <th className="text-left px-2 py-1">玩家</th>
-              {!isGameOver && <th className="px-2 py-1">状态</th>}
-              <th className="text-right px-2 py-1">分数</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((p) => {
-              const ready = !!vote?.voters.includes(p.id);
-              const disconnected = !p.connected;
-              const isSelf = p.id === userId;
-              return (
-                <tr key={p.id} className={cn(p.id === winnerId ? 'text-accent' : 'text-foreground')}>
-                  <td className="px-2 py-1.5 text-left">
-                    {p.id === winnerId && <Crown size={14} className="inline align-middle mr-1" />}
-                    <span className={cn(disconnected && 'opacity-50')}>{p.name}</span>
-                    {p.id === ownerId && <span title="房主"><Crown size={12} className="inline align-middle ml-1 text-primary" /></span>}
-                    {p.isBot && <AiBadge className="ml-1" />}
-                    {disconnected && <WifiOff size={12} className="inline align-middle ml-1 text-destructive" />}
-                    {canTransfer && !isSelf && !p.isBot && (
-                      <button
-                        onClick={async () => {
-                          if (!(await showConfirm({ title: '移交房主', message: `确定要将房主移交给 ${p.name} 吗？`, confirmText: '移交' }))) return;
-                          getSocket().emit('room:transfer_owner', { targetId: p.id }, (res: { success?: boolean; error?: string }) => {
-                            if (!res?.success) useToastStore.getState().addToast(res?.error ?? '移交失败', 'error');
-                          });
-                        }}
-                        className="ml-1 text-primary/50 hover:text-primary cursor-pointer bg-transparent border-none transition-colors"
-                        title="移交房主"
-                      >
-                        <ArrowRightLeft size={12} className="inline align-middle" />
-                      </button>
-                    )}
-                  </td>
-                  {!isGameOver && (
-                    <td className="px-2 py-1.5 text-center whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1">
-                        {ready ? <Check size={14} className="inline text-speaking" /> : <span className="text-xs text-muted-foreground">等待中</span>}
-                        {isHost && !isSelf && !isSpectator && (
-                          <button onClick={() => onKickPlayer(p.id)} className="text-destructive hover:text-destructive/80 cursor-pointer bg-transparent border-none" title={p.isBot ? '移除机器人' : '移至观战席'}><UserX size={14} className="inline" /></button>
-                        )}
-                      </span>
-                    </td>
+
+        {/* 排名列表 */}
+        <div className="flex flex-col gap-1.5 mb-5">
+          {sorted.map((p, rank) => {
+            const ready = !!vote?.voters.includes(p.id);
+            const disconnected = !p.connected;
+            const isSelf = p.id === userId;
+            const isWinner = p.id === winnerId;
+            const playerIndex = players.findIndex((pl) => pl.id === p.id);
+            return (
+              <div
+                key={p.id}
+                className={cn(
+                  'flex items-center gap-3 rounded-xl pl-2.5 pr-3.5 py-2 border text-left',
+                  isWinner
+                    ? 'bg-primary/[0.08] border-primary/30'
+                    : 'bg-white/[0.03] border-transparent',
+                  disconnected && 'opacity-60',
+                )}
+              >
+                {/* 名次徽章：前三名奖牌色 */}
+                <span className={cn(
+                  'w-6 h-6 rounded-full flex items-center justify-center text-xs font-black tabular-nums shrink-0',
+                  rank === 0 && 'bg-primary text-background',
+                  rank === 1 && 'bg-white/25 text-foreground',
+                  rank === 2 && 'bg-[#b0793f]/55 text-foreground',
+                  rank > 2 && 'bg-white/[0.06] text-muted-foreground',
+                )}>
+                  {rank + 1}
+                </span>
+
+                {/* 头像（冠军戴皇冠角标） */}
+                <div className="relative shrink-0">
+                  <PlayerAvatar index={playerIndex} name={p.name} avatarUrl={p.avatarUrl} isBot={p.isBot} botConfig={p.botConfig} size={32} highlighted={isWinner} />
+                  {isWinner && <Crown size={13} className="absolute -top-2 -right-1.5 rotate-[18deg] text-primary drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" />}
+                </div>
+
+                {/* 名字 + 徽记 */}
+                <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                  <span className={cn('text-sm truncate', isWinner ? 'text-primary font-bold' : 'text-foreground')}>{p.name}</span>
+                  {isSelf && <span className="shrink-0 inline-flex items-center rounded bg-primary/15 text-primary text-[10px] leading-none px-1 py-0.5">你</span>}
+                  {p.id === ownerId && <span title="房主"><Crown size={11} className="shrink-0 text-primary" /></span>}
+                  {p.isBot && <AiBadge className="shrink-0" />}
+                  {disconnected && <WifiOff size={11} className="shrink-0 text-destructive" />}
+                  {canTransfer && !isSelf && !p.isBot && (
+                    <button
+                      onClick={async () => {
+                        if (!(await showConfirm({ title: '移交房主', message: `确定要将房主移交给 ${p.name} 吗？`, confirmText: '移交' }))) return;
+                        getSocket().emit('room:transfer_owner', { targetId: p.id }, (res: { success?: boolean; error?: string }) => {
+                          if (!res?.success) useToastStore.getState().addToast(res?.error ?? '移交失败', 'error');
+                        });
+                      }}
+                      className="shrink-0 text-primary/50 hover:text-primary cursor-pointer bg-transparent border-none transition-colors"
+                      title="移交房主"
+                    >
+                      <ArrowRightLeft size={11} />
+                    </button>
                   )}
-                  <td className="px-2 py-1.5 text-right font-bold">{p.score}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                </div>
+
+                {/* 状态（下一轮准备/踢人）+ 分数 */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {!isGameOver && (
+                    <>
+                      {ready
+                        ? <span className="w-4.5 h-4.5 rounded-full bg-uno-green/15 flex items-center justify-center" title="已同意下一轮"><Check size={11} className="text-uno-green" /></span>
+                        : <span className="text-[10px] text-muted-foreground/70">等待</span>}
+                      {isHost && !isSelf && !isSpectator && (
+                        <button onClick={() => onKickPlayer(p.id)} className="text-destructive/60 hover:text-destructive cursor-pointer bg-transparent border-none transition-colors" title={p.isBot ? '移除机器人' : '移至观战席'}>
+                          <UserX size={13} />
+                        </button>
+                      )}
+                    </>
+                  )}
+                  <span className={cn('min-w-[36px] text-right font-black tabular-nums', isWinner ? 'text-primary text-base' : 'text-foreground text-sm')}>
+                    {p.score}
+                    <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">分</span>
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
         {isSpectatorOwner && (
           <div className="mb-3 flex items-center gap-2 rounded-lg bg-primary/10 border border-primary/30 px-3 py-2 text-xs text-primary">
             <Crown size={14} className="shrink-0" />
