@@ -91,6 +91,7 @@ export default function StageCenter({ onDraw, compact = false }: StageCenterProp
   const drawStack = useGameStore((s) => s.drawStack);
   const direction = useGameStore((s) => s.direction);
   const phase = useGameStore((s) => s.phase);
+  const endRevealing = useGameStore((s) => s.endRevealLeft > 0);
   const players = useGameStore((s) => s.players);
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
   const userId = useEffectiveUserId();
@@ -109,7 +110,8 @@ export default function StageCenter({ onDraw, compact = false }: StageCenterProp
   const currentPlayer = players[currentPlayerIndex];
   const isMyTurn = currentPlayer?.id === userId;
 
-  if (phase === 'round_end' || phase === 'game_over') return null;
+  // 终局展示窗期间（endRevealLeft > 0）保留舞台，让玩家看清最后一张牌；结算板真正显示时才隐藏
+  if ((phase === 'round_end' || phase === 'game_over') && !endRevealing) return null;
 
   const DirIcon = direction === 'clockwise' ? RotateCw : RotateCcw;
   const colorHex = currentColor ? COLOR_HEX[currentColor] : null;

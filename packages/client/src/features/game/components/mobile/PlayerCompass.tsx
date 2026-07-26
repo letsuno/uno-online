@@ -36,6 +36,7 @@ export default function PlayerCompass({ compact = false }: PlayerCompassProps) {
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
   const direction = useGameStore((s) => s.direction);
   const phase = useGameStore((s) => s.phase);
+  const endRevealing = useGameStore((s) => s.endRevealLeft > 0);
   const turnEndTime = useGameStore((s) => s.turnEndTime);
   const settings = useGameStore((s) => s.settings);
   const roundNumber = useGameStore((s) => s.roundNumber);
@@ -95,7 +96,8 @@ export default function PlayerCompass({ compact = false }: PlayerCompassProps) {
     observerRef.current = observer;
   }, []);
 
-  if (phase === 'round_end' || phase === 'game_over' || players.length === 0) return null;
+  // 终局展示窗期间保留罗盘（还能继续向玩家扔表情）；结算板真正显示时才隐藏
+  if (((phase === 'round_end' || phase === 'game_over') && !endRevealing) || players.length === 0) return null;
 
   const n = players.length;
   const R = compact ? 260 : 380;

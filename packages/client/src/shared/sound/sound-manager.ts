@@ -57,6 +57,7 @@ const FREQUENCIES: Record<SoundName, { freq: number; duration: number; type: Osc
 const THROW_HIT_SOUND_BY_ITEM: Record<string, string> = {
   '🍅': '/sounds/throw-tomato-squish.mp3',
   '💩': '/sounds/throw-slime-impact.mp3',
+  '🐷': '/sounds/throw-boing.mp3',
   '🥚': '/sounds/throw-cartoon-hit.mp3',
   '🌹': '/sounds/throw-cartoon-hit.mp3',
   '👍': '/sounds/throw-boing.mp3',
