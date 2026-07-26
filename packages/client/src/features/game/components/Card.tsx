@@ -1,7 +1,7 @@
 import type { Card as CardType } from '@uno-online/shared';
 import { isWildCard } from '@uno-online/shared';
 import { useSettingsStore } from '@/shared/stores/settings-store';
-import { getCardImageUrl, isPackLoaded } from '@/shared/utils/card-images';
+import { getCardImage, isPackLoaded } from '@/shared/utils/card-images';
 import ColorBlindOverlay from './ColorBlindOverlay';
 import { cn } from '@/shared/lib/utils';
 
@@ -65,7 +65,7 @@ interface CardProps {
 
 export default function Card({ card, playable = false, clickable = playable, dimmed = false, mini = false, onClick, style, className, forceCornerLabel = false, disableHoverLift = false }: CardProps) {
   const colorBlindMode = useSettingsStore((s) => s.colorBlindMode);
-  const cardImagePack = useSettingsStore((s) => s.cardImagePack);
+  const cardImagePack = useSettingsStore((s) => s.cardTheme !== 'default' && s.cardThemeReady);
 
   const isWild = isWildCard(card);
   const bgClass = isWild
@@ -77,13 +77,15 @@ export default function Card({ card, playable = false, clickable = playable, dim
   const showCorners = (!isWild || forceCornerLabel) && !mini;
 
   if (cardImagePack && isPackLoaded()) {
-    const imgUrl = getCardImageUrl(card);
-    if (imgUrl) {
+    const image = getCardImage(card);
+    if (image) {
       return (
         <div
           className={cn(
-            'w-card-w h-card-h md:w-card-w-md md:h-card-h-md rounded-card md:rounded-card-md',
-            'bg-transparent border-none shadow-none overflow-hidden p-0',
+            'w-card-w h-card-h md:w-card-w-md md:h-card-h-md',
+            'bg-transparent border-none shadow-none p-0',
+            // SVG 卡面（内置主题）自带圆角，容器裁切会切出豁口；栅格自定义包仍需圆角裁切
+            !image.isSvg && 'rounded-card md:rounded-card-md overflow-hidden',
             'flex items-center justify-center',
             'select-none shrink-0 relative',
             'transition-[transform,box-shadow,opacity] duration-200',
@@ -97,8 +99,9 @@ export default function Card({ card, playable = false, clickable = playable, dim
           onClick={clickable ? onClick : undefined}
           style={style}
         >
-          <img src={imgUrl} alt={label} className="w-full h-full object-contain pointer-events-none" draggable={false} />
-          {forceCornerLabel && (
+          <img src={image.url} alt={label} className="w-full h-full object-contain pointer-events-none" draggable={false} />
+          {/* SVG 卡面角标已内置，叠加会出现双重角标 */}
+          {forceCornerLabel && !image.isSvg && (
             <span className="absolute top-0.5 left-1 leading-none text-white text-shadow-card">
               <span className="text-2xs font-bold">{symbol}</span>
             </span>

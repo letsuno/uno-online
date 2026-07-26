@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, X, ClipboardPaste, Music, Volume2, VolumeX, ArrowRight, BookOpen, Sparkles, Hash, Plus } from 'lucide-react';
+import { ClipboardPaste, Music, Volume2, VolumeX, ArrowRight, BookOpen, Sparkles, Hash, Plus, Layers } from 'lucide-react';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { SEAT_COUNT } from '@uno-online/shared';
 import { useSettingsStore } from '@/shared/stores/settings-store';
-import { loadCardPack, clearCardPack, isPackLoaded } from '@/shared/utils/card-images';
+import CardThemeModal from '../components/CardThemeModal';
 import { getSocket, connectSocket } from '@/shared/socket';
 import { Button } from '@/shared/components/ui/Button';
 import { IconButton } from '@/shared/components/ui/IconButton';
@@ -29,7 +29,7 @@ function GameDuration({ startedAt }: { startedAt: number }) {
 
 export default function LobbyPage() {
   const setRoom = useRoomStore((s) => s.setRoom);
-  const { bgmEnabled, toggleBgm, cardImagePack, setCardImagePack } = useSettingsStore();
+  const { bgmEnabled, toggleBgm, cardTheme } = useSettingsStore();
   const navigate = useNavigate();
   const [joinCode, setJoinCode] = useState('');
   const [error, setError] = useState('');
@@ -38,6 +38,7 @@ export default function LobbyPage() {
   const songName = useBgm('lobby');
   const [musicHall, setMusicHall] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showCardTheme, setShowCardTheme] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem('tutorialShown')) {
@@ -123,34 +124,9 @@ export default function LobbyPage() {
             <IconButton size="lg" onClick={() => setMusicHall(true)} title="音乐厅">
               <Music size={24} />
             </IconButton>
-            {/* 卡面包（移动端隐藏——文件选择器在触屏上不实用） */}
-            <span className="contents max-sm:hidden">
-              {cardImagePack && isPackLoaded() ? (
-                <IconButton size="lg" onClick={() => { clearCardPack(); setCardImagePack(false); }} title="卸载资源包">
-                  <X size={24} />
-                </IconButton>
-              ) : (
-                <label className="icon-button shrink-0 w-14 h-14 rounded-btn cursor-pointer" title="加载卡面资源包">
-                  <Upload size={24} />
-                  <input
-                    type="file"
-                    accept=".zip"
-                    hidden
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      try {
-                        await loadCardPack(file);
-                        setCardImagePack(true);
-                      } catch {
-                        setCardImagePack(false);
-                      }
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
-              )}
-            </span>
+            <IconButton size="lg" onClick={() => setShowCardTheme(true)} active={cardTheme !== 'default'} title="卡面主题">
+              <Layers size={24} />
+            </IconButton>
             <IconButton size="lg" onClick={() => setShowTutorial(true)} title="游戏教程">
               <BookOpen size={24} />
             </IconButton>
@@ -298,6 +274,7 @@ export default function LobbyPage() {
       <TutorialModal open={showTutorial} onClose={() => { setShowTutorial(false); localStorage.setItem('tutorialShown', 'true'); }} />
       <BgmToast song={songName} />
       <MusicHallModal open={musicHall} onClose={() => setMusicHall(false)} currentScene="lobby" />
+      <CardThemeModal open={showCardTheme} onClose={() => setShowCardTheme(false)} />
     </GamePageShell>
   );
 }
