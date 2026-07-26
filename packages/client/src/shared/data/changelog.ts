@@ -6,6 +6,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.12.0',
+    date: '2026-07-26',
+    changes: [
+      '新增卡面主题：复古经典 / 极简扁平 / 霓虹暗黑三套全新卡面，大厅设置中一键切换',
+      '终局不再秒切结算：保留牌桌 10 秒看清最后一张牌，还能继续扔表情',
+      '可扔表情新增 🐷 猪猪',
+      '转向牌换上经典双箭头图标，不再和禁止牌傻傻分不清',
+      'Passkey 登录修复：反代部署下注册/验证不再失败',
+    ],
+  },
+  {
     version: '0.11.0',
     date: '2026-07-26',
     changes: [
