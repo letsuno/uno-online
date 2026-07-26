@@ -7,13 +7,15 @@ interface PlayerVoiceStatusProps {
   playerName: string;
   isSelf?: boolean;
   className?: string;
+  /** 未加入语音时不渲染（用于列表等紧凑场景，避免整排灰色图标噪音） */
+  hideIdle?: boolean;
 }
 
 function normalizeVoiceName(name: string): string {
   return name.trim().replace(/[^\p{L}\p{N}_ .-]/gu, '').slice(0, 32).toLocaleLowerCase();
 }
 
-export default function PlayerVoiceStatus({ playerId, playerName, isSelf = false, className }: PlayerVoiceStatusProps) {
+export default function PlayerVoiceStatus({ playerId, playerName, isSelf = false, className, hideIdle = false }: PlayerVoiceStatusProps) {
   const status = useGatewayStore((s) => s.status);
   const usersById = useGatewayStore((s) => s.usersById);
   const selfUserId = useGatewayStore((s) => s.selfUserId);
@@ -45,6 +47,8 @@ export default function PlayerVoiceStatus({ playerId, playerName, isSelf = false
   }
   const speaking = presenceAvailable ? presence.speaking : Boolean(voiceUser && speakingByUserId[voiceUser.id]);
   const forceMuted = presenceAvailable && presence.forceMuted;
+
+  if (hideIdle && !inVoice && !forceMuted) return null;
 
   return (
     <span className={cn('inline-flex items-center gap-0.5', className)} title={inVoice ? '语音状态' : '未加入语音'}>
