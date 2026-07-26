@@ -7,6 +7,8 @@ import { UNO_COLOR_HEX } from '../constants/colors';
 interface WaveState {
   id: number;
   color: string;
+  /** 涟漪终态直径：盖住视口对角线即可，再大都是白烧栅格化 */
+  size: number;
 }
 
 export default function ColorWave() {
@@ -30,7 +32,8 @@ export default function ColorWave() {
     if (!hex) return;
 
     const id = ++waveIdRef.current;
-    setWave({ id, color: hex });
+    const size = Math.ceil(Math.hypot(window.innerWidth, window.innerHeight));
+    setWave({ id, color: hex, size });
     const timer = setTimeout(() => setWave(null), 1200);
     return () => clearTimeout(timer);
   }, [currentColor, lastAction, phase]);
@@ -46,35 +49,39 @@ export default function ColorWave() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
         >
+          {/* 关键：两层都按「最终尺寸」布局，再从 scale 0 放大到 1。
+              旧写法是 8px/40px 的小元素放大到 scale 200/60 —— 浏览器会随着 scale 增长
+              反复以更高分辨率重新栅格化这个巨型图层（实测占整个渲染进程 CPU 的 ~40%）。
+              按终态尺寸布局后只栅格化一次，之后纯合成器缩放。 */}
           <motion.div
-            className="absolute rounded-full" data-allow-overflow
+            className="absolute rounded-full will-change-transform" data-allow-overflow
             style={{
               left: '50%',
               top: '50%',
-              width: 40,
-              height: 40,
-              marginLeft: -20,
-              marginTop: -20,
+              width: wave.size,
+              height: wave.size,
+              marginLeft: -wave.size / 2,
+              marginTop: -wave.size / 2,
               background: `radial-gradient(circle, ${wave.color}44 0%, ${wave.color}00 70%)`,
-              boxShadow: `0 0 60px 20px ${wave.color}55`,
             }}
             initial={{ scale: 0, opacity: 0.9 }}
-            animate={{ scale: 60, opacity: 0 }}
+            animate={{ scale: 1, opacity: 0 }}
             transition={{ duration: 1, ease: 'easeOut' }}
           />
           <motion.div
-            className="absolute rounded-full" data-allow-overflow
+            className="absolute rounded-full will-change-transform" data-allow-overflow
             style={{
               left: '50%',
               top: '50%',
-              width: 8,
-              height: 8,
-              marginLeft: -4,
-              marginTop: -4,
-              border: `2px solid ${wave.color}`,
+              width: wave.size,
+              height: wave.size,
+              marginLeft: -wave.size / 2,
+              marginTop: -wave.size / 2,
+              // 旧写法 2px 边框被放大 200 倍 ≈ 400 视觉像素，这里按比例直接给到终态
+              border: `${Math.round(wave.size * 0.25)}px solid ${wave.color}`,
             }}
             initial={{ scale: 0, opacity: 1 }}
-            animate={{ scale: 200, opacity: 0 }}
+            animate={{ scale: 1, opacity: 0 }}
             transition={{ duration: 1.1, ease: 'easeOut' }}
           />
         </motion.div>

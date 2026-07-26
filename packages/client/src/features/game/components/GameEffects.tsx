@@ -239,10 +239,14 @@ export default function GameEffects() {
           {effects.map((effect) => (
             <motion.div
               key={effect.id}
-              initial={{ scale: 0.3, opacity: 0, y: 20 }}
+              // 缩放区间从 0.3→1.2→2（6.7 倍跨度）收窄到 0.9→1.2→1.35（1.5 倍）：
+              // 大字幕带 SVG 图标和 text-shadow，scale 每变一档就要重新栅格化整屏文字，
+              // 跨度越大重栅格化次数越多。静止态仍是 1.2，观感不变。
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1.2, opacity: 1, y: 0 }}
-              exit={{ scale: 2, opacity: 0, y: -30 }}
+              exit={{ scale: 1.35, opacity: 0, y: -30 }}
               transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+              style={{ willChange: 'transform, opacity' }}
               className={cn(
                 'absolute font-game font-black max-w-[94vw] text-center flex flex-col items-center gap-2 text-shadow-bold text-white',
                 effect.type === 'victory' ? 'text-effect-xl' : 'text-effect',
