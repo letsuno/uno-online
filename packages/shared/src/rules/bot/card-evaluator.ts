@@ -3,8 +3,8 @@ import type { GameState, Player } from '../../types/game.js';
 import type { DifficultyParams } from './difficulty-params.js';
 import type { PersonalityWeights } from './personality-weights.js';
 import { isColoredCard, isWildCard } from '../../types/card.js';
-import { getPlayableCards } from '../validation.js';
-import { getNextPlayerIndex, reverseDirection } from '../turn.js';
+import { getPlayableCards, isValidWildDrawFour } from '../validation.js';
+import { getNextPlayerIndex, getNextAliveIndex, reverseDirection } from '../turn.js';
 
 interface EvalContext {
   botIndex: number;
@@ -28,6 +28,7 @@ export interface CardScoreFactors {
   cardConservation: number;
   globalThreat: number;
   coalitionTactics: number;
+  wildFourRisk: number;
 }
 
 export interface CardScore {
@@ -41,11 +42,20 @@ function countColorInHand(hand: Card[], color: Color, excludeId?: string): numbe
 }
 
 export function bestColorForHand(hand: Card[], excludeId?: string): Color {
+  return bestColorsForHand(hand, excludeId)[0]!;
+}
+
+/**
+ * All colors tied for the highest count in hand, in fixed color order.
+ * Callers that pick randomly among these avoid a predictable red bias.
+ */
+export function bestColorsForHand(hand: Card[], excludeId?: string): Color[] {
   const counts: Record<Color, number> = { red: 0, blue: 0, green: 0, yellow: 0 };
   for (const c of hand) {
     if (c.id !== excludeId && isColoredCard(c)) counts[c.color]++;
   }
-  return (Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'red') as Color;
+  const max = Math.max(counts.red, counts.blue, counts.green, counts.yellow);
+  return (Object.keys(counts) as Color[]).filter(color => counts[color] === max);
 }
 
 
@@ -192,9 +202,10 @@ export function evaluateWinProximity(hand: Card[], state: GameState): number {
 }
 
 /**
- * Elect the lead bot from a list of ally bots with hysteresis.
- * The bot with the lowest player-array index keeps leadership
- * unless another bot's proximity score exceeds it by HYSTERESIS.
+ * Elect the lead bot from a list of ally bots. Earlier-seated bots keep
+ * leadership unless a later bot's proximity score beats theirs by more
+ * than HYSTERESIS — a deterministic rule so every bot independently
+ * elects the same lead without shared state.
  */
 export function electLeadBot(allyBots: Player[], state: GameState): Player {
   const HYSTERESIS = 3;
@@ -202,12 +213,29 @@ export function electLeadBot(allyBots: Player[], state: GameState): Player {
   let bestBot = allyBots[0]!;
   for (const ab of allyBots) {
     const prox = evaluateWinProximity(ab.hand, state);
-    if (prox > bestScore + HYSTERESIS || (prox > bestScore && state.players.indexOf(ab) < state.players.indexOf(bestBot))) {
+    if (prox > bestScore + HYSTERESIS) {
       bestScore = prox;
       bestBot = ab;
     }
   }
   return bestBot;
+}
+
+/**
+ * Penalty for playing a WD4 that is challengeable (bot still holds the
+ * current color). Uses only the bot's own hand — no cheating involved.
+ * Applies only to normal plays: stacked WD4s never open a challenge window.
+ */
+function scoreWildFourRisk(card: Card, hand: Card[], state: GameState, params: DifficultyParams): number {
+  if (!params.wildFourLegalityAwareness) return 0;
+  if (card.type !== 'wild_draw_four') return 0;
+  if (state.phase !== 'playing' || state.drawStack > 0) return 0;
+  if (state.settings.houseRules.noChallengeWildFour) return 0;
+  if (!state.currentColor) return 0;
+  const handAfterPlay = hand.filter(c => c.id !== card.id);
+  if (isValidWildDrawFour(handAfterPlay, state.currentColor)) return 0;
+  // A successful challenge costs the bot 4 draws plus the wasted WD4
+  return -20;
 }
 
 function scoreCardConservation(card: Card, hand: Card[], playable: Card[], params: DifficultyParams, state: GameState): number {
@@ -224,13 +252,22 @@ function scoreCardConservation(card: Card, hand: Card[], playable: Card[], param
   return penalty;
 }
 
-function turnsUntilPlayer(fromIndex: number, toIndex: number, playerCount: number, direction: GameState['direction']): number {
+/**
+ * Number of turns until `toIndex` gets to act, counting only alive seats
+ * (eliminated seats are skipped by the engine and cost no turn).
+ */
+function turnsUntilPlayer(players: readonly Player[], fromIndex: number, toIndex: number, direction: GameState['direction']): number {
   if (fromIndex === toIndex) return 0;
+  const count = players.length;
   const step = direction === 'clockwise' ? 1 : -1;
-  for (let t = 1; t < playerCount; t++) {
-    if (((fromIndex + step * t) % playerCount + playerCount) % playerCount === toIndex) return t;
+  let turns = 0;
+  let idx = fromIndex;
+  for (let s = 0; s < count; s++) {
+    idx = ((idx + step) % count + count) % count;
+    if (!players[idx]!.eliminated) turns++;
+    if (idx === toIndex) return turns;
   }
-  return playerCount;
+  return count;
 }
 
 function scoreGlobalThreat(card: Card, state: GameState, botId: string, params: DifficultyParams, ctx: EvalContext): number {
@@ -251,13 +288,13 @@ function scoreGlobalThreat(card: Card, state: GameState, botId: string, params: 
   const leadNearWin = leadBot && leadBot.id !== botId && leadBot.hand.length <= 2;
 
   for (const { player: threat, index: threatIndex } of threats) {
-    const dist = turnsUntilPlayer(botIndex, threatIndex, state.players.length, state.direction);
+    const dist = turnsUntilPlayer(state.players, botIndex, threatIndex, state.direction);
     const urgency = (4 - threat.hand.length) * Math.max(1, 3 - dist);
 
     // Shield bonus: threat is right before the lead bot → extra urgency to neutralize
     let shieldMultiplier = 1.0;
     if (params.botCoalition && leadNearWin && leadIndex >= 0) {
-      const threatToLead = turnsUntilPlayer(threatIndex, leadIndex, state.players.length, state.direction);
+      const threatToLead = turnsUntilPlayer(state.players, threatIndex, leadIndex, state.direction);
       if (threatToLead === 1) {
         shieldMultiplier = 2.0;
       } else if (threatToLead === 2) {
@@ -271,12 +308,12 @@ function scoreGlobalThreat(card: Card, state: GameState, botId: string, params: 
 
     if (card.type === 'reverse') {
       const reversedDir = reverseDirection(state.direction);
-      const newDist = turnsUntilPlayer(botIndex, threatIndex, state.players.length, reversedDir);
+      const newDist = turnsUntilPlayer(state.players, botIndex, threatIndex, reversedDir);
       let reverseDelta = (newDist - dist) * urgency * 0.6;
       // Reversing to push a threat away from the lead bot is extra valuable
       if (params.botCoalition && leadNearWin && leadIndex >= 0) {
-        const threatToLeadBefore = turnsUntilPlayer(threatIndex, leadIndex, state.players.length, state.direction);
-        const threatToLeadAfter = turnsUntilPlayer(threatIndex, leadIndex, state.players.length, reversedDir);
+        const threatToLeadBefore = turnsUntilPlayer(state.players, threatIndex, leadIndex, state.direction);
+        const threatToLeadAfter = turnsUntilPlayer(state.players, threatIndex, leadIndex, reversedDir);
         if (threatToLeadAfter > threatToLeadBefore) reverseDelta += urgency * 0.8;
       }
       score += reverseDelta;
@@ -302,7 +339,7 @@ function scoreSpecialTiming(card: Card, hand: Card[], state: GameState, botId: s
   if (card.type === 'number' && (card as { value: number }).value === 0 && hr.zeroRotateHands) {
     if (params.infoAccess.canSeeOpponentHands) {
       const botIdx = state.players.findIndex(p => p.id === botId);
-      const giverIndex = getNextPlayerIndex(botIdx, state.players.length, reverseDirection(state.direction));
+      const giverIndex = getNextAliveIndex(state.players, botIdx, reverseDirection(state.direction));
       const giver = state.players[giverIndex];
       if (giver && !giver.eliminated) {
         const delta = evaluateHandQuality(giver.hand, state) - evaluateHandQuality(hand, state);
@@ -316,7 +353,7 @@ function scoreSpecialTiming(card: Card, hand: Card[], state: GameState, botId: s
         for (let i = 0; i < state.players.length; i++) {
           const receiver = state.players[i]!;
           if (receiver.eliminated) continue;
-          const gvrIdx = getNextPlayerIndex(i, state.players.length, reverseDirection(dir));
+          const gvrIdx = getNextAliveIndex(state.players, i, reverseDirection(dir));
           const gvr = state.players[gvrIdx];
           if (!gvr || gvr.eliminated) continue;
           const qBefore = evaluateHandQuality(receiver.hand, state);
@@ -387,7 +424,7 @@ function scoreCoalitionTactics(card: Card, _hand: Card[], state: GameState, botI
       if (getPlayableCards(h.hand, card, card.color).length === 0) {
         humansBlocked++;
         const hIdx = state.players.findIndex(p => p.id === h.id);
-        const dist = turnsUntilPlayer(botIndex, hIdx, state.players.length, state.direction);
+        const dist = turnsUntilPlayer(state.players, botIndex, hIdx, state.direction);
         starvationScore += Math.max(1, 4 - dist) * 2;
       }
     }
@@ -471,7 +508,7 @@ function scoreCoalitionTactics(card: Card, _hand: Card[], state: GameState, botI
   // --- 4. Reverse to redirect draw stack toward humans ---
   if (card.type === 'reverse' && state.drawStack > 0) {
     const reversedDir = reverseDirection(state.direction);
-    const afterReverseIdx = getNextPlayerIndex(botIndex, state.players.length, reversedDir);
+    const afterReverseIdx = getNextAliveIndex(state.players, botIndex, reversedDir);
     const afterReversePlayer = state.players[afterReverseIdx];
     if (afterReversePlayer && !afterReversePlayer.eliminated) {
       if (!isAlly(afterReversePlayer)) score += 10;
@@ -481,9 +518,10 @@ function scoreCoalitionTactics(card: Card, _hand: Card[], state: GameState, botI
 
   // --- 5. Skip human → give ally the next turn (extra if it's the lead bot) ---
   if (card.type === 'skip' && nextPlayer && !nextPlayer.eliminated && !isAlly(nextPlayer)) {
-    const afterSkipIdx = getNextPlayerIndex(
+    const afterSkipIdx = getNextAliveIndex(
+      state.players,
       state.players.findIndex(p => p.id === nextPlayer.id),
-      state.players.length, state.direction);
+      state.direction);
     const afterSkipPlayer = state.players[afterSkipIdx];
     if (afterSkipPlayer && !afterSkipPlayer.eliminated && isAlly(afterSkipPlayer)) {
       score += (leadBot && afterSkipPlayer.id === leadBot.id) ? 10 : 5;
@@ -493,7 +531,7 @@ function scoreCoalitionTactics(card: Card, _hand: Card[], state: GameState, botI
   // --- 6. Reverse to position human as next player (extra if lead bot follows) ---
   if (card.type === 'reverse' && state.drawStack === 0) {
     const reversedDir = reverseDirection(state.direction);
-    const afterReverseIdx = getNextPlayerIndex(botIndex, state.players.length, reversedDir);
+    const afterReverseIdx = getNextAliveIndex(state.players, botIndex, reversedDir);
     const afterReversePlayer = state.players[afterReverseIdx];
     if (afterReversePlayer && !afterReversePlayer.eliminated && !isAlly(afterReversePlayer)) {
       if (nextPlayer && isAlly(nextPlayer)) {
@@ -592,7 +630,7 @@ export function evaluateCards(
   weights: PersonalityWeights,
 ): CardScore[] {
   const botIndex = state.players.findIndex(p => p.id === botId);
-  const nextIndex = getNextPlayerIndex(botIndex, state.players.length, state.direction);
+  const nextIndex = getNextAliveIndex(state.players, botIndex, state.direction);
   const nextPlayer = state.players[nextIndex];
   const bot = state.players[botIndex];
 
@@ -601,6 +639,7 @@ export function evaluateCards(
   const avgHandSize = alivePlayers.length > 0 ? alivePlayers.reduce((sum, p) => sum + p.hand.length, 0) / alivePlayers.length : 0;
 
   const isAlly = (player: Player): boolean => {
+    if (player.eliminated) return false;
     if (params.botCoalition && player.isBot) return true;
     if (params.considerTeamStrategy && state.settings.houseRules.teamMode
       && bot?.teamId !== undefined && player.teamId === bot.teamId) return true;
@@ -624,6 +663,7 @@ export function evaluateCards(
       cardConservation: scoreCardConservation(card, hand, playable, params, state),
       globalThreat: scoreGlobalThreat(card, state, botId, params, ctx),
       coalitionTactics: scoreCoalitionTactics(card, hand, state, botId, params, ctx),
+      wildFourRisk: scoreWildFourRisk(card, hand, state, params),
     };
 
     let score =
@@ -636,7 +676,8 @@ export function evaluateCards(
       factors.targetPressure * weights.targetPressure +
       factors.cardConservation * weights.cardConservation +
       factors.globalThreat * weights.globalThreat +
-      factors.coalitionTactics * weights.coalitionTactics;
+      factors.coalitionTactics * weights.coalitionTactics +
+      factors.wildFourRisk * weights.wildFourRisk;
 
     if (params.scoreNoise > 0) {
       score += (Math.random() * 2 - 1) * params.scoreNoise;

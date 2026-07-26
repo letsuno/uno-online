@@ -1,7 +1,7 @@
 export { createDeck, shuffleDeck, reshuffleDiscardIntoDeck, reshuffleSideFromDiscard, serializeDeck, serializeDecks, cardToIdentity } from './deck.js';
 export type { CardIdentity } from './deck.js';
 export { canPlayCard, getPlayableCards, isValidWildDrawFour, canRespondToDrawStack, isExactJumpInMatch } from './validation.js';
-export { getNextPlayerIndex, reverseDirection } from './turn.js';
+export { getNextPlayerIndex, getNextAliveIndex, countAlivePlayers, rotateHands, reverseDirection } from './turn.js';
 export { dealCards, handleFirstDiscard, initializeGame, initializeNextRound } from './setup.js';
 export type { DealResult, FirstCardEffect, FirstDiscardResult } from './setup.js';
 export { calculateRoundScore, calculateRoundScores } from './scoring.js';

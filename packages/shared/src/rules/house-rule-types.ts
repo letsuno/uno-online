@@ -40,6 +40,9 @@ export interface RuleContext {
   applyDoubleScore: (before: GameState, after: GameState) => GameState;
   canPlayCard: (card: Card, topCard: Card, currentColor: Color) => boolean;
   getNextPlayerIndex: (current: number, total: number, direction: Direction, skip?: number) => number;
+  getNextAliveIndex: (players: readonly { eliminated?: boolean }[], current: number, direction: Direction, skip?: number) => number;
+  countAlivePlayers: (players: readonly { eliminated?: boolean }[]) => number;
+  rotateHands: <P extends { eliminated?: boolean; hand: unknown[] }>(players: readonly P[], direction: Direction) => P[];
 }
 
 export interface HouseRulePlugin {

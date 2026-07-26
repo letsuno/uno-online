@@ -3,7 +3,7 @@ import type { Card } from '../types/card.js';
 import type { Color } from '../types/card.js';
 import { isWildCard } from '../types/card.js';
 import { canPlayCard } from './validation.js';
-import { getNextPlayerIndex } from './turn.js';
+import { getNextPlayerIndex, getNextAliveIndex, countAlivePlayers, rotateHands } from './turn.js';
 import { applyAction, checkRoundEnd, startPenaltyDraw, drawCards } from './game-engine.js';
 import type { RuleContext } from './house-rule-types.js';
 
@@ -72,7 +72,7 @@ export function putAttackCardOnStack(
   const players = state.players.map((p, i) =>
     i === state.currentPlayerIndex ? { ...p, hand: newHand, calledUno: newHand.length === 1 ? p.calledUno : false, unoCaught: false } : p,
   );
-  const nextIdx = getNextPlayerIndex(state.currentPlayerIndex, players.length, state.direction);
+  const nextIdx = getNextAliveIndex(players, state.currentPlayerIndex, state.direction);
   const newColor = card.type === 'draw_two' ? card.color : (action.chosenColor ?? state.currentColor);
 
   return checkRoundEnd({
@@ -144,5 +144,8 @@ export function buildRuleContext(): RuleContext {
     applyDoubleScore,
     canPlayCard,
     getNextPlayerIndex,
+    getNextAliveIndex,
+    countAlivePlayers,
+    rotateHands,
   };
 }

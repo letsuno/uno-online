@@ -32,7 +32,7 @@ export const jumpIn: HouseRulePlugin = {
       const players = state.players.map((p, i) =>
         i === jumperIdx ? { ...p, hand: newHand } : p,
       );
-      const nextIdx = ctx.getNextPlayerIndex(jumperIdx, players.length, state.direction);
+      const nextIdx = ctx.getNextAliveIndex(players, jumperIdx, state.direction);
       const baseState: GameState = {
         ...state,
         players,
@@ -48,16 +48,16 @@ export const jumpIn: HouseRulePlugin = {
             state: ctx.checkRoundEnd({
               ...baseState,
               currentColor: card.color,
-              currentPlayerIndex: ctx.getNextPlayerIndex(jumperIdx, players.length, state.direction, 1),
+              currentPlayerIndex: ctx.getNextAliveIndex(players, jumperIdx, state.direction, 1),
             }, action.playerId),
           };
         }
 
         case 'reverse': {
           const newDirection = reverseDirection(state.direction);
-          const newIdx = players.length === 2
+          const newIdx = ctx.countAlivePlayers(players) === 2
             ? jumperIdx
-            : ctx.getNextPlayerIndex(jumperIdx, players.length, newDirection);
+            : ctx.getNextAliveIndex(players, jumperIdx, newDirection);
           return {
             handled: true,
             state: ctx.checkRoundEnd({
@@ -72,7 +72,7 @@ export const jumpIn: HouseRulePlugin = {
         case 'draw_two': {
           const drawTarget = players[nextIdx]?.id;
           if (!drawTarget) break;
-          const skipNext = ctx.getNextPlayerIndex(jumperIdx, players.length, state.direction, 1);
+          const skipNext = ctx.getNextAliveIndex(players, jumperIdx, state.direction, 1);
           let penaltyState = ctx.startPenaltyDraw(
             { ...baseState, currentColor: card.color },
             drawTarget, 2, skipNext, action.playerId,
@@ -150,13 +150,7 @@ export const jumpIn: HouseRulePlugin = {
             };
           }
           if (hr.zeroRotateHands && card.value === 0) {
-            const hands = players.map(p => [...p.hand]);
-            const rotatedPlayers = players.map((p, i) => {
-              const sourceIdx = state.direction === 'clockwise'
-                ? (i - 1 + players.length) % players.length
-                : (i + 1) % players.length;
-              return { ...p, hand: hands[sourceIdx]! };
-            });
+            const rotatedPlayers = ctx.rotateHands(players, state.direction);
             return {
               handled: true,
               state: ctx.checkRoundEnd({

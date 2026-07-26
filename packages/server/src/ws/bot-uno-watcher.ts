@@ -160,6 +160,12 @@ export function checkBotJumpIn(
   );
   if (candidateBots.length === 0) return false;
 
+  // Shuffle so earlier-seated bots don't always win the race to jump in
+  for (let i = candidateBots.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidateBots[i], candidateBots[j]] = [candidateBots[j]!, candidateBots[i]!];
+  }
+
   // Find the first bot that can jump in
   for (const bot of candidateBots) {
     const actions = chooseBotJumpInAction(state, bot.id);

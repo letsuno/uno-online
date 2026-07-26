@@ -5,7 +5,7 @@ import type { UserRole } from '../types/role.js';
 import type { BotConfig } from '../types/bot.js';
 import { isColoredCard } from '../types/card.js';
 import { createDeck, shuffleDeck } from './deck.js';
-import { getNextPlayerIndex, reverseDirection } from './turn.js';
+import { getNextAliveIndex, reverseDirection } from './turn.js';
 import { INITIAL_HAND_SIZE } from '../constants/deck.js';
 import { DEFAULT_TARGET_SCORE, DEFAULT_TURN_TIME_LIMIT } from '../constants/scoring.js';
 import { DEFAULT_HOUSE_RULES } from '../types/house-rules.js';
@@ -103,7 +103,7 @@ function applyFirstDiscardEffect(
 
   switch (effect.type) {
     case 'skip':
-      currentPlayerIndex = getNextPlayerIndex(currentPlayerIndex, players.length, direction);
+      currentPlayerIndex = getNextAliveIndex(players, currentPlayerIndex, direction);
       break;
     case 'reverse':
       direction = reverseDirection(direction);
@@ -114,7 +114,7 @@ function applyFirstDiscardEffect(
         const drawn = deckAfterDiscard.splice(0, 2);
         targetPlayer.hand.push(...drawn);
       }
-      currentPlayerIndex = getNextPlayerIndex(currentPlayerIndex, players.length, direction);
+      currentPlayerIndex = getNextAliveIndex(players, currentPlayerIndex, direction);
       break;
     }
     case 'choose_color':
@@ -207,7 +207,10 @@ export function initializeNextRound(prevState: GameState): GameState {
   }
 
   const currentColor: Color | null = isColoredCard(topCard) ? topCard.color : null;
-  const startIdx = players.length > 0 ? prevState.currentPlayerIndex % players.length : 0;
+  let startIdx = players.length > 0 ? prevState.currentPlayerIndex % players.length : 0;
+  if (players[startIdx]?.eliminated) {
+    startIdx = getNextAliveIndex(players, startIdx, 'clockwise');
+  }
   const applied = applyFirstDiscardEffect(effect, players, startIdx, 'clockwise', deckAfterDiscard);
 
   return {

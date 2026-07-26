@@ -35,6 +35,7 @@ export const sevenSwapTarget: HouseRulePlugin = {
     if (!currentPlayer || currentPlayer.id !== action.playerId) return { handled: true, state };
     const targetIdx = state.players.findIndex(p => p.id === action.targetId);
     if (targetIdx === -1 || targetIdx === state.currentPlayerIndex) return { handled: true, state };
+    if (state.players[targetIdx]!.eliminated) return { handled: true, state };
     const currentHand = [...state.players[state.currentPlayerIndex]!.hand];
     const targetHand = [...state.players[targetIdx]!.hand];
     const players = state.players.map((p, i) => {
@@ -42,7 +43,7 @@ export const sevenSwapTarget: HouseRulePlugin = {
       if (i === targetIdx) return { ...p, hand: currentHand, calledUno: currentHand.length === 1, unoCaught: false };
       return p;
     });
-    const nextIdx = ctx.getNextPlayerIndex(state.currentPlayerIndex, players.length, state.direction);
+    const nextIdx = ctx.getNextAliveIndex(players, state.currentPlayerIndex, state.direction);
     return { handled: true, state: { ...state, players, phase: 'playing', currentPlayerIndex: nextIdx, lastAction: action } };
   },
 };

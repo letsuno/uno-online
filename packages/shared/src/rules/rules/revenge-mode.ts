@@ -19,7 +19,7 @@ export const revengeMode: HouseRulePlugin = {
     if (!prevTopCard || (prevTopCard.type !== 'draw_two' && prevTopCard.type !== 'wild_draw_four')) return after;
 
     if (playedCard.type === 'draw_two') {
-      const victimIdx = ctx.getNextPlayerIndex(before.currentPlayerIndex, before.players.length, before.direction);
+      const victimIdx = ctx.getNextAliveIndex(before.players, before.currentPlayerIndex, before.direction);
       const victimId = before.players[victimIdx]!.id;
       return ctx.startPenaltyDraw(after, victimId, 2, after.pendingPenaltyNextPlayerIndex ?? after.currentPlayerIndex);
     } else {

@@ -12,6 +12,7 @@ export interface PersonalityWeights {
   cardConservation: number;
   globalThreat: number;
   coalitionTactics: number;
+  wildFourRisk: number;
 }
 
 export const PERSONALITY_WEIGHTS: Record<BotPersonality, PersonalityWeights> = {
@@ -26,6 +27,7 @@ export const PERSONALITY_WEIGHTS: Record<BotPersonality, PersonalityWeights> = {
     cardConservation: 0.4,
     globalThreat: 1.4,
     coalitionTactics: 1.2,
+    wildFourRisk: 0.9,
   },
   defensive: {
     colorMatch: 1.5,
@@ -38,6 +40,7 @@ export const PERSONALITY_WEIGHTS: Record<BotPersonality, PersonalityWeights> = {
     cardConservation: 1.6,
     globalThreat: 0.8,
     coalitionTactics: 0.8,
+    wildFourRisk: 1.2,
   },
   chaotic: {
     colorMatch: 0.8,
@@ -50,6 +53,7 @@ export const PERSONALITY_WEIGHTS: Record<BotPersonality, PersonalityWeights> = {
     cardConservation: 0.3,
     globalThreat: 0.6,
     coalitionTactics: 0.5,
+    wildFourRisk: 0.5,
   },
   strategic: {
     colorMatch: 1.0,
@@ -62,6 +66,7 @@ export const PERSONALITY_WEIGHTS: Record<BotPersonality, PersonalityWeights> = {
     cardConservation: 1.5,
     globalThreat: 1.3,
     coalitionTactics: 1.4,
+    wildFourRisk: 1.2,
   },
   balanced: {
     colorMatch: 1.0,
@@ -74,5 +79,6 @@ export const PERSONALITY_WEIGHTS: Record<BotPersonality, PersonalityWeights> = {
     cardConservation: 1.0,
     globalThreat: 1.0,
     coalitionTactics: 1.0,
+    wildFourRisk: 1.0,
   },
 };

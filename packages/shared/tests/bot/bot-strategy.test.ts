@@ -134,7 +134,9 @@ describe('chooseBotAction — challenging phase', () => {
 
     const state = makeState({
       phase: 'challenging',
-      currentPlayerIndex: 1, // bot's turn in the challenging phase
+      // Engine convention: during challenging, currentPlayerIndex stays on
+      // the WD4 player (p2); the challenger is pendingDrawPlayerId.
+      currentPlayerIndex: 0,
       pendingDrawPlayerId: 'bot',
       players: [
         makePlayer('p2', 'Human', prevPlayerHand), // previous player who played WD4

@@ -22,6 +22,8 @@ export interface DifficultyParams {
   challengeRate: number;
   specialCardAwareness: number;
   finishRestrictionAwareness: boolean;
+  /** Knows that playing a WD4 while holding the current color is challengeable */
+  wildFourLegalityAwareness: boolean;
   conserveSpecialCards: boolean;
   globalThreatAwareness: boolean;
   botCoalition: boolean;
@@ -41,6 +43,7 @@ export const DIFFICULTY_PARAMS: Record<BotDifficulty, DifficultyParams> = {
     challengeRate: 0.0,
     specialCardAwareness: 0.0,
     finishRestrictionAwareness: false,
+    wildFourLegalityAwareness: false,
     conserveSpecialCards: false,
     globalThreatAwareness: false,
     botCoalition: false,
@@ -58,6 +61,7 @@ export const DIFFICULTY_PARAMS: Record<BotDifficulty, DifficultyParams> = {
     challengeRate: 0.1,
     specialCardAwareness: 0.2,
     finishRestrictionAwareness: false,
+    wildFourLegalityAwareness: false,
     conserveSpecialCards: false,
     globalThreatAwareness: false,
     botCoalition: false,
@@ -75,6 +79,7 @@ export const DIFFICULTY_PARAMS: Record<BotDifficulty, DifficultyParams> = {
     challengeRate: 0.3,
     specialCardAwareness: 0.6,
     finishRestrictionAwareness: true,
+    wildFourLegalityAwareness: true,
     conserveSpecialCards: true,
     globalThreatAwareness: true,
     botCoalition: true,
@@ -92,6 +97,7 @@ export const DIFFICULTY_PARAMS: Record<BotDifficulty, DifficultyParams> = {
     challengeRate: -1,
     specialCardAwareness: 1.0,
     finishRestrictionAwareness: true,
+    wildFourLegalityAwareness: true,
     conserveSpecialCards: true,
     globalThreatAwareness: true,
     botCoalition: true,

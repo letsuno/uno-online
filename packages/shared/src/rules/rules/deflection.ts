@@ -32,7 +32,7 @@ export const deflection: HouseRulePlugin = {
         );
         const wd4PlayerIdx = state.currentPlayerIndex;
         const wd4PlayerId = state.players[wd4PlayerIdx]!.id;
-        const afterPenaltyNextIdx = ctx.getNextPlayerIndex(wd4PlayerIdx, players.length, newDirection);
+        const afterPenaltyNextIdx = ctx.getNextAliveIndex(players, wd4PlayerIdx, newDirection);
         const baseState = checkRoundEnd({
           ...state,
           players,
@@ -54,9 +54,9 @@ export const deflection: HouseRulePlugin = {
         const players = state.players.map((p, i) =>
           i === playerIdx ? { ...p, hand: newHand } : p,
         );
-        const nextIdx = ctx.getNextPlayerIndex(playerIdx, players.length, state.direction);
+        const nextIdx = ctx.getNextAliveIndex(players, playerIdx, state.direction);
         const nextPlayerId = state.players[nextIdx]!.id;
-        const afterPenaltyNextIdx = ctx.getNextPlayerIndex(nextIdx, players.length, state.direction);
+        const afterPenaltyNextIdx = ctx.getNextAliveIndex(players, nextIdx, state.direction);
         const baseState = checkRoundEnd({
           ...state,
           players,
@@ -92,7 +92,7 @@ export const deflection: HouseRulePlugin = {
       const players = state.players.map((p, i) =>
         i === state.currentPlayerIndex ? { ...p, hand: newHand } : p,
       );
-      const nextIdx = ctx.getNextPlayerIndex(state.currentPlayerIndex, players.length, newDirection);
+      const nextIdx = ctx.getNextAliveIndex(players, state.currentPlayerIndex, newDirection);
       return {
         handled: true,
         state: checkRoundEnd({
@@ -112,7 +112,7 @@ export const deflection: HouseRulePlugin = {
       const players = state.players.map((p, i) =>
         i === state.currentPlayerIndex ? { ...p, hand: newHand } : p,
       );
-      const nextIdx = ctx.getNextPlayerIndex(state.currentPlayerIndex, players.length, state.direction);
+      const nextIdx = ctx.getNextAliveIndex(players, state.currentPlayerIndex, state.direction);
       return {
         handled: true,
         state: checkRoundEnd({

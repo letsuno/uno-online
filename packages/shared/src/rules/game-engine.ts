@@ -2,7 +2,7 @@ import type { GameState, GameAction, DrawSide } from '../types/game.js';
 import type { Color } from '../types/card.js';
 import { reshuffleSideFromDiscard } from './deck.js';
 import { canPlayCard, isValidWildDrawFour, canRespondToDrawStack as canRespondToDrawStackPure } from './validation.js';
-import { getNextPlayerIndex, reverseDirection } from './turn.js';
+import { getNextAliveIndex, countAlivePlayers, reverseDirection } from './turn.js';
 import { calculateRoundScores } from './scoring.js';
 import { UNO_PENALTY_CARDS } from '../constants/scoring.js';
 
@@ -291,8 +291,6 @@ function handlePlayCard(
     lastAction: action,
   };
 
-  const playerCount = state.players.length;
-
   // Apply card-specific effects
   switch (card.type) {
     case 'number': {
@@ -300,7 +298,7 @@ function handlePlayCard(
       newState = {
         ...newState,
         currentColor: newColor,
-        currentPlayerIndex: getNextPlayerIndex(actingPlayerIdx, playerCount, state.direction),
+        currentPlayerIndex: getNextAliveIndex(state.players, actingPlayerIdx, state.direction),
       };
       break;
     }
@@ -309,15 +307,15 @@ function handlePlayCard(
       newState = {
         ...newState,
         currentColor: card.color,
-        // Skip next player: advance by 2 (skip=1 means advance by 1+1=2)
-        currentPlayerIndex: getNextPlayerIndex(actingPlayerIdx, playerCount, state.direction, 1),
+        // Skip next player: advance past 2 alive players (skip=1 means 1+1=2)
+        currentPlayerIndex: getNextAliveIndex(state.players, actingPlayerIdx, state.direction, 1),
       };
       break;
     }
 
     case 'reverse': {
       const newDirection = reverseDirection(state.direction);
-      if (playerCount === 2) {
+      if (countAlivePlayers(state.players) === 2) {
         // In 2-player, reverse acts as skip: current player keeps the turn
         newState = {
           ...newState,
@@ -331,20 +329,20 @@ function handlePlayCard(
           ...newState,
           currentColor: card.color,
           direction: newDirection,
-          currentPlayerIndex: getNextPlayerIndex(actingPlayerIdx, playerCount, newDirection),
+          currentPlayerIndex: getNextAliveIndex(state.players, actingPlayerIdx, newDirection),
         };
       }
       break;
     }
 
     case 'draw_two': {
-      const nextIdx = getNextPlayerIndex(actingPlayerIdx, playerCount, state.direction);
+      const nextIdx = getNextAliveIndex(state.players, actingPlayerIdx, state.direction);
       const nextPlayerId = state.players[nextIdx]!.id;
       newState = startPenaltyDraw(
         { ...newState, currentColor: card.color },
         nextPlayerId,
         2,
-        getNextPlayerIndex(actingPlayerIdx, playerCount, state.direction, 1),
+        getNextAliveIndex(state.players, actingPlayerIdx, state.direction, 1),
         actingPlayer.id,
       );
       break;
@@ -361,7 +359,7 @@ function handlePlayCard(
     }
 
     case 'wild_draw_four': {
-      const nextIdx = getNextPlayerIndex(actingPlayerIdx, playerCount, state.direction);
+      const nextIdx = getNextAliveIndex(state.players, actingPlayerIdx, state.direction);
       const nextPlayerId = state.players[nextIdx]!.id;
       newState = {
         ...newState,
@@ -413,9 +411,9 @@ function handlePass(
     }
   }
 
-  const newIndex = getNextPlayerIndex(
+  const newIndex = getNextAliveIndex(
+    state.players,
     state.currentPlayerIndex,
-    state.players.length,
     state.direction,
   );
   return {
@@ -444,9 +442,9 @@ function handleChooseColor(
       lastAction: action,
     };
   } else {
-    const newIndex = getNextPlayerIndex(
+    const newIndex = getNextAliveIndex(
+      colorState.players,
       colorState.currentPlayerIndex,
-      colorState.players.length,
       colorState.direction,
     );
     return drainPenaltyQueue({
@@ -473,7 +471,7 @@ function handleChallenge(
   const wd4WasLegal = isValidWildDrawFour(wd4Player.hand, prevColor);
 
   if (wd4WasLegal) {
-    const nextIdx = getNextPlayerIndex(challengerIdx, state.players.length, state.direction);
+    const nextIdx = getNextAliveIndex(state.players, challengerIdx, state.direction);
     return startPenaltyDraw({
       ...state,
       phase: 'playing',
@@ -482,7 +480,7 @@ function handleChallenge(
     }, action.playerId, 6, nextIdx, state.lastAction?.type === 'CHOOSE_COLOR' ? wd4Player.id : null);
   }
 
-  const nextIdx = getNextPlayerIndex(wd4PlayerIdx, state.players.length, state.direction);
+  const nextIdx = getNextAliveIndex(state.players, wd4PlayerIdx, state.direction);
   return startPenaltyDraw({
     ...state,
     phase: 'playing',
@@ -499,7 +497,7 @@ function handleAccept(
 
   const wd4PlayerId = currentPlayerId(state);
   const accepterIdx = playerIndex(state, action.playerId);
-  const nextIdx = getNextPlayerIndex(accepterIdx, state.players.length, state.direction);
+  const nextIdx = getNextAliveIndex(state.players, accepterIdx, state.direction);
   return startPenaltyDraw({
     ...state,
     phase: 'playing',
