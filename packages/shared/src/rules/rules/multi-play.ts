@@ -19,7 +19,7 @@ export const multiPlayPass: HouseRulePlugin = {
     const topCard = state.discardPile[state.discardPile.length - 1];
     if (topCard?.type !== 'number') return { handled: false };
 
-    const nextIdx = ctx.getNextPlayerIndex(state.currentPlayerIndex, state.players.length, state.direction);
+    const nextIdx = ctx.getNextAliveIndex(state.players, state.currentPlayerIndex, state.direction);
     let result: GameState = { ...state, currentPlayerIndex: nextIdx, lastAction: action };
 
     if (hr.bombCard) {
@@ -32,7 +32,7 @@ export const multiPlayPass: HouseRulePlugin = {
       }
       if (bombCount >= 3) {
         for (const p of result.players) {
-          if (p.id !== player.id) {
+          if (p.id !== player.id && !p.eliminated) {
             result = ctx.startPenaltyDraw(result, p.id, 1, nextIdx);
           }
         }

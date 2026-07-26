@@ -93,7 +93,7 @@ export const stacking: HouseRulePlugin = {
       if ((state.pendingPenaltyDraws ?? 0) > 0) return { handled: false };
       const player = state.players[state.currentPlayerIndex];
       if (!player || player.id !== action.playerId) return { handled: true, state };
-      const nextIdx = ctx.getNextPlayerIndex(state.currentPlayerIndex, state.players.length, state.direction);
+      const nextIdx = ctx.getNextAliveIndex(state.players, state.currentPlayerIndex, state.direction);
       const pendingState = ctx.startPenaltyDraw(
         { ...state, drawStack: 0, lastAction: action },
         action.playerId,
