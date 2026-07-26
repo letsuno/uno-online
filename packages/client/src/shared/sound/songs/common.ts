@@ -8,6 +8,7 @@ export const C5 = 523.25, D5 = 587.33, E5 = 659.25, F5 = 698.46, G5 = 783.99, A5
 export const C6 = 1046.50, D6 = 1174.66;
 
 export const Fs3 = 185.00, Fs4 = 369.99, Fs5 = 739.99;
+export const Cs3 = 138.59, Cs4 = 277.18, Cs5 = 554.37;
 export const Bb2 = 116.54, Bb3 = 233.08, Bb4 = 466.16, Bb5 = 932.33;
 
 export type N = number | null;
