@@ -1,6 +1,6 @@
 {
   "name": "@uno-online/admin",
-  "version": "0.11.0-beta.1",
+  "version": "0.11.0",
   "private": true,
   "type": "module",
   "scripts": {
