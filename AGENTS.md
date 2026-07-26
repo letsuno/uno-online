@@ -4,13 +4,14 @@
 
 ## 项目结构
 
-pnpm monorepo，五个包：
+pnpm monorepo，六个包：
 
 - `packages/shared` — 游戏类型、规则引擎、常量（纯逻辑，无 IO 依赖）
 - `packages/server` — Fastify + Socket.IO 后端，SQLite 持久化，插件架构
 - `packages/client` — React 19 + Vite 8 前端，Tailwind CSS v4，Feature 模块架构
 - `packages/admin` — 管理后台（独立 React 应用）
 - `packages/mcp` — MCP 服务端，让 AI 客户端通过 MCP 工具玩游戏（Socket.IO 客户端桥接层）
+- `packages/e2e` — Playwright 驱动的 e2e 脚手架（拟人回归、触摸手势、性能采样、视觉/罗盘探针；`lib/driver.mjs` 依赖 dev-only `window.__uno` 钩子，生产构建需 localStorage `uno-e2e=1`；`UNO_CLIENT_URL` 可覆盖目标地址，默认 `http://127.0.0.1:5173`）
 
 ## 快速开始
 
@@ -38,7 +39,7 @@ pnpm --filter admin dev                                         # 管理后台 :
 
 ```
 plugins/core/     — auth, profile, admin, room, game, server-info, interaction, spectate, api-key
-plugins/features/ — 扩展功能（签到、积分、商店等）
+plugins/features/ — 扩展功能预留目录（当前尚无插件，新功能按插件扩展规范放这里）
 ```
 
 ### 客户端 Feature 模块
@@ -80,6 +81,7 @@ src/
 │   ├── room.ts           # 10 个房间管理工具
 │   ├── game.ts           # 11 个游戏操作工具
 │   └── query.ts          # 4 个查询工具
+├── utils.ts
 └── types.ts
 ```
 
@@ -92,6 +94,8 @@ pnpm --filter shared build                   # 构建 shared（生成类型声�
 pnpm --filter server exec tsc --noEmit       # 服务端类型检查
 pnpm --filter client exec tsc --noEmit       # 客户端类型检查（需先 build shared）
 pnpm --filter client build                   # 客户端生产构建（需先 build shared）
+node packages/client/scripts/generate-card-themes.mjs   # 重新生成内置卡面主题资源包（public/card-themes/）
+node packages/e2e/human.mjs                  # 拟人 e2e 回归（需 dev 前后端已启动）
 ```
 
 ### 验证流程
@@ -127,9 +131,8 @@ cd packages/mcp && npm publish --access public       # 3. 发布到 npm
 ```
 
 发布前检查：
-- 确认 `packages/mcp/package.json` 中的 `version` 已更新
+- 确认 `packages/mcp/package.json` 中的 `version` 已更新（`pnpm run version:sync` 自动同步，`McpServer` 版本号由 tsup 构建时注入 `__PKG_VERSION__`，无需手动改）
 - `npm pack --dry-run` 预览包内容（应只含 `dist/index.js` + `package.json`）
-- `packages/mcp/src/server.ts` 中 `McpServer` 构造参数的 `version` 与 package.json 一致
 
 ### 版本号更新流程
 
@@ -210,7 +213,7 @@ See `README.md` for user-facing docs. 本文件即项目的 agent 开发文档�
 - Repository: `https://github.com/letsuno/uno-online`
 - All API routes are registered under `/api` prefix (e.g. `/api/health`, `/api/auth/login`, `/api/server/info`).
 - `DEV_MODE=true` bypasses GitHub OAuth — login with any username. `JWT_SECRET` env var is **required**.
-- Redis is **optional**; the server falls back to an in-memory KV store. Without Redis, some server tests (`room-store`, `room-manager`, `game-store`) will fail — this is expected. Core game-engine and auth tests pass without Redis.
+- Redis is **optional**; the server falls back to an in-memory KV store. The full server test suite passes without Redis.
 - SQLite uses Node.js 22 built-in `node:sqlite` (zero native deps). Database tables are auto-created on startup.
 - The client Vite dev server proxies `/api` and `/socket.io` to `localhost:3001`; the admin dev server proxies `/api`. The `/api` proxy must **not** rewrite the path (the server expects the `/api` prefix).
 - `pnpm test` runs vitest across all packages. `pnpm --filter shared test` is the fastest validation (pure logic, no IO deps).
