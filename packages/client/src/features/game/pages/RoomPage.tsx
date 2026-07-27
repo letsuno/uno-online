@@ -6,7 +6,8 @@ import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useRoomStore } from '@/shared/stores/room-store';
 import type { RoomSeatPlayer } from '@/shared/stores/room-store';
 import { useGameStore } from '../stores/game-store';
-import { getSocket, connectSocket, refreshVoicePresence } from '@/shared/socket';
+import { getSocket, connectSocket, refreshVoicePresence, onConnectionStatus, getConnectionStatus, type ConnectionStatus } from '@/shared/socket';
+import { recordRoomJoin, isRoomJoinCurrent } from '@/shared/room-join-tracker';
 import VoicePanel from '@/shared/voice/VoicePanel';
 import { useToastStore } from '@/shared/stores/toast-store';
 import { showConfirm } from '@/shared/stores/confirm-store';
@@ -63,12 +64,13 @@ export default function RoomPage() {
     const socket = getSocket();
     let cancelled = false;
 
-    const tryRejoin = () => {
+    const tryRejoin = (force = false) => {
       if (cancelled || !roomCode) return;
-      if (useRoomStore.getState().roomCode === roomCode) return;
+      if (!force && useRoomStore.getState().roomCode === roomCode) return;
       socket.emit('room:rejoin', roomCode, (res: any) => {
         if (cancelled) return;
         if (res.success) {
+          recordRoomJoin(roomCode, socket.id);
           if (res.seats && res.spectators && res.room) {
             setRoom(roomCode, res.seats, res.spectators, res.room);
             refreshVoicePresence();
@@ -83,12 +85,28 @@ export default function RoomPage() {
       });
     };
 
-    if (useRoomStore.getState().roomCode !== roomCode) {
-      if (socket.connected) tryRejoin();
-      socket.on('connect', tryRejoin);
-    } else {
+    // 断线重连（含在大厅页完成的重连）后服务端是一个全新 socket（不在任何
+    // 房间的广播组里），若只信任本地 store 跳过 rejoin，本页收不到任何房间
+    // 广播，30 秒后还会被断线清理静默移出座位。但**同一连接内**的页面往返
+    // （对局页按返回键回到本页）不需要——那会被服务端当作玩家重连，产生
+    // 关托管、撤销 round_end 投票、全房广播等副作用。以 join-tracker 记录
+    // 的连接身份区分两种情况;rejoin 对"已在房间"的用户是幂等的。
+    if (socket.connected) {
+      if (isRoomJoinCurrent(roomCode ?? '', socket.id)) {
+        // 已在广播组里。若对局还在进行(从对局页返回),直接回对局。
+        const phase = useGameStore.getState().phase;
+        if (phase && phase !== 'game_over' && useRoomStore.getState().roomCode === roomCode) {
+          navigate(`/game/${roomCode}`);
+        }
+      } else {
+        tryRejoin(true);
+      }
+    }
+    if (useRoomStore.getState().roomCode === roomCode) {
       refreshVoicePresence();
     }
+    const onReconnect = () => tryRejoin(true);
+    socket.on('connect', onReconnect);
 
     const onState = (view: any) => {
       setGameState(view);
@@ -98,10 +116,14 @@ export default function RoomPage() {
     socket.on('game:state', onState);
     return () => {
       cancelled = true;
-      socket.off('connect', tryRejoin);
+      socket.off('connect', onReconnect);
       socket.off('game:state', onState);
     };
   }, [roomCode, navigate, setGameState]);
+
+  /* 连接状态:断线时给出提示与手动重连入口(等待室没有 GamePage 的遮罩) */
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(getConnectionStatus);
+  useEffect(() => onConnectionStatus(setConnectionStatus), []);
 
   /* Socket listeners for swap requests */
   useEffect(() => {
@@ -284,6 +306,20 @@ export default function RoomPage() {
 
   return (
     <GamePageShell>
+      {connectionStatus !== 'connected' && (
+        <div className="fixed left-1/2 top-3 z-connection -translate-x-1/2 flex items-center gap-3 rounded-lg bg-black/80 px-4 py-2 text-sm text-white shadow-lg">
+          <span>{connectionStatus === 'reconnecting' ? '连接断开,重连中…' : '连接已断开'}</span>
+          {connectionStatus === 'disconnected' && (
+            <button
+              type="button"
+              onClick={() => connectSocket()}
+              className="rounded bg-primary px-3 py-1 font-game text-primary-foreground hover:opacity-90"
+            >
+              重新连接
+            </button>
+          )}
+        </div>
+      )}
       <FitScaler align="center" maxScale={1} className="absolute inset-0 z-card">
         <div className="flex flex-col items-center gap-6 w-[760px] portrait:w-[440px]">
         {/* Title */}
