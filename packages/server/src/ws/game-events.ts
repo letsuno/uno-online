@@ -4,7 +4,7 @@ import type { ChatMessage, Color, GameAction } from '@uno-online/shared';
 import { chooseAutopilotJumpInAction } from '@uno-online/shared';
 import { GameSession } from '../plugins/core/game/session.js';
 import { deleteGameState, type GameStatePersister } from '../plugins/core/game/state-store.js';
-import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts } from './room-events.js';
+import { emitGameUpdate, setAutopilotActionHandler, startTurnTimer, resetPlayerTimeout, clearRoomTimeouts, enforceBlitzDeadline } from './room-events.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import { getRoom, setRoomStatus, setRoomOwner, touchRoomActivity, clearSeatByUserId, setUserRoom, getRoomSeats, setRoomSeats, getRoomSpectators, getSeatedPlayers, addSpectatorToRoom, removeSpectatorFromRoom, clearRoomSpectators, takeSeat, getFirstEmptySeatIndex, clearUserRoom, findNextOwner } from '../plugins/core/room/store.js';
 import { MAX_PLAYERS, MIN_PLAYERS, SEAT_COUNT } from '@uno-online/shared';
@@ -56,6 +56,12 @@ function buildChatMessage(user: SocketData['user'], text: string, isSpectator = 
 
 const nextRoundVotes = new Map<string, Set<string>>();
 const roundEndTimestamps = new Map<string, number>();
+// Rooms whose next round is mid-start; blocks concurrent game:next_round.
+const startingNextRounds = new Set<string>();
+// Rooms whose terminal announcement is mid-flight: the anchor is only set
+// AFTER an await, so without this synchronous marker two drivers could both
+// pass the has-anchor check and double-announce.
+const emittingTerminal = new Set<string>();
 const NEXT_ROUND_COOLDOWN_MS = 10_000;
 const pendingSpectatorJoins = new Map<string, Map<string, { userId: string; nickname: string; avatarUrl?: string | null; role?: string; isBot?: boolean; socketId: string }>>();
 const AUTOPILOT_JUMP_IN_DELAY_MS = 2_000;
@@ -139,7 +145,7 @@ export function removePlayerVote(roomCode: string, playerId: string, session: Ga
   }
 }
 
-function clearAutopilotJumpIn(roomCode: string): void {
+export function clearAutopilotJumpIn(roomCode: string): void {
   const timer = autopilotJumpInTimers.get(roomCode);
   if (!timer) return;
   clearTimeout(timer);
@@ -224,7 +230,8 @@ function scheduleAutopilotJumpIn(
 
 function getNextRoundVoteState(roomCode: string, session: GameSession): NextRoundVoteState {
   const players = session.getFullState().players;
-  const humanPlayerIds = new Set(players.filter((p) => !p.isBot).map((p) => p.id));
+  // 被淘汰的真人不再是"必需投票者"，否则挂机的淘汰者会永久卡住下一轮
+  const humanPlayerIds = new Set(players.filter((p) => !p.isBot && !p.eliminated).map((p) => p.id));
   const allVoters = [...(nextRoundVotes.get(roomCode) ?? new Set<string>())];
   const humanVoters = allVoters.filter((id) => humanPlayerIds.has(id));
   return {
@@ -241,6 +248,49 @@ export function getRoundEndAt(roomCode: string): number | null {
 export function getRoundEndVoteState(roomCode: string, session: GameSession): NextRoundVoteState | null {
   if (!session.isRoundEnd()) return null;
   return getNextRoundVoteState(roomCode, session);
+}
+
+/** Drop per-room vote state so a dissolved room can't leak it into a reused room code. */
+export function clearRoomVoteState(roomCode: string): void {
+  nextRoundVotes.delete(roomCode);
+  roundEndTimestamps.delete(roomCode);
+}
+
+/**
+ * For terminal transitions announced OUTSIDE emitTerminalStateIfNeeded (the
+ * blitz force-game-over path): stamp the anchor so rejoin replays work and
+ * the idempotency guard sees this terminal state as already handled, and
+ * drop the round_end votes it supersedes.
+ */
+export function markTerminalHandled(roomCode: string, at: number): void {
+  nextRoundVotes.delete(roomCode);
+  roundEndTimestamps.set(roomCode, at);
+}
+
+/**
+ * After a server restart the in-memory auto-votes from emitTerminalStateIfNeeded
+ * are gone; a session restored mid round_end would wait forever on players who
+ * can never vote (bots / offline / eliminated). Re-seed them. Connected humans
+ * with manual autopilot are NOT reseeded — consent stays with the person.
+ */
+export function reseedTerminalVotes(io: SocketIOServer, roomCode: string, session: GameSession): void {
+  const state = session.getFullState();
+  if (state.phase !== 'round_end' && state.phase !== 'game_over') return;
+  // Restore the cooldown anchor too: without it a full auto-vote set would
+  // let the owner skip straight past the 10s cooldown, and terminal-event
+  // replays (both game:round_end and game:over) would have no timestamp to
+  // anchor client countdowns to.
+  if (!roundEndTimestamps.has(roomCode)) {
+    roundEndTimestamps.set(roomCode, Date.now());
+  }
+  // game_over needs only the anchor — there is no next-round vote to seed.
+  if (state.phase !== 'round_end') return;
+  const votes = nextRoundVotes.get(roomCode) ?? new Set<string>();
+  for (const p of state.players) {
+    if (p.isBot || !p.connected || p.eliminated) votes.add(p.id);
+  }
+  nextRoundVotes.set(roomCode, votes);
+  io.to(roomCode).emit('game:next_round_vote', getNextRoundVoteState(roomCode, session));
 }
 
 async function processPendingSpectatorJoins(
@@ -267,8 +317,37 @@ async function processPendingSpectatorJoins(
       joined.push(userId);
       continue;
     }
-    (sock.data as SocketData).isSpectator = false;
+    // Claim the kv seat FIRST — it can fail (a concurrent room:add_bot or
+    // seat:take may grab the slot between our read and the seat lock), and
+    // an exception after the identity flips would strand the user as a
+    // session player with no seat and kill startNextRound halfway.
+    let seated = false;
+    for (let attempt = 0; attempt < 2 && !seated; attempt++) {
+      const seats = await getRoomSeats(redis, roomCode);
+      const seatIdx = getFirstEmptySeatIndex(seats);
+      if (seatIdx === -1) break;
+      try {
+        await takeSeat(redis, roomCode, seatIdx, {
+          userId,
+          nickname: info.nickname,
+          avatarUrl: info.avatarUrl,
+          role: info.role,
+          isBot: info.isBot ?? false,
+          ready: false,
+          connected: true,
+        });
+        seated = true;
+      } catch {
+        // Slot raced away — re-read and try the next empty one.
+      }
+    }
+    if (!seated) {
+      // No seat could be claimed; leave the user a spectator (and in the
+      // queue) rather than a half-promoted ghost.
+      continue;
+    }
 
+    (sock.data as SocketData).isSpectator = false;
     await removeSpectatorFromRoom(redis, roomCode, userId);
     session.addPlayer({
       id: userId,
@@ -277,19 +356,6 @@ async function processPendingSpectatorJoins(
       role: info.role as any,
       isBot: info.isBot,
     });
-    const seats = await getRoomSeats(redis, roomCode);
-    const seatIdx = getFirstEmptySeatIndex(seats);
-    if (seatIdx !== -1) {
-      await takeSeat(redis, roomCode, seatIdx, {
-        userId,
-        nickname: info.nickname,
-        avatarUrl: info.avatarUrl,
-        role: info.role,
-        isBot: info.isBot ?? false,
-        ready: false,
-        connected: true,
-      });
-    }
     userRoomWrites.push(setUserRoom(redis, userId, roomCode));
     joined.push(userId);
   }
@@ -322,11 +388,23 @@ async function startNextRound(
   turnTimer: TurnTimer,
   sessions: Map<string, GameSession>,
   persister: GameStatePersister,
-): Promise<void> {
+): Promise<boolean> {
+  // The blitz total-time deadline may have expired while the room sat on
+  // the scoreboard (the timer refuses to end a game mid-settlement) — a
+  // round that should never exist must not be dealt.
+  if (await enforceBlitzDeadline(io, redis, roomCode, session, turnTimer, persister)) {
+    return false;
+  }
   nextRoundVotes.delete(roomCode);
   roundEndTimestamps.delete(roomCode);
   await processPendingSpectatorJoins(io, redis, roomCode, session);
   session.startNextRound();
+  // Re-clear: a driver (e.g. a CALL_UNO handler) racing the await above can
+  // observe the still-round_end phase after the first clear and re-stamp the
+  // anchor via emitTerminalStateIfNeeded — leaked into the new round it
+  // would short-circuit the NEXT genuine terminal announcement.
+  nextRoundVotes.delete(roomCode);
+  roundEndTimestamps.delete(roomCode);
   persister.markDirty(roomCode, session.getFullState());
   await Promise.all([
     touchRoomActivity(redis, roomCode),
@@ -345,6 +423,7 @@ async function startNextRound(
     }
   }
   startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
+  return true;
 }
 
 export async function emitTerminalStateIfNeeded(
@@ -359,10 +438,37 @@ export async function emitTerminalStateIfNeeded(
   const state = session.getFullState();
   if (state.phase !== 'round_end' && state.phase !== 'game_over') return false;
 
+  // Orphan guard: a timer callback may still hold a session whose room was
+  // dissolved (or replaced) while it awaited. Announcing its terminal state
+  // would resurrect votes/timestamps/room-status kv for a dead room.
+  // Returning true tells the caller to stop driving this session.
+  if (sessions.get(roomCode) !== session) return true;
+
+  // Idempotency: two drivers can observe the same terminal state (autoplay
+  // interval vs turn timer, an action handler racing a timeout). The anchor
+  // doubles as the "already handled" marker — a second pass must not
+  // re-broadcast, move the cooldown anchor, or wipe votes cast since the
+  // first pass. startNextRound / back_to_room / dissolve clear the anchor.
+  // emittingTerminal closes the check→await→set window synchronously.
+  if (roundEndTimestamps.has(roomCode) || emittingTerminal.has(roomCode)) return true;
+  emittingTerminal.add(roomCode);
+  try {
+
   await persister.flushNow(roomCode);
 
+  // Re-validate after the await: startNextRound may have flipped the phase
+  // to playing while we flushed — announcing (and stopping the fresh turn
+  // timer) now would sabotage the round that just started.
+  {
+    const fresh = session.getFullState();
+    if (fresh.phase !== 'round_end' && fresh.phase !== 'game_over') return false;
+    if (sessions.get(roomCode) !== session) return true;
+  }
+
   turnTimer.stop(roomCode);
-  clearRoomTimeouts(roomCode);
+  // round_end keeps the blitz clock alive — the total-time limit spans the
+  // whole game, not one round.
+  clearRoomTimeouts(roomCode, { keepBlitz: state.phase === 'round_end' });
 
   const terminalAt = Date.now();
   roundEndTimestamps.set(roomCode, terminalAt);
@@ -385,8 +491,11 @@ export async function emitTerminalStateIfNeeded(
   if (state.phase === 'round_end') {
     nextRoundVotes.delete(roomCode);
 
+    // Auto-vote means "this player cannot click": bots, the genuinely
+    // offline, and the eliminated. Connected humans who merely enabled
+    // autopilot still consent to the next round themselves.
     const autoVoteIds = state.players
-      .filter((p) => p.isBot || p.autopilot || !p.connected)
+      .filter((p) => p.isBot || !p.connected || p.eliminated)
       .map((p) => p.id);
     if (autoVoteIds.length > 0) {
       const votes = nextRoundVotes.get(roomCode) ?? new Set<string>();
@@ -413,6 +522,10 @@ export async function emitTerminalStateIfNeeded(
   await checkOwnerDisconnectedAtTerminal(roomCode, session);
 
   return true;
+
+  } finally {
+    emittingTerminal.delete(roomCode);
+  }
 }
 
 let autopilotHandlerSet = false;
@@ -685,8 +798,21 @@ export function registerGameEvents(
       if (endedAt && Date.now() - endedAt < NEXT_ROUND_COOLDOWN_MS) {
         return callback?.({ success: true, started: false, vote: voteState });
       }
-      await startNextRound(io, redis, roomCode, session, turnTimer, sessions, persister);
-      return callback?.({ success: true, started: true, vote: voteState });
+      // Reentry guard: startNextRound's first act is deleting the cooldown
+      // anchor, so a concurrent second event (double-click burst) would
+      // sail past the checks above — required===0 even bypasses
+      // hadAlreadyVoted — and deal the round twice.
+      if (startingNextRounds.has(roomCode)) {
+        return callback?.({ success: true, started: false, vote: voteState });
+      }
+      startingNextRounds.add(roomCode);
+      let started = false;
+      try {
+        started = await startNextRound(io, redis, roomCode, session, turnTimer, sessions, persister);
+      } finally {
+        startingNextRounds.delete(roomCode);
+      }
+      return callback?.({ success: true, started, vote: voteState });
     }
 
     callback?.({ success: true, started: false, vote: voteState });

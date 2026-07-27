@@ -6,7 +6,7 @@ import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import type { VoiceChannelManager } from '../voice/channel-manager.js';
 import { clearRoomTimeouts } from './room-events.js';
-import { clearPendingSpectatorJoins } from './game-events.js';
+import { clearPendingSpectatorJoins, clearRoomVoteState, clearAutopilotJumpIn } from './game-events.js';
 import { clearPendingSwapRequests } from './seat-events.js';
 import { leaveRoomSocket } from './socket-room.js';
 import { clearVoicePresence } from './voice-presence.js';
@@ -26,6 +26,8 @@ export async function dissolveRoom(
   turnTimer.stop(roomCode);
   clearRoomTimeouts(roomCode);
   clearPendingSpectatorJoins(roomCode);
+  clearRoomVoteState(roomCode);
+  clearAutopilotJumpIn(roomCode);
   await clearRoomSpectators(kv, roomCode);
   clearPendingSwapRequests(roomCode);
   persister.cleanup(roomCode);

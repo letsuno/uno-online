@@ -66,6 +66,17 @@ export function scheduleOwnerTransfer(roomCode: string, ownerId: string): void {
     await setRoomOwner(_redis, roomCode, nextOwnerId);
     const updatedRoom = await getRoom(_redis, roomCode);
     _io.to(roomCode).emit('room:updated', { room: updatedRoom });
+    // pickNextOwner may fall back to a disconnected human (everyone else is
+    // in a grace window). An offline owner unblocks nothing at a terminal
+    // scoreboard — keep the chain moving until it lands on someone online.
+    // Bounded: the all-disconnect timer dissolves fully-abandoned rooms.
+    const s = _sessions.get(roomCode);
+    if (s && (s.isRoundEnd() || s.isGameOver())) {
+      const newOwner = s.getFullState().players.find(p => p.id === nextOwnerId);
+      if (newOwner && !newOwner.connected) {
+        scheduleOwnerTransfer(roomCode, nextOwnerId);
+      }
+    }
   }, OWNER_TRANSFER_DELAY_S * 1000);
   timer.unref?.();
   ownerTransferTimers.set(roomCode, timer);
