@@ -56,6 +56,10 @@ export function clearPendingSwapRequests(roomCode: string): void {
       pendingSwapRequests.delete(key);
     }
   }
+  // Cooldowns are per-room too; a reused room code must not inherit them.
+  for (const key of swapCooldowns.keys()) {
+    if (key.startsWith(prefix)) swapCooldowns.delete(key);
+  }
 }
 
 /** Clear pending swap requests where userId is the requester. Exported. */
@@ -148,8 +152,6 @@ export function registerSeatEvents(
           role: data.user.role,
           isBot: data.user.isBot ?? false,
         };
-        data.isSpectator = false;
-        await removeSpectatorFromRoom(redis, roomCode, userId);
       } else {
         // Reuse existing player data, reset ready
         const existing = seats[existingSeatIndex]!;
@@ -160,6 +162,16 @@ export function registerSeatEvents(
         await takeSeat(redis, roomCode, seatIndex, player);
       } catch (err) {
         return callback({ success: false, error: (err as Error).message });
+      }
+
+      // Only after the seat is safely claimed may the spectator identity be
+      // dropped (takeSeat clears any previous seat of the same user inside
+      // its lock). The reverse order left a losing racer with neither seat
+      // nor spectator membership — invisible to everyone and permanently
+      // rejected by the "你不在该房间中" precheck.
+      if (isSpectator) {
+        data.isSpectator = false;
+        await removeSpectatorFromRoom(redis, roomCode, userId);
       }
 
       setCooldown(roomCode, userId);

@@ -16,14 +16,29 @@ import { resetClientRoomState } from './stores/reset-room';
 import { globalNavigate } from './utils/global-navigate';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { clearStoredAuthToken } from './api';
+import { markSessionTakenOver, isSessionTakenOver } from './session-takeover';
 
 type TypedSocket = SocketType<ServerToClientEvents, ClientToServerEvents>;
 
 let socket: TypedSocket | null = null;
-let connectionStatusCallback: ((status: 'connected' | 'disconnected' | 'reconnecting') => void) | null = null;
 
-export function onConnectionStatus(cb: (status: 'connected' | 'disconnected' | 'reconnecting') => void) {
-  connectionStatusCallback = cb;
+export type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
+const connectionStatusListeners = new Set<(status: ConnectionStatus) => void>();
+let lastConnectionStatus: ConnectionStatus = 'connected';
+
+/** 订阅连接状态;返回退订函数。多页面(GamePage/RoomPage)可同时订阅。 */
+export function onConnectionStatus(cb: (status: ConnectionStatus) => void): () => void {
+  connectionStatusListeners.add(cb);
+  return () => connectionStatusListeners.delete(cb);
+}
+
+export function getConnectionStatus(): ConnectionStatus {
+  return lastConnectionStatus;
+}
+
+function emitConnectionStatus(status: ConnectionStatus): void {
+  lastConnectionStatus = status;
+  for (const cb of connectionStatusListeners) cb(status);
 }
 
 function currentToken(): string | null {
@@ -165,6 +180,9 @@ export function getSocket(): TypedSocket {
         useRoomStore.getState().setRoom(roomCode, data.seats as any, data.spectators as any, data.room as any);
       }
       useGameStore.getState().clearGame();
+      // 离开对局语境：游戏内观战席快照与"下局加入"队列都随对局失效，
+      // 等待室 UI 只读 room-store，新对局开始时服务端会重发权威快照。
+      useSpectatorStore.getState().clearSpectators();
     });
 
     socket.on('game:card_drawn', (data) => {
@@ -249,40 +267,58 @@ export function getSocket(): TypedSocket {
     };
 
     socket.on('connect', () => {
-      connectionStatusCallback?.('connected');
+      emitConnectionStatus('connected');
       measureLatency();
       latencyInterval = setInterval(measureLatency, 30_000);
       checkCaddyVersion();
     });
 
     socket.on('disconnect', () => {
-      connectionStatusCallback?.('disconnected');
+      emitConnectionStatus('disconnected');
       useServerStore.getState().setSocketLatency(null);
       if (latencyInterval) { clearInterval(latencyInterval); latencyInterval = null; }
     });
 
     socket.io.on('reconnect_attempt', () => {
-      connectionStatusCallback?.('reconnecting');
+      emitConnectionStatus('reconnecting');
     });
 
     socket.io.on('reconnect_failed', () => {
-      connectionStatusCallback?.('disconnected');
+      emitConnectionStatus('disconnected');
     });
 
     socket.on('connect_error', (err) => {
       if (err.message === 'Authentication failed') {
         resetClientRoomState();
-        clearAuthSession();
-        socket?.disconnect();
-        socket = null;
-        window.location.href = '/?session_expired=1';
+        // 只在共享 token 正是刚刚鉴权失败的这一枚时才清除——另一标签页
+        // 可能已写入新 token，误清会 401 掉对方的活跃会话。
+        const attempted = (socket?.auth as { token?: string | null } | undefined)?.token ?? null;
+        if (!attempted || localStorage.getItem('token') === attempted) {
+          clearAuthSession();
+          socket?.disconnect();
+          socket = null;
+          window.location.href = '/?session_expired=1';
+        } else {
+          // 本页 token 已过时且另一标签页持有新会话——按被接管处理：
+          // 不整页刷新（刷新会用对方的共享 token 复活并反踢对方），
+          // 只让本页退场，等用户显式登录。
+          markSessionTakenOver();
+          useAuthStore.setState({ user: null, token: null, loading: false, initialized: true });
+          socket?.disconnect();
+          socket = null;
+          globalNavigate('/');
+        }
       }
     });
 
     socket.on('auth:kicked', (_data) => {
       resetClientRoomState();
-      clearAuthSession();
-      window.location.href = '/';
+      // 只让本页退场：不清 localStorage 的共享 token——那是接管方标签页
+      // 正在使用的凭证，清掉会让对方所有 REST 请求 401、刷新即掉登录。
+      markSessionTakenOver();
+      useAuthStore.setState({ user: null, token: null, loading: false, initialized: true });
+      socket?.disconnect();
+      globalNavigate('/');
     });
 
     socket.on('game:kicked', (data) => {
@@ -319,6 +355,9 @@ export function refreshVoicePresence(): void {
 }
 
 export function connectSocket(): void {
+  // 被接管的标签页禁止自动重连；标志只由显式登录（auth-store 各 login
+  // 成功路径）或整页刷新解除——loadUser 的静默恢复不算数。
+  if (isSessionTakenOver()) return;
   const s = getSocket();
   const token = currentToken();
   const oldToken = (s.auth as { token?: string | null } | undefined)?.token ?? null;
@@ -338,4 +377,18 @@ export function disconnectSocket(): void {
     socket.disconnect();
     socket = null;
   }
+}
+
+// 网络恢复自动重连：reconnectionAttempts 耗尽（约 30s 断网）后 socket.io
+// 永不再自行重试，且对局页不会重新挂载来触发 connectSocket——没有这个
+// 监听，断网稍久的玩家会永久卡在断线遮罩后面。
+// 只认本页内存中的 token：localStorage 是共享的，已登出的标签页若用它
+// 兜底建连，会以另一标签页的身份上线并反踢对方的活跃 socket。
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    if (isSessionTakenOver()) return;
+    if (!useAuthStore.getState().token) return;
+    if (socket?.connected) return;
+    connectSocket();
+  });
 }

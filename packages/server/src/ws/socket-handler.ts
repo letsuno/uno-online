@@ -4,10 +4,10 @@ import { authenticateSocketAsync } from '../auth/middleware.js';
 import { RoomManager } from '../plugins/core/room/manager.js';
 import { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import { GameSession } from '../plugins/core/game/session.js';
-import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, notifyAutopilotAction, resetPlayerTimeout } from './room-events.js';
+import { registerRoomEvents, emitGameUpdate, startTurnTimer, executeAutopilot, notifyAutopilotAction, resetPlayerTimeout, rearmBlitzAfterRestore } from './room-events.js';
 import { getAutopilotActionPlayerId, canPlayerAutopilotOnce } from './autopilot-action-player.js';
-import { registerGameEvents, emitTerminalStateIfNeeded, addAutopilotVote, clearChatTimestamps, getRoundEndVoteState, getPendingSpectatorQueue, getRoundEndAt } from './game-events.js';
-import { getRoom, setRoomOwner, clearUserRoom, getUserRoom, setSeatPlayerConnected, getRoomSeats, getRoomSpectators, addSpectatorToRoom, removeDisconnectedSpectators, setSpectatorConnected, getSeatedPlayers, findNextOwner, pickNextOwner } from '../plugins/core/room/store.js';
+import { registerGameEvents, emitTerminalStateIfNeeded, addAutopilotVote, removePlayerVote, clearChatTimestamps, getRoundEndVoteState, getPendingSpectatorQueue, getRoundEndAt, removePendingSpectatorJoin, reseedTerminalVotes } from './game-events.js';
+import { getRoom, setRoomOwner, clearUserRoom, getUserRoom, ensureNotInRoom, setSeatPlayerConnected, getRoomSeats, getRoomSpectators, addSpectatorToRoom, removeDisconnectedSpectators, setSpectatorConnected, getSeatedPlayers, findNextOwner, pickNextOwner, markAllMembersDisconnected } from '../plugins/core/room/store.js';
 import { registerSeatEvents, clearPendingSwapRequests, clearUserSwapRequests } from './seat-events.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
 import { loadGameState, GameStatePersister } from '../plugins/core/game/state-store.js';
@@ -16,7 +16,7 @@ import { checkRateLimit, clearRateLimit } from './rate-limiter.js';
 import { registerInteractionEvents, clearThrowTimestamp } from '../plugins/core/interaction/ws.js';
 import { broadcastSpectatorList, broadcastSpectatorLeft, toSpectatorView } from '../plugins/core/spectate/ws.js';
 import { dissolveRoom } from './room-lifecycle.js';
-import { cancelOwnerTransfer, hasOwnerTransferPending, scheduleOwnerTransfer, configureOwnerTransfer } from './owner-transfer.js';
+import { cancelOwnerTransfer, hasOwnerTransferPending, scheduleOwnerTransfer, configureOwnerTransfer, checkOwnerDisconnectedAtTerminal } from './owner-transfer.js';
 import { registerVoicePresenceEvents, removeVoicePresence } from './voice-presence.js';
 import { VoiceChannelManager } from '../voice/channel-manager.js';
 import type { MumbleIceConfig } from '../config.js';
@@ -55,11 +55,16 @@ export function setupSocketHandlers(
   const roomManager = new RoomManager(redis);
   const turnTimer = new TurnTimer();
   const sessions = new Map<string, GameSession>();
-  const disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  // Keyed by userId; roomCode records which room the pending cleanup belongs
+  // to, so it is only ever cancelled by a rejoin of THAT room — cancelling on
+  // mere reconnection (or on rejoin of another room) leaves ghost seats behind.
+  const disconnectTimers = new Map<string, { roomCode: string; timer: ReturnType<typeof setTimeout> }>();
   const allDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const autoPlayIntervals = new Map<string, ReturnType<typeof setInterval>>();
   const userSocketMap = new Map<string, string>();
-  const persister = new GameStatePersister(redis);
+  // Snapshot TTL follows the room's idle lifetime — a snapshot must outlive
+  // its room, or late rejoins meet a playing room with nothing to restore.
+  const persister = new GameStatePersister(redis, Math.ceil(roomIdleTimeoutMs / 1000));
   const voiceChannels = new VoiceChannelManager(redis, mumbleIce);
   voiceChannels.reconcileActiveRooms().catch(err => console.warn('[voice] reconcile failed:', err));
 
@@ -127,15 +132,43 @@ export function setupSocketHandlers(
     }
   }
 
+  // The ONLY path that may dissolve a room with a live session over lost
+  // connections. Per-player 30s timers and the spectator sweep must not
+  // dissolve directly — they'd cut the 5-minute all-disconnect grace down
+  // to whichever 30s window expires first.
+  function armAllDisconnectTimer(roomCode: string) {
+    if (allDisconnectTimers.has(roomCode)) return;
+    const dissolutionTimer = setTimeout(async () => {
+      allDisconnectTimers.delete(roomCode);
+      // Sessions are restored lazily — a post-restart in-game room may have
+      // none. The kv room is the source of truth for "still exists".
+      if (!(await getRoom(redis, roomCode))) return;
+      // Humans may be back without having cancelled this timer — spectator
+      // rejoins never cancel it, and the startup reconcile can leave stale
+      // flags. Never dissolve over live people; the next full disconnect
+      // re-arms.
+      const live = await io.in(roomCode).fetchSockets();
+      if (live.some(s => s.data.user && !s.data.user.isBot)) return;
+      try {
+        stopAutoPlayForRoom(roomCode);
+        await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'idle_timeout', voiceChannels);
+      } catch (err) {
+        console.error(`[allDisconnect] Failed to dissolve room ${roomCode}:`, err);
+      }
+    }, ALL_DISCONNECT_TIMEOUT_MS);
+    dissolutionTimer.unref?.();
+    allDisconnectTimers.set(roomCode, dissolutionTimer);
+  }
+
 
   function stopAutoPlayForRoom(roomCode: string) {
     const session = sessions.get(roomCode);
     if (!session) return;
     for (const player of session.getFullState().players) {
       stopAutoPlay(player.id);
-      const timer = disconnectTimers.get(player.id);
-      if (timer) {
-        clearTimeout(timer);
+      const entry = disconnectTimers.get(player.id);
+      if (entry) {
+        clearTimeout(entry.timer);
         disconnectTimers.delete(player.id);
       }
     }
@@ -157,7 +190,19 @@ export function setupSocketHandlers(
     const now = Date.now();
     for (const roomCode of roomCodes) {
       const room = await getRoom(redis, roomCode);
-      if (!room) continue;
+      if (!room) {
+        // The key exists (getRoomCodes listed it) but doesn't parse as a
+        // room — a handler racing dissolveRoom re-created a partial hash
+        // (e.g. touchRoomActivity's hset after deleteRoom). Nothing can
+        // ever revive it and `continue` would keep it forever; collect it
+        // and its satellites now.
+        await Promise.all([
+          redis.del(`room:${roomCode}`),
+          redis.del(`room:${roomCode}:seats`),
+          redis.del(`room:${roomCode}:spectators`),
+        ]);
+        continue;
+      }
       const lastActivityAt = Date.parse(room.lastActivityAt);
       if (!Number.isFinite(lastActivityAt) || now - lastActivityAt < roomIdleTimeoutMs) continue;
 
@@ -172,8 +217,15 @@ export function setupSocketHandlers(
       const removed = await removeDisconnectedSpectators(redis, roomCode, RECONNECT_TIMEOUT_MS);
       if (removed.length === 0) continue;
 
+      let queueChanged = false;
       for (const s of removed) {
         await clearUserRoom(redis, s.userId);
+        if (removePendingSpectatorJoin(roomCode, s.userId)) queueChanged = true;
+      }
+      if (queueChanged) {
+        io.to(roomCode).emit('game:spectator_queue', {
+          queue: getPendingSpectatorQueue(roomCode), nickname: '', joined: false,
+        });
       }
       await broadcastSpectatorList(io, redis, roomCode);
 
@@ -188,8 +240,19 @@ export function setupSocketHandlers(
       const seatedPlayers = getSeatedPlayers(seats);
       const hasHuman = seatedPlayers.some(p => !p.isBot && p.connected) || remaining.some(sp => sp.connected);
       if (!hasHuman) {
-        stopAutoPlayForRoom(roomCode);
-        await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
+        // In-game rooms get the 5-minute all-disconnect grace — players may
+        // be seconds into their own 30s reconnect windows, and dissolving
+        // now would kill the game out from under them. Judge "in-game" by
+        // room status, NOT sessions.has: sessions are restored lazily, so a
+        // post-restart playing room has no session yet and dissolving it
+        // here would destroy its recoverable snapshot. Waiting rooms have
+        // nothing to preserve; dissolve immediately.
+        if (room.status !== 'waiting' || sessions.has(roomCode)) {
+          armAllDisconnectTimer(roomCode);
+        } else {
+          stopAutoPlayForRoom(roomCode);
+          await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
+        }
         continue;
       }
 
@@ -203,6 +266,22 @@ export function setupSocketHandlers(
       }
     }
   }
+
+  // A fresh process has no sockets, so every connected:true flag left in kv
+  // by the previous process is a ghost — never sweepable (spectators lack
+  // disconnectedAt), eligible for owner transfers, and counted as "humans
+  // present" when deciding whether rooms live or die. Reset them all;
+  // rejoins flip them back. Users who reconnect while this sweep runs are
+  // protected via the live-socket check.
+  (async () => {
+    for (const roomCode of await getRoomCodes()) {
+      // Liveness via userSocketMap, evaluated inside the seat lock at write
+      // time: it's populated synchronously at connection, so anyone who
+      // reconnected during this sweep — even mid-rejoin — is spared. A
+      // fetchSockets snapshot taken before the lock would race them.
+      await markAllMembersDisconnected(redis, roomCode, (uid) => userSocketMap.has(uid));
+    }
+  })().catch(err => console.warn('[startup] member reconcile failed:', err));
 
   const idleCleanupInterval = setInterval(() => {
     cleanupIdleRooms().catch(() => {});
@@ -249,13 +328,11 @@ export function setupSocketHandlers(
     }
     userSocketMap.set(userId, socket.id);
 
-    // Cancel any pending disconnect timeout for this user (reconnection)
-    const pendingTimer = disconnectTimers.get(userId);
-    if (pendingTimer) {
-      clearTimeout(pendingTimer);
-      disconnectTimers.delete(userId);
-      stopAutoPlay(userId);
-    }
+    // NOTE: pending disconnect-cleanup timers are deliberately NOT cancelled
+    // here. A bare reconnection says nothing about which room the user is
+    // returning to — cancelling used to orphan seats when the user went
+    // elsewhere. room:rejoin cancels the timer once the user is back in the
+    // room the timer belongs to.
 
     socket.on('user:current_room', async (callback) => {
       const roomCode = await getUserRoom(redis, userId);
@@ -270,25 +347,70 @@ export function setupSocketHandlers(
 
     // Handle reconnection: restore room and game state
     socket.on('room:rejoin', async (roomCode: string, callback) => {
-      const pendingDisconnect = disconnectTimers.get(userId);
-      if (pendingDisconnect) {
-        clearTimeout(pendingDisconnect);
-        disconnectTimers.delete(userId);
-        stopAutoPlay(userId);
-      }
-
       const room = await getRoom(redis, roomCode);
       if (!room) {
-        await clearUserRoom(redis, userId);
+        // Only drop the reverse mapping if it actually points at this dead
+        // room — rejoining a stale URL must not damage the user's real room.
+        if ((await getUserRoom(redis, userId)) === roomCode) {
+          await clearUserRoom(redis, userId);
+        }
         return callback?.({ success: false, error: 'Room not found' });
+      }
+
+      // rejoin doubles as the "enter room by URL" path (browser back, pasted
+      // links, multi-tab). Never let it silently pull a user out of a room
+      // they are still part of.
+      const conflict = await ensureNotInRoom(redis, userId, roomCode);
+      if (conflict) return callback?.({ success: false, error: conflict });
+
+      const pendingDisconnect = disconnectTimers.get(userId);
+      if (pendingDisconnect && pendingDisconnect.roomCode === roomCode) {
+        clearTimeout(pendingDisconnect.timer);
+        disconnectTimers.delete(userId);
+        stopAutoPlay(userId);
       }
 
       let session = sessions.get(roomCode);
       if (!session) {
         const savedState = await loadGameState(redis, roomCode);
-        if (savedState) {
+        // Another rejoin may have restored the session during the kv await —
+        // restoring twice would clobber its already-updated player flags.
+        session = sessions.get(roomCode);
+        if (!session && savedState) {
           session = GameSession.fromState(savedState);
+          // The snapshot froze connected flags from a process whose sockets
+          // are all dead. A ghost connected:true player can never disconnect
+          // and never auto-votes — round_end would deadlock waiting for a
+          // click that can't come. Everyone re-earns connected via rejoin.
+          for (const p of session.getFullState().players) {
+            if (!p.isBot) session.setPlayerConnected(p.id, false);
+          }
           sessions.set(roomCode, session);
+          // A session restored after a server restart lost its in-memory
+          // round_end auto-votes — without reseeding they deadlock the vote
+          // (and game_over snapshots need their replay anchor back).
+          reseedTerminalVotes(io, roomCode, session);
+          // No timers survived the restart either: without a driver a
+          // restored game freezes whenever the snapshot's current actor is
+          // offline (or a bot, when only spectators return). startTurnTimer
+          // dispatches bot/autopilot/human phases itself and stops on
+          // terminal ones.
+          startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
+          // The blitz total-time deadline is recoverable from gameStartedAt;
+          // without this a restored blitz game silently becomes untimed.
+          rearmBlitzAfterRestore(io, redis, roomCode, session, sessions, turnTimer, persister);
+          // All players start disconnected — bound the room's zombie
+          // lifetime now instead of waiting 2h for the idle sweep. The
+          // first player rejoin below cancels this.
+          armAllDisconnectTimer(roomCode);
+          // Terminal snapshots gate every exit (next round, back to room) on
+          // the owner — who may never return. The reseeded anchor also
+          // short-circuits emitTerminalStateIfNeeded, so the live path's
+          // owner check would never run again: schedule the transfer here.
+          // The owner's own rejoin (below) cancels it.
+          if (session.isRoundEnd() || session.isGameOver()) {
+            await checkOwnerDisconnectedAtTerminal(roomCode, session);
+          }
         }
       }
 
@@ -296,8 +418,19 @@ export function setupSocketHandlers(
         const isPlayerInGame = session.getFullState().players.some(p => p.id === userId);
 
         if (!isPlayerInGame) {
-          // User is not a player — rejoin as spectator
-          if (!(room.status === 'playing' && room.settings.allowSpectators)) {
+          // User is not a player — rejoin as spectator. Members already on the
+          // spectator list may always come back (allowSpectators only gates
+          // outsiders), and 'finished' counts as spectatable — the game-over
+          // scoreboard is still part of the session.
+          const existingSpectators = await getRoomSpectators(redis, roomCode);
+          const wasSpectator = existingSpectators.some(s => s.userId === userId);
+          const statusAllowsSpectate = room.status === 'playing' || room.status === 'finished';
+          if (!wasSpectator && !(statusAllowsSpectate && room.settings.allowSpectators)) {
+            // The user has no way back into this room; release the reverse
+            // mapping or the lobby keeps bouncing them into this dead end.
+            if ((await getUserRoom(redis, userId)) === roomCode) {
+              await clearUserRoom(redis, userId);
+            }
             return callback?.({ success: false, error: '无法观战该房间' });
           }
           await joinRoomSocket(redis, socket, roomCode, { asSpectator: true });
@@ -338,7 +471,14 @@ export function setupSocketHandlers(
         }
         session.setPlayerConnected(userId, true);
         session.setPlayerAutopilot(userId, false);
+        stopAutoPlay(userId);
         resetPlayerTimeout(roomCode, userId);
+        // Their disconnect earned them an auto-vote; now that they're back
+        // the justification is gone — the next round needs their own click.
+        if (session.isRoundEnd()) {
+          removePlayerVote(roomCode, userId, session, io);
+        }
+        await setSeatPlayerConnected(redis, roomCode, userId, true);
         persister.markDirty(roomCode, session.getFullState());
         await persister.flushNow(roomCode);
         await emitGameUpdate(io, roomCode, session, redis);
@@ -351,14 +491,23 @@ export function setupSocketHandlers(
         callback?.({ success: true, gameState: session.getPlayerView(userId), seats, spectators, room });
         socket.emit('chat:history', session.getChatHistory());
         socket.emit('room:spectator_list', { spectators: toSpectatorView(spectators) });
+        // Same replay the spectator branch does — without it a refreshing
+        // player loses the "join next round" badges until the queue changes.
+        const pendingQueue = getPendingSpectatorQueue(roomCode);
+        if (pendingQueue.length > 0) {
+          socket.emit('game:spectator_queue', { queue: pendingQueue, nickname: '', joined: true });
+        }
         const voteState = getRoundEndVoteState(roomCode, session);
         if (voteState) socket.emit('game:next_round_vote', voteState);
         replayTerminalEvent(socket, roomCode, session);
-        const state = session.getFullState();
-        const connectedCount = state.players.filter(p => p.connected).length;
-        if (connectedCount >= 2 && state.phase === 'playing') {
-          startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
-        }
+        // Unconditional: startTurnTimer handles choosing/challenging phases
+        // itself and stops for terminal ones. Gating on 'playing' left
+        // restored sessions frozen in decision phases; gating on
+        // connectedCount >= 2 froze human-vs-human games whose restored
+        // snapshot pointed at an offline player — offline turns are driven
+        // by the timer's own autopilot/timeout machinery, same as when the
+        // disconnect happens live.
+        startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
       } else {
         const seats = await getRoomSeats(redis, roomCode);
         const spectators = await getRoomSpectators(redis, roomCode);
@@ -370,6 +519,12 @@ export function setupSocketHandlers(
           try {
             await roomManager.joinRoom(roomCode, userId, socket.data.user.nickname, socket.data.user.avatarUrl, socket.data.user.role, socket.data.user.isBot);
           } catch {
+            // Same as the spectate denial above: a user we refuse to readmit
+            // must not stay mapped to the room, or they're locked out of
+            // creating/joining anything until the room dies.
+            if ((await getUserRoom(redis, userId)) === roomCode) {
+              await clearUserRoom(redis, userId);
+            }
             return callback?.({ success: false, error: 'Cannot rejoin room' });
           }
         }
@@ -394,7 +549,7 @@ export function setupSocketHandlers(
       }
     });
 
-    registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions, persister, voiceChannels);
+    registerRoomEvents(socket, io, redis, roomManager, turnTimer, sessions, persister, voiceChannels, armAllDisconnectTimer);
     registerSeatEvents(socket, io, redis);
     registerGameEvents(socket, io, redis, turnTimer, sessions, persister);
     registerInteractionEvents(socket, io);
@@ -419,7 +574,8 @@ export function setupSocketHandlers(
       const nextAutopilot = !player.autopilot;
       session.setPlayerAutopilot(userId, nextAutopilot);
       if (nextAutopilot) {
-        addAutopilotVote(roomCode, userId, session, io);
+        // Deliberately NOT auto-voting: a connected human enabling autopilot
+        // is delegating card play, not consenting to start the next round.
         startAutoPlay(userId, roomCode);
       } else {
         stopAutoPlay(userId);
@@ -451,6 +607,9 @@ export function setupSocketHandlers(
       });
 
       if (acted) {
+        if (await emitTerminalStateIfNeeded(io, roomCode, session, turnTimer, redis, sessions, persister)) {
+          return callback?.({ success: true });
+        }
         startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
       }
       callback?.({ success: true });
@@ -475,12 +634,17 @@ export function setupSocketHandlers(
           getRoomSpectators(redis, roomCode),
         ]);
         io.to(roomCode).emit('seat:updated', { seats: dcSeats, spectators: dcSpectators });
+        io.to(roomCode).emit('room:spectator_list', { spectators: toSpectatorView(dcSpectators) });
         return;
       }
 
       const session = sessions.get(roomCode);
       if (session) {
         session.setPlayerConnected(userId, false);
+        // Keep the seat's connected flag in sync — owner transfer picks the
+        // next owner from seats, and a stale `connected: true` hands the room
+        // to someone who is gone.
+        await setSeatPlayerConnected(redis, roomCode, userId, false);
         persister.markDirty(roomCode, session.getFullState());
         await persister.flushNow(roomCode);
         await emitGameUpdate(io, roomCode, session, redis);
@@ -496,19 +660,8 @@ export function setupSocketHandlers(
         if (connectedCount < 2) {
           turnTimer.stop(roomCode);
         }
-        if (connectedHumanCount === 0 && !allDisconnectTimers.has(roomCode)) {
-          const dissolutionTimer = setTimeout(async () => {
-            allDisconnectTimers.delete(roomCode);
-            if (!sessions.has(roomCode)) return;
-            try {
-              stopAutoPlayForRoom(roomCode);
-              await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'idle_timeout', voiceChannels);
-            } catch (err) {
-              console.error(`[allDisconnect] Failed to dissolve room ${roomCode}:`, err);
-            }
-          }, ALL_DISCONNECT_TIMEOUT_MS);
-          dissolutionTimer.unref?.();
-          allDisconnectTimers.set(roomCode, dissolutionTimer);
+        if (connectedHumanCount === 0) {
+          armAllDisconnectTimer(roomCode);
         }
 
         const room = await getRoom(redis, roomCode);
@@ -534,15 +687,19 @@ export function setupSocketHandlers(
             addAutopilotVote(roomCode, userId, s, io);
             startAutoPlay(userId, roomCode);
 
+            // Everyone is offline — but each player has their own 30s
+            // window, and the LAST one to drop always arms one, so
+            // dissolving here would cap the 5-minute all-disconnect grace
+            // at ~30s for every simultaneous-drop (shared WiFi) game.
+            // Leave the decision to the 5-minute timer; any rejoin cancels it.
             const hasConnectedHuman = s.getFullState().players.some(p => p.connected && !p.isBot);
             if (!hasConnectedHuman) {
-              stopAutoPlayForRoom(roomCode);
-              await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
+              armAllDisconnectTimer(roomCode);
             }
           }
         }, RECONNECT_TIMEOUT_MS);
         timer.unref?.();
-        disconnectTimers.set(userId, timer);
+        disconnectTimers.set(userId, { roomCode, timer });
       } else {
         // Mark player as disconnected in seat (also cancels ready)
         await setSeatPlayerConnected(redis, roomCode, userId, false);
@@ -556,10 +713,16 @@ export function setupSocketHandlers(
         // Start reconnect window before removing from room
         const timer = setTimeout(async () => {
           disconnectTimers.delete(userId);
-          const [{ deleted }] = await Promise.all([
-            roomManager.leaveRoom(roomCode, userId),
-            clearUserRoom(redis, userId),
-          ]);
+          // Never evict someone who is already back — e.g. re-entered via a
+          // room:join that couldn't cancel this timer.
+          const liveSockets = await io.in(roomCode).fetchSockets();
+          if (liveSockets.some(s => s.data.user?.userId === userId)) return;
+          const { deleted } = await roomManager.leaveRoom(roomCode, userId);
+          // The user may have legitimately moved to another room since this
+          // timer was armed — only clear the mapping if it's still ours.
+          if ((await getUserRoom(redis, userId)) === roomCode) {
+            await clearUserRoom(redis, userId);
+          }
           if (!deleted) {
             const [room, seats, spectators] = await Promise.all([
               getRoom(redis, roomCode),
@@ -578,7 +741,7 @@ export function setupSocketHandlers(
           }
         }, RECONNECT_TIMEOUT_MS);
         timer.unref?.();
-        disconnectTimers.set(userId, timer);
+        disconnectTimers.set(userId, { roomCode, timer });
       }
     });
   });

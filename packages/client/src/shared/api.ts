@@ -1,4 +1,5 @@
 import { getApiUrl } from './env';
+import { useAuthStore } from '@/features/auth/stores/auth-store';
 
 export class UnauthorizedError extends Error {
   constructor() {
@@ -17,7 +18,10 @@ function notifyUnauthorized(): void {
 }
 
 function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem('token');
+  // 与 socket 层同源(内存优先):localStorage 是多标签页共享的,另一
+  // 标签页换账号后若仍直接读它,本页会出现 WS 以 A 打牌、REST 以 B 改
+  // 资料的身份分裂。
+  const token = useAuthStore.getState().token ?? localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

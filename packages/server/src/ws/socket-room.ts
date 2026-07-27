@@ -34,6 +34,12 @@ export async function joinRoomSocket(
   opts?: { asSpectator?: boolean },
 ): Promise<void> {
   const data = socket.data as SocketData;
+  // A socket can only ever be in one room — leaving the previous adapter
+  // membership here keeps broadcasts from two rooms from reaching one client
+  // even if a caller forgets to clean up first.
+  if (data.roomCode && data.roomCode !== roomCode) {
+    await Promise.resolve(socket.leave(data.roomCode));
+  }
   data.roomCode = roomCode;
   data.isSpectator = opts?.asSpectator ?? false;
   await Promise.all([

@@ -3,13 +3,14 @@ import type { KvStore } from '../kv/types.js';
 import type { GameAction, GameState, RoomSettings, BotDifficulty } from '@uno-online/shared';
 import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction, chooseBotAction, getPlayableCards, DIFFICULTY_PARAMS, BOT_DIFFICULTIES } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager.js';
-import { getRoom, getRoomSeats, getRoomSpectators, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, ensureNotInRoom, removeSpectatorFromRoom, clearRoomSpectators, getSeatedPlayers, pickNextOwner, findNextOwner } from '../plugins/core/room/store.js';
+import { getRoom, getRoomSeats, getRoomSpectators, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, ensureNotInRoom, removeSpectatorFromRoom, clearRoomSpectators, getSeatedPlayers, pickNextOwner, findNextOwner, clearUserRoom, setSeatPlayerConnected } from '../plugins/core/room/store.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
 import { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import type { TurnTimer } from '../plugins/core/game/turn-timer.js';
 import type { VoiceChannelManager } from '../voice/channel-manager.js';
-import { removePlayerVote, emitTerminalStateIfNeeded, addAutopilotVote } from './game-events.js';
+import { removePlayerVote, emitTerminalStateIfNeeded, addAutopilotVote, markTerminalHandled } from './game-events.js';
+import { checkOwnerDisconnectedAtTerminal } from './owner-transfer.js';
 import type { SocketData } from './types.js';
 import { dissolveRoom } from './room-lifecycle.js';
 import { removeVoicePresence, setForceMuted } from './voice-presence.js';
@@ -26,6 +27,12 @@ type AutopilotActionHandler = (roomCode: string, session: GameSession, action: G
 // Track consecutive timeouts per player per room
 const timeoutCounts = new Map<string, Map<string, number>>();
 const blitzTimers = new Map<string, ReturnType<typeof setTimeout>>();
+// Absolute deadline (ms epoch) per blitz game. Survives the timer itself so
+// a deadline that lands on the round_end scoreboard can still be enforced
+// when the next round is about to start.
+const blitzDeadlines = new Map<string, number>();
+// Rooms whose game:start is mid-flight; blocks concurrent starts.
+const startingRooms = new Set<string>();
 const botTurnTimers = new Map<string, ReturnType<typeof setTimeout>>();
 let autopilotActionHandler: AutopilotActionHandler | null = null;
 
@@ -46,12 +53,17 @@ export function resetPlayerTimeout(roomCode: string, playerId: string): void {
   if (roomCounts) roomCounts.delete(playerId);
 }
 
-export function clearRoomTimeouts(roomCode: string): void {
+export function clearRoomTimeouts(roomCode: string, opts?: { keepBlitz?: boolean }): void {
   timeoutCounts.delete(roomCode);
-  const blitzTimer = blitzTimers.get(roomCode);
-  if (blitzTimer) {
-    clearTimeout(blitzTimer);
-    blitzTimers.delete(roomCode);
+  // The blitz clock spans the WHOLE game — a round_end settlement must not
+  // consume it, or the total-time limit silently vanishes after round one.
+  if (!opts?.keepBlitz) {
+    const blitzTimer = blitzTimers.get(roomCode);
+    if (blitzTimer) {
+      clearTimeout(blitzTimer);
+      blitzTimers.delete(roomCode);
+    }
+    blitzDeadlines.delete(roomCode);
   }
   clearBotTurnTimer(roomCode);
   clearBotTimers(roomCode);
@@ -90,6 +102,7 @@ export function registerRoomEvents(
   sessions: Map<string, GameSession>,
   persister: GameStatePersister,
   voiceChannels?: VoiceChannelManager,
+  armAllDisconnectTimer?: (roomCode: string) => void,
 ) {
   const data = socket.data as SocketData;
 
@@ -197,6 +210,9 @@ export function registerRoomEvents(
     if (session) {
       session.setPlayerConnected(data.user.userId, false);
       session.setPlayerAutopilot(data.user.userId, true);
+      // Seat stays occupied during the game, but its connected flag must
+      // follow — owner transfer picks new owners from seats.
+      await setSeatPlayerConnected(redis, roomCode, data.user.userId, false);
       persister.markDirty(roomCode, session.getFullState());
       await persister.flushNow(roomCode);
       await emitGameUpdate(io, roomCode, session, redis);
@@ -206,8 +222,17 @@ export function registerRoomEvents(
       await leaveRoomSocket(redis, socket, roomCode);
 
       if (!session.getFullState().players.some(p => p.connected && !p.isBot)) {
-        await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
-        return callback?.({ success: true, dissolved: true });
+        // Other humans may be seconds into their reconnect grace — dissolving
+        // now because THIS player chose to leave would void it. Only when the
+        // leaver was the last human does the room die immediately.
+        const otherHumans = session.getFullState().players
+          .some(p => !p.isBot && p.id !== data.user.userId);
+        if (otherHumans && armAllDisconnectTimer) {
+          armAllDisconnectTimer(roomCode);
+        } else {
+          await dissolveRoom(io, redis, roomCode, sessions, turnTimer, persister, 'empty', voiceChannels);
+          return callback?.({ success: true, dissolved: true });
+        }
       }
 
       const room = await getRoom(redis, roomCode);
@@ -333,6 +358,10 @@ export function registerRoomEvents(
     const allUsers = [...getSeatedPlayers(seats), ...spectators];
     if (!allUsers.some(p => p.userId === payload.targetId)) return callback?.({ success: false, error: '目标玩家不在房间中' });
     await roomManager.leaveRoom(roomCode, payload.targetId);
+    // Offline targets have no socket for leaveRoomSocket to clean — clear the
+    // reverse mapping explicitly, or the lobby auto-redirects them right back
+    // into the room they were kicked from when they reconnect.
+    await clearUserRoom(redis, payload.targetId);
     removeVoicePresence(io, roomCode, payload.targetId);
     const targetSockets = await io.in(roomCode).fetchSockets();
     const cleanups: Promise<void>[] = [];
@@ -348,6 +377,10 @@ export function registerRoomEvents(
     const updatedRoom = await getRoom(redis, roomCode);
     io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators: updatedSpectators });
     io.to(roomCode).emit('room:updated', { room: updatedRoom });
+    const kickedSpectator = spectators.find(s => s.userId === payload.targetId);
+    if (kickedSpectator) {
+      await broadcastSpectatorLeft(io, redis, roomCode, payload.targetId, kickedSpectator.nickname);
+    }
     callback?.({ success: true });
   });
 
@@ -385,11 +418,18 @@ export function registerRoomEvents(
         session.forceGameOver(lastPlayer.id);
         turnTimer.stop(roomCode);
         session.removePlayer(payload.botId);
+        const gameOverAt = Date.now();
         io.to(roomCode).emit('game:over', {
           winnerId: lastPlayer.id,
           scores: Object.fromEntries(st.players.map(p => [p.id, p.score])),
-          gameOverAt: Date.now(),
+          gameOverAt,
         });
+        // Terminal announced outside emitTerminalStateIfNeeded — same
+        // bookkeeping as endGameByBlitz: anchor for replay/idempotency,
+        // room status for lobby/rejoin. (The actor is the owner, online by
+        // definition, so no owner-transfer check is needed here.)
+        markTerminalHandled(roomCode, gameOverAt);
+        await setRoomStatus(redis, roomCode, 'finished');
       } else {
         turnTimer.stop(roomCode);
         session.removePlayer(payload.botId);
@@ -444,74 +484,194 @@ export function registerRoomEvents(
     if (!room || room.ownerId !== data.user.userId) {
       return callback?.({ success: false, error: 'Only room owner can start' });
     }
-    const seats = await getRoomSeats(redis, roomCode);
-    const spectators = await getRoomSpectators(redis, roomCode);
-    const activePlayers = getSeatedPlayers(seats);
-
-    if (activePlayers.length < MIN_PLAYERS) {
-      return callback?.({ success: false, error: 'Not enough players' });
+    // Seats keep ready=true for the whole game and status is never checked
+    // elsewhere — without this guard a double-click (or a start during the
+    // finished scoreboard) rebuilds the session over a live game. The
+    // startingRooms entry closes the guard's own TOCTOU window: the checks
+    // above sit several awaits before sessions.set, so a concurrent second
+    // game:start (buffered double-click flushed in one batch) would pass
+    // them too and deal two independent decks.
+    if (startingRooms.has(roomCode) || room.status !== 'waiting' || sessions.has(roomCode)) {
+      return callback?.({ success: false, error: '游戏已开始' });
     }
-    const allReady = await roomManager.areAllReady(roomCode);
-    if (!allReady) {
-      return callback?.({ success: false, error: 'Not all players are ready' });
-    }
-    await setRoomStatus(redis, roomCode, 'playing');
-    await touchRoomActivity(redis, roomCode);
-    const session = GameSession.create(
-      activePlayers.map((p) => ({ id: p.userId, name: p.nickname, avatarUrl: p.avatarUrl ?? null, role: p.role as import('@uno-online/shared').UserRole | undefined, isBot: p.isBot, botConfig: p.botConfig })),
-      { turnTimeLimit: room.settings?.turnTimeLimit ?? 30, targetScore: room.settings?.targetScore ?? 1000, houseRules: room.settings?.houseRules ?? DEFAULT_HOUSE_RULES, allowSpectators: room.settings?.allowSpectators ?? true, spectatorMode: room.settings?.spectatorMode ?? 'hidden' } as RoomSettings,
-    );
-    sessions.set(roomCode, session);
-    persister.markDirty(roomCode, session.getFullState());
-    await persister.flushNow(roomCode);
+    startingRooms.add(roomCode);
+    try {
+      const seats = await getRoomSeats(redis, roomCode);
+      const spectators = await getRoomSpectators(redis, roomCode);
+      const activePlayers = getSeatedPlayers(seats);
 
-    const spectatorMode = (room.settings?.spectatorMode as 'full' | 'hidden') ?? 'hidden';
-    const sockets = await io.in(roomCode).fetchSockets();
-    for (const s of sockets) {
-      const sData = s.data as SocketData;
-      if (spectators.some(sp => sp.userId === sData.user.userId)) {
-        sData.isSpectator = true;
-        s.emit('game:state', session.getSpectatorView(spectatorMode));
-      } else {
-        sData.isSpectator = false;
-        s.emit('game:state', session.getPlayerView(sData.user.userId));
+      if (activePlayers.length < MIN_PLAYERS) {
+        return callback?.({ success: false, error: 'Not enough players' });
       }
-    }
+      const allReady = await roomManager.areAllReady(roomCode);
+      if (!allReady) {
+        return callback?.({ success: false, error: 'Not all players are ready' });
+      }
+      await setRoomStatus(redis, roomCode, 'playing');
+      await touchRoomActivity(redis, roomCode);
+      const session = GameSession.create(
+        activePlayers.map((p) => ({ id: p.userId, name: p.nickname, avatarUrl: p.avatarUrl ?? null, role: p.role as import('@uno-online/shared').UserRole | undefined, isBot: p.isBot, botConfig: p.botConfig })),
+        { turnTimeLimit: room.settings?.turnTimeLimit ?? 30, targetScore: room.settings?.targetScore ?? 1000, houseRules: room.settings?.houseRules ?? DEFAULT_HOUSE_RULES, allowSpectators: room.settings?.allowSpectators ?? true, spectatorMode: room.settings?.spectatorMode ?? 'hidden' } as RoomSettings,
+      );
+      sessions.set(roomCode, session);
+      persister.revive(roomCode);
+      persister.markDirty(roomCode, session.getFullState());
+      await persister.flushNow(roomCode);
 
-    startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
+      // waiting → playing flips the meaning of the spectator list (unseated
+      // members → actual watchers). Without a fresh snapshot here, in-game
+      // spectator UIs keep whatever list was last broadcast — e.g. the
+      // "everyone is a spectator" list from game:back_to_room.
+      await broadcastSpectatorList(io, redis, roomCode);
 
-    // Blitz mode: total game time limit
-    const blitzLimit = session.getFullState().settings.houseRules.blitzTimeLimit;
-    if (blitzLimit) {
-      const blitzTimer = setTimeout(async () => {
-        blitzTimers.delete(roomCode);
-        const s = sessions.get(roomCode);
-        if (!s || s.isGameOver() || s.isRoundEnd()) return;
-        // Find player with fewest cards
-        const state = s.getFullState();
-        const minCards = Math.min(...state.players.map(p => p.hand.length));
-        const winner = state.players.find(p => p.hand.length === minCards);
-        if (winner) {
-          s.forceGameOver(winner.id);
-          persister.markDirty(roomCode, s.getFullState());
-          await persister.flushNow(roomCode);
-          await emitGameUpdate(io, roomCode, s, redis);
-          io.to(roomCode).emit('game:over', {
-            winnerId: winner.id,
-            reason: 'blitz_timeout',
-            scores: Object.fromEntries(s.getFullState().players.map(p => [p.id, p.score])),
-            gameOverAt: Date.now(),
-          });
-          turnTimer.stop(roomCode);
+      const spectatorMode = (room.settings?.spectatorMode as 'full' | 'hidden') ?? 'hidden';
+      const sockets = await io.in(roomCode).fetchSockets();
+      for (const s of sockets) {
+        const sData = s.data as SocketData;
+        if (spectators.some(sp => sp.userId === sData.user.userId)) {
+          sData.isSpectator = true;
+          s.emit('game:state', session.getSpectatorView(spectatorMode));
+        } else {
+          sData.isSpectator = false;
+          s.emit('game:state', session.getPlayerView(sData.user.userId));
         }
-      }, blitzLimit * 1000);
-      blitzTimer.unref?.();
-      blitzTimers.set(roomCode, blitzTimer);
-    }
+      }
 
-    callback?.({ success: true, gameState: session.getPlayerView(data.user.userId) });
-    broadcastLobbyRooms(redis, io);
+      startTurnTimer(io, redis, roomCode, session, turnTimer, sessions, persister);
+
+      // Blitz mode: total game time limit
+      const blitzLimit = session.getFullState().settings.houseRules.blitzTimeLimit;
+      if (blitzLimit) {
+        blitzDeadlines.set(roomCode, Date.now() + blitzLimit * 1000);
+        armBlitzTimer(io, redis, roomCode, sessions, turnTimer, persister, blitzLimit * 1000);
+      }
+
+      callback?.({ success: true, gameState: session.getPlayerView(data.user.userId) });
+      broadcastLobbyRooms(redis, io);
+    } catch (err) {
+      // A failure between setRoomStatus('playing') and sessions.set would
+      // otherwise brick the room: the status guard above rejects every
+      // retry while no session exists to play in.
+      if (!sessions.has(roomCode)) {
+        await setRoomStatus(redis, roomCode, 'waiting').catch(() => {});
+      }
+      throw err;
+    } finally {
+      startingRooms.delete(roomCode);
+    }
   });
+}
+
+async function endGameByBlitz(
+  io: SocketIOServer,
+  redis: KvStore,
+  roomCode: string,
+  s: GameSession,
+  turnTimer: TurnTimer,
+  persister: GameStatePersister,
+): Promise<boolean> {
+  // Same winner rule as always: fewest cards when time runs out.
+  const state = s.getFullState();
+  const minCards = Math.min(...state.players.map(p => p.hand.length));
+  const winner = state.players.find(p => p.hand.length === minCards);
+  if (!winner) return false;
+  blitzDeadlines.delete(roomCode);
+  s.forceGameOver(winner.id);
+  persister.markDirty(roomCode, s.getFullState());
+  await persister.flushNow(roomCode);
+  await emitGameUpdate(io, roomCode, s, redis);
+  const gameOverAt = Date.now();
+  io.to(roomCode).emit('game:over', {
+    winnerId: winner.id,
+    reason: 'blitz_timeout',
+    scores: Object.fromEntries(s.getFullState().players.map(p => [p.id, p.score])),
+    gameOverAt,
+  });
+  turnTimer.stop(roomCode);
+  // This announces game_over outside emitTerminalStateIfNeeded — do the same
+  // bookkeeping: stamp the anchor (rejoin replay + idempotency), drop any
+  // superseded round_end votes, and flip the room to finished so the lobby
+  // and rejoin paths see the right status.
+  markTerminalHandled(roomCode, gameOverAt);
+  await Promise.all([
+    setRoomStatus(redis, roomCode, 'finished'),
+    touchRoomActivity(redis, roomCode),
+  ]);
+  // …including the owner check: the anchor permanently short-circuits the
+  // live path's checkOwnerDisconnectedAtTerminal, and every exit from the
+  // game_over scoreboard is owner-gated.
+  await checkOwnerDisconnectedAtTerminal(roomCode, s);
+  return true;
+}
+
+function armBlitzTimer(
+  io: SocketIOServer,
+  redis: KvStore,
+  roomCode: string,
+  sessions: Map<string, GameSession>,
+  turnTimer: TurnTimer,
+  persister: GameStatePersister,
+  delayMs: number,
+): void {
+  const existing = blitzTimers.get(roomCode);
+  if (existing) clearTimeout(existing);
+  const blitzTimer = setTimeout(async () => {
+    blitzTimers.delete(roomCode);
+    const s = sessions.get(roomCode);
+    if (!s || s.isGameOver()) {
+      blitzDeadlines.delete(roomCode);
+      return;
+    }
+    // Deadline landed on the round_end scoreboard — ending the game
+    // mid-settlement would race the next-round flow. Keep the deadline;
+    // game:next_round enforces it before dealing another round.
+    if (s.isRoundEnd()) return;
+    await endGameByBlitz(io, redis, roomCode, s, turnTimer, persister);
+  }, delayMs);
+  blitzTimer.unref?.();
+  blitzTimers.set(roomCode, blitzTimer);
+}
+
+/**
+ * Rebuild the blitz total-time limit for a session restored after a restart:
+ * the in-memory deadline and timer died with the old process, but the
+ * snapshot carries gameStartedAt, so the original deadline is recoverable.
+ * An already-expired deadline is enforced at the next round boundary (or by
+ * the immediately-firing timer when the game is mid-round).
+ */
+export function rearmBlitzAfterRestore(
+  io: SocketIOServer,
+  redis: KvStore,
+  roomCode: string,
+  session: GameSession,
+  sessions: Map<string, GameSession>,
+  turnTimer: TurnTimer,
+  persister: GameStatePersister,
+): void {
+  const state = session.getFullState();
+  const limit = state.settings.houseRules.blitzTimeLimit;
+  if (!limit || !state.gameStartedAt || state.phase === 'game_over') return;
+  const deadline = state.gameStartedAt + limit * 1000;
+  blitzDeadlines.set(roomCode, deadline);
+  armBlitzTimer(io, redis, roomCode, sessions, turnTimer, persister, Math.max(0, deadline - Date.now()));
+}
+
+/**
+ * Called by the next-round flow: if the blitz total-time deadline expired
+ * while the room sat on the round_end scoreboard, end the game now instead
+ * of dealing a round that should never exist. Returns true if it ended.
+ */
+export async function enforceBlitzDeadline(
+  io: SocketIOServer,
+  redis: KvStore,
+  roomCode: string,
+  session: GameSession,
+  turnTimer: TurnTimer,
+  persister: GameStatePersister,
+): Promise<boolean> {
+  const deadline = blitzDeadlines.get(roomCode);
+  if (!deadline || Date.now() < deadline) return false;
+  return endGameByBlitz(io, redis, roomCode, session, turnTimer, persister);
 }
 
 export async function executeAutopilot(
@@ -572,6 +732,11 @@ export function startTurnTimer(
   const state = session.getFullState();
   const phase = state.phase;
 
+  // Every dispatch invalidates whatever bot thinking timer was armed for the
+  // previous turn state — a jump-in or remove_bot can hand the turn to a
+  // human mid-think, and the stale timer would force-play them.
+  clearBotTurnTimer(roomCode);
+
   const actingPlayerId = getAutopilotActionPlayerId(state);
   const actingPlayer = actingPlayerId ? state.players.find(p => p.id === actingPlayerId) : null;
   if (actingPlayer?.isBot && !actingPlayer.autopilot) {
@@ -597,7 +762,6 @@ export function startTurnTimer(
       : calculateBotDelay(difficulty, playableCount);
 
     turnTimer.stop(roomCode);
-    clearBotTurnTimer(roomCode);
     const timer = setTimeout(async () => {
       botTurnTimers.delete(roomCode);
       const s = sessions.get(roomCode);
@@ -610,6 +774,14 @@ export function startTurnTimer(
       }
 
       const botPlayer = fullState.players.find(p => p.id === pid);
+      // Defense in depth for the entry-point clear above: if the actor
+      // changed since this timer was armed and is now a human who neither
+      // timed out nor enabled autopilot, force-playing their hand is never
+      // acceptable — re-dispatch and let the right branch drive them.
+      if (!botPlayer?.isBot && !botPlayer?.autopilot) {
+        startTurnTimer(io, redis, roomCode, s, turnTimer, sessions, persister);
+        return;
+      }
       let actions: GameAction[];
       if (botPlayer?.isBot && botPlayer.botConfig) {
         actions = chooseBotAction(fullState, pid);
@@ -643,8 +815,22 @@ export function startTurnTimer(
       }
 
       checkBotUnoCatch(io, redis, roomCode, s, persister, emitGameUpdate, sessions);
-      const jumpInScheduled = checkBotJumpIn(io, redis, roomCode, s, persister, emitGameUpdate, () => {
-        startTurnTimer(io, redis, roomCode, s, turnTimer, sessions, persister);
+      // The jump-in itself can be the round-winning play — route its
+      // turn-change through the same terminal detection as every other
+      // action driver, or the room soft-locks at a scoreboard-less
+      // round_end (no game:round_end broadcast, no auto-votes, no
+      // cooldown anchor).
+      // bot-uno-watcher invokes onTurnChange without awaiting — swallow our
+      // own async failures or a kv hiccup becomes an unhandled rejection.
+      const jumpInScheduled = checkBotJumpIn(io, redis, roomCode, s, persister, emitGameUpdate, async () => {
+        try {
+          if (await emitTerminalStateIfNeeded(io, roomCode, s, turnTimer, redis, sessions, persister)) {
+            return;
+          }
+          startTurnTimer(io, redis, roomCode, s, turnTimer, sessions, persister);
+        } catch (err) {
+          console.error(`[jumpIn] onTurnChange failed for room ${roomCode}:`, err);
+        }
       }, sessions);
       if (!jumpInScheduled) {
         startTurnTimer(io, redis, roomCode, s, turnTimer, sessions, persister);
@@ -671,6 +857,12 @@ export function startTurnTimer(
       }, (action) => notifyAutopilotAction(code, s, action));
       persister.markDirty(code, s.getFullState());
       await emitGameUpdate(io, code, s, redis);
+      // An autopilot play can win the round — without this the terminal
+      // events (game:round_end, auto-votes, cooldown anchor) never fire and
+      // the room soft-locks at a scoreboard-less round_end.
+      if (await emitTerminalStateIfNeeded(io, code, s, turnTimer, redis, sessions, persister)) {
+        return;
+      }
       startTurnTimer(io, redis, code, s, turnTimer, sessions, persister);
     });
     return;
@@ -693,6 +885,9 @@ export function startTurnTimer(
       }, (action) => notifyAutopilotAction(code, s, action));
       persister.markDirty(code, s.getFullState());
       await emitGameUpdate(io, code, s, redis);
+      if (await emitTerminalStateIfNeeded(io, code, s, turnTimer, redis, sessions, persister)) {
+        return;
+      }
       io.to(code).emit('player:timeout', { playerId: pid });
       incrementTimeoutAndAutoAutopilot(io, redis, code, s, pid, persister);
       startTurnTimer(io, redis, code, s, turnTimer, sessions, persister);
@@ -720,6 +915,9 @@ export function startTurnTimer(
     }, (action) => notifyAutopilotAction(code, s, action));
     persister.markDirty(code, s.getFullState());
     await emitGameUpdate(io, code, s, redis);
+    if (await emitTerminalStateIfNeeded(io, code, s, turnTimer, redis, sessions, persister)) {
+      return;
+    }
     io.to(code).emit('player:timeout', { playerId: pid });
     incrementTimeoutAndAutoAutopilot(io, redis, code, s, pid, persister);
     startTurnTimer(io, redis, code, s, turnTimer, sessions, persister);

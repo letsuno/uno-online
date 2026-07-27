@@ -14,7 +14,7 @@ import { useGameHotkeys } from '../hooks/useGameHotkeys';
 import { playSound } from '@/shared/sound/sound-manager';
 import { useBgm } from '@/shared/sound/useBgm';
 import BgmToast from '@/shared/components/BgmToast';
-import { getSocket, refreshVoicePresence } from '@/shared/socket';
+import { getSocket, connectSocket, refreshVoicePresence } from '@/shared/socket';
 import { useToastStore } from '@/shared/stores/toast-store';
 import { useLeaveRoom } from '../hooks/useLeaveRoom';
 import GameHUD from '../components/GameHUD';
@@ -198,8 +198,21 @@ export default function GamePage() {
   });
 
   if (!phase) {
-    return <div className="flex flex-1 items-center justify-center">
-      <p className="text-muted-foreground">加载游戏中...</p>
+    // 断线状态在这条早退分支同样要可见可恢复——重连耗尽时这里若只显示
+    // "加载游戏中...",玩家会被无提示地永久卡住。
+    return <div className="flex flex-1 flex-col items-center justify-center gap-3">
+      <p className="text-muted-foreground">
+        {connectionStatus === 'disconnected' ? '连接已断开' : '加载游戏中...'}
+      </p>
+      {connectionStatus === 'disconnected' && (
+        <button
+          type="button"
+          onClick={() => connectSocket()}
+          className="rounded-lg bg-primary px-6 py-2 font-game text-primary-foreground hover:opacity-90"
+        >
+          重新连接
+        </button>
+      )}
     </div>;
   }
 
@@ -208,10 +221,24 @@ export default function GamePage() {
 
       {connectionStatus !== 'connected' && (
         <div className="fixed inset-0 z-connection flex flex-col items-center justify-center gap-3 bg-black/75">
-          <Loader2 size={36} className="animate-spin text-white" />
+          {connectionStatus === 'reconnecting' && (
+            <Loader2 size={36} className="animate-spin text-white" />
+          )}
           <p className="font-game text-lg text-white">
-            {connectionStatus === 'reconnecting' ? '重新连接中...' : '连接已断开，尝试重连...'}
+            {connectionStatus === 'reconnecting' ? '重新连接中...' : '连接已断开'}
           </p>
+          {connectionStatus === 'disconnected' && (
+            // 自动重连尝试耗尽后 socket.io 不再自行重试——没有这个按钮
+            // (以及 socket.ts 的 online 监听),玩家会被无交互的全屏遮罩
+            // 永久困住,只能整页刷新。
+            <button
+              type="button"
+              onClick={() => connectSocket()}
+              className="rounded-lg bg-primary px-6 py-2 font-game text-primary-foreground hover:opacity-90"
+            >
+              重新连接
+            </button>
+          )}
         </div>
       )}
 

@@ -50,13 +50,21 @@ export async function createRoom(kv: KvStore, roomCode: string, ownerId: string,
 export async function getRoom(kv: KvStore, roomCode: string): Promise<RoomData | null> {
   const data = await kv.hgetall(`room:${roomCode}`);
   if (!data || !data['ownerId']) return null;
-  return {
-    ownerId: data['ownerId'],
-    status: data['status'] as RoomData['status'],
-    settings: JSON.parse(data['settings']!) as RoomSettings,
-    createdAt: data['createdAt']!,
-    lastActivityAt: data['lastActivityAt'] ?? data['createdAt']!,
-  };
+  try {
+    return {
+      ownerId: data['ownerId'],
+      status: data['status'] as RoomData['status'],
+      settings: JSON.parse(data['settings']!) as RoomSettings,
+      createdAt: data['createdAt']!,
+      lastActivityAt: data['lastActivityAt'] ?? data['createdAt']!,
+    };
+  } catch {
+    // A partial hash rebuilt by a handler racing dissolveRoom (e.g. a bare
+    // setRoomOwner hset) has ownerId but no parseable settings. Throwing
+    // here would poison every caller that lists rooms (idle sweep, lobby
+    // broadcast); report it as nonexistent so the sweep can collect it.
+    return null;
+  }
 }
 
 export async function setRoomStatus(kv: KvStore, roomCode: string, status: RoomData['status']): Promise<void> {
@@ -325,6 +333,42 @@ export async function clearRoomSpectators(kv: KvStore, roomCode: string): Promis
   await kv.del(`room:${roomCode}:spectators`);
 }
 
+/**
+ * Startup reconciliation: a restarted process has no sockets, so every
+ * connected:true persisted by the previous process is a ghost — spectators
+ * that never satisfy the sweep's `!connected && disconnectedAt` filter, and
+ * seats that can win owner transfers while their user is gone. Mark all
+ * human members disconnected (bots have no sockets to lose); rejoins flip
+ * them back. `isLive` is evaluated INSIDE the seat lock at write time — a
+ * pre-sampled set would race the restart reconnection storm and flip
+ * freshly-rejoined users back to disconnected.
+ */
+export async function markAllMembersDisconnected(
+  kv: KvStore, roomCode: string, isLive?: (userId: string) => boolean,
+): Promise<void> {
+  await withRoomSeatLock(roomCode, async () => {
+    const seats = await getRoomSeats(kv, roomCode);
+    let seatsChanged = false;
+    for (let i = 0; i < seats.length; i++) {
+      const seat = seats[i];
+      if (seat && !seat.isBot && seat.connected && !isLive?.(seat.userId)) {
+        seats[i] = { ...seat, connected: false, ready: false };
+        seatsChanged = true;
+      }
+    }
+    if (seatsChanged) await setRoomSeats(kv, roomCode, seats);
+
+    const spectators = await getRoomSpectators(kv, roomCode);
+    let specChanged = false;
+    const updated = spectators.map(s => {
+      if (!s.connected || isLive?.(s.userId)) return s;
+      specChanged = true;
+      return { ...s, connected: false, disconnectedAt: Date.now() };
+    });
+    if (specChanged) await setRoomSpectators(kv, roomCode, updated);
+  });
+}
+
 export async function removeDisconnectedSpectators(
   kv: KvStore, roomCode: string, thresholdMs: number,
 ): Promise<RoomSpectator[]> {
@@ -347,7 +391,14 @@ export function pickNextOwner(
   const seated = getSeatedPlayers(seats);
   const next =
     seated.find(p => !p.isBot && p.connected && p.userId !== excludeUserId) ??
-    spectators.find(s => s.connected && s.userId !== excludeUserId);
+    spectators.find(s => s.connected && s.userId !== excludeUserId) ??
+    // Everyone left may be inside a disconnect grace window. A briefly
+    // offline human is still a better owner than a dangling ownerId pointing
+    // at someone already removed — that room can't start/kick/dissolve until
+    // the idle sweep. If the fallback owner never returns, their own
+    // eviction timer re-runs this transfer.
+    seated.find(p => !p.isBot && p.userId !== excludeUserId) ??
+    spectators.find(s => s.userId !== excludeUserId);
   return next?.userId ?? null;
 }
 

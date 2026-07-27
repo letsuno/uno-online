@@ -9,6 +9,7 @@ import ConfirmDialog from '@/shared/components/ConfirmDialog';
 import StartScreenOverlay from '@/shared/components/StartScreenOverlay';
 import { connectSocket, disconnectSocket } from '@/shared/socket';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
+import { resetClientRoomState } from '@/shared/stores/reset-room';
 
 export default function App() {
   const token = useAuthStore((s) => s.token);
@@ -32,6 +33,10 @@ export default function App() {
   useEffect(() => {
     const handleUnauthorized = () => {
       useAuthStore.setState({ user: null, token: null, loading: false, initialized: true, authError: null });
+      // Room/game stores outlive the login session (module-level zustand) —
+      // without this, the next account to log in through this SPA instance
+      // inherits the previous account's full game snapshot, hand included.
+      resetClientRoomState();
       disconnectSocket();
     };
     window.addEventListener('auth:unauthorized', handleUnauthorized);
