@@ -1,7 +1,15 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { MemoryKvStore } from '../../src/kv/memory';
 import { setupSocketHandlers } from '../../src/ws/socket-handler';
-import { getRoom, getRoomSeats, getRoomSpectators, setRoomStatus } from '../../src/plugins/core/room/store';
+import { GameSession } from '../../src/plugins/core/game/session';
+import {
+  getRoom,
+  getRoomSeats,
+  getRoomSpectators,
+  setRoomOwner,
+  setRoomStatus,
+} from '../../src/plugins/core/room/store';
+import { getPendingSpectatorQueue } from '../../src/ws/game-events';
 import type { MumbleIceConfig } from '../../src/config';
 import { makeFakeIo, type FakeSocket } from '../helpers/fake-io';
 
@@ -181,5 +189,42 @@ describe('spectator list lifecycle across a full match cycle', () => {
     expect(spectatorNames(fake.lastRoomEmit(roomCode, 'room:spectator_list'))).toEqual([]);
     const left = fake.lastRoomEmit(roomCode, 'room:spectator_left') as { nickname: string };
     expect(left.nickname).toBe('KickedWatcher');
+  });
+
+  it('lets a spectator owner free a full seat and queue for the next round', async () => {
+    const owner = await fake.connect('u_full_owner', 'FullOwner');
+    const watcher = await fake.connect('u_full_watcher', 'FullWatcher');
+
+    const created = await owner.call('room:create', {});
+    const roomCode = created.roomCode as string;
+    expect((await watcher.call('room:join', roomCode)).success).toBe(true);
+
+    for (let i = 0; i < 9; i++) {
+      expect((await owner.call('room:add_bot', { difficulty: 'easy' })).success).toBe(true);
+    }
+    expect((await owner.call('room:ready', true)).success).toBe(true);
+    expect((await owner.call('game:start')).success).toBe(true);
+    expect(watcher.data.isSpectator).toBe(true);
+
+    const activeSession = handlers.sessions.get(roomCode)!;
+    handlers.sessions.set(roomCode, GameSession.fromState({
+      ...activeSession.getFullState(),
+      phase: 'round_end',
+    }));
+    await setRoomOwner(kv, roomCode, 'u_full_watcher');
+
+    const fullJoin = await watcher.call('game:spectator_join');
+    expect(fullJoin.success).toBe(false);
+    expect(fullJoin.error).toContain('人数已达上限');
+
+    const botId = handlers.sessions.get(roomCode)!.getFullState().players.find(p => p.isBot)!.id;
+    const kicked = await watcher.call('game:kick_player', { targetId: botId });
+    expect(kicked.success).toBe(true);
+    expect(handlers.sessions.get(roomCode)!.getPlayerCount()).toBe(9);
+
+    const queued = await watcher.call('game:spectator_join');
+    expect(queued).toMatchObject({ success: true, queued: true });
+    expect(getPendingSpectatorQueue(roomCode)).toContain('FullWatcher');
+    handlers.turnTimer.stop(roomCode);
   });
 });

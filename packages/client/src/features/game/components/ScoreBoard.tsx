@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Trophy, BarChart3, Crown, Check, UserX, UserPlus, WifiOff, Eye, X, ArrowRightLeft } from 'lucide-react';
+import { MAX_PLAYERS } from '@uno-online/shared';
 import { showConfirm } from '@/shared/stores/confirm-store';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
@@ -106,33 +107,39 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
   const authUserId = useAuthStore((s) => s.user?.id);
   const sorted = [...players].sort((a, b) => b.score - a.score);
   const isGameOver = phase === 'game_over';
-  const isHost = ownerId === userId;
-  const isSpectatorOwner = isSpectator && ownerId === authUserId;
-  const canTransfer = isHost || isSpectatorOwner;
-  const hasVoted = !!userId && !!vote?.voters.includes(userId);
+  // Spectator views use the synthetic "__spectator__" viewerId. Room
+  // ownership, however, always belongs to the authenticated user.
+  const isHost = !!authUserId && ownerId === authUserId;
+  const isSpectatorOwner = isSpectator && isHost;
+  const hasVoted = !!authUserId && !!vote?.voters.includes(authUserId);
   const fallbackRequired = players.length;
   const votes = vote?.votes ?? 0;
   const required = vote?.required ?? fallbackRequired;
   const allAgreed = votes >= required;
   const cooldownActive = startCooldown > 0;
   const noHumanPlayers = required === 0;
-  const nextRoundButtonText = isHost
-    ? noHumanPlayers
-      ? '开始下一轮'
+  const spectatorQueueFull = players.length + pendingJoinQueue.length >= MAX_PLAYERS;
+  const spectatorOwnerNeedsSeat = isSpectatorOwner && !spectatorQueued && spectatorQueueFull;
+  const nextRoundButtonText = isSpectatorOwner && !spectatorQueued
+    ? '请先加入下局'
+    : isHost
+      ? noHumanPlayers
+        ? '开始下一轮'
+        : hasVoted
+          ? allAgreed
+            ? '开始下一轮'
+            : `等待同意 (${votes}/${required})`
+          : `同意继续 (${votes}/${required})`
       : hasVoted
         ? allAgreed
-          ? '开始下一轮'
-          : `等待同意 (${votes}/${required})`
-        : `同意继续 (${votes}/${required})`
-    : hasVoted
-      ? allAgreed
-        ? '等待房主开始'
-        : `已同意 (${votes}/${required})`
-      : `同意继续 (${votes}/${required})`;
+          ? '等待房主开始'
+          : `已同意 (${votes}/${required})`
+        : `同意继续 (${votes}/${required})`;
   const isNextRoundDisabled = !isGameOver && (
-    isHost
+    (isSpectatorOwner && !spectatorQueued)
+    || (isHost
       ? noHumanPlayers ? cooldownActive : hasVoted && (!allAgreed || cooldownActive)
-      : hasVoted
+      : hasVoted)
   );
 
   return (
@@ -187,7 +194,7 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
                   {p.id === ownerId && <span title="房主"><Crown size={11} className="shrink-0 text-primary" /></span>}
                   {p.isBot && <AiBadge className="shrink-0" />}
                   {disconnected && <WifiOff size={11} className="shrink-0 text-destructive" />}
-                  {canTransfer && !isSelf && !p.isBot && (
+                  {isHost && !isSelf && !p.isBot && (
                     <button
                       onClick={async () => {
                         if (!(await showConfirm({ title: '移交房主', message: `确定要将房主移交给 ${p.name} 吗？`, confirmText: '移交' }))) return;
@@ -210,7 +217,7 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
                       {ready
                         ? <span className="w-4.5 h-4.5 rounded-full bg-uno-green/15 flex items-center justify-center" title="已同意下一轮"><Check size={11} className="text-uno-green" /></span>
                         : <span className="text-[10px] text-muted-foreground/70">等待</span>}
-                      {isHost && !isSelf && !isSpectator && (
+                      {isHost && !isSelf && (
                         <button onClick={() => onKickPlayer(p.id)} className="text-destructive/60 hover:text-destructive cursor-pointer bg-transparent border-none transition-colors" title={p.isBot ? '移除机器人' : '移至观战席'}>
                           <UserX size={13} />
                         </button>
@@ -229,7 +236,13 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
         {isSpectatorOwner && (
           <div className="mb-3 flex items-center gap-2 rounded-lg bg-primary/10 border border-primary/30 px-3 py-2 text-xs text-primary">
             <Crown size={14} className="shrink-0" />
-            <span>{spectatorQueued ? '你将在下一轮入座，或将房主移交给在座的玩家' : '你是房主但处于观战状态，请入座或将房主移交给在座的玩家'}</span>
+            <span>
+              {spectatorQueued
+                ? '你将在下一轮入座，也可以将房主移交给在座的玩家'
+                : spectatorOwnerNeedsSeat
+                  ? '你是观战房主且房间已满，请先移除一名在座玩家或机器人，再加入下一轮；也可以移交房主'
+                  : '你是房主但处于观战状态，请加入下一轮或将房主移交给在座的玩家'}
+            </span>
           </div>
         )}
         {!isGameOver && pendingJoinQueue.length > 0 && (
@@ -263,10 +276,15 @@ export default function ScoreBoard({ isSpectator = false, onPlayAgain, onBackToR
             {!isGameOver && isHost && <Button variant="primary" onClick={onPlayAgain} disabled={isNextRoundDisabled} sound="ready">{nextRoundButtonText}</Button>}
             {!isGameOver && (() => {
               const locked = spectatorQueued && isSpectatorOwner;
-              const Icon = spectatorQueued ? (locked ? Check : X) : UserPlus;
-              const label = spectatorQueued ? (locked ? '已加入下局' : '取消加入') : '下局加入';
+              const queueBlocked = !spectatorQueued && spectatorQueueFull;
+              const Icon = spectatorQueued ? (locked ? Check : X) : queueBlocked && isSpectatorOwner ? UserX : UserPlus;
+              const label = spectatorQueued
+                ? locked ? '已加入下局' : '取消加入'
+                : queueBlocked
+                  ? isSpectatorOwner ? '请先腾出座位' : '房间已满'
+                  : '下局加入';
               return (
-                <Button variant="secondary" onClick={locked ? undefined : toggleSpectatorQueue} disabled={locked} sound={spectatorQueued ? 'click' : 'ready'}>
+                <Button variant="secondary" onClick={locked || queueBlocked ? undefined : toggleSpectatorQueue} disabled={locked || queueBlocked} sound={spectatorQueued ? 'click' : 'ready'}>
                   <Icon size={14} className="inline align-middle mr-1" />{label}
                 </Button>
               );
