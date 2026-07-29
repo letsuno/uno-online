@@ -160,6 +160,52 @@ const PAGES: PageDef[] = [
       </div>
     ),
   },
+  {
+    title: 'UNO Flip 模式',
+    subtitle: '双面牌组 · 房主可在房间设置里开启',
+    body: (
+      <div className="w-full max-w-xl grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl bg-white/[0.04] border border-white/[0.05] p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-accent text-xl leading-none shrink-0">⇅</span>
+            <p className="text-base font-bold text-foreground">翻面</p>
+          </div>
+          <div className="space-y-3 text-sm text-foreground/80">
+            <p>每张牌都是<strong className="text-foreground">双面</strong>的：亮面（红蓝绿黄）和暗面（粉青橙紫）。</p>
+            <p>打出 <strong className="text-foreground">Flip 卡</strong>，牌堆、弃牌堆、所有人手牌一起翻到另一面。</p>
+            <p>你能看到<strong className="text-foreground">对手手牌的背面</strong>，但看不到自己的——这是本模式的核心博弈。</p>
+          </div>
+        </div>
+        <div className="rounded-xl bg-white/[0.04] border border-white/[0.05] p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-accent text-xl leading-none shrink-0">+5</span>
+            <p className="text-base font-bold text-foreground">暗面更狠</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-center mb-3">
+            <div className="rounded-lg bg-white/[0.04] border border-white/[0.05] py-2">
+              <p className="text-foreground font-bold">+1</p>
+              <p className="text-2xs text-muted-foreground mt-0.5">亮面罚摸</p>
+            </div>
+            <div className="rounded-lg bg-uno-orange/15 border border-uno-orange/30 py-2">
+              <p className="text-foreground font-bold">+5</p>
+              <p className="text-2xs text-muted-foreground mt-0.5">暗面罚摸</p>
+            </div>
+            <div className="rounded-lg bg-white/[0.04] border border-white/[0.05] py-2">
+              <p className="text-foreground font-bold">⊘</p>
+              <p className="text-2xs text-muted-foreground mt-0.5">跳过下家</p>
+            </div>
+            <div className="rounded-lg bg-uno-pink/15 border border-uno-pink/30 py-2">
+              <p className="text-foreground font-bold">⊘⊘</p>
+              <p className="text-2xs text-muted-foreground mt-0.5">跳过全体</p>
+            </div>
+          </div>
+          <p className="text-sm text-foreground/80">
+            暗面还有<strong className="text-foreground">摸到指定色</strong>：下家一直摸牌，直到摸出你指定的颜色为止。
+          </p>
+        </div>
+      </div>
+    ),
+  },
 ];
 
 export default function TutorialModal({ open, onClose }: { open: boolean; onClose: () => void }) {

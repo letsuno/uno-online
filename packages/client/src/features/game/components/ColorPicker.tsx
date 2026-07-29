@@ -2,17 +2,28 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Color } from '@uno-online/shared';
 import { UNO_COLOR_HEX } from '../constants/colors';
+import { useGameStore } from '../stores/game-store';
 
-const COLORS: { color: Color; bgClass: string; label: string }[] = [
+/** 任一时刻只有当前面的 4 色可选，不是 8 色。 */
+const LIGHT_COLORS: { color: Color; bgClass: string; label: string }[] = [
   { color: 'red', bgClass: 'bg-uno-red', label: '红' },
   { color: 'blue', bgClass: 'bg-uno-blue', label: '蓝' },
   { color: 'green', bgClass: 'bg-uno-green', label: '绿' },
   { color: 'yellow', bgClass: 'bg-uno-yellow', label: '黄' },
 ];
 
+const DARK_COLORS: { color: Color; bgClass: string; label: string }[] = [
+  { color: 'pink', bgClass: 'bg-uno-pink', label: '粉' },
+  { color: 'teal', bgClass: 'bg-uno-teal', label: '青' },
+  { color: 'orange', bgClass: 'bg-uno-orange', label: '橙' },
+  { color: 'purple', bgClass: 'bg-uno-purple', label: '紫' },
+];
+
 interface ColorPickerProps { onPick: (color: Color) => void; }
 
 export default function ColorPicker({ onPick }: ColorPickerProps) {
+  const flipSide = useGameStore((s) => s.flipSide);
+  const COLORS = flipSide === 'dark' ? DARK_COLORS : LIGHT_COLORS;
   const [picked, setPicked] = useState<Color | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 

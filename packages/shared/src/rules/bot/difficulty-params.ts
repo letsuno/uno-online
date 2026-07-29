@@ -11,6 +11,12 @@ export interface DifficultyParams {
   infoAccess: {
     canSeeOpponentHands: boolean;
     canSeeDeckTopCards: number;
+    /**
+     * UNO Flip：从对手手牌背面反推其正面持牌的能力。
+     * 这是**合法**信息——人类玩家同样看得见对手的背面，配对表也是公开的。
+     * 'none' 不用；'color' 只看背面颜色；'full' 连卡型一起纳入决策。
+     */
+    flipBackReading: 'none' | 'color' | 'full';
   };
   considerOpponentHandSize: boolean;
   considerTeamStrategy: boolean;
@@ -32,7 +38,7 @@ export interface DifficultyParams {
 
 export const DIFFICULTY_PARAMS: Record<BotDifficulty, DifficultyParams> = {
   novice: {
-    infoAccess: { canSeeOpponentHands: false, canSeeDeckTopCards: 0 },
+    infoAccess: { canSeeOpponentHands: false, canSeeDeckTopCards: 0, flipBackReading: 'none' },
     considerOpponentHandSize: false,
     considerTeamStrategy: false,
     mistakeRate: 0.4,
@@ -50,7 +56,7 @@ export const DIFFICULTY_PARAMS: Record<BotDifficulty, DifficultyParams> = {
     delay: { base: [2000, 3500], perCard: 200, maxDelay: 5000 },
   },
   easy: {
-    infoAccess: { canSeeOpponentHands: false, canSeeDeckTopCards: 0 },
+    infoAccess: { canSeeOpponentHands: false, canSeeDeckTopCards: 0, flipBackReading: 'none' },
     considerOpponentHandSize: false,
     considerTeamStrategy: false,
     mistakeRate: 0.25,
@@ -68,7 +74,7 @@ export const DIFFICULTY_PARAMS: Record<BotDifficulty, DifficultyParams> = {
     delay: { base: [1500, 3000], perCard: 150, maxDelay: 4500 },
   },
   normal: {
-    infoAccess: { canSeeOpponentHands: false, canSeeDeckTopCards: 0 },
+    infoAccess: { canSeeOpponentHands: false, canSeeDeckTopCards: 0, flipBackReading: 'color' },
     considerOpponentHandSize: true,
     considerTeamStrategy: true,
     mistakeRate: 0.05,
@@ -86,7 +92,7 @@ export const DIFFICULTY_PARAMS: Record<BotDifficulty, DifficultyParams> = {
     delay: { base: [1200, 2500], perCard: 100, maxDelay: 4000 },
   },
   hard: {
-    infoAccess: { canSeeOpponentHands: true, canSeeDeckTopCards: 3 },
+    infoAccess: { canSeeOpponentHands: true, canSeeDeckTopCards: 3, flipBackReading: 'full' },
     considerOpponentHandSize: true,
     considerTeamStrategy: true,
     mistakeRate: 0.0,

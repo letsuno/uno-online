@@ -1,14 +1,15 @@
 import type { Card } from '../types/card.js';
-import type { Player } from '../types/game.js';
+import type { GameMode, Player } from '../types/game.js';
 import { getCardScore } from '../constants/scoring.js';
 
-export function calculateRoundScore(hand: readonly Card[]): number {
-  return hand.reduce((sum, card) => sum + getCardScore(card), 0);
+export function calculateRoundScore(hand: readonly Card[], mode: GameMode = 'classic'): number {
+  return hand.reduce((sum, card) => sum + getCardScore(card, mode), 0);
 }
 
 export function calculateRoundScores(
   players: readonly Player[],
   winnerId: string,
+  mode: GameMode = 'classic',
 ): Record<string, number> {
   const scores: Record<string, number> = {};
   let winnerPoints = 0;
@@ -17,7 +18,7 @@ export function calculateRoundScores(
     if (player.id === winnerId) {
       scores[player.id] = 0;
     } else {
-      const handScore = calculateRoundScore(player.hand);
+      const handScore = calculateRoundScore(player.hand, mode);
       winnerPoints += handScore;
       scores[player.id] = 0;
     }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import { useGameStore } from '../stores/game-store';
 
 interface SectionProps {
   title: string;
@@ -31,6 +32,10 @@ function MiniCard({ color, label }: { color: string; label: string }) {
     blue: 'bg-uno-blue',
     green: 'bg-uno-green',
     yellow: 'bg-uno-yellow',
+    pink: 'bg-uno-pink',
+    teal: 'bg-uno-teal',
+    orange: 'bg-uno-orange',
+    purple: 'bg-uno-purple',
     wild: 'bg-wild-gradient',
     dark: 'bg-[#232a45] border border-white/25',
   };
@@ -42,7 +47,105 @@ function MiniCard({ color, label }: { color: string; label: string }) {
   );
 }
 
+function FlipSections() {
+  return (
+    <>
+      <Section title="UNO Flip 玩法">
+        <ul className="list-disc pl-4 flex flex-col gap-1">
+          <li>每张牌都是<strong>双面</strong>的：亮面（红蓝绿黄）和暗面（粉青橙紫）</li>
+          <li>打出 <strong>Flip 卡</strong>，整局翻面——牌堆、弃牌堆、所有人手牌一起翻</li>
+          <li>翻面后弃牌堆会整体倒转，新顶牌是本轮<strong>第一张</strong>弃牌</li>
+          <li>你能看到<strong>对手手牌的背面</strong>，但看不到自己的——这是本模式的核心博弈</li>
+          <li>Flip 牌组<strong>没有 0 牌</strong>，数字只有 1-9</li>
+        </ul>
+      </Section>
+
+      <Section title="亮面卡牌">
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-muted-foreground text-2xs font-bold mb-1">数字牌（1-9）</p>
+            <div className="flex gap-1 mb-1">
+              <MiniCard color="red" label="3" />
+              <MiniCard color="blue" label="7" />
+              <MiniCard color="green" label="1" />
+              <MiniCard color="yellow" label="9" />
+            </div>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-2xs font-bold mb-1">+1 / Skip / Reverse</p>
+            <div className="flex items-center gap-1 mb-1">
+              <MiniCard color="red" label="+1" />
+              <MiniCard color="blue" label="⊘" />
+              <MiniCard color="green" label="⇆" />
+            </div>
+            <p>下家摸 1 张并跳过 / 跳过下家 / 反转方向。</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-2xs font-bold mb-1">Flip / 万能牌 / 万能 +2</p>
+            <div className="flex items-center gap-1 mb-1">
+              <MiniCard color="yellow" label="⇅" />
+              <MiniCard color="wild" label="W" />
+              <MiniCard color="dark" label="+2" />
+            </div>
+            <p>翻面 / 指定颜色 / 指定颜色且下家摸 2 张（可质疑）。</p>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="暗面卡牌" defaultOpen={false}>
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-muted-foreground text-2xs font-bold mb-1">数字牌（1-9）</p>
+            <div className="flex gap-1 mb-1">
+              <MiniCard color="pink" label="3" />
+              <MiniCard color="teal" label="7" />
+              <MiniCard color="orange" label="1" />
+              <MiniCard color="purple" label="9" />
+            </div>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-2xs font-bold mb-1">+5（Draw Five）</p>
+            <div className="flex items-center gap-1 mb-1"><MiniCard color="orange" label="+5" /></div>
+            <p>下家摸 <strong>5 张</strong>并跳过回合。</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-2xs font-bold mb-1">跳过全体（Skip Everyone）</p>
+            <div className="flex items-center gap-1 mb-1"><MiniCard color="pink" label="⊘⊘" /></div>
+            <p><strong>所有人</strong>都被跳过，轮次回到你自己——等于连出两张。</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-2xs font-bold mb-1">摸到指定色（Wild Draw Color）</p>
+            <div className="flex items-center gap-1 mb-1"><MiniCard color="dark" label="+?" /></div>
+            <p>指定一个颜色，下家<strong>一直摸到摸出该颜色为止</strong>并跳过回合。可质疑。</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-2xs font-bold mb-1">Flip / 万能牌</p>
+            <div className="flex items-center gap-1 mb-1">
+              <MiniCard color="purple" label="⇅" />
+              <MiniCard color="wild" label="W" />
+            </div>
+            <p>翻回亮面 / 指定颜色。</p>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="Flip 计分" defaultOpen={false}>
+        <ul className="list-disc pl-4 flex flex-col gap-1">
+          <li>按<strong>结算时所处的那一面</strong>计分</li>
+          <li>数字牌：面值分（1-9 分）</li>
+          <li>+1：10 分</li>
+          <li>Skip / Reverse / +5 / Flip：各 20 分</li>
+          <li>跳过全体：30 分</li>
+          <li>万能牌：40 分 · 万能 +2：50 分 · 摸到指定色：60 分</li>
+        </ul>
+      </Section>
+    </>
+  );
+}
+
 export default function GameRulesPanel() {
+  const isFlip = useGameStore((s) => s.settings?.gameMode) === 'flip';
+
   return (
     <div className="flex flex-col gap-2">
       <Section title="基本规则">
@@ -54,7 +157,9 @@ export default function GameRulesPanel() {
         </ul>
       </Section>
 
-      <Section title="卡牌图鉴">
+      {isFlip && <FlipSections />}
+
+      {!isFlip && <Section title="卡牌图鉴">
         <div className="flex flex-col gap-3">
           <div>
             <p className="text-muted-foreground text-2xs font-bold mb-1">数字牌（0-9）</p>
@@ -107,7 +212,7 @@ export default function GameRulesPanel() {
             <p>选择颜色并让下家摸 4 张牌。仅在没有同色牌时可合法打出，下家可质疑。</p>
           </div>
         </div>
-      </Section>
+      </Section>}
 
       <Section title="UNO 喊牌">
         <ul className="list-disc pl-4 flex flex-col gap-1">
@@ -117,7 +222,7 @@ export default function GameRulesPanel() {
         </ul>
       </Section>
 
-      <Section title="胜利与计分">
+      {!isFlip && <Section title="胜利与计分">
         <ul className="list-disc pl-4 flex flex-col gap-1">
           <li>最先出完手牌的玩家赢得本轮</li>
           <li>赢家获得所有其他玩家手中剩余牌的分值总和</li>
@@ -127,7 +232,16 @@ export default function GameRulesPanel() {
           <li>万能牌（Wild / +4）：每张 50 分</li>
           <li>达到目标分数的玩家赢得整局游戏</li>
         </ul>
-      </Section>
+      </Section>}
+      {isFlip && (
+        <Section title="胜利">
+          <ul className="list-disc pl-4 flex flex-col gap-1">
+            <li>最先出完手牌的玩家赢得本轮</li>
+            <li>赢家获得其他玩家手中剩余牌的分值总和</li>
+            <li>达到目标分数（Flip 官方为 500 分）的玩家赢得整局</li>
+          </ul>
+        </Section>
+      )}
     </div>
   );
 }

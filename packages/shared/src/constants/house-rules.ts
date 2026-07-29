@@ -1,4 +1,6 @@
 import type { HouseRules } from '../types/house-rules.js';
+import type { GameMode } from '../types/game.js';
+import { DEFAULT_HOUSE_RULES } from '../types/house-rules.js';
 
 export interface HouseRuleDefinition {
   key: keyof HouseRules;
@@ -41,3 +43,76 @@ export const HOUSE_RULE_DEFINITIONS: HouseRuleDefinition[] = [
   { key: 'blitzTimeLimit', label: '闪电战', description: '总时间限制（秒），超时手牌最少者赢' },
   { key: 'shuffleSeats', label: '随机座位', description: '每轮开始时随机打乱玩家座位顺序' },
 ];
+
+/** UNO Flip 专属村规，仅在 flip 模式下显示。 */
+export const FLIP_HOUSE_RULE_DEFINITIONS: HouseRuleDefinition[] = [
+  { key: 'flipStackDrawOne', label: '+1 叠加', description: '被 +1 时可出 +1 叠加给下家' },
+  { key: 'flipStackDrawFive', label: '+5 叠加', description: '被 +5 时可出 +5 叠加给下家' },
+  { key: 'flipStackWildDraw', label: '万能罚摸叠加', description: '万能 +2 / 摸到指定色 可参与叠加' },
+  { key: 'flipEscalateOnly', label: '仅可升级叠加', description: '只能叠更重的罚则（+1 → +5 可以，反之不行）' },
+  { key: 'flipReverseDeflect', label: 'Reverse 反弹罚摸', description: '被罚摸时出 Reverse 反弹给上家' },
+  { key: 'flipSkipDeflect', label: 'Skip 挡罚', description: '被罚摸时出 Skip / 跳过全体 转移给下家' },
+  { key: 'flipWildFlip', label: 'Flip 万能出', description: 'Flip 卡可无视颜色随时打出' },
+  { key: 'flipKeepColorOnFlip', label: '翻面保留颜色', description: '翻面后顶牌是万能牌时沿用对位色，不选色' },
+  { key: 'flipShowOwnBacks', label: '背面透视', description: '能看到自己手牌的背面（休闲向）' },
+  { key: 'flipDrawColorCap', label: '摸色上限', description: '摸到指定色最多摸几张' },
+  { key: 'flipDarkDoubleScore', label: '暗面结算翻倍', description: '在暗面结束的回合赢家得分翻倍' },
+];
+
+/**
+ * UNO Flip 模式下不可用的村规，值为用户可见的禁用原因。
+ *
+ * 这些规则要么在 Flip 牌组里根本触发不了（Flip 没有 0 牌），
+ * 要么依赖经典专属卡型（+2 / +4），在 Flip 下是静默失效——
+ * 与其让房主以为开了实际没生效，不如直接置灰并说明原因。
+ * 对应的 Flip 版本（+1/+5 叠加等）见设计文档 §11。
+ */
+export const FLIP_INCOMPATIBLE_RULES: Partial<Record<keyof HouseRules, string>> = {
+  zeroRotateHands: 'UNO Flip 牌组没有 0 牌',
+  stackDrawTwo: 'Flip 的罚摸牌是 +1 / +5，需用 Flip 版叠加规则',
+  stackDrawFour: 'Flip 没有 +4，需用 Flip 版叠加规则',
+  crossStack: 'Flip 的罚摸卡型不同，需用 Flip 版叠加规则',
+  reverseDeflectDrawTwo: 'Flip 的罚摸卡型不同',
+  reverseDeflectDrawFour: 'Flip 没有 +4',
+  skipDeflect: 'Flip 的罚摸卡型不同',
+  noChallengeWildFour: 'Flip 没有 +4（对应的是万能 +2 / 摸到指定色）',
+  bombCard: 'Flip 少了 0 这一档数字，且翻面会打散同数字组合',
+};
+
+/** 仅 Flip 模式有意义的村规键。 */
+export const FLIP_ONLY_RULE_KEYS: (keyof HouseRules)[] =
+  FLIP_HOUSE_RULE_DEFINITIONS.map((d) => d.key);
+
+/**
+ * 把村规配置归一到指定模式：清掉在该模式下无意义的键。
+ *
+ * 没有这一步的话，切换模式后另一模式的规则会以「看不见但仍开着」的状态留在配置里——
+ * 玩家在 UI 上找不到它，却可能在切回去时突然生效。
+ */
+export function normalizeHouseRulesForMode(hr: HouseRules, mode: GameMode): HouseRules {
+  const next = { ...hr };
+  const strip = mode === 'flip'
+    ? (Object.keys(FLIP_INCOMPATIBLE_RULES) as (keyof HouseRules)[])
+    : FLIP_ONLY_RULE_KEYS;
+  for (const key of strip) {
+    (next as Record<string, unknown>)[key] = DEFAULT_HOUSE_RULES[key];
+  }
+  return next;
+}
+
+/**
+ * 当前生效（与默认值不同）的村规定义。
+ *
+ * Flip 模式下会把 Flip 专属村规一并算进来——否则开了 +5 叠加，
+ * 游戏内仍然显示「无额外村规」。
+ */
+export function getActiveHouseRuleDefinitions(
+  hr: HouseRules | undefined,
+  mode: GameMode = 'classic',
+): HouseRuleDefinition[] {
+  if (!hr) return [];
+  const defs = mode === 'flip'
+    ? [...HOUSE_RULE_DEFINITIONS, ...FLIP_HOUSE_RULE_DEFINITIONS]
+    : HOUSE_RULE_DEFINITIONS;
+  return defs.filter((d) => hr[d.key] !== DEFAULT_HOUSE_RULES[d.key]);
+}

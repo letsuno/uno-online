@@ -4,17 +4,8 @@ import { useSettingsStore } from '@/shared/stores/settings-store';
 import { getCardImage, isPackLoaded } from '@/shared/utils/card-images';
 import ColorBlindOverlay from './ColorBlindOverlay';
 import { cn } from '@/shared/lib/utils';
-
-function getCardLabel(card: CardType): string {
-  switch (card.type) {
-    case 'number': return String(card.value);
-    case 'skip': return '⊘';
-    case 'reverse': return '转向';
-    case 'draw_two': return '+2';
-    case 'wild': return 'W';
-    case 'wild_draw_four': return '+4';
-  }
-}
+import { cardSymbol } from '../constants/card-symbols';
+import { UNO_COLOR_BG_CLASS } from '../constants/colors';
 
 /** 经典双箭头转向符号——文字字形 ⟲ 与禁止 ⊘ 形近，改用 SVG 区分 */
 function ReverseIcon({ className }: { className?: string }) {
@@ -34,12 +25,7 @@ function ReverseIcon({ className }: { className?: string }) {
   );
 }
 
-const colorClasses: Record<string, string> = {
-  red: 'bg-uno-red',
-  blue: 'bg-uno-blue',
-  green: 'bg-uno-green',
-  yellow: 'bg-uno-yellow text-background',
-};
+
 
 const typeFontClasses: Record<string, string> = {
   number: 'text-card-number md:text-card-number-md',
@@ -48,6 +34,12 @@ const typeFontClasses: Record<string, string> = {
   draw_two: 'text-card-draw',
   wild: 'text-card-wild',
   wild_draw_four: 'text-card-wild4',
+  draw_one: 'text-card-draw',
+  draw_five: 'text-card-draw',
+  skip_everyone: 'text-card-draw',
+  flip: 'text-card-symbol md:text-card-symbol-md',
+  wild_draw_two: 'text-card-wild4',
+  wild_draw_color: 'text-card-wild4',
 };
 
 interface CardProps {
@@ -70,9 +62,9 @@ export default function Card({ card, playable = false, clickable = playable, dim
   const isWild = isWildCard(card);
   const bgClass = isWild
     ? 'bg-wild-gradient'
-    : colorClasses[card.color!] ?? '';
+    : UNO_COLOR_BG_CLASS[card.color!] ?? '';
 
-  const label = getCardLabel(card);
+  const label = cardSymbol(card.type, card.type === 'number' ? card.value : undefined);
   const symbol = card.type === 'reverse' ? <ReverseIcon /> : label;
   const showCorners = (!isWild || forceCornerLabel) && !mini;
 
@@ -116,7 +108,9 @@ export default function Card({ card, playable = false, clickable = playable, dim
     <div
       className={cn(
         'w-card-w h-card-h md:w-card-w-md md:h-card-h-md rounded-card md:rounded-card-md',
-        'border-3 md:border-4 border-white',
+        // 边框区分明暗面：亮面白边，暗面黑灰边 + 白色描边（规则在 effects.css，
+        // 走 [data-flip-side] 祖先选择器，避免每张牌都订阅 store）
+        'uno-card border-3 md:border-4 border-white',
         'flex items-center justify-center',
         'font-game font-black text-white select-none shrink-0 relative',
         'transition-[transform,box-shadow,opacity] duration-200',
