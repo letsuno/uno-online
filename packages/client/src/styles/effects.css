@@ -351,3 +351,49 @@
     width: auto;
   }
 }
+
+/* ==========================================================================
+   UNO Flip —— 暗面氛围
+   一次性的色调切换，不引入常驻动画（对局中任何持续重绘都会让移动端发热）
+   ========================================================================== */
+[data-flip-side='dark'] {
+  --gold: #b9a7ff;
+  --gold-2: #d8ccff;
+  --gold-3: #8b73e0;
+}
+
+[data-flip-side='dark']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(circle at 50% 45%, rgba(120, 70, 180, 0.16), transparent 62%);
+}
+
+/* --------------------------------------------------------------------------
+   明暗面的牌框区分
+   亮面：白边（默认）
+   暗面：黑灰边 + 一圈白色描边
+   用祖先属性选择器而不是给每张牌加 store 订阅——牌面同一时刻必然同侧。
+   -------------------------------------------------------------------------- */
+[data-flip-side='dark'] .uno-card {
+  border-color: #0f1116;
+  /* 比亮面更粗，暗色边压在深色牌桌上才看得出来 */
+  border-width: 5px;
+  box-shadow:
+    0 0 0 2px rgba(196, 201, 214, 0.85),
+    var(--shadow-card);
+}
+
+@media (min-width: 768px) {
+  [data-flip-side='dark'] .uno-card {
+    border-width: 6px;
+  }
+}
+
+/* 可出牌的高亮描边优先级更高，暗面下保留金色提示 */
+[data-flip-side='dark'] .uno-card.border-primary {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-card-playable);
+}

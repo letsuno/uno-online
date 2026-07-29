@@ -3,6 +3,7 @@ import type { Card } from '../types/card.js';
 import type { Color } from '../types/card.js';
 import { isWildCard } from '../types/card.js';
 import { canPlayCard } from './validation.js';
+import { canStartStack } from './stack-rules.js';
 import { getNextPlayerIndex, getNextAliveIndex, countAlivePlayers, rotateHands } from './turn.js';
 import { applyAction, checkRoundEnd, startPenaltyDraw, drawCards } from './game-engine.js';
 import type { RuleContext } from './house-rule-types.js';
@@ -32,25 +33,28 @@ export function isLastCard(state: GameState, playerId: string, cardId: string): 
   return player.hand.length === 1 && player.hand[0]!.id === cardId;
 }
 
+/** 罚摸类功能牌。用于「空手赢不算」等末牌限制村规，需要覆盖 Flip 卡型。 */
 export function isFunctionCard(card: Card): boolean {
-  return card.type === 'draw_two' || card.type === 'wild_draw_four';
+  return card.type === 'draw_two'
+    || card.type === 'wild_draw_four'
+    || card.type === 'draw_one'
+    || card.type === 'draw_five'
+    || card.type === 'wild_draw_two'
+    || card.type === 'wild_draw_color';
 }
 
 export function getCardDrawPenalty(card: Card): number {
   if (card.type === 'draw_two') return 2;
   if (card.type === 'wild_draw_four') return 4;
+  if (card.type === 'draw_one') return 1;
+  if (card.type === 'draw_five') return 5;
+  if (card.type === 'wild_draw_two') return 2;
+  // Wild Draw Color 的张数不确定（摸到指定色为止），走 pendingPenaltyUntilColor 而非固定张数
   return 0;
 }
 
 export function canStartDrawStack(state: GameState, card: Card): boolean {
-  const hr = state.settings.houseRules;
-  if (card.type === 'draw_two') {
-    return hr.stackDrawTwo || hr.crossStack;
-  }
-  if (card.type === 'wild_draw_four') {
-    return hr.stackDrawFour || hr.crossStack;
-  }
-  return false;
+  return canStartStack(card, state.settings.houseRules);
 }
 
 export function putAttackCardOnStack(

@@ -10,6 +10,7 @@ import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useLeaveRoom } from '../hooks/useLeaveRoom';
 import { useElapsedTimer, formatElapsed } from '../hooks/useElapsedTimer';
+import { UNO_COLOR_LABEL, UNO_COLOR_VAR } from '../constants/colors';
 import { getSocket } from '@/shared/socket';
 import { useServerStore } from '@/shared/stores/server-store';
 import { showConfirm } from '@/shared/stores/confirm-store';
@@ -24,16 +25,6 @@ const PHASE_LABEL: Record<string, string> = {
   choosing_swap_target: '选交换…',
 };
 
-const COLOR_HEX: Record<Color, string> = {
-  red: 'var(--color-uno-red)',
-  blue: 'var(--color-uno-blue)',
-  green: 'var(--color-uno-green)',
-  yellow: 'var(--color-uno-yellow)',
-};
-
-const COLOR_LABEL: Record<Color, string> = {
-  red: '红', blue: '蓝', green: '绿', yellow: '黄',
-};
 
 function getCardLabel(card: Card): string {
   switch (card.type) {
@@ -43,6 +34,13 @@ function getCardLabel(card: Card): string {
     case 'draw_two': return '+2';
     case 'wild': return '变色';
     case 'wild_draw_four': return '+4';
+    // UNO Flip
+    case 'draw_one': return '+1';
+    case 'draw_five': return '+5';
+    case 'skip_everyone': return '全禁';
+    case 'flip': return '翻面';
+    case 'wild_draw_two': return '+2';
+    case 'wild_draw_color': return '摸色';
   }
 }
 
@@ -93,7 +91,7 @@ function GameStatus({ withPhase = true }: { withPhase?: boolean }) {
 
   if (!topCard || !currentColor || phase === 'round_end' || phase === 'game_over') return null;
 
-  const hex = COLOR_HEX[currentColor];
+  const hex = UNO_COLOR_VAR[currentColor];
 
   return (
     <div className="flex items-center gap-2 text-xs">
@@ -102,7 +100,7 @@ function GameStatus({ withPhase = true }: { withPhase?: boolean }) {
         style={{ background: `color-mix(in srgb, ${hex} 20%, transparent)`, color: hex }}
       >
         <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: hex }} />
-        <span>{COLOR_LABEL[currentColor]}</span>
+        <span>{UNO_COLOR_LABEL[currentColor]}</span>
         <span className="opacity-60">·</span>
         <span>{getCardLabel(topCard)}</span>
       </div>

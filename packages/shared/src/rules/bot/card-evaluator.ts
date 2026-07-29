@@ -2,7 +2,7 @@ import type { Card, Color } from '../../types/card.js';
 import type { GameState, Player } from '../../types/game.js';
 import type { DifficultyParams } from './difficulty-params.js';
 import type { PersonalityWeights } from './personality-weights.js';
-import { isColoredCard, isWildCard } from '../../types/card.js';
+import { emptyColorCounts, isColoredCard, isWildCard } from '../../types/card.js';
 import { getPlayableCards, isValidWildDrawFour } from '../validation.js';
 import { getNextPlayerIndex, getNextAliveIndex, reverseDirection } from '../turn.js';
 
@@ -37,6 +37,12 @@ export interface CardScore {
   factors: CardScoreFactors;
 }
 
+/** 带色功能牌（非万能）。经典与 Flip 通用。 */
+const ACTION_TYPES = new Set<Card['type']>([
+  'draw_two', 'skip', 'reverse',
+  'draw_one', 'draw_five', 'skip_everyone', 'flip',
+]);
+
 function countColorInHand(hand: Card[], color: Color, excludeId?: string): number {
   return hand.filter(c => c.id !== excludeId && isColoredCard(c) && c.color === color).length;
 }
@@ -48,13 +54,16 @@ export function bestColorForHand(hand: Card[], excludeId?: string): Color {
 /**
  * All colors tied for the highest count in hand, in fixed color order.
  * Callers that pick randomly among these avoid a predictable red bias.
+ *
+ * 计数表覆盖全部 8 色（含 UNO Flip 暗面），最大值也在全部键上取——
+ * 只对亮面四色取 max 的话，暗面手牌会算出一堆计数为 0 的亮色。
  */
 export function bestColorsForHand(hand: Card[], excludeId?: string): Color[] {
-  const counts: Record<Color, number> = { red: 0, blue: 0, green: 0, yellow: 0 };
+  const counts: Record<Color, number> = emptyColorCounts();
   for (const c of hand) {
     if (c.id !== excludeId && isColoredCard(c)) counts[c.color]++;
   }
-  const max = Math.max(counts.red, counts.blue, counts.green, counts.yellow);
+  const max = Math.max(...Object.values(counts));
   return (Object.keys(counts) as Color[]).filter(color => counts[color] === max);
 }
 
@@ -86,8 +95,68 @@ function scoreActionValue(card: Card): number {
     case 'reverse': return 5;
     case 'wild': return 4;
     case 'number': return 1;
+    // UNO Flip：按罚则强度排序。Flip 卡本身价值由 scoreSpecialTiming 单独判断，
+    // 这里只给一个中性底分，避免无脑翻面。
+    case 'wild_draw_color': return 12;
+    case 'draw_five': return 10;
+    case 'wild_draw_two': return 9;
+    case 'skip_everyone': return 8;
+    case 'draw_one': return 4;
+    case 'flip': return 3;
     default: return 0;
   }
+}
+
+/**
+ * 该不该翻面。
+ *
+ * ⚠️ 公平性红线：机器人**不能**读自己手牌的背面（`card.back`）——人类玩家看不到自己的背面，
+ * 机器人也不许看。所以这里只用两类合法信息：
+ *   1. 自己手牌的**张数**和当前面的可打性
+ *   2. **对手手牌的背面**（handBacks 对所有人可见，人类高手同样靠这个判断）
+ */
+function scoreFlipDesirability(
+  hand: Card[],
+  state: GameState,
+  params: DifficultyParams,
+  ctx: EvalContext,
+): number {
+  const goingToDark = state.flipSide === 'light';
+  let score = 0;
+
+  // 对手接近 UNO → 翻到暗面（+5 / 摸到指定色）压制力更强
+  const minOpponentHand = ctx.alivePlayers.length > 0
+    ? Math.min(...ctx.alivePlayers.map(p => p.hand.length))
+    : 99;
+  if (goingToDark && minOpponentHand <= 2) score += 6;
+  if (!goingToDark && minOpponentHand <= 2) score -= 3;
+
+  // 自己手牌多 → 暗面被罚一次损失更大；手牌少则相反
+  if (hand.length >= 8) score += goingToDark ? -5 : 4;
+  else if (hand.length <= 3) score += goingToDark ? 3 : -2;
+
+  // 读对手背面：翻面后他们手上会变成什么
+  const tier = params.infoAccess.flipBackReading;
+  if (tier !== 'none') {
+    const backs = ctx.alivePlayers.flatMap(p => p.hand.map(c => c.back).filter(Boolean));
+    if (backs.length > 0) {
+      if (tier === 'full') {
+        // 翻面后对手能拿到的重罚牌越多，翻过去越亏
+        const heavy = backs.filter(b =>
+          b!.type === 'draw_five' || b!.type === 'wild_draw_color'
+          || b!.type === 'wild_draw_two' || b!.type === 'draw_one').length;
+        score -= heavy * 1.2;
+      } else {
+        // 'color' 档：看不出卡型，只按「对手翻面后有多少张同色可打牌」粗判
+        const colorCounts = emptyColorCounts();
+        for (const b of backs) { if (b!.color) colorCounts[b!.color]++; }
+        const maxColor = Math.max(...Object.values(colorCounts));
+        score -= maxColor * 0.4;
+      }
+    }
+  }
+
+  return score;
 }
 
 function scoreHandReduction(card: Card, hand: Card[], state: GameState, params: DifficultyParams, ctx: EvalContext): number {
@@ -178,7 +247,7 @@ export function evaluateHandQuality(hand: Card[], state: GameState): number {
   const colorSet = new Set<string>();
   for (const c of hand) { if (isColoredCard(c)) colorSet.add(c.color); }
   quality += colorSet.size * 1.5;
-  quality += hand.filter(c => c.type === 'draw_two' || c.type === 'skip' || c.type === 'reverse').length * 1;
+  quality += hand.filter(c => ACTION_TYPES.has(c.type)).length * 1;
   const topCard = state.discardPile[state.discardPile.length - 1];
   if (topCard && state.currentColor) {
     quality += getPlayableCards(hand, topCard, state.currentColor).length * 2;
@@ -331,10 +400,14 @@ function scoreGlobalThreat(card: Card, state: GameState, botId: string, params: 
   return score;
 }
 
-function scoreSpecialTiming(card: Card, hand: Card[], state: GameState, botId: string, params: DifficultyParams): number {
+function scoreSpecialTiming(card: Card, hand: Card[], state: GameState, botId: string, params: DifficultyParams, ctx: EvalContext): number {
   if (params.specialCardAwareness === 0) return 0;
   const hr = state.settings.houseRules;
   let score = 0;
+
+  if (card.type === 'flip') {
+    score += scoreFlipDesirability(hand, state, params, ctx);
+  }
 
   if (card.type === 'number' && (card as { value: number }).value === 0 && hr.zeroRotateHands) {
     if (params.infoAccess.canSeeOpponentHands) {
@@ -657,7 +730,7 @@ export function evaluateCards(
       actionValue: scoreActionValue(card),
       handReduction: scoreHandReduction(card, hand, state, params, ctx),
       finishSafety: scoreFinishSafety(card, hand, state, params),
-      specialTiming: scoreSpecialTiming(card, hand, state, botId, params),
+      specialTiming: scoreSpecialTiming(card, hand, state, botId, params, ctx),
       teamAwareness: scoreTeamAwareness(card, state, params, ctx),
       targetPressure: scoreTargetPressure(card, state, params, ctx),
       cardConservation: scoreCardConservation(card, hand, playable, params, state),

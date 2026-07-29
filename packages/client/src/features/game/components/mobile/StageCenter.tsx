@@ -8,17 +8,8 @@ import { useEffectiveUserId } from '../../hooks/useEffectiveUserId';
 import { useIsMyTurn } from '../../hooks/useIsMyTurn';
 import { usePlayableCardIds } from '../../hooks/usePlayableCardIds';
 import { cn } from '@/shared/lib/utils';
+import { UNO_COLOR_LABEL, UNO_COLOR_VAR } from '../../constants/colors';
 
-const COLOR_HEX: Record<Color, string> = {
-  red: 'var(--color-uno-red)',
-  blue: 'var(--color-uno-blue)',
-  green: 'var(--color-uno-green)',
-  yellow: 'var(--color-uno-yellow)',
-};
-
-const COLOR_LABEL: Record<Color, string> = {
-  red: '红', blue: '蓝', green: '绿', yellow: '黄',
-};
 
 interface StageCenterProps {
   onDraw: (side: 'left' | 'right') => void;
@@ -114,7 +105,7 @@ export default function StageCenter({ onDraw, compact = false }: StageCenterProp
   if ((phase === 'round_end' || phase === 'game_over') && !endRevealing) return null;
 
   const DirIcon = direction === 'clockwise' ? RotateCw : RotateCcw;
-  const colorHex = currentColor ? COLOR_HEX[currentColor] : null;
+  const colorHex = currentColor ? UNO_COLOR_VAR[currentColor] : null;
   const slotW = compact ? 76 : 92;
   const slotH = compact ? 110 : 132;
 
@@ -164,7 +155,7 @@ export default function StageCenter({ onDraw, compact = false }: StageCenterProp
               className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 rounded-full px-2.5 py-0.5 text-[11px] font-black font-game text-white shadow-lg whitespace-nowrap"
               style={{ background: colorHex, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
             >
-              {COLOR_LABEL[currentColor!]}
+              {UNO_COLOR_LABEL[currentColor!]}
             </span>
           )}
         </div>

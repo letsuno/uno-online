@@ -457,6 +457,7 @@ interface User {
 interface RoomSettings {
   turnTimeLimit: 15 | 30 | 60;
   targetScore: 200 | 300 | 500 | 1000;
+  gameMode: GameMode;                    // 'classic' | 'flip'，默认 'classic'
   houseRules: HouseRules;
   allowSpectators: boolean;
   spectatorMode: 'full' | 'hidden';
@@ -500,8 +501,24 @@ interface HouseRules {
   blindDraw: boolean;
   bombCard: boolean;
   shuffleSeats: boolean;
+
+  // UNO Flip 专属（仅 gameMode === 'flip' 时生效）
+  flipStackDrawOne: boolean;
+  flipStackDrawFive: boolean;
+  flipStackWildDraw: boolean;
+  flipEscalateOnly: boolean;
+  flipReverseDeflect: boolean;
+  flipSkipDeflect: boolean;
+  flipWildFlip: boolean;
+  flipKeepColorOnFlip: boolean;
+  flipShowOwnBacks: boolean;
+  flipDrawColorCap: number | null;
+  flipDarkDoubleScore: boolean;
 }
 ```
+
+> Flip 模式下部分经典村规不可用（无 0 牌、无 +2/+4 等），清单见
+> `FLIP_INCOMPATIBLE_RULES`，UI 会置灰并说明原因。
 
 ### 4.4 RoomData / RoomSeatPlayer / RoomSpectator
 
@@ -543,8 +560,9 @@ interface RoomSpectator {
 interface PlayerViewPlayer {
   id: string;
   name: string;
-  hand: Card[];
+  hand: Card[];          // 本人手牌（已剥离 back）／被揭示的手牌；不可见时为 []
   handCount: number;
+  handBacks?: CardBack[];  // 仅 flip 模式；对手手牌的背面，与 handCount 等长
   score: number;
   roundWins?: number;
   connected: boolean;
@@ -567,6 +585,7 @@ interface PlayerView {
   direction: 'clockwise' | 'counter_clockwise';
   discardPile: Card[];
   currentColor: Color | null;
+  flipSide: 'light' | 'dark';   // 当前生效的牌面，classic 恒为 'light'
   drawStack: number;
   pendingPenaltyDraws?: number;
   deckLeftCount: number;
@@ -641,6 +660,56 @@ interface VoicePresence {
   forceMuted: boolean;
 }
 ```
+
+### 4.9 Card / CardBack / GameMode（UNO Flip）
+
+```typescript
+type LightColor = 'red' | 'blue' | 'green' | 'yellow';
+type DarkColor  = 'pink' | 'teal' | 'orange' | 'purple';
+type Color = LightColor | DarkColor;
+
+type CardType =
+  // 经典
+  | 'number' | 'skip' | 'reverse' | 'draw_two' | 'wild' | 'wild_draw_four'
+  // UNO Flip 亮面
+  | 'draw_one' | 'wild_draw_two' | 'flip'
+  // UNO Flip 暗面
+  | 'draw_five' | 'skip_everyone' | 'wild_draw_color';
+
+type GameMode = 'classic' | 'flip';
+
+/** 一张牌的另一面。classic 模式恒为 undefined。 */
+interface CardBack {
+  type: CardType;
+  color: Color | null;
+  value?: number;
+}
+
+interface Card {
+  id: string;
+  type: CardType;      // 当前**活动面**的卡型
+  color: Color | null; // 当前**活动面**的颜色
+  value?: number;
+  chosenColor?: Color; // 万能牌打出时选定的颜色
+  back?: CardBack;     // 仅 flip 模式
+}
+```
+
+**可见性约定（重要）**
+
+`Card.type` / `Card.color` 始终表示**当前活动面**。打出 Flip 卡时服务端会翻转整局，
+客户端无需自行换算。
+
+- 下发给**本人**的手牌一律**剥离 `back`** —— 官方规则下玩家看不到自己手牌的背面。
+  例外：村规 `flipShowOwnBacks` 开启时才会带上。
+- 下发给**其他人**的是 `handBacks`（背面数组），`hand` 为空。
+- 因为双面配对是固定的（来自实体牌组），`handBacks` 可以反推对手的正面持牌 ——
+  这是 UNO Flip 的核心博弈层，不是信息泄露。
+
+**选色约束**
+
+`CHOOSE_COLOR` 的颜色必须属于当前生效的那一面（`flipSide`），
+服务端会拒绝越面选色。客户端应按 `flipSide` 只展示对应的 4 色。
 
 ---
 
