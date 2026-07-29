@@ -58,11 +58,21 @@ describe('GameSession', () => {
   });
 
   it('applies a valid action', () => {
+    // 必须传 settings：不传时 houseRules 为 undefined，首张弃牌不会跳过万能牌，
+    // 约 4% 的概率开局就进 choosing_color，DRAW_CARD 会被拒（本测试曾因此偶发失败）
     const session = GameSession.create([
       { id: 'p1', name: 'Alice' },
       { id: 'p2', name: 'Bob' },
-    ]);
+    ], {
+      turnTimeLimit: 30,
+      targetScore: 1000,
+      gameMode: 'classic',
+      houseRules: DEFAULT_HOUSE_RULES,
+      allowSpectators: true,
+      spectatorMode: 'hidden',
+    });
     const state = session.getFullState();
+    expect(state.phase).toBe('playing');
     const currentPlayer = state.players[state.currentPlayerIndex]!;
     const result = session.applyAction({ type: 'DRAW_CARD', playerId: currentPlayer.id });
     expect(result.success).toBe(true);

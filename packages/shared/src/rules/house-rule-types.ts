@@ -23,6 +23,8 @@ export interface RuleContext {
     count: number,
     nextPlayerIndex: number,
     sourcePlayerId?: string | null,
+    untilColor?: Color | null,
+    extra?: number,
   ) => GameState;
   putAttackCardOnStack: (
     state: GameState,

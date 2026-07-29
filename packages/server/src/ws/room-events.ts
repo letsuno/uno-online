@@ -1,7 +1,7 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
 import type { GameAction, GameState, RoomSettings, BotDifficulty } from '@uno-online/shared';
-import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction, chooseBotAction, getPlayableCards, DIFFICULTY_PARAMS, BOT_DIFFICULTIES } from '@uno-online/shared';
+import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, normalizeHouseRulesForMode, chooseAutopilotAction, chooseJumpInAction, chooseBotAction, getPlayableCards, DIFFICULTY_PARAMS, BOT_DIFFICULTIES } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager.js';
 import { getRoom, getRoomSeats, getRoomSpectators, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, ensureNotInRoom, removeSpectatorFromRoom, clearRoomSpectators, getSeatedPlayers, pickNextOwner, findNextOwner, clearUserRoom, setSeatPlayerConnected } from '../plugins/core/room/store.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
@@ -112,6 +112,7 @@ export function registerRoomEvents(
     const roomSettings: RoomSettings = {
       turnTimeLimit: settings?.turnTimeLimit ?? 30,
       targetScore: settings?.targetScore ?? 1000,
+      gameMode: settings?.gameMode ?? 'classic',
       houseRules: settings?.houseRules ?? DEFAULT_HOUSE_RULES,
       allowSpectators: settings?.allowSpectators ?? true,
       spectatorMode: settings?.spectatorMode ?? 'hidden',
@@ -299,14 +300,17 @@ export function registerRoomEvents(
       return callback?.({ success: false, error: 'Game already in progress' });
     }
 
+    const nextGameMode = settings.gameMode ?? room.settings.gameMode ?? 'classic';
     const nextSettings: RoomSettings = {
       turnTimeLimit: settings.turnTimeLimit ?? room.settings.turnTimeLimit ?? 30,
       targetScore: settings.targetScore ?? room.settings.targetScore ?? 1000,
-      houseRules: {
+      gameMode: nextGameMode,
+      // 服务端权威归一：清掉在当前模式下无意义的村规，客户端绕不过去
+      houseRules: normalizeHouseRulesForMode({
         ...DEFAULT_HOUSE_RULES,
         ...(room.settings.houseRules ?? {}),
         ...(settings.houseRules ?? {}),
-      },
+      }, nextGameMode),
       allowSpectators: settings.allowSpectators ?? room.settings.allowSpectators ?? true,
       spectatorMode: settings.spectatorMode ?? room.settings.spectatorMode ?? 'hidden',
     };
@@ -511,7 +515,7 @@ export function registerRoomEvents(
       await touchRoomActivity(redis, roomCode);
       const session = GameSession.create(
         activePlayers.map((p) => ({ id: p.userId, name: p.nickname, avatarUrl: p.avatarUrl ?? null, role: p.role as import('@uno-online/shared').UserRole | undefined, isBot: p.isBot, botConfig: p.botConfig })),
-        { turnTimeLimit: room.settings?.turnTimeLimit ?? 30, targetScore: room.settings?.targetScore ?? 1000, houseRules: room.settings?.houseRules ?? DEFAULT_HOUSE_RULES, allowSpectators: room.settings?.allowSpectators ?? true, spectatorMode: room.settings?.spectatorMode ?? 'hidden' } as RoomSettings,
+        { turnTimeLimit: room.settings?.turnTimeLimit ?? 30, targetScore: room.settings?.targetScore ?? 1000, gameMode: room.settings?.gameMode ?? 'classic', houseRules: room.settings?.houseRules ?? DEFAULT_HOUSE_RULES, allowSpectators: room.settings?.allowSpectators ?? true, spectatorMode: room.settings?.spectatorMode ?? 'hidden' } as RoomSettings,
       );
       sessions.set(roomCode, session);
       persister.revive(roomCode);
@@ -744,7 +748,7 @@ export function startTurnTimer(
     const difficulty = botConfig?.difficulty ?? 'easy';
     const topCard = state.discardPile[state.discardPile.length - 1];
     const playableCount = (state.phase === 'playing' && topCard && state.currentColor)
-      ? getPlayableCards(actingPlayer.hand, topCard, state.currentColor).length
+      ? getPlayableCards(actingPlayer.hand, topCard, state.currentColor, state.settings.houseRules).length
       : 0;
 
     // Fast draw: skip the full thinking delay when the bot has no decision to
@@ -963,6 +967,8 @@ export async function emitGameUpdate(
   }
 
   const { baseView, hands } = session.getGameUpdateBatch();
+  const showOwnBacks = baseView.settings?.gameMode === 'flip'
+    && Boolean(baseView.settings?.houseRules?.flipShowOwnBacks);
   const threshold = baseView.settings?.houseRules?.handRevealThreshold ?? null;
 
   for (const s of sockets) {
@@ -985,7 +991,14 @@ export async function emitGameUpdate(
         viewerId: userId,
         players: baseView.players.map(p => {
           if (p.id === userId) {
-            return { ...p, hand: hands.get(p.id) ?? [] };
+            // baseView 里每个人都带 handBacks；本人的必须去掉——
+            // 官方规则下你看不到自己手牌的背面（设计文档 §5.2）
+            const { handBacks: own, ...rest } = p;
+            return {
+              ...rest,
+              hand: hands.get(p.id) ?? [],
+              ...(showOwnBacks ? { handBacks: own } : {}),
+            };
           }
           if (threshold !== null && p.handCount > 0 && p.handCount <= threshold) {
             return { ...p, hand: hands.get(p.id) ?? [] };

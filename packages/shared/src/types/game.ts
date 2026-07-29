@@ -18,6 +18,11 @@ export type Direction = 'clockwise' | 'counter_clockwise';
 
 export type DrawSide = 'left' | 'right';
 
+export type GameMode = 'classic' | 'flip';
+
+/** 当前生效的牌面。classic 模式恒为 'light'。 */
+export type FlipSide = 'light' | 'dark';
+
 export interface Player {
   id: string;
   name: string;
@@ -39,6 +44,7 @@ export interface Player {
 export interface RoomSettings {
   turnTimeLimit: 15 | 30 | 60;
   targetScore: 200 | 300 | 500 | 1000;
+  gameMode: GameMode;
   houseRules: HouseRules;
   allowSpectators: boolean;
   spectatorMode: 'full' | 'hidden';
@@ -55,12 +61,24 @@ export interface GameState {
   deckRightInitialCount: number;
   discardPile: Card[];
   currentColor: Color | null;
+  /** 当前生效的牌面。classic 模式恒为 'light'。 */
+  flipSide: FlipSide;
   drawStack: number;
   pendingDrawPlayerId: string | null;
   pendingPenaltyDraws?: number;
   pendingPenaltyNextPlayerIndex?: number | null;
   pendingPenaltySourcePlayerId?: string | null;
   pendingPenaltyQueue?: PendingPenaltyDraw[];
+  /**
+   * Wild Draw Color 的条件式罚摸：一直摸到抽出该颜色为止。
+   * 生效期间 `pendingPenaltyDraws` 恒为 1（表示「至少还要再摸一张」），
+   * 因此所有既有的 `pendingPenaltyDraws > 0` 判断都无需改动。
+   */
+  pendingPenaltyUntilColor?: Color | null;
+  /** 条件式罚摸已经摸了几张，用于村规「摸色上限」。 */
+  pendingPenaltyUntilColorDrawn?: number;
+  /** 摸到目标色之后还要追加摸的张数（质疑失败时为 2）。 */
+  pendingPenaltyExtra?: number;
   lastAction: GameAction | null;
   roundNumber: number;
   winnerId: string | null;
@@ -76,6 +94,8 @@ export interface PendingPenaltyDraw {
   count: number;
   nextPlayerIndex: number;
   sourcePlayerId?: string | null;
+  untilColor?: Color | null;
+  extra?: number;
 }
 
 export interface RoundResult {

@@ -1,11 +1,12 @@
-export { createDeck, shuffleDeck, reshuffleDiscardIntoDeck, reshuffleSideFromDiscard, serializeDeck, serializeDecks, cardToIdentity } from './deck.js';
-export type { CardIdentity } from './deck.js';
+export { createDeck, createFlipDeck, shuffleDeck, reshuffleDiscardIntoDeck, reshuffleSideFromDiscard, serializeDeck, serializeDecks, cardToIdentity } from './deck.js';
+export type { CardIdentity, CardFaceIdentity } from './deck.js';
 export { canPlayCard, getPlayableCards, isValidWildDrawFour, canRespondToDrawStack, isExactJumpInMatch } from './validation.js';
 export { getNextPlayerIndex, getNextAliveIndex, countAlivePlayers, rotateHands, reverseDirection } from './turn.js';
-export { dealCards, handleFirstDiscard, initializeGame, initializeNextRound } from './setup.js';
+export { dealCards, handleFirstDiscard, deriveFirstCardEffect, initializeGame, initializeNextRound } from './setup.js';
 export type { DealResult, FirstCardEffect, FirstDiscardResult } from './setup.js';
 export { calculateRoundScore, calculateRoundScores } from './scoring.js';
-export { applyAction } from './game-engine.js';
+export { applyAction, startPenaltyDraw, startPenaltyDrawUntilColor } from './game-engine.js';
+export { flipAll, isFlipOnlyType } from './flip.js';
 export { applyActionWithHouseRules } from './house-rules-engine.js';
 export type { HouseRulePlugin, RuleMetadata, RuleContext, PreCheckResult } from './house-rule-types.js';
 export { buildRuleContext } from './house-rule-helpers.js';

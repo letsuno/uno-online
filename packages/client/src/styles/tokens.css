@@ -31,6 +31,12 @@
   --color-uno-green: #33cc66;
   --color-uno-yellow: #fbbf24;
 
+  /* UNO Flip 暗面四色 */
+  --color-uno-pink: #ff5fa2;
+  --color-uno-teal: #1fbfb8;
+  --color-uno-orange: #ff8a3d;
+  --color-uno-purple: #a066ff;
+
   /* ---- 功能色 ---- */
   --color-toast-info: rgba(59, 130, 246, 0.9);
   --color-toast-error: rgba(239, 68, 68, 0.9);

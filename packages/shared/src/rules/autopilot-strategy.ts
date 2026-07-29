@@ -1,17 +1,21 @@
-import type { GameState, GameAction, DrawSide } from '../types/game.js';
+import type { GameState, GameAction, DrawSide, FlipSide } from '../types/game.js';
 import type { Color, Card } from '../types/card.js';
+import { colorsForSide, emptyColorCounts } from '../types/card.js';
 import { getPlayableCards, isExactJumpInMatch } from './validation.js';
 
-function bestColor(hand: Card[], excludeId?: string): Color {
-  const counts: Record<Color, number> = { red: 0, blue: 0, green: 0, yellow: 0 };
+/** 手牌里出现最多的颜色。必须限制在当前生效的那一面，否则暗面会选出亮面颜色。 */
+function bestColor(hand: Card[], side: FlipSide, excludeId?: string): Color {
+  const allowed = colorsForSide(side);
+  const counts: Record<Color, number> = emptyColorCounts();
   for (const c of hand) {
-    if (c.color && c.id !== excludeId) counts[c.color]++;
+    if (c.color && allowed.includes(c.color) && c.id !== excludeId) counts[c.color]++;
   }
-  return (Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'red') as Color;
+  const best = allowed.reduce((a, b) => (counts[b] > counts[a] ? b : a), allowed[0]!);
+  return best;
 }
 
-function playCardActions(playerId: string, card: Card, hand: Card[], chooseColorOnPlay = false): GameAction[] {
-  const color = bestColor(hand, card.id);
+function playCardActions(playerId: string, card: Card, hand: Card[], side: FlipSide, chooseColorOnPlay = false): GameAction[] {
+  const color = bestColor(hand, side, card.id);
   const actions: GameAction[] = [{
     type: 'PLAY_CARD',
     playerId,
@@ -55,7 +59,7 @@ export function chooseJumpInAction(state: GameState, playerId: string): GameActi
   if (!player || !topCard) return [];
   const card = player.hand.find(c => isExactJumpInMatch(c, topCard));
   if (!card) return [];
-  return playCardActions(playerId, card, player.hand);
+  return playCardActions(playerId, card, player.hand, state.flipSide);
 }
 
 export function chooseAutopilotJumpInAction(state: GameState, playerId: string): GameAction[] {
@@ -80,7 +84,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
           (hr.crossStack && (c.type === 'draw_two' || c.type === 'wild_draw_four')),
         );
         if (stackable) {
-          const chosenColor = stackable.type === 'wild_draw_four' ? bestColor(player.hand) : undefined;
+          const chosenColor = stackable.type === 'wild_draw_four' ? bestColor(player.hand, state.flipSide) : undefined;
           return [{ type: 'PLAY_CARD', playerId, cardId: stackable.id, ...(chosenColor ? { chosenColor } : {}) }];
         }
       }
@@ -104,7 +108,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   }
 
   if (state.phase === 'choosing_color') {
-    return [{ type: 'CHOOSE_COLOR', playerId, color: bestColor(player.hand) }];
+    return [{ type: 'CHOOSE_COLOR', playerId, color: bestColor(player.hand, state.flipSide) }];
   }
 
   if (state.phase === 'choosing_swap_target') {
@@ -146,7 +150,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
     }
     const pick = pickPlayableCard(playableAfterDraw, state.currentColor);
     const needsColorOnPlay = pick.type === 'wild_draw_four' && state.drawStack > 0 && (hr.stackDrawFour || hr.crossStack);
-    return playCardActions(playerId, pick, player.hand, needsColorOnPlay);
+    return playCardActions(playerId, pick, player.hand, state.flipSide, needsColorOnPlay);
   }
 
   if (state.drawStack > 0) {
@@ -161,7 +165,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
       });
       if (stackable.length > 0) {
         const pick = stackable[0]!;
-        return playCardActions(playerId, pick, player.hand, pick.type === 'wild_draw_four');
+        return playCardActions(playerId, pick, player.hand, state.flipSide, pick.type === 'wild_draw_four');
       }
     }
 
@@ -191,5 +195,5 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
 
   const pick = pickPlayableCard(playable, state.currentColor);
   const needsColorOnPlay = pick.type === 'wild_draw_four' && state.drawStack > 0 && (hr.stackDrawFour || hr.crossStack);
-  return playCardActions(playerId, pick, player.hand, needsColorOnPlay);
+  return playCardActions(playerId, pick, player.hand, state.flipSide, needsColorOnPlay);
 }

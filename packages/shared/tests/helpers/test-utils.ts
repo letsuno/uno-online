@@ -12,8 +12,14 @@ export function makeCard(type: Card['type'], color: Color | null, extra?: { valu
     case 'skip': return { id, type, color: color as Color };
     case 'reverse': return { id, type, color: color as Color };
     case 'draw_two': return { id, type, color: color as Color };
+    case 'draw_one': return { id, type, color: color as Color };
+    case 'draw_five': return { id, type, color: color as Color };
+    case 'skip_everyone': return { id, type, color: color as Color };
+    case 'flip': return { id, type, color: color as Color };
     case 'wild': return { id, type, color: null };
     case 'wild_draw_four': return { id, type, color: null };
+    case 'wild_draw_two': return { id, type, color: null };
+    case 'wild_draw_color': return { id, type, color: null };
   }
 }
 
@@ -37,6 +43,7 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     deckRightInitialCount: 0,
     discardPile: [makeCard('number', 'red', { value: 5, id: 'discard_top' })],
     currentColor: 'red',
+    flipSide: 'light',
     drawStack: 0,
     pendingDrawPlayerId: null,
     pendingPenaltyDraws: 0,
@@ -50,6 +57,7 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     settings: {
       turnTimeLimit: 30,
       targetScore: 500,
+      gameMode: 'classic',
       allowSpectators: true,
       spectatorMode: 'hidden',
       houseRules: DEFAULT_HOUSE_RULES,

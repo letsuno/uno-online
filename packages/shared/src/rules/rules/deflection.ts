@@ -2,15 +2,17 @@ import type { HouseRulePlugin } from '../house-rule-types.js';
 import type { GameState, GameAction } from '../../types/game.js';
 import type { RuleContext, PreCheckResult } from '../house-rule-types.js';
 import { checkRoundEnd } from '../game-engine.js';
+import { canDeflect, resolvePenalty } from '../stack-rules.js';
 
 export const deflection: HouseRulePlugin = {
   meta: {
     id: 'deflection',
-    keys: ['reverseDeflectDrawTwo', 'reverseDeflectDrawFour', 'skipDeflect'],
+    keys: ['reverseDeflectDrawTwo', 'reverseDeflectDrawFour', 'skipDeflect', 'flipReverseDeflect', 'flipSkipDeflect'],
     label: 'Reverse/Skip 反弹',
-    description: '被 +2/+4 时出 Reverse 反弹或 Skip 转移',
+    description: '被罚摸牌打中时出 Reverse 反弹给上家或 Skip 转移给下家',
   },
-  isEnabled: (hr) => hr.reverseDeflectDrawTwo || hr.reverseDeflectDrawFour || hr.skipDeflect,
+  isEnabled: (hr) => hr.reverseDeflectDrawTwo || hr.reverseDeflectDrawFour || hr.skipDeflect
+    || hr.flipReverseDeflect || hr.flipSkipDeflect,
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     const hr = state.settings.houseRules;
 
@@ -24,7 +26,7 @@ export const deflection: HouseRulePlugin = {
       if (!card) return { handled: true, state };
       const topCard = state.discardPile[state.discardPile.length - 1];
 
-      if (hr.reverseDeflectDrawFour && card.type === 'reverse' && topCard?.type === 'wild_draw_four') {
+      if (card.type === 'reverse' && topCard !== undefined && canDeflect(card, topCard, hr)) {
         const newHand = player.hand.filter(c => c.id !== action.cardId);
         const newDirection = state.direction === 'clockwise' ? 'counter_clockwise' : 'clockwise';
         const players = state.players.map((p, i) =>
@@ -43,13 +45,14 @@ export const deflection: HouseRulePlugin = {
           pendingDrawPlayerId: null,
           lastAction: action,
         }, action.playerId);
+        const penalty = resolvePenalty(topCard, state.currentColor);
         return {
           handled: true,
-          state: ctx.startPenaltyDraw(baseState, wd4PlayerId, 4, afterPenaltyNextIdx, action.playerId),
+          state: ctx.startPenaltyDraw(baseState, wd4PlayerId, penalty.count, afterPenaltyNextIdx, action.playerId, penalty.untilColor),
         };
       }
 
-      if (hr.skipDeflect && card.type === 'skip') {
+      if ((card.type === 'skip' || card.type === 'skip_everyone') && topCard !== undefined && canDeflect(card, topCard, hr)) {
         const newHand = player.hand.filter(c => c.id !== action.cardId);
         const players = state.players.map((p, i) =>
           i === playerIdx ? { ...p, hand: newHand } : p,
@@ -66,9 +69,10 @@ export const deflection: HouseRulePlugin = {
           pendingDrawPlayerId: null,
           lastAction: action,
         }, action.playerId);
+        const penalty = resolvePenalty(topCard, state.currentColor);
         return {
           handled: true,
-          state: ctx.startPenaltyDraw(baseState, nextPlayerId, 4, afterPenaltyNextIdx, action.playerId),
+          state: ctx.startPenaltyDraw(baseState, nextPlayerId, penalty.count, afterPenaltyNextIdx, action.playerId, penalty.untilColor),
         };
       }
 
@@ -82,9 +86,7 @@ export const deflection: HouseRulePlugin = {
     const topCard = state.discardPile[state.discardPile.length - 1];
     if (!card) return { handled: false };
 
-    const canReverseDeflect =
-      (hr.reverseDeflectDrawTwo && card.type === 'reverse' && topCard?.type === 'draw_two') ||
-      (hr.reverseDeflectDrawFour && card.type === 'reverse' && topCard?.type === 'wild_draw_four');
+    const canReverseDeflect = card.type === 'reverse' && topCard !== undefined && canDeflect(card, topCard, hr);
 
     if (canReverseDeflect) {
       const newHand = player.hand.filter(c => c.id !== action.cardId);
@@ -107,7 +109,7 @@ export const deflection: HouseRulePlugin = {
       };
     }
 
-    if (hr.skipDeflect && card.type === 'skip') {
+    if ((card.type === 'skip' || card.type === 'skip_everyone') && topCard !== undefined && canDeflect(card, topCard, hr)) {
       const newHand = player.hand.filter(c => c.id !== action.cardId);
       const players = state.players.map((p, i) =>
         i === state.currentPlayerIndex ? { ...p, hand: newHand } : p,

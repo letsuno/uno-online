@@ -1,15 +1,18 @@
 import type { HouseRulePlugin } from '../house-rule-types.js';
 import type { GameState, GameAction } from '../../types/game.js';
 import type { RuleContext, PreCheckResult } from '../house-rule-types.js';
+import { isWildCard } from '../../types/card.js';
+import { canStackOnto } from '../stack-rules.js';
 
 export const stacking: HouseRulePlugin = {
   meta: {
     id: 'stacking',
-    keys: ['stackDrawTwo', 'stackDrawFour', 'crossStack'],
-    label: '+2/+4 叠加',
-    description: '被 +2/+4 时可叠加给下家',
+    keys: ['stackDrawTwo', 'stackDrawFour', 'crossStack', 'flipStackDrawOne', 'flipStackDrawFive', 'flipStackWildDraw', 'flipEscalateOnly'],
+    label: '罚摸叠加',
+    description: '被罚摸牌打中时可叠加给下家（经典 +2/+4，Flip +1/+5/万能罚摸）',
   },
-  isEnabled: (hr) => hr.stackDrawTwo || hr.stackDrawFour || hr.crossStack,
+  isEnabled: (hr) => hr.stackDrawTwo || hr.stackDrawFour || hr.crossStack
+    || hr.flipStackDrawOne || hr.flipStackDrawFive || hr.flipStackWildDraw,
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     const hr = state.settings.houseRules;
 
@@ -25,9 +28,8 @@ export const stacking: HouseRulePlugin = {
       const player = state.players[playerIdx]!;
       const card = player.hand.find(c => c.id === action.cardId);
       if (!card) return { handled: true, state };
-      const canStack =
-        (hr.stackDrawFour && card.type === 'wild_draw_four') ||
-        (hr.crossStack && (card.type === 'draw_two' || card.type === 'wild_draw_four'));
+      const topDuringChallenge = state.discardPile[state.discardPile.length - 1];
+      const canStack = topDuringChallenge !== undefined && canStackOnto(card, topDuringChallenge, hr);
       if (!canStack) return { handled: false };
 
       if (card.type === 'wild_draw_four' && !action.chosenColor) {
@@ -58,10 +60,7 @@ export const stacking: HouseRulePlugin = {
       const card = player.hand.find(c => c.id === action.cardId);
       if (!card) return { handled: true, state };
       const topCard = state.discardPile[state.discardPile.length - 1];
-      const canStack =
-        (hr.stackDrawTwo && card.type === 'draw_two' && topCard?.type === 'draw_two') ||
-        (hr.stackDrawFour && card.type === 'wild_draw_four' && topCard?.type === 'wild_draw_four') ||
-        (hr.crossStack && ((card.type === 'draw_two' && topCard?.type === 'wild_draw_four') || (card.type === 'wild_draw_four' && topCard?.type === 'draw_two')));
+      const canStack = topCard !== undefined && canStackOnto(card, topCard, hr);
       if (canStack) {
         return { handled: true, state: ctx.putAttackCardOnStack(state, action, card, ctx.getCardDrawPenalty(card)) };
       }
@@ -74,7 +73,8 @@ export const stacking: HouseRulePlugin = {
       const player = state.players[state.currentPlayerIndex];
       if (player?.id !== action.playerId) return { handled: false };
       const card = player.hand.find(c => c.id === action.cardId);
-      if (card?.type === 'wild_draw_four') return { handled: false };
+      // 万能罚摸牌走正常的 选色 → 质疑 流程，不在这里起叠
+      if (card && isWildCard(card) && ctx.getCardDrawPenalty(card) > 0) return { handled: false };
       const topCard = state.discardPile[state.discardPile.length - 1];
       if (
         card &&

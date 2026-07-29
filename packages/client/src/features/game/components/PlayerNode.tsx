@@ -5,6 +5,7 @@ import type { Card as CardType } from '@uno-online/shared';
 import type { PlayerVoicePresence } from '@/shared/voice/gateway-store';
 import Card from './Card';
 import CardBack from './CardBack';
+import FlipHandBacks from './FlipHandBacks';
 import CountdownRing from './CountdownRing';
 import GoogleRing from '@/shared/components/ui/GoogleRing';
 import QuickReaction from './QuickReaction';
@@ -107,6 +108,9 @@ function PlayerNode({
       ? player.hand
       : [];
   const shouldShowRevealedHand = !isMe && revealedHand.length > 0;
+  // UNO Flip：对手手牌的背面对所有人可见，是本模式的核心情报
+  const handBacks = !isMe ? (player.handBacks ?? []) : [];
+  const shouldShowHandBacks = handBacks.length > 0 && !shouldShowRevealedHand;
   const roleColor = getRoleColor(player.role);
   const isConfiguredBot = player.isBot && !!player.botConfig;
   const botDiffDisplay = isConfiguredBot
@@ -321,6 +325,8 @@ function PlayerNode({
         >
           {player.handCount === 0 ? (
             <span className="h-card-mini-h min-w-card-mini-w rounded-sm border border-dashed border-white/20 bg-black/20" />
+          ) : shouldShowHandBacks ? (
+            <FlipHandBacks backs={handBacks} />
           ) : shouldShowRevealedHand ? (
             <div className="flex -space-x-2">
               {revealedHand.map((card) => (

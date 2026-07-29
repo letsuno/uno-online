@@ -19,6 +19,19 @@ export function registerQueryTools(server: McpUnoServer): void {
       return { cards: myPlayer.hand, handCount: myPlayer.handCount };
     }));
 
+  mcp.tool('get_opponent_hand_backs',
+    'UNO Flip 专用：查看对手手牌的背面。配对固定，因此可由背面反推对手的正面持牌。'
+    + '注意你看不到自己手牌的背面（与实体游戏一致）。',
+    () => wrapTool(() => {
+      const state = server.getClient().gameState;
+      if (!state) return '当前没有进行中的游戏';
+      if (state.settings?.gameMode !== 'flip') return '当前不是 UNO Flip 模式，没有牌背信息';
+      const opponents = state.players
+        .filter((p) => p.id !== state.viewerId)
+        .map((p) => ({ id: p.id, name: p.name, handCount: p.handCount, handBacks: p.handBacks ?? [] }));
+      return { flipSide: state.flipSide, opponents };
+    }));
+
   mcp.tool('get_room_info', '获取房间信息（玩家列表、设置、状态）',
     () => wrapTool(() => {
       const info = server.getClient().roomInfo;

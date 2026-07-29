@@ -18,6 +18,7 @@ import { forcedPlayAfterDraw } from './forced-play-after-draw.js';
 import { doubleScore } from './double-score.js';
 import { teamMode } from './team-mode.js';
 import { elimination } from './elimination.js';
+import { flipDarkDoubleScore } from './flip-dark-double-score.js';
 
 export const PRE_CHECK_PLUGINS: HouseRulePlugin[] = [
   finishRestrictions,
@@ -42,6 +43,7 @@ export const POST_PROCESS_PLUGINS: HouseRulePlugin[] = [
   multiPlayPost,
   forcedPlayAfterDraw,
   doubleScore,
+  flipDarkDoubleScore,
   teamMode,
   elimination,
 ];
@@ -66,6 +68,7 @@ export {
   revengeMode,
   forcedPlayAfterDraw,
   doubleScore,
+  flipDarkDoubleScore,
   teamMode,
   elimination,
 };

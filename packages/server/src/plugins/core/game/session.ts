@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { initializeGame, applyActionWithHouseRules } from '@uno-online/shared';
+import { initializeGame, applyActionWithHouseRules, stripCardBack } from '@uno-online/shared';
 import { initializeNextRound, serializeDecks } from '@uno-online/shared';
 import type { GameState, GameAction, RoomSettings, UserRole, BotConfig } from '@uno-online/shared';
 import type { Card } from '@uno-online/shared';
@@ -33,7 +33,7 @@ export class GameSession {
   }
 
   static create(players: { id: string; name: string; avatarUrl?: string | null; role?: UserRole; isBot?: boolean; botConfig?: BotConfig }[], settings?: RoomSettings): GameSession {
-    const state = initializeGame(players, settings?.houseRules);
+    const state = initializeGame(players, settings?.houseRules, settings?.gameMode ?? 'classic');
     const deckHash = GameSession.computeDeckHash(state);
     const now = Date.now();
     const stateWithExtras = {
@@ -65,6 +65,9 @@ export class GameSession {
     const threshold = this.state.settings.houseRules.handRevealThreshold;
     const fullPile = this.state.discardPile;
     const truncated = fullPile.length > GameSession.DISCARD_TRUNCATE;
+    const isFlip = this.state.settings.gameMode === 'flip';
+    // 村规「背面透视」：允许本人看到自己手牌的背面（休闲向，默认关闭）
+    const showOwnBacks = isFlip && this.state.settings.houseRules.flipShowOwnBacks;
     return {
       viewerId,
       phase: this.state.phase,
@@ -72,11 +75,16 @@ export class GameSession {
         const reveal =
           shouldReveal(p.id) ||
           (threshold !== null && p.hand.length > 0 && p.hand.length <= threshold);
+        // 手牌一律剥离背面：本人不该看到自己的背面，别人则通过 handBacks 看背面
+        const isSelf = p.id === viewerId;
         return {
           id: p.id,
           name: p.name,
-          hand: reveal ? p.hand : [],
+          hand: reveal ? (showOwnBacks && isSelf ? p.hand : p.hand.map(stripCardBack)) : [],
           handCount: p.hand.length,
+          ...(isFlip && !isSelf
+            ? { handBacks: p.hand.map(c => c.back).filter((b): b is NonNullable<typeof b> => b !== undefined) }
+            : {}),
           score: p.score,
           roundWins: p.roundWins ?? 0,
           connected: p.connected,
@@ -95,6 +103,7 @@ export class GameSession {
       direction: this.state.direction,
       discardPile: truncated ? fullPile.slice(-GameSession.DISCARD_TRUNCATE) : fullPile,
       currentColor: this.state.currentColor,
+      flipSide: this.state.flipSide,
       drawStack: this.state.drawStack,
       pendingPenaltyDraws: this.state.pendingPenaltyDraws ?? 0,
       deckLeftCount: this.state.deckLeft.length,
@@ -116,9 +125,10 @@ export class GameSession {
 
   getGameUpdateBatch(): { baseView: PlayerView; hands: Map<string, Card[]> } {
     const baseView = this.buildPlayerViews('__batch__', () => false);
+    // 下发给本人的手牌必须剥离背面
     const hands = new Map<string, Card[]>();
     for (const p of this.state.players) {
-      hands.set(p.id, p.hand);
+      hands.set(p.id, p.hand.map(stripCardBack));
     }
     return { baseView, hands };
   }

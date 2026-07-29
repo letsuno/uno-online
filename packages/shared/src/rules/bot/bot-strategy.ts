@@ -2,7 +2,7 @@ import type { GameState, GameAction, DrawSide } from '../../types/game.js';
 import type { Color, Card } from '../../types/card.js';
 import type { BotConfig } from '../../types/bot.js';
 import { getPlayableCards, canPlayCard, isExactJumpInMatch, isValidWildDrawFour } from '../validation.js';
-import { isWildCard, isColoredCard, getEffectiveColor } from '../../types/card.js';
+import { isWildCard, isColoredCard, getEffectiveColor, colorsForSide } from '../../types/card.js';
 import { getNextAliveIndex } from '../turn.js';
 import { DIFFICULTY_PARAMS } from './difficulty-params.js';
 import { PERSONALITY_WEIGHTS } from './personality-weights.js';
@@ -83,16 +83,17 @@ function chooseDrawSide(state: GameState, config: BotConfig): DrawSide {
 function chooseBestColor(state: GameState, botId: string, hand: Card[], playedCardId: string, config: BotConfig): Color {
   const params = DIFFICULTY_PARAMS[config.difficulty];
 
+  const sideColors = colorsForSide(state.flipSide);
+
   if (config.difficulty === 'novice') {
-    const colors: Color[] = ['red', 'blue', 'green', 'yellow'];
-    return colors[Math.floor(Math.random() * colors.length)]!;
+    return sideColors[Math.floor(Math.random() * sideColors.length)]!;
   }
 
   if (config.difficulty === 'hard') {
     const remaining = hand.filter(c => c.id !== playedCardId);
     const bot = state.players.find(p => p.id === botId);
     const botIndex = state.players.findIndex(p => p.id === botId);
-    const colors: Color[] = ['red', 'blue', 'green', 'yellow'];
+    const colors = sideColors;
 
     const isAlly = (p: { id: string; isBot: boolean; eliminated?: boolean; teamId?: number }): boolean => {
       if (p.id === botId || p.eliminated) return false;
@@ -140,9 +141,12 @@ function chooseBestColor(state: GameState, botId: string, hand: Card[], playedCa
   }
 
   // Normal/easy: pick best color for own hand (excluding the played card);
-  // random among ties so the choice can't be predicted from color order
-  const best = bestColorsForHand(hand, playedCardId);
-  return best[Math.floor(Math.random() * best.length)]!;
+  // random among ties so the choice can't be predicted from color order。
+  // 必须限制在当前生效的那一面：手里没有带色牌时 8 色会全部并列，
+  // 直接随机会选出另一面的颜色，被引擎判为非法选色。
+  const best = bestColorsForHand(hand, playedCardId).filter(c => sideColors.includes(c));
+  const pool = best.length > 0 ? best : sideColors;
+  return pool[Math.floor(Math.random() * pool.length)]!;
 }
 
 /**
@@ -340,16 +344,23 @@ function handleChoosingSwapTarget(state: GameState, playerId: string, config: Bo
   return [{ type: 'CHOOSE_SWAP_TARGET', playerId, targetId: target.id }];
 }
 
-const ALL_COLORS: Color[] = ['red', 'blue', 'green', 'yellow'];
-
 /**
  * Endgame solver: return every card that starts at least one winning
  * sequence, assuming the state does not change between the bot's plays.
  * The caller ranks the returned candidates with the evaluator, so the
  * strategically best line wins instead of whichever card happens to sit
  * first in the hand.
+ *
+ * `allColors` 由调用方按当前生效的牌面传入——UNO Flip 暗面时可选的是暗面四色。
  */
-function solveEndgame(hand: Card[], topCard: Card, currentColor: Color, hr: { noWildFinish: boolean; noFunctionCardFinish: boolean }): Card[] {
+function solveEndgame(
+  hand: Card[],
+  topCard: Card,
+  currentColor: Color,
+  hr: { noWildFinish: boolean; noFunctionCardFinish: boolean },
+  allColors: readonly Color[],
+): Card[] {
+  const ALL_COLORS = allColors;
   if (hand.length > 3 || hand.length === 0) return [];
 
   function canWin(remaining: Card[], top: Card, color: Color): boolean {
@@ -516,7 +527,7 @@ function handlePlaying(state: GameState, playerId: string, config: BotConfig): G
   // winning sequence, then let the evaluator pick the strongest of them
   // (e.g. prefer a draw-two that guarantees the follow-up over a gamble).
   if (config.difficulty === 'hard' && player.hand.length <= 3 && topCard && state.currentColor) {
-    const winningStarts = solveEndgame(player.hand, topCard, state.currentColor, hr);
+    const winningStarts = solveEndgame(player.hand, topCard, state.currentColor, hr, colorsForSide(state.flipSide));
     if (winningStarts.length > 0) {
       const scored = evaluateCards(player.hand, winningStarts, state, playerId, params, weights);
       const pick = applyMistake(scored, params.mistakeRate);
@@ -536,7 +547,11 @@ function handlePlaying(state: GameState, playerId: string, config: BotConfig): G
     const sameValue = player.hand.filter(c =>
       c.id !== pick.id && c.type === 'number' && (c as { value: number }).value === pickValue,
     );
-    if (sameValue.length > 0 && params.specialCardAwareness > 0) {
+    // 打出会中断回合的数字牌时不能连出：出牌后局面会跳到别的阶段
+    // （7 牌交换 → choosing_swap_target），后续的连出动作必然被引擎拒绝。
+    const interruptsTurn = hr.sevenSwapHands && pickValue === 7;
+
+    if (sameValue.length > 0 && params.specialCardAwareness > 0 && !interruptsTurn) {
       let chainCount: number;
       if (hr.bombCard) {
         // Coalition: only bomb if net damage to humans > allies
@@ -572,7 +587,13 @@ function handlePlaying(state: GameState, playerId: string, config: BotConfig): G
         for (let i = 0; i < chainCount; i++) {
           actions.push({ type: 'PLAY_CARD', playerId, cardId: orderedSameValue[i]!.id });
         }
-        actions.push({ type: 'PASS', playerId });
+        // 只有当手里还留着同数字的牌时，multiPlayPost 才会把回合留给自己，
+        // 这时才需要用 PASS 结束连出。若连出把同数字牌打光，轮次已经推进，
+        // 这个 PASS 会被引擎拒绝——而服务端的机器人循环遇到被拒动作就 break
+        // 且不再重新调度，整局会永久卡死。
+        if (sameValue.length - chainCount > 0) {
+          actions.push({ type: 'PASS', playerId });
+        }
       }
     }
   }

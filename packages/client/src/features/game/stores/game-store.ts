@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Card, Color, GameAction, HouseRules, PlayerView, PlayerViewPlayer } from '@uno-online/shared';
+import type { Card, Color, FlipSide, GameAction, GameMode, HouseRules, PlayerView, PlayerViewPlayer } from '@uno-online/shared';
 
 export type PlayerInfo = PlayerViewPlayer;
 
@@ -37,6 +37,7 @@ interface GameState {
   direction: 'clockwise' | 'counter_clockwise';
   discardPile: Card[];
   currentColor: Color | null;
+  flipSide: FlipSide;
   drawStack: number;
   pendingPenaltyDraws: number;
   deckLeftCount: number;
@@ -45,7 +46,7 @@ interface GameState {
   roundNumber: number;
   winnerId: string | null;
   pendingDrawPlayerId: string | null;
-  settings: { turnTimeLimit: number; targetScore: number; houseRules?: HouseRules } | null;
+  settings: { turnTimeLimit: number; targetScore: number; gameMode?: GameMode; houseRules?: HouseRules } | null;
   lastAction: GameAction | null;
   turnEndTime: number | null;
   lastDrawnCard: Card | null;
@@ -89,6 +90,7 @@ export const useGameStore = create<GameState>((set) => ({
   direction: 'clockwise',
   discardPile: [],
   currentColor: null,
+  flipSide: 'light',
   drawStack: 0,
   pendingPenaltyDraws: 0,
   deckLeftCount: 0,
@@ -152,6 +154,7 @@ export const useGameStore = create<GameState>((set) => ({
         direction: view.direction,
         discardPile: shallowDiscardEqual(state.discardPile, view.discardPile) ? state.discardPile : view.discardPile,
         currentColor: view.currentColor,
+        flipSide: view.flipSide ?? 'light',
         drawStack: view.drawStack,
         pendingPenaltyDraws: view.pendingPenaltyDraws ?? 0,
         deckLeftCount: view.deckLeftCount,
@@ -188,6 +191,7 @@ export const useGameStore = create<GameState>((set) => ({
       direction: 'clockwise',
       discardPile: [],
       currentColor: null,
+  flipSide: 'light',
       drawStack: 0,
       pendingPenaltyDraws: 0,
       deckLeftCount: 0,

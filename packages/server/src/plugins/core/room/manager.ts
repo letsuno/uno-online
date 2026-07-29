@@ -23,7 +23,7 @@ export class RoomManager {
 
   async createRoom(
     ownerId: string, ownerNickname: string,
-    settings: RoomSettings = { turnTimeLimit: 30, targetScore: 1000, houseRules: DEFAULT_HOUSE_RULES, allowSpectators: true, spectatorMode: 'hidden' },
+    settings: RoomSettings = { turnTimeLimit: 30, targetScore: 1000, gameMode: 'classic', houseRules: DEFAULT_HOUSE_RULES, allowSpectators: true, spectatorMode: 'hidden' },
     avatarUrl?: string | null, role?: string, _isBot?: boolean,
   ): Promise<string> {
     let code = generateRoomCode();

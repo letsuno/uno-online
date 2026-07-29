@@ -34,6 +34,7 @@ import AntiCheatToast from '../components/AntiCheatToast';
 import { useSpectatorStore } from '../stores/spectator-store';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import GameStartRulesModal from '../components/GameStartRulesModal';
+import FlipTransition from '../components/FlipTransition';
 import ColorWave from '../components/ColorWave';
 import HotkeySettingsModal from '../components/HotkeySettingsModal';
 import OwnerTransferBanner from '../components/OwnerTransferBanner';
@@ -57,6 +58,7 @@ export default function GamePage() {
   const phase = useGameStore((s) => s.phase);
   const roundNumber = useGameStore((s) => s.roundNumber);
   const settings = useGameStore((s) => s.settings);
+  const flipSide = useGameStore((s) => s.flipSide);
   const toggleInfoDrawer = useGameStore((s) => s.toggleInfoDrawer);
   const openInfoDrawer = useGameStore((s) => s.openInfoDrawer);
   const backToLobby = useLeaveRoom();
@@ -217,7 +219,7 @@ export default function GamePage() {
   }
 
   return (
-    <div className="flex h-screen flex-col relative overflow-hidden">
+    <div className="flex h-screen flex-col relative overflow-hidden" data-flip-side={flipSide}>
 
       {connectionStatus !== 'connected' && (
         <div className="fixed inset-0 z-connection flex flex-col items-center justify-center gap-3 bg-black/75">
@@ -372,8 +374,10 @@ export default function GamePage() {
       <GameStartRulesModal
         open={showStartRules}
         houseRules={settings?.houseRules}
+        gameMode={settings?.gameMode}
         onClose={() => setShowStartRules(false)}
       />
+      <FlipTransition />
       <GameEffects />
       <ViewportFxLayer />
       <ColorWave />

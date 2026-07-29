@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ClipboardList } from 'lucide-react';
 import type { HouseRules } from '@uno-online/shared';
-import { DEFAULT_HOUSE_RULES, HOUSE_RULE_DEFINITIONS } from '@uno-online/shared';
+import { getActiveHouseRuleDefinitions } from '@uno-online/shared';
 import { useGameStore } from '../stores/game-store';
 import { cn } from '@/shared/lib/utils';
 import RuleTeaching from './RuleTeaching';
@@ -33,15 +33,12 @@ interface HouseRulesCardProps {
 
 export default function HouseRulesCard({ embedded = false }: HouseRulesCardProps) {
   const houseRules = useGameStore((s) => s.settings?.houseRules);
+  const gameMode = useGameStore((s) => s.settings?.gameMode);
   const [collapsed, setCollapsed] = useState(false);
 
   if (!houseRules) return null;
 
-  const activeRules = HOUSE_RULE_DEFINITIONS.filter((rule) => {
-    const current = houseRules[rule.key];
-    const defaultVal = DEFAULT_HOUSE_RULES[rule.key];
-    return current !== defaultVal;
-  });
+  const activeRules = getActiveHouseRuleDefinitions(houseRules, gameMode);
 
   if (activeRules.length === 0) {
     if (embedded) {

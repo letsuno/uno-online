@@ -1,6 +1,8 @@
 import type { GameState, GameAction, DrawSide } from '../types/game.js';
-import type { Color } from '../types/card.js';
+import type { Card, Color } from '../types/card.js';
+import { colorsForSide, getEffectiveColor, isWildCard } from '../types/card.js';
 import { reshuffleSideFromDiscard } from './deck.js';
+import { flipAll } from './flip.js';
 import { canPlayCard, isValidWildDrawFour, canRespondToDrawStack as canRespondToDrawStackPure } from './validation.js';
 import { getNextAliveIndex, countAlivePlayers, reverseDirection } from './turn.js';
 import { calculateRoundScores } from './scoring.js';
@@ -11,6 +13,9 @@ export const PENALTY_STATE_DEFAULTS = {
   pendingPenaltyNextPlayerIndex: null,
   pendingPenaltySourcePlayerId: null,
   pendingPenaltyQueue: [] as { playerId: string; count: number; nextPlayerIndex: number; sourcePlayerId: string | null }[],
+  pendingPenaltyUntilColor: null,
+  pendingPenaltyUntilColorDrawn: 0,
+  pendingPenaltyExtra: 0,
   pendingDrawPlayerId: null,
   drawStack: 0,
 } as const;
@@ -64,7 +69,7 @@ export function checkRoundEnd(state: GameState, playerId: string): GameState {
   const player = state.players.find(p => p.id === playerId);
   if (!player || player.hand.length > 0) return state;
 
-  const scores = calculateRoundScores(state.players, playerId);
+  const scores = calculateRoundScores(state.players, playerId, state.settings.gameMode);
   // Add round scores to cumulative player scores
   const players = state.players.map(p => ({
     ...p,
@@ -118,7 +123,7 @@ function hasPlayableCardForUnoCall(state: GameState, player: GameState['players'
     return player.hand.some(card => canRespondToDrawStack(state, card.id));
   }
 
-  return player.hand.some(card => canPlayCard(card, topCard, state.currentColor!));
+  return player.hand.some(card => canPlayCard(card, topCard, state.currentColor!, state.settings.houseRules));
 }
 
 export function startPenaltyDraw(
@@ -127,8 +132,11 @@ export function startPenaltyDraw(
   count: number,
   nextPlayerIndex: number,
   sourcePlayerId: string | null = null,
+  untilColor: Color | null = null,
+  extra = 0,
 ): GameState {
-  if (count <= 0) return state;
+  // 条件式罚摸（摸到指定色为止）用 count=1 表示「至少还要再摸一张」
+  if (count <= 0 && !untilColor) return state;
   const playerIdx = playerIndex(state, playerId);
   if (playerIdx === -1) return state;
 
@@ -141,7 +149,7 @@ export function startPenaltyDraw(
       ...state,
       pendingPenaltyQueue: [
         ...(state.pendingPenaltyQueue ?? []),
-        { playerId, count, nextPlayerIndex, sourcePlayerId },
+        { playerId, count, nextPlayerIndex, sourcePlayerId, untilColor, extra },
       ],
     };
   }
@@ -150,14 +158,50 @@ export function startPenaltyDraw(
     ...state,
     phase: 'playing',
     currentPlayerIndex: playerIdx,
-    pendingPenaltyDraws: count,
+    pendingPenaltyDraws: untilColor ? 1 : count,
     pendingPenaltyNextPlayerIndex: nextPlayerIndex,
     pendingPenaltySourcePlayerId: sourcePlayerId,
+    pendingPenaltyUntilColor: untilColor,
+    pendingPenaltyUntilColorDrawn: 0,
+    pendingPenaltyExtra: extra,
     pendingPenaltyQueue: state.pendingPenaltyQueue ?? [],
   };
 }
 
-function finishPenaltyDrawIfNeeded(state: GameState, lastAction: GameAction): GameState {
+/** 一直摸到抽出指定颜色为止（Wild Draw Color），命中后再追加摸 `extra` 张。 */
+export function startPenaltyDrawUntilColor(
+  state: GameState,
+  playerId: string,
+  color: Color,
+  nextPlayerIndex: number,
+  sourcePlayerId: string | null = null,
+  extra = 0,
+): GameState {
+  return startPenaltyDraw(state, playerId, 1, nextPlayerIndex, sourcePlayerId, color, extra);
+}
+
+function finishPenaltyDrawIfNeeded(state: GameState, lastAction: GameAction, drawnCard?: Card): GameState {
+  const untilColor = state.pendingPenaltyUntilColor ?? null;
+  if (untilColor) {
+    const matched = drawnCard !== undefined && getEffectiveColor(drawnCard) === untilColor;
+    // 村规「摸色上限」：摸满 N 张就停，防止摸爆
+    const cap = state.settings.houseRules.flipDrawColorCap;
+    const drawnSoFar = (state.pendingPenaltyUntilColorDrawn ?? 0) + 1;
+    const capReached = cap !== null && drawnSoFar >= cap;
+    // 牌堆与弃牌堆都空了仍没摸到目标色时必须终止，否则永远轮不到下一位
+    if (!matched && !capReached && hasCardsAvailable(state)) {
+      return { ...state, pendingPenaltyDraws: 1, pendingPenaltyUntilColorDrawn: drawnSoFar, lastAction };
+    }
+    // 命中目标色（或无牌可摸）：转入追加罚摸。+1 抵掉下面这一次扣减。
+    state = {
+      ...state,
+      pendingPenaltyUntilColor: null,
+      pendingPenaltyUntilColorDrawn: 0,
+      pendingPenaltyExtra: 0,
+      pendingPenaltyDraws: (state.pendingPenaltyExtra ?? 0) + 1,
+    };
+  }
+
   const remaining = state.pendingPenaltyDraws ?? 0;
   if (remaining <= 0) return state;
 
@@ -182,6 +226,8 @@ function finishPenaltyDrawIfNeeded(state: GameState, lastAction: GameAction): Ga
       nextPenalty.count,
       nextPenalty.nextPlayerIndex,
       nextPenalty.sourcePlayerId ?? null,
+      nextPenalty.untilColor ?? null,
+      nextPenalty.extra ?? 0,
     );
   }
 
@@ -190,6 +236,9 @@ function finishPenaltyDrawIfNeeded(state: GameState, lastAction: GameAction): Ga
     pendingPenaltyDraws: 0,
     pendingPenaltyNextPlayerIndex: null,
     pendingPenaltySourcePlayerId: null,
+    pendingPenaltyUntilColor: null,
+    pendingPenaltyUntilColorDrawn: 0,
+    pendingPenaltyExtra: 0,
     pendingPenaltyQueue: [],
     currentPlayerIndex: state.pendingPenaltyNextPlayerIndex ?? state.currentPlayerIndex,
     lastAction,
@@ -212,6 +261,8 @@ export function drainPenaltyQueue(state: GameState): GameState {
     next!.count,
     next!.nextPlayerIndex,
     next!.sourcePlayerId ?? null,
+    next!.untilColor ?? null,
+    next!.extra ?? 0,
   );
 }
 
@@ -219,7 +270,7 @@ function withChosenColorOnTopDiscard(state: GameState, color: Color): GameState 
   const discardPile = [...state.discardPile];
   const topCard = discardPile[discardPile.length - 1];
 
-  if (topCard?.type === 'wild' || topCard?.type === 'wild_draw_four') {
+  if (topCard && isWildCard(topCard)) {
     discardPile[discardPile.length - 1] = { ...topCard, chosenColor: color };
   }
 
@@ -230,7 +281,7 @@ function getWildDrawFourChallengeColor(state: GameState): Color {
   const discardLen = state.discardPile.length;
   if (discardLen >= 2) {
     const prevCard = state.discardPile[discardLen - 2]!;
-    if (prevCard.type === 'wild' || prevCard.type === 'wild_draw_four') {
+    if (isWildCard(prevCard)) {
       return prevCard.chosenColor ?? state.currentColor ?? 'red';
     }
     return prevCard.color;
@@ -267,7 +318,7 @@ function handlePlayCard(
   const topCard = state.discardPile[state.discardPile.length - 1]!;
 
   // Validate the play
-  if (!canPlayCard(card, topCard, state.currentColor!)) return state;
+  if (!canPlayCard(card, topCard, state.currentColor!, state.settings.houseRules)) return state;
 
   // Remove card from hand
   const newHand = [
@@ -335,16 +386,43 @@ function handlePlayCard(
       break;
     }
 
-    case 'draw_two': {
+    case 'draw_two':
+    case 'draw_one':
+    case 'draw_five': {
+      const count = card.type === 'draw_one' ? 1 : card.type === 'draw_five' ? 5 : 2;
       const nextIdx = getNextAliveIndex(state.players, actingPlayerIdx, state.direction);
       const nextPlayerId = state.players[nextIdx]!.id;
       newState = startPenaltyDraw(
         { ...newState, currentColor: card.color },
         nextPlayerId,
-        2,
+        count,
         getNextAliveIndex(state.players, actingPlayerIdx, state.direction, 1),
         actingPlayer.id,
       );
+      break;
+    }
+
+    case 'skip_everyone': {
+      // 所有人跳过，轮次回到出牌者本人
+      newState = {
+        ...newState,
+        currentColor: card.color,
+        currentPlayerIndex: actingPlayerIdx,
+      };
+      break;
+    }
+
+    case 'flip': {
+      newState = flipAll(newState);
+      if (newState.currentColor === null) {
+        // 翻面后的新顶牌是万能牌——由打出 Flip 的玩家指定颜色（设计文档 §4.2）
+        newState = { ...newState, phase: 'choosing_color', currentPlayerIndex: actingPlayerIdx };
+      } else {
+        newState = {
+          ...newState,
+          currentPlayerIndex: getNextAliveIndex(newState.players, actingPlayerIdx, newState.direction),
+        };
+      }
       break;
     }
 
@@ -358,7 +436,9 @@ function handlePlayCard(
       break;
     }
 
-    case 'wild_draw_four': {
+    case 'wild_draw_four':
+    case 'wild_draw_two':
+    case 'wild_draw_color': {
       const nextIdx = getNextAliveIndex(state.players, actingPlayerIdx, state.direction);
       const nextPlayerId = state.players[nextIdx]!.id;
       newState = {
@@ -384,7 +464,9 @@ function handleDrawCard(
 
   const newState = drawCards(state, action.playerId, 1, action.side);
   if ((state.pendingPenaltyDraws ?? 0) > 0) {
-    return finishPenaltyDrawIfNeeded(newState, action);
+    const hand = newState.players.find(p => p.id === action.playerId)?.hand;
+    const drawnCard = hand && hand.length > 0 ? hand[hand.length - 1] : undefined;
+    return finishPenaltyDrawIfNeeded(newState, action, drawnCard);
   }
   return { ...newState, lastAction: action };
 }
@@ -430,6 +512,8 @@ function handleChooseColor(
 ): GameState {
   if (state.phase !== 'choosing_color') return state;
   if (action.playerId !== currentPlayerId(state)) return state;
+  // 选色必须属于当前生效的那一面，否则会把 currentColor 设成场上根本不存在的颜色
+  if (!colorsForSide(state.flipSide).includes(action.color)) return state;
 
   const colorState = withChosenColorOnTopDiscard(state, action.color);
 
@@ -457,6 +541,36 @@ function handleChooseColor(
   }
 }
 
+/**
+ * 万能罚摸牌的质疑罚则。经典与 Flip 的数值不同（Mattel GDR44）：
+ *
+ * | 卡 | 接受 / 质疑成功（出牌者受罚） | 质疑失败（质疑者受罚） |
+ * |----|------------------------------|------------------------|
+ * | Wild Draw Four（经典） | 4 | 6 |
+ * | Wild Draw Two（Flip）  | 2 | 2 + 2 = 4 |
+ * | Wild Draw Color（Flip）| 摸到指定色 | 摸到指定色 + 2 |
+ */
+interface WildDrawPenalty {
+  /** 固定张数；条件式罚摸时为 1（配合 untilColor） */
+  accepted: number;
+  challengeFailed: number;
+  untilColor: boolean;
+  /** 条件式罚摸命中目标色后的追加张数 */
+  acceptedExtra: number;
+  challengeFailedExtra: number;
+}
+
+function getWildDrawPenalty(state: GameState): WildDrawPenalty {
+  const topCard = state.discardPile[state.discardPile.length - 1];
+  if (topCard?.type === 'wild_draw_color') {
+    return { accepted: 1, challengeFailed: 1, untilColor: true, acceptedExtra: 0, challengeFailedExtra: 2 };
+  }
+  if (topCard?.type === 'wild_draw_two') {
+    return { accepted: 2, challengeFailed: 4, untilColor: false, acceptedExtra: 0, challengeFailedExtra: 0 };
+  }
+  return { accepted: 4, challengeFailed: 6, untilColor: false, acceptedExtra: 0, challengeFailedExtra: 0 };
+}
+
 function handleChallenge(
   state: GameState,
   action: Extract<GameAction, { type: 'CHALLENGE' }>,
@@ -469,6 +583,8 @@ function handleChallenge(
   const challengerIdx = playerIndex(state, action.playerId);
   const prevColor = getWildDrawFourChallengeColor(state);
   const wd4WasLegal = isValidWildDrawFour(wd4Player.hand, prevColor);
+  const penalty = getWildDrawPenalty(state);
+  const untilColor = penalty.untilColor ? state.currentColor : null;
 
   if (wd4WasLegal) {
     const nextIdx = getNextAliveIndex(state.players, challengerIdx, state.direction);
@@ -476,8 +592,10 @@ function handleChallenge(
       ...state,
       phase: 'playing',
       pendingDrawPlayerId: null,
-      lastAction: { ...action, succeeded: false, penaltyPlayerId: action.playerId, penaltyCount: 6 },
-    }, action.playerId, 6, nextIdx, state.lastAction?.type === 'CHOOSE_COLOR' ? wd4Player.id : null);
+      lastAction: { ...action, succeeded: false, penaltyPlayerId: action.playerId, penaltyCount: penalty.challengeFailed },
+    }, action.playerId, penalty.challengeFailed, nextIdx,
+       state.lastAction?.type === 'CHOOSE_COLOR' ? wd4Player.id : null,
+       untilColor, penalty.challengeFailedExtra);
   }
 
   const nextIdx = getNextAliveIndex(state.players, wd4PlayerIdx, state.direction);
@@ -485,8 +603,8 @@ function handleChallenge(
     ...state,
     phase: 'playing',
     pendingDrawPlayerId: null,
-    lastAction: { ...action, succeeded: true, penaltyPlayerId: wd4Player.id, penaltyCount: 4 },
-  }, wd4Player.id, 4, nextIdx);
+    lastAction: { ...action, succeeded: true, penaltyPlayerId: wd4Player.id, penaltyCount: penalty.accepted },
+  }, wd4Player.id, penalty.accepted, nextIdx, null, untilColor, penalty.acceptedExtra);
 }
 function handleAccept(
   state: GameState,
@@ -498,12 +616,15 @@ function handleAccept(
   const wd4PlayerId = currentPlayerId(state);
   const accepterIdx = playerIndex(state, action.playerId);
   const nextIdx = getNextAliveIndex(state.players, accepterIdx, state.direction);
+  const penalty = getWildDrawPenalty(state);
   return startPenaltyDraw({
     ...state,
     phase: 'playing',
     pendingDrawPlayerId: null,
     lastAction: action,
-  }, action.playerId, 4, nextIdx, state.lastAction?.type === 'CHOOSE_COLOR' ? wd4PlayerId : null);
+  }, action.playerId, penalty.accepted, nextIdx,
+     state.lastAction?.type === 'CHOOSE_COLOR' ? wd4PlayerId : null,
+     penalty.untilColor ? state.currentColor : null, penalty.acceptedExtra);
 }
 function handleCallUno(
   state: GameState,
