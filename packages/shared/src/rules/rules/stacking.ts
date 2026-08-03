@@ -30,22 +30,19 @@ export const stacking: HouseRulePlugin = {
         (hr.crossStack && (card.type === 'draw_two' || card.type === 'wild_draw_four'));
       if (!canStack) return { handled: false };
 
+      // A counter-stacked WD4 must declare its color atomically. Moving to
+      // choosing_color here without first removing the card lets CHOOSE_COLOR
+      // return to the exact same challenge and creates a repeatable no-op.
       if (card.type === 'wild_draw_four' && !action.chosenColor) {
-        return {
-          handled: true,
-          state: {
-            ...state,
-            phase: 'choosing_color',
-            currentPlayerIndex: playerIdx,
-          },
-        };
+        return { handled: true, state };
       }
 
       const baseState: GameState = {
         ...state,
         phase: 'playing',
         pendingDrawPlayerId: null,
-        drawStack: 4,
+        drawStack: 4 + (state.pendingRevengeDraws ?? 0),
+        pendingRevengeDraws: 0,
         currentPlayerIndex: playerIdx,
       };
       return { handled: true, state: ctx.putAttackCardOnStack(baseState, action, card, ctx.getCardDrawPenalty(card)) };

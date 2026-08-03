@@ -141,6 +141,35 @@ describe('noWildFinish', () => {
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4' });
     expect(next).toBe(state);
   });
+
+  it('forfeits the turn when a prohibited wild finish cannot draw its penalty', () => {
+    const wild = makeCard('wild', null, { id: 'wild1' });
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [wild], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'red', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'blue', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+      ],
+      deckLeft: [],
+      deckRight: [],
+      discardPile: [makeCard('number', 'red', { value: 5, id: 'discard_top' })],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, noWildFinish: true },
+      },
+    });
+
+    const next = applyActionWithHouseRules(
+      state,
+      { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wild1' },
+    );
+
+    expect(next.currentPlayerIndex).toBe(1);
+    expect(next.players[0]!.hand).toEqual([wild]);
+    expect(next.discardPile).toEqual(state.discardPile);
+    expect(next.lastAction).toEqual({ type: 'PASS', playerId: 'p1' });
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -203,6 +232,36 @@ describe('noFunctionCardFinish', () => {
     // draw_two should be played normally, advancing to p3 (skip p2)
     expect(next.players[0]!.hand).toHaveLength(1);
     expect(next.discardPile[next.discardPile.length - 1]!.id).toBe('d2');
+  });
+
+  it('ends an exhausted all-player prohibited-finish stalemate as a draw', () => {
+    const state = makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: [makeCard('draw_two', 'red', { id: 'p1d2' })], score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('draw_two', 'red', { id: 'p2d2' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('draw_two', 'red', { id: 'p3d2' })], score: 0, connected: true, calledUno: false },
+      ],
+      deckLeft: [],
+      deckRight: [],
+      discardPile: [makeCard('number', 'red', { value: 5, id: 'discard_top' })],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, noFunctionCardFinish: true },
+      },
+    });
+
+    const next = applyActionWithHouseRules(
+      state,
+      { type: 'PLAY_CARD', playerId: 'p1', cardId: 'p1d2' },
+    );
+
+    expect(next.phase).toBe('round_end');
+    expect(next.winnerId).toBeNull();
+    expect(next.players.map(player => player.hand)).toEqual(
+      state.players.map(player => player.hand),
+    );
+    expect(next.discardPile).toEqual(state.discardPile);
   });
 });
 
@@ -569,6 +628,43 @@ describe('drawUntilPlayable', () => {
     const next = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
     expect(next.players[0]!.hand).toHaveLength(1);
     expect(next.players[0]!.hand[0]!.id).toBe('red7');
+  });
+
+  it('ends an exhausted all-player PASS stalemate as a drawn round', () => {
+    const state = makeState({
+      players: [
+        {
+          id: 'p1', name: 'Alice',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p1_blue' })],
+          score: 0, connected: true, calledUno: false,
+        },
+        {
+          id: 'p2', name: 'Bob',
+          hand: [makeCard('number', 'yellow', { value: 1, id: 'p2_yellow' })],
+          score: 0, connected: true, calledUno: false,
+        },
+      ],
+      deckLeft: [],
+      deckRight: [],
+      discardPile: [makeCard('number', 'red', { value: 5, id: 'only_discard' })],
+      currentColor: 'red',
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, drawUntilPlayable: true },
+      },
+    });
+
+    const rejectedDraw = applyActionWithHouseRules(state, {
+      type: 'DRAW_CARD', playerId: 'p1', side: 'left',
+    });
+    expect(rejectedDraw).toBe(state);
+
+    const passed = applyActionWithHouseRules(state, { type: 'PASS', playerId: 'p1' });
+    expect(passed).not.toBe(state);
+    expect(passed.phase).toBe('round_end');
+    expect(passed.winnerId).toBeNull();
+    expect(passed.players.map(player => player.score)).toEqual([0, 0]);
   });
 
   it('rejects drawing when the player already has a playable card', () => {

@@ -133,7 +133,8 @@ export function initializeGame(
 
   const playerIds = playerData.map(p => p.id);
   const { hands, remainingDeck: deckAfterDeal } = dealCards(deck, playerIds, INITIAL_HAND_SIZE);
-  const skipWild = houseRules ? !houseRules.wildFirstTurn : false;
+  const effectiveHouseRules = houseRules ?? DEFAULT_HOUSE_RULES;
+  const skipWild = !effectiveHouseRules.wildFirstTurn;
   const { topCard, remainingDeck: deckAfterDiscard, effect } = handleFirstDiscard(deckAfterDeal, skipWild);
 
   const players: Player[] = playerData.map((p, i) => ({
@@ -173,7 +174,7 @@ export function initializeGame(
     settings: {
       turnTimeLimit: DEFAULT_TURN_TIME_LIMIT as 30,
       targetScore: DEFAULT_TARGET_SCORE as 1000,
-      houseRules: houseRules ?? DEFAULT_HOUSE_RULES,
+      houseRules: effectiveHouseRules,
       allowSpectators: true,
       spectatorMode: 'hidden' as const,
     },

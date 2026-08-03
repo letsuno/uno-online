@@ -430,4 +430,73 @@ describe('chooseBotAction — edge cases', () => {
     expect(actions.length).toBe(1);
     expect(actions[0]).toMatchObject({ type: 'PASS', playerId: 'bot' });
   });
+
+  it('may play the final recycled card before recurrence is observed', () => {
+    const recycledReverse = makeCard('reverse', 'blue', { id: 'recycled_reverse' });
+    const state = makeState({
+      currentPlayerIndex: 0,
+      currentColor: 'red',
+      deckLeft: [],
+      deckRight: [],
+      discardPile: [makeCard('reverse', 'red', { id: 'top_reverse' })],
+      lastAction: { type: 'DRAW_CARD', playerId: 'bot', side: 'left' },
+      players: [
+        makePlayer('bot', 'Bot', [
+          makeNumberCard('other', 'green', 2),
+          recycledReverse,
+        ], hardBot),
+        makePlayer('p2', 'Human', [makeNumberCard('p2', 'yellow', 4)]),
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: {
+          ...DEFAULT_HOUSE_RULES,
+          drawUntilPlayable: true,
+          forcedPlayAfterDraw: true,
+        },
+      },
+    });
+
+    expect(chooseBotAction(state, 'bot')).toEqual([
+      { type: 'PLAY_CARD', playerId: 'bot', cardId: 'recycled_reverse' },
+    ]);
+  });
+
+  it('keeps the bot draw-side preference separate from cycle protection', () => {
+    const state = makeState({
+      currentPlayerIndex: 0,
+      currentColor: 'red',
+      deckLeft: [makeNumberCard('physical-draw', 'blue', 9)],
+      deckRight: [],
+      deckLeftInitialCount: 1,
+      deckRightInitialCount: 1,
+      discardPile: [
+        makeNumberCard('recycled-zero', 'green', 0),
+        makeNumberCard('top-zero', 'red', 0),
+      ],
+      players: [
+        makePlayer('bot', 'Bot', [makeNumberCard('bot-card', 'yellow', 4)], {
+          difficulty: 'novice',
+          personality: 'balanced',
+        }),
+        makePlayer('p2', 'Human', [makeNumberCard('p2-card', 'blue', 6)]),
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, zeroRotateHands: true },
+      },
+    });
+
+    const plan = chooseBotAction(state, 'bot');
+    expect(plan).toHaveLength(1);
+    expect(plan[0]).toMatchObject({
+      type: 'DRAW_CARD',
+      playerId: 'bot',
+    });
+    expect(['left', 'right']).toContain(
+      plan[0]?.type === 'DRAW_CARD' ? plan[0].side : null,
+    );
+  });
 });

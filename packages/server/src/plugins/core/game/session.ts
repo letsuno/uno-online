@@ -1,5 +1,9 @@
 import { createHash } from 'node:crypto';
-import { initializeGame, applyActionWithHouseRules } from '@uno-online/shared';
+import {
+  AutomationCycleGuard,
+  initializeGame,
+  applyActionWithHouseRules,
+} from '@uno-online/shared';
 import { initializeNextRound, serializeDecks } from '@uno-online/shared';
 import type { GameState, GameAction, RoomSettings, UserRole, BotConfig } from '@uno-online/shared';
 import type { Card } from '@uno-online/shared';
@@ -18,6 +22,7 @@ export class GameSession {
   private state: GameState;
   private initialDeckSerialized: string = '';
   private _spectatorMode: 'full' | 'hidden' = 'hidden';
+  private readonly automationCycleGuard = new AutomationCycleGuard();
 
   get spectatorMode(): 'full' | 'hidden' {
     return this._spectatorMode;
@@ -57,6 +62,17 @@ export class GameSession {
 
   getFullState(): GameState {
     return this.state;
+  }
+
+  getAutomationCycleGuard(): AutomationCycleGuard {
+    return this.automationCycleGuard;
+  }
+
+  recordAutomatedTransition(
+    before: GameState,
+    plan: readonly GameAction[],
+  ): void {
+    this.automationCycleGuard.recordTransition(before, plan, this.state);
   }
 
   private static readonly DISCARD_TRUNCATE = 10;
@@ -287,6 +303,7 @@ export class GameSession {
     this.state = initializeNextRound(this.state);
     this.state = { ...this.state, deckHash: GameSession.computeDeckHash(this.state), gameStartedAt, turnStartedAt: Date.now() };
     this.initialDeckSerialized = serializeDecks(this.state.deckLeft, this.state.deckRight);
+    this.automationCycleGuard.reset();
   }
 
   resetForRematch(): void {
@@ -297,6 +314,7 @@ export class GameSession {
     const now = Date.now();
     this.state = { ...fresh, settings, deckHash, chatHistory: [], gameStartedAt: now, turnStartedAt: now };
     this.initialDeckSerialized = serializeDecks(fresh.deckLeft, fresh.deckRight);
+    this.automationCycleGuard.reset();
   }
 
   addChatMessage(message: ChatMessage): void {

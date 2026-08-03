@@ -43,6 +43,7 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     pendingPenaltyNextPlayerIndex: null,
     pendingPenaltySourcePlayerId: null,
     pendingPenaltyQueue: [],
+    pendingRevengeDraws: 0,
     lastAction: null,
     roundNumber: 1,
     winnerId: null,

@@ -19,6 +19,14 @@ const TERMINAL_PHASES = new Set(['round_end', 'game_over']);
 export function applyActionWithHouseRules(state: GameState, action: GameAction): GameState {
   const hr = state.settings.houseRules;
 
+  // Paying an already-resolved penalty is an exclusive phase of the turn:
+  // the affected player must finish drawing before any card can be played.
+  // Keep this invariant ahead of every plugin so a pre-check cannot bypass
+  // the core engine's identical guard (for example by starting a new stack).
+  if (action.type === 'PLAY_CARD' && (state.pendingPenaltyDraws ?? 0) > 0) {
+    return state;
+  }
+
   for (const plugin of PRE_CHECK_PLUGINS) {
     if (!plugin.isEnabled(hr)) continue;
     if (!plugin.preCheck) continue;

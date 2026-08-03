@@ -684,14 +684,16 @@ export async function executeAutopilot(
   let lastActionTime = 0;
   for (let round = 0; round < 5; round++) {
     const st = session.getFullState();
+    const cycleGuard = session.getAutomationCycleGuard();
     let actions: GameAction[];
     if (canAutopilotActForPlayer(session, playerId)) {
-      actions = chooseAutopilotAction(st, playerId);
+      actions = chooseAutopilotAction(st, playerId, cycleGuard);
     } else {
-      actions = chooseJumpInAction(st, playerId);
+      actions = chooseJumpInAction(st, playerId, cycleGuard);
     }
     if (actions.length === 0) break;
     let anySuccess = false;
+    const appliedActions: GameAction[] = [];
     for (const action of actions) {
       if (lastActionTime > 0) {
         const elapsed = Date.now() - lastActionTime;
@@ -701,11 +703,15 @@ export async function executeAutopilot(
       }
       const result = session.applyAction(action);
       if (result.success) {
+        appliedActions.push(action);
         lastActionTime = Date.now();
         anySuccess = true;
         await onActionSuccess?.(action);
         await onPenaltyPause?.();
       }
+    }
+    if (appliedActions.length > 0) {
+      session.recordAutomatedTransition(st, appliedActions);
     }
     if (!anySuccess) break;
     acted = true;
@@ -783,16 +789,22 @@ export function startTurnTimer(
         return;
       }
       let actions: GameAction[];
+      const cycleGuard = s.getAutomationCycleGuard();
       if (botPlayer?.isBot && botPlayer.botConfig) {
-        actions = chooseBotAction(fullState, pid);
+        actions = chooseBotAction(fullState, pid, cycleGuard);
       } else {
-        actions = chooseAutopilotAction(fullState, pid);
+        actions = chooseAutopilotAction(fullState, pid, cycleGuard);
       }
 
+      const appliedActions: GameAction[] = [];
       for (const action of actions) {
         const result = s.applyAction(action);
         if (!result.success) break;
+        appliedActions.push(action);
         notifyAutopilotAction(roomCode, s, action);
+      }
+      if (appliedActions.length > 0) {
+        s.recordAutomatedTransition(fullState, appliedActions);
       }
 
       // Bot UNO call

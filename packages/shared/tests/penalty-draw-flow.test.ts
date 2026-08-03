@@ -69,6 +69,43 @@ describe('penalty draw flow', () => {
     expect(afterIllegalPass).toStrictEqual(afterFirstDraw);
   });
 
+  it('settles an unfulfillable penalty stack in one action when all cards are exhausted', () => {
+    const state = makeState({
+      players: [
+        {
+          id: 'p1', name: 'Alice',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p1-card' })],
+          score: 0, connected: true, autopilot: false, calledUno: false,
+        },
+        {
+          id: 'p2', name: 'Bob',
+          hand: [makeCard('number', 'yellow', { value: 1, id: 'p2-card' })],
+          score: 0, connected: true, autopilot: false, calledUno: false,
+        },
+        {
+          id: 'p3', name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 1, id: 'p3-card' })],
+          score: 0, connected: true, autopilot: false, calledUno: false,
+        },
+      ],
+      currentPlayerIndex: 1,
+      pendingPenaltyDraws: 62,
+      pendingPenaltyNextPlayerIndex: 2,
+      pendingPenaltySourcePlayerId: 'p1',
+      deckLeft: [],
+      deckRight: [],
+      discardPile: [makeCard('draw_two', 'red', { id: 'only-discard' })],
+    });
+
+    const settled = applyAction(state, {
+      type: 'DRAW_CARD', playerId: 'p2', side: 'left',
+    });
+
+    expect(settled.players[1]!.hand.map(card => card.id)).toEqual(['p2-card']);
+    expect(settled.pendingPenaltyDraws).toBe(0);
+    expect(settled.currentPlayerIndex).toBe(2);
+  });
+
   it('requires all 4 wild draw four penalty cards to be drawn after accepting', () => {
     const deckCards = Array.from({ length: 6 }, (_, i) => makeCard('number', 'blue', { value: i, id: `wd4_draw_${i}` }));
     const state = makeState({

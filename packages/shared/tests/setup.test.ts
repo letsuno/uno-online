@@ -93,7 +93,7 @@ describe('initializeGame', () => {
 
     const state = initializeGame(playerData);
 
-    expect(state.phase === 'playing' || state.phase === 'choosing_color').toBe(true);
+    expect(state.phase).toBe('playing');
     expect(state.players).toHaveLength(3);
     expect(state.players[0]!.hand.length).toBeGreaterThanOrEqual(7);
     expect(state.discardPile.length).toBeGreaterThanOrEqual(1);
@@ -102,14 +102,16 @@ describe('initializeGame', () => {
     expect(state.roundNumber).toBe(1);
   });
 
-  it('handles first card effects', () => {
+  it('honors the default wildFirstTurn=false rule', () => {
     for (let i = 0; i < 50; i++) {
       const playerData = [
         { id: 'p1', name: 'Alice' },
         { id: 'p2', name: 'Bob' },
       ];
       const state = initializeGame(playerData);
-      expect(state.phase === 'playing' || state.phase === 'choosing_color').toBe(true);
+      expect(state.phase).toBe('playing');
+      expect(state.discardPile[0]!.type).not.toBe('wild');
+      expect(state.discardPile[0]!.type).not.toBe('wild_draw_four');
       expect(state.discardPile.length).toBeGreaterThanOrEqual(1);
     }
   });

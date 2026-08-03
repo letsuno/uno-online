@@ -1065,4 +1065,120 @@ describe('handLimit', () => {
     // No limit — drawing succeeds
     expect(next.players[0]!.hand).toHaveLength(51);
   });
+
+  // At the limit, DRAW_CARD is rejected; without a playable card the only way
+  // the turn can advance is PASS, which the engine must accept without a
+  // prior draw (otherwise the game deadlocks).
+
+  /** 10 blue cards, values 1-4 — none playable on the default red-5 top card. */
+  function unplayableHandAtLimit(prefix = 'hc'): ReturnType<typeof makeCard>[] {
+    return Array.from({ length: 10 }, (_, i) =>
+      makeCard('number', 'blue', { value: (i % 4) + 1, id: `${prefix}${i}` })
+    );
+  }
+
+  function stuckAtLimitState(extraRules: Partial<typeof DEFAULT_HOUSE_RULES> = {}) {
+    return makeState({
+      players: [
+        { id: 'p1', name: 'Alice', hand: unplayableHandAtLimit(), score: 0, connected: true, calledUno: false },
+        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, handLimit: 10, ...extraRules },
+      },
+    });
+  }
+
+  it('allows PASS without drawing when at the limit with nothing playable', () => {
+    const state = stuckAtLimitState();
+
+    // Sanity: both PLAY and DRAW are dead ends here
+    const drawn = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
+    expect(drawn).toStrictEqual(state);
+
+    const next = applyActionWithHouseRules(state, { type: 'PASS', playerId: 'p1' });
+
+    expect(next.currentPlayerIndex).toBe(1);
+    expect(next.players[0]!.hand).toHaveLength(10);
+  });
+
+  it('allows PASS at the limit when drawUntilPlayable is also enabled', () => {
+    const state = stuckAtLimitState({ drawUntilPlayable: true });
+
+    const next = applyActionWithHouseRules(state, { type: 'PASS', playerId: 'p1' });
+
+    expect(next.currentPlayerIndex).toBe(1);
+    expect(next.players[0]!.hand).toHaveLength(10);
+  });
+
+  it('ends the round as a draw when every player is stuck at the hand limit', () => {
+    const state = makeState({
+      deckLeft: [makeCard('number', 'green', { value: 9, id: 'draw-source' })],
+      deckRight: [],
+      players: [
+        {
+          id: 'p1', name: 'Alice', hand: unplayableHandAtLimit('p1-'),
+          score: 0, connected: true, calledUno: false,
+        },
+        {
+          id: 'p2', name: 'Bob', hand: unplayableHandAtLimit('p2-'),
+          score: 0, connected: true, calledUno: false,
+        },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: {
+          ...DEFAULT_HOUSE_RULES,
+          handLimit: 10,
+          forcedPlayAfterDraw: true,
+          bombCard: true,
+        },
+      },
+    });
+
+    const next = applyActionWithHouseRules(state, { type: 'PASS', playerId: 'p1' });
+
+    expect(next.phase).toBe('round_end');
+    expect(next.winnerId).toBeNull();
+    expect(next.lastAction).toEqual({ type: 'PASS', playerId: 'p1' });
+    expect(next.players.map(player => player.score)).toEqual([0, 0]);
+  });
+
+  it('still rejects PASS at the limit when a playable card exists', () => {
+    const state = stuckAtLimitState();
+    state.players[0]!.hand[0] = makeCard('number', 'red', { value: 1, id: 'playable' });
+
+    const next = applyActionWithHouseRules(state, { type: 'PASS', playerId: 'p1' });
+
+    expect(next).toStrictEqual(state);
+  });
+
+  it('still rejects PASS without drawing when below the limit', () => {
+    const state = stuckAtLimitState();
+    state.players[0]!.hand = state.players[0]!.hand.slice(0, 5);
+
+    const next = applyActionWithHouseRules(state, { type: 'PASS', playerId: 'p1' });
+
+    expect(next).toStrictEqual(state);
+  });
+
+  it('still forces drawing off a draw stack at the limit (obligation draws are exempt)', () => {
+    const d2Top = makeCard('draw_two', 'red', { id: 'd2top' });
+    const state = stuckAtLimitState({ stackDrawTwo: true });
+    const stacked = {
+      ...state,
+      discardPile: [...state.discardPile, d2Top],
+      drawStack: 2,
+    };
+
+    const passed = applyActionWithHouseRules(stacked, { type: 'PASS', playerId: 'p1' });
+    expect(passed).toStrictEqual(stacked);
+
+    const drawn = applyActionWithHouseRules(stacked, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const });
+    expect(drawn.players[0]!.hand.length).toBeGreaterThan(10);
+  });
 });

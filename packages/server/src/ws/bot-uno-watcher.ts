@@ -3,6 +3,7 @@ import type { KvStore } from '../kv/types.js';
 import type { GameSession } from '../plugins/core/game/session.js';
 import type { GameStatePersister } from '../plugins/core/game/state-store.js';
 import { DIFFICULTY_PARAMS, chooseBotJumpInAction } from '@uno-online/shared';
+import type { GameAction } from '@uno-online/shared';
 
 // Map from roomCode to list of pending catch timers
 const botTimers = new Map<string, ReturnType<typeof setTimeout>[]>();
@@ -168,7 +169,8 @@ export function checkBotJumpIn(
 
   // Find the first bot that can jump in
   for (const bot of candidateBots) {
-    const actions = chooseBotJumpInAction(state, bot.id);
+    const cycleGuard = session.getAutomationCycleGuard();
+    const actions = chooseBotJumpInAction(state, bot.id, cycleGuard);
     if (actions.length === 0) continue;
 
     // Delay scaled by difficulty
@@ -189,15 +191,20 @@ export function checkBotJumpIn(
       // Re-read current state to avoid stale closure
       const currentState = session.getFullState();
       if (currentState.phase === 'game_over' || currentState.phase === 'round_end') return;
-      const freshActions = chooseBotJumpInAction(currentState, bot.id);
+      const freshActions = chooseBotJumpInAction(currentState, bot.id, cycleGuard);
       if (freshActions.length === 0) { onTurnChange(); return; }
 
       let acted = false;
+      const appliedActions: GameAction[] = [];
       for (const action of freshActions) {
         const result = session.applyAction(action);
-        if (result.success) acted = true;
+        if (result.success) {
+          acted = true;
+          appliedActions.push(action);
+        }
       }
       if (!acted) { onTurnChange(); return; }
+      session.recordAutomatedTransition(currentState, appliedActions);
 
       // Bot UNO call after jump-in
       const afterState = session.getFullState();

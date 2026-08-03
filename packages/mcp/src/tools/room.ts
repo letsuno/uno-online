@@ -52,7 +52,7 @@ export function registerRoomTools(server: McpUnoServer): void {
       turnTimeLimit: z.union([z.literal(15), z.literal(30), z.literal(60)]).optional().describe('每回合时间限制（秒）'),
       targetScore: z.union([z.literal(200), z.literal(300), z.literal(500), z.literal(1000)]).optional().describe('目标分数'),
       allowSpectators: z.boolean().optional().describe('是否允许观战'),
-      houseRules: z.record(z.unknown()).optional().describe('村规设置，如 {"stackDrawTwo":true}'),
+      houseRules: z.record(z.string(), z.unknown()).optional().describe('村规设置，如 {"stackDrawTwo":true}'),
     },
     (args) => wrapTool(() => {
       const settings = Object.fromEntries(Object.entries(args).filter(([, v]) => v !== undefined));

@@ -33,6 +33,7 @@ export const noChallengeWildFour: HouseRulePlugin = {
         penaltyPlayerIndex,
         afterColor.direction,
       );
+      const revengeBonus = afterColor.pendingRevengeDraws ?? 0;
 
       return {
         handled: true,
@@ -41,9 +42,10 @@ export const noChallengeWildFour: HouseRulePlugin = {
             ...afterColor,
             phase: 'playing',
             pendingDrawPlayerId: null,
+            pendingRevengeDraws: 0,
           },
           penaltyPlayerId,
-          4,
+          4 + revengeBonus,
           nextPlayerIndex,
           wd4Player.id,
         ),
