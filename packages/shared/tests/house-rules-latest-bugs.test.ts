@@ -189,4 +189,61 @@ describe('latest house rule bug fixes', () => {
     const afterPass = applyActionWithHouseRules(afterDraw, { type: 'PASS', playerId: 'p1' });
     expect(afterPass.currentPlayerIndex).toBe(1);
   });
+
+  it('does not let stacking restart while a resolved penalty is still being drawn', () => {
+    const drawnAttack = makeCard('draw_two', 'blue', { id: 'drawn_attack' });
+    const penaltyCard = makeCard('number', 'yellow', { value: 3, id: 'penalty_card' });
+    const state = makeState({
+      currentPlayerIndex: 1,
+      currentColor: 'blue',
+      discardPile: [makeCard('draw_two', 'blue', { id: 'attack_top' })],
+      pendingPenaltyDraws: 1,
+      pendingPenaltyNextPlayerIndex: 2,
+      pendingPenaltySourcePlayerId: 'p1',
+      players: [
+        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'red', { value: 1, id: 'p1_card' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        { id: 'p2', name: 'Bob', hand: [drawnAttack], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3_card' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+      ],
+      deckLeft: [penaltyCard],
+      deckRight: [],
+      deckLeftInitialCount: 1,
+      deckRightInitialCount: 0,
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        allowSpectators: true,
+        spectatorMode: 'hidden',
+        houseRules: {
+          ...DEFAULT_HOUSE_RULES,
+          stackDrawTwo: true,
+          stackDrawFour: true,
+          crossStack: true,
+        },
+      },
+    });
+
+    const playAttempt = applyActionWithHouseRules(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p2',
+      cardId: drawnAttack.id,
+    });
+    expect(playAttempt).toBe(state);
+    expect(playAttempt.drawStack).toBe(0);
+    expect(playAttempt.pendingPenaltyDraws).toBe(1);
+
+    const settled = applyActionWithHouseRules(state, {
+      type: 'DRAW_CARD',
+      playerId: 'p2',
+      side: 'left',
+    });
+    expect(settled.pendingPenaltyDraws).toBe(0);
+    expect(settled.drawStack).toBe(0);
+    expect(settled.currentPlayerIndex).toBe(2);
+    expect(settled.players[1]!.hand.map(card => card.id)).toEqual([
+      drawnAttack.id,
+      penaltyCard.id,
+    ]);
+  });
+
 });

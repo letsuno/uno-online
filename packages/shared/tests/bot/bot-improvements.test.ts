@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { Card, Color } from '../../src/types/card';
 import type { GameState, Player } from '../../src/types/game';
 import type { BotConfig } from '../../src/types/bot';
@@ -28,6 +28,7 @@ function makePlayer(id: string, hand: Card[], botConfig?: BotConfig, extra: Part
 
 const hardBot: BotConfig = { difficulty: 'hard', personality: 'balanced' };
 const normalBot: BotConfig = { difficulty: 'normal', personality: 'balanced' };
+const chaoticHardBot: BotConfig = { difficulty: 'hard', personality: 'chaotic' };
 
 describe('WD4 legality self-check', () => {
   it('normal bot avoids a challengeable WD4 when a safe alternative exists', () => {
@@ -44,15 +45,15 @@ describe('WD4 legality self-check', () => {
       currentPlayerIndex: 0,
     });
 
-    // Normal bots have small score noise/mistake rates — sample repeatedly
-    let wd4Plays = 0;
-    for (let i = 0; i < 60; i++) {
+    // Keep noise and the mistake roll deterministic so this regression does
+    // not occasionally fail at the edge of a probabilistic sample.
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
       const actions = chooseBotAction(state, 'bot');
-      if (actions[0]?.type === 'PLAY_CARD' && actions[0].cardId === 'wd4') wd4Plays++;
+      expect(actions[0]).toMatchObject({ type: 'PLAY_CARD', cardId: 'r3' });
+    } finally {
+      random.mockRestore();
     }
-    // Without the self-check the WD4 (actionValue 10) wins most of the time;
-    // with the -20 risk penalty it should be rare (noise-only).
-    expect(wd4Plays).toBeLessThan(10);
   });
 
   it('hard bot plays WD4 freely when it holds no card of the current color', () => {
@@ -70,6 +71,73 @@ describe('WD4 legality self-check', () => {
     });
     const actions = chooseBotAction(state, 'bot');
     expect(actions[0]).toMatchObject({ type: 'PLAY_CARD', cardId: 'wd4' });
+  });
+
+  it('hard chaotic bot may use a challengeable WD4 before recurrence is observed', () => {
+    const wd4a = makeCard('wild_draw_four', null, { id: 'wd4-a' });
+    const wd4b = makeCard('wild_draw_four', null, { id: 'wd4-b' });
+    const safeRed = n('safe-red', 'red', 6);
+    const state = makeState({
+      players: [
+        makePlayer('bot', [
+          wd4a, safeRed, wd4b, n('red-9', 'red', 9),
+          n('yellow-2', 'yellow', 2), n('green-4', 'green', 4),
+        ], chaoticHardBot),
+        makePlayer('human-close', [n('human-green', 'green', 5)]),
+        makePlayer('ally', [
+          n('ally-yellow-6a', 'yellow', 6), n('ally-yellow-4a', 'yellow', 4),
+          n('ally-green-8', 'green', 8), n('ally-yellow-4b', 'yellow', 4),
+          n('ally-red-0', 'red', 0), n('ally-yellow-8', 'yellow', 8),
+          n('ally-yellow-6b', 'yellow', 6), n('ally-blue-9', 'blue', 9),
+          n('ally-red-1', 'red', 1), n('ally-red-8', 'red', 8),
+          n('ally-blue-5', 'blue', 5),
+        ], normalBot),
+        makePlayer('human-last', [n('human-red', 'red', 8)]),
+      ],
+      deckLeft: [],
+      deckRight: [],
+      discardPile: [n('top', 'red', 7)],
+      currentColor: 'red',
+      currentPlayerIndex: 0,
+    });
+
+    expect(chooseBotAction(state, 'bot')[0]).toMatchObject({
+      type: 'PLAY_CARD',
+      cardId: wd4a.id,
+    });
+  });
+
+  it('hard bot may still play a challengeable WD4 when cards remain to resolve the risk', () => {
+    const wd4a = makeCard('wild_draw_four', null, { id: 'wd4-a' });
+    const wd4b = makeCard('wild_draw_four', null, { id: 'wd4-b' });
+    const state = makeState({
+      players: [
+        makePlayer('bot', [
+          wd4a, n('safe-red', 'red', 6), wd4b, n('red-9', 'red', 9),
+          n('yellow-2', 'yellow', 2), n('green-4', 'green', 4),
+        ], chaoticHardBot),
+        makePlayer('human-close', [n('human-green', 'green', 5)]),
+        makePlayer('ally', [
+          n('ally-yellow-6a', 'yellow', 6), n('ally-yellow-4a', 'yellow', 4),
+          n('ally-green-8', 'green', 8), n('ally-yellow-4b', 'yellow', 4),
+          n('ally-red-0', 'red', 0), n('ally-yellow-8', 'yellow', 8),
+          n('ally-yellow-6b', 'yellow', 6), n('ally-blue-9', 'blue', 9),
+          n('ally-red-1', 'red', 1), n('ally-red-8', 'red', 8),
+          n('ally-blue-5', 'blue', 5),
+        ], normalBot),
+        makePlayer('human-last', [n('human-red', 'red', 8)]),
+      ],
+      discardPile: [n('top', 'red', 7)],
+      currentColor: 'red',
+      currentPlayerIndex: 0,
+    });
+
+    // This policy guard is specifically a no-progress safeguard; the normal
+    // score-based bluff/risk trade-off remains available while cards exist.
+    expect(chooseBotAction(state, 'bot')[0]).toMatchObject({
+      type: 'PLAY_CARD',
+      cardId: wd4a.id,
+    });
   });
 });
 

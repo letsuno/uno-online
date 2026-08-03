@@ -11,6 +11,7 @@ export const PENALTY_STATE_DEFAULTS = {
   pendingPenaltyNextPlayerIndex: null,
   pendingPenaltySourcePlayerId: null,
   pendingPenaltyQueue: [] as { playerId: string; count: number; nextPlayerIndex: number; sourcePlayerId: string | null }[],
+  pendingRevengeDraws: 0,
   pendingDrawPlayerId: null,
   drawStack: 0,
 } as const;
@@ -19,8 +20,90 @@ export const PENALTY_STATE_DEFAULTS = {
 // Helpers
 // -----------------------------------------------------------------------------
 
-function hasCardsAvailable(state: GameState): boolean {
+export function hasCardsAvailable(state: GameState): boolean {
   return state.deckLeft.length > 0 || state.deckRight.length > 0 || state.discardPile.length > 1;
+}
+
+/**
+ * The handLimit house rule rejects DRAW_CARD at/above the limit. When the
+ * current player additionally has nothing playable, PASS is the only way the
+ * turn can advance — handlePass and the drawUntilPlayable plugin both wave
+ * PASS through in exactly that situation to avoid a deadlock.
+ */
+export function isStuckAtHandLimit(state: GameState): boolean {
+  const limit = state.settings.houseRules.handLimit;
+  if (limit === null) return false;
+  const player = state.players[state.currentPlayerIndex];
+  if (!player || player.hand.length < limit) return false;
+  const topCard = state.discardPile[state.discardPile.length - 1];
+  if (!topCard || !state.currentColor) return true;
+  return !player.hand.some(card => canPlayCard(card, topCard, state.currentColor!));
+}
+
+/**
+ * A PASS would make no progress when every active player lacks a playable
+ * card and nobody can draw. End such a round as a draw instead of rotating
+ * the exact same state forever.
+ *
+ * Drawing can be unavailable either because every physical draw source is
+ * exhausted or because the hand-limit rule blocks every active player.
+ */
+function isPassStalemate(state: GameState): boolean {
+  if (state.phase !== 'playing') return false;
+  if ((state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0) return false;
+  // A successful draw followed by PASS still advances the turn and therefore
+  // makes progress, even when that draw happened to exhaust the final source.
+  if (
+    state.lastAction?.type === 'DRAW_CARD' &&
+    state.lastAction.playerId === state.players[state.currentPlayerIndex]?.id
+  ) {
+    return false;
+  }
+
+  const topCard = state.discardPile[state.discardPile.length - 1];
+  if (!topCard || !state.currentColor) return false;
+
+  const activePlayers = state.players.filter(player => !player.eliminated);
+  if (activePlayers.length < 2) return false;
+  if (
+    activePlayers.some(player =>
+      player.hand.some(card =>
+        canPlayCard(card, topCard, state.currentColor!) &&
+        !isFinishRestrictedLastCard(state, player, card)
+      )
+    )
+  ) {
+    return false;
+  }
+
+  if (!hasCardsAvailable(state)) return true;
+
+  const limit = state.settings.houseRules.handLimit;
+  return limit !== null && activePlayers.every(player => player.hand.length >= limit);
+}
+
+function isFinishRestrictedLastCard(
+  state: GameState,
+  player: GameState['players'][number],
+  card: GameState['players'][number]['hand'][number],
+): boolean {
+  if (player.hand.length !== 1) return false;
+  const hr = state.settings.houseRules;
+  return (
+    (hr.noWildFinish && (card.type === 'wild' || card.type === 'wild_draw_four')) ||
+    (hr.noFunctionCardFinish && (card.type === 'draw_two' || card.type === 'wild_draw_four'))
+  );
+}
+
+function currentPlayerHasPlayableCard(state: GameState): boolean {
+  const player = state.players[state.currentPlayerIndex];
+  const topCard = state.discardPile[state.discardPile.length - 1];
+  if (!player || !topCard || !state.currentColor) return false;
+
+  return player.hand.some(card =>
+    canPlayCard(card, topCard, state.currentColor!) &&
+    !isFinishRestrictedLastCard(state, player, card)
+  );
 }
 
 /**
@@ -161,7 +244,12 @@ function finishPenaltyDrawIfNeeded(state: GameState, lastAction: GameAction): Ga
   const remaining = state.pendingPenaltyDraws ?? 0;
   if (remaining <= 0) return state;
 
-  const nextRemaining = Math.max(remaining - 1, 0);
+  // One draw action settles the unavailable remainder when every source is
+  // exhausted. Requiring one no-op click per missing penalty card makes large
+  // stacks consume thousands of fake turns without changing any cards.
+  const nextRemaining = hasCardsAvailable(state)
+    ? Math.max(remaining - 1, 0)
+    : 0;
   if (nextRemaining > 0) {
     return { ...state, pendingPenaltyDraws: nextRemaining, lastAction };
   }
@@ -204,7 +292,17 @@ function finishPenaltyDrawIfNeeded(state: GameState, lastAction: GameAction): Ga
 
 export function drainPenaltyQueue(state: GameState): GameState {
   const queue = state.pendingPenaltyQueue ?? [];
-  if (queue.length === 0 || state.phase !== 'playing') return state;
+  // A queued penalty must wait for the active penalty to be paid. Otherwise a
+  // house-rule pre-check that deliberately returns the unchanged state (for
+  // example drawUntilPlayable rejecting PASS) can pop and immediately requeue
+  // the next penalty, producing a new-but-equivalent state forever.
+  if (
+    queue.length === 0 ||
+    state.phase !== 'playing' ||
+    (state.pendingPenaltyDraws ?? 0) > 0
+  ) {
+    return state;
+  }
   const [next, ...rest] = queue;
   return startPenaltyDraw(
     { ...state, pendingPenaltyQueue: rest },
@@ -381,6 +479,7 @@ function handleDrawCard(
 ): GameState {
   if (state.phase !== 'playing') return state;
   if (action.playerId !== currentPlayerId(state)) return state;
+  if (!hasCardsAvailable(state) && (state.pendingPenaltyDraws ?? 0) === 0) return state;
 
   const newState = drawCards(state, action.playerId, 1, action.side);
   if ((state.pendingPenaltyDraws ?? 0) > 0) {
@@ -397,18 +496,40 @@ function handlePass(
   if (action.playerId !== currentPlayerId(state)) return state;
 
   const noCards = !hasCardsAvailable(state);
+  const completedDraw =
+    state.lastAction?.type === 'DRAW_CARD' &&
+    state.lastAction.playerId === action.playerId;
 
   if (!noCards) {
     if ((state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0) return state;
 
-    // Can only pass after drawing
+    // Can only pass after drawing — unless the hand limit blocks drawing and
+    // nothing is playable, in which case PASS is the only legal move left.
     if (
-      !state.lastAction ||
-      state.lastAction.type !== 'DRAW_CARD' ||
-      state.lastAction.playerId !== action.playerId
+      !isStuckAtHandLimit(state) &&
+      (!state.lastAction ||
+        state.lastAction.type !== 'DRAW_CARD' ||
+        state.lastAction.playerId !== action.playerId)
     ) {
       return state;
     }
+  } else if (
+    (state.pendingPenaltyDraws ?? 0) === 0 &&
+    state.drawStack === 0 &&
+    !completedDraw &&
+    currentPlayerHasPlayableCard(state)
+  ) {
+    return state;
+  }
+
+  if (isPassStalemate(state)) {
+    return {
+      ...state,
+      phase: 'round_end',
+      winnerId: null,
+      lastAction: action,
+      ...PENALTY_STATE_DEFAULTS,
+    };
   }
 
   const newIndex = getNextAliveIndex(
@@ -469,24 +590,36 @@ function handleChallenge(
   const challengerIdx = playerIndex(state, action.playerId);
   const prevColor = getWildDrawFourChallengeColor(state);
   const wd4WasLegal = isValidWildDrawFour(wd4Player.hand, prevColor);
+  const revengeBonus = state.pendingRevengeDraws ?? 0;
+  const settledState = { ...state, pendingRevengeDraws: 0 };
 
   if (wd4WasLegal) {
     const nextIdx = getNextAliveIndex(state.players, challengerIdx, state.direction);
     return startPenaltyDraw({
-      ...state,
+      ...settledState,
       phase: 'playing',
       pendingDrawPlayerId: null,
-      lastAction: { ...action, succeeded: false, penaltyPlayerId: action.playerId, penaltyCount: 6 },
-    }, action.playerId, 6, nextIdx, state.lastAction?.type === 'CHOOSE_COLOR' ? wd4Player.id : null);
+      lastAction: {
+        ...action,
+        succeeded: false,
+        penaltyPlayerId: action.playerId,
+        penaltyCount: 6 + revengeBonus,
+      },
+    }, action.playerId, 6 + revengeBonus, nextIdx, state.lastAction?.type === 'CHOOSE_COLOR' ? wd4Player.id : null);
   }
 
   const nextIdx = getNextAliveIndex(state.players, wd4PlayerIdx, state.direction);
   return startPenaltyDraw({
-    ...state,
+    ...settledState,
     phase: 'playing',
     pendingDrawPlayerId: null,
-    lastAction: { ...action, succeeded: true, penaltyPlayerId: wd4Player.id, penaltyCount: 4 },
-  }, wd4Player.id, 4, nextIdx);
+    lastAction: {
+      ...action,
+      succeeded: true,
+      penaltyPlayerId: wd4Player.id,
+      penaltyCount: 4 + revengeBonus,
+    },
+  }, wd4Player.id, 4 + revengeBonus, nextIdx);
 }
 function handleAccept(
   state: GameState,
@@ -498,12 +631,19 @@ function handleAccept(
   const wd4PlayerId = currentPlayerId(state);
   const accepterIdx = playerIndex(state, action.playerId);
   const nextIdx = getNextAliveIndex(state.players, accepterIdx, state.direction);
+  const revengeBonus = state.pendingRevengeDraws ?? 0;
   return startPenaltyDraw({
     ...state,
+    pendingRevengeDraws: 0,
     phase: 'playing',
     pendingDrawPlayerId: null,
-    lastAction: action,
-  }, action.playerId, 4, nextIdx, state.lastAction?.type === 'CHOOSE_COLOR' ? wd4PlayerId : null);
+    lastAction: {
+      ...action,
+      ...(revengeBonus > 0
+        ? { penaltyPlayerId: action.playerId, penaltyCount: 4 + revengeBonus }
+        : {}),
+    },
+  }, action.playerId, 4 + revengeBonus, nextIdx, state.lastAction?.type === 'CHOOSE_COLOR' ? wd4PlayerId : null);
 }
 function handleCallUno(
   state: GameState,

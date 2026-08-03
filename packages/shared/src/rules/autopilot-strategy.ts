@@ -1,6 +1,8 @@
 import type { GameState, GameAction, DrawSide } from '../types/game.js';
 import type { Color, Card } from '../types/card.js';
 import { getPlayableCards, isExactJumpInMatch } from './validation.js';
+import type { AutomationCycleGuard } from './bot/automation-cycle-guard.js';
+import { enumerateLegalActionPlans } from './bot/legal-action-plans.js';
 
 function bestColor(hand: Card[], excludeId?: string): Color {
   const counts: Record<Color, number> = { red: 0, blue: 0, green: 0, yellow: 0 };
@@ -45,7 +47,7 @@ export function canJumpIn(state: GameState, playerId: string): boolean {
   return player.hand.some(c => isExactJumpInMatch(c, topCard));
 }
 
-export function chooseJumpInAction(state: GameState, playerId: string): GameAction[] {
+function chooseJumpInActionUnchecked(state: GameState, playerId: string): GameAction[] {
   if (!state.settings.houseRules.jumpIn || state.phase !== 'playing') return [];
   if ((state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0) return [];
   const currentPlayer = state.players[state.currentPlayerIndex];
@@ -58,13 +60,34 @@ export function chooseJumpInAction(state: GameState, playerId: string): GameActi
   return playCardActions(playerId, card, player.hand);
 }
 
-export function chooseAutopilotJumpInAction(state: GameState, playerId: string): GameAction[] {
-  const player = state.players.find(p => p.id === playerId);
-  if (!player?.autopilot) return [];
-  return chooseJumpInAction(state, playerId);
+export function chooseJumpInAction(
+  state: GameState,
+  playerId: string,
+  cycleGuard?: AutomationCycleGuard,
+): GameAction[] {
+  const preferred = chooseJumpInActionUnchecked(state, playerId);
+  if (!cycleGuard || preferred.length === 0) return preferred;
+  const player = state.players.find(candidate => candidate.id === playerId);
+  const topCard = state.discardPile[state.discardPile.length - 1];
+  const card = topCard
+    ? player?.hand.find(candidate => isExactJumpInMatch(candidate, topCard))
+    : undefined;
+  if (!card) return preferred;
+  const legal = enumerateLegalActionPlans(state, playerId, { kind: 'jumpin', card });
+  return cycleGuard.selectPlan(state, preferred, legal);
 }
 
-export function chooseAutopilotAction(state: GameState, playerId: string): GameAction[] {
+export function chooseAutopilotJumpInAction(
+  state: GameState,
+  playerId: string,
+  cycleGuard?: AutomationCycleGuard,
+): GameAction[] {
+  const player = state.players.find(p => p.id === playerId);
+  if (!player?.autopilot) return [];
+  return chooseJumpInAction(state, playerId, cycleGuard);
+}
+
+function chooseAutopilotActionUnchecked(state: GameState, playerId: string): GameAction[] {
   const player = state.players.find(p => p.id === playerId);
   if (!player) return [];
 
@@ -120,6 +143,8 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   if (!currentPlayer || currentPlayer.id !== playerId) return [];
 
   const noCards = state.deckLeft.length === 0 && state.deckRight.length === 0 && state.discardPile.length <= 1;
+  // handLimit rejects non-obligation draws at/above the limit; PASS instead.
+  const atHandLimit = hr.handLimit !== null && player.hand.length >= hr.handLimit;
 
   if ((state.pendingPenaltyDraws ?? 0) > 0) {
     if (noCards) return [{ type: 'PASS', playerId }];
@@ -128,7 +153,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
 
   const topCard = state.discardPile[state.discardPile.length - 1];
   if (!topCard || !state.currentColor) {
-    if (noCards) return [{ type: 'PASS', playerId }];
+    if (noCards || atHandLimit) return [{ type: 'PASS', playerId }];
     return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
   }
 
@@ -139,7 +164,7 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
   if (hasDrawnThisTurn && state.drawStack === 0) {
     const playableAfterDraw = getPlayableCards(player.hand, topCard, state.currentColor);
     if (playableAfterDraw.length === 0) {
-      if (!noCards && state.settings.houseRules.drawUntilPlayable) {
+      if (!noCards && !atHandLimit && state.settings.houseRules.drawUntilPlayable) {
         return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
       }
       return [{ type: 'PASS', playerId }];
@@ -185,11 +210,22 @@ export function chooseAutopilotAction(state: GameState, playerId: string): GameA
 
   const playable = getPlayableCards(player.hand, topCard, state.currentColor);
   if (playable.length === 0) {
-    if (noCards) return [{ type: 'PASS', playerId }];
+    if (noCards || atHandLimit) return [{ type: 'PASS', playerId }];
     return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
   }
 
   const pick = pickPlayableCard(playable, state.currentColor);
   const needsColorOnPlay = pick.type === 'wild_draw_four' && state.drawStack > 0 && (hr.stackDrawFour || hr.crossStack);
   return playCardActions(playerId, pick, player.hand, needsColorOnPlay);
+}
+
+export function chooseAutopilotAction(
+  state: GameState,
+  playerId: string,
+  cycleGuard?: AutomationCycleGuard,
+): GameAction[] {
+  const preferred = chooseAutopilotActionUnchecked(state, playerId);
+  if (!cycleGuard || preferred.length === 0) return preferred;
+  const legal = enumerateLegalActionPlans(state, playerId, { kind: 'turn' });
+  return cycleGuard.selectPlan(state, preferred, legal);
 }

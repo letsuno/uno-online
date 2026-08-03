@@ -43,7 +43,12 @@ export default function GameActions({ onCallUno, onCatchUno, onChallenge, onAcce
   const noCardsAvailable = deckLeftCount === 0 && deckRightCount === 0 && discardPileLength <= 1;
   const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable);
   const canPassAfterDraw = pendingPenaltyDraws === 0 && drawStack === 0 && hasDrawnThisTurn && (!mustDrawUntilPlayable || playableIds.size > 0);
-  const canPass = canPassAfterDraw || noCardsAvailable;
+  // handLimit blocks drawing at/above the limit; with nothing playable, PASS
+  // is the only legal move and the engine accepts it without a prior draw.
+  const handLimit = settings?.houseRules?.handLimit ?? null;
+  const stuckAtHandLimit = handLimit !== null && ownHandCount >= handLimit &&
+    playableIds.size === 0 && pendingPenaltyDraws === 0 && drawStack === 0;
+  const canPass = canPassAfterDraw || noCardsAvailable || stuckAtHandLimit;
 
   return (
     <div className="relative z-actions flex justify-center gap-2.5 py-2 pointer-events-auto">

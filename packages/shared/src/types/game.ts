@@ -61,6 +61,13 @@ export interface GameState {
   pendingPenaltyNextPlayerIndex?: number | null;
   pendingPenaltySourcePlayerId?: string | null;
   pendingPenaltyQueue?: PendingPenaltyDraw[];
+  /**
+   * Extra Wild Draw Four damage produced by revengeMode while the challenge
+   * flow is unresolved. This must not share drawStack: drawStack participates
+   * in stacking/deflection legality, whereas this value is only consumed when
+   * the WD4 penalty target is known.
+   */
+  pendingRevengeDraws?: number;
   lastAction: GameAction | null;
   roundNumber: number;
   winnerId: string | null;

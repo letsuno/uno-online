@@ -33,6 +33,7 @@ export const deflection: HouseRulePlugin = {
         const wd4PlayerIdx = state.currentPlayerIndex;
         const wd4PlayerId = state.players[wd4PlayerIdx]!.id;
         const afterPenaltyNextIdx = ctx.getNextAliveIndex(players, wd4PlayerIdx, newDirection);
+        const revengeBonus = state.pendingRevengeDraws ?? 0;
         const baseState = checkRoundEnd({
           ...state,
           players,
@@ -41,11 +42,18 @@ export const deflection: HouseRulePlugin = {
           direction: newDirection,
           phase: 'playing',
           pendingDrawPlayerId: null,
+          pendingRevengeDraws: 0,
           lastAction: action,
         }, action.playerId);
         return {
           handled: true,
-          state: ctx.startPenaltyDraw(baseState, wd4PlayerId, 4, afterPenaltyNextIdx, action.playerId),
+          state: ctx.startPenaltyDraw(
+            baseState,
+            wd4PlayerId,
+            4 + revengeBonus,
+            afterPenaltyNextIdx,
+            action.playerId,
+          ),
         };
       }
 
@@ -57,6 +65,7 @@ export const deflection: HouseRulePlugin = {
         const nextIdx = ctx.getNextAliveIndex(players, playerIdx, state.direction);
         const nextPlayerId = state.players[nextIdx]!.id;
         const afterPenaltyNextIdx = ctx.getNextAliveIndex(players, nextIdx, state.direction);
+        const revengeBonus = state.pendingRevengeDraws ?? 0;
         const baseState = checkRoundEnd({
           ...state,
           players,
@@ -64,11 +73,18 @@ export const deflection: HouseRulePlugin = {
           currentColor: card.color ?? state.currentColor,
           phase: 'playing',
           pendingDrawPlayerId: null,
+          pendingRevengeDraws: 0,
           lastAction: action,
         }, action.playerId);
         return {
           handled: true,
-          state: ctx.startPenaltyDraw(baseState, nextPlayerId, 4, afterPenaltyNextIdx, action.playerId),
+          state: ctx.startPenaltyDraw(
+            baseState,
+            nextPlayerId,
+            4 + revengeBonus,
+            afterPenaltyNextIdx,
+            action.playerId,
+          ),
         };
       }
 

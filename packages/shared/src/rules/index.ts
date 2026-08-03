@@ -15,6 +15,11 @@ export { chooseAutopilotAction, chooseAutopilotJumpInAction, canJumpIn, chooseJu
 export { HOUSE_RULE_DESCRIPTIONS } from './rule-descriptions.js';
 export { BOT_NAMES, pickBotName } from './bot/bot-names.js';
 export { chooseBotAction, chooseBotJumpInAction } from './bot/bot-strategy.js';
+export {
+  AutomationCycleGuard,
+  automationStateFingerprint,
+} from './bot/automation-cycle-guard.js';
+export type { AutomationCycleGuardOptions } from './bot/automation-cycle-guard.js';
 export { DIFFICULTY_PARAMS } from './bot/difficulty-params.js';
 export type { DifficultyParams, DelayConfig } from './bot/difficulty-params.js';
 export { PERSONALITY_WEIGHTS } from './bot/personality-weights.js';

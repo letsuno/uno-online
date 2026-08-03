@@ -3,6 +3,52 @@ import { DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseAutopilotJumpInAction
 import { makeCard, makeState } from './helpers/test-utils';
 
 describe('chooseAutopilotAction after drawing', () => {
+  it('draws from the populated side instead of recycling an empty side', () => {
+    const state = makeState({
+      currentPlayerIndex: 0,
+      currentColor: 'red',
+      deckLeft: [makeCard('number', 'blue', { value: 9, id: 'physical_draw' })],
+      deckRight: [],
+      deckLeftInitialCount: 1,
+      deckRightInitialCount: 1,
+      discardPile: [
+        makeCard('number', 'green', { value: 0, id: 'recycled_zero' }),
+        makeCard('number', 'red', { value: 0, id: 'top_zero' }),
+      ],
+      players: [
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'yellow', { value: 4, id: 'yellow_4' })],
+          score: 0,
+          connected: true,
+          autopilot: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 4, id: 'blue_4' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+        },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        allowSpectators: true,
+        spectatorMode: 'hidden',
+        houseRules: { ...DEFAULT_HOUSE_RULES, zeroRotateHands: true },
+      },
+    });
+
+    expect(chooseAutopilotAction(state, 'p1')).toEqual([
+      { type: 'DRAW_CARD', playerId: 'p1', side: 'left' },
+    ]);
+  });
+
   it('plays a playable drawn card instead of passing', () => {
     const drawn = makeCard('number', 'red', { value: 9, id: 'drawn_red_9' });
     const state = makeState({
@@ -15,6 +61,42 @@ describe('chooseAutopilotAction after drawing', () => {
 
     expect(chooseAutopilotAction(state, 'p1')).toEqual([
       { type: 'PLAY_CARD', playerId: 'p1', cardId: 'drawn_red_9' },
+    ]);
+  });
+
+  it('may play the final recycled card before recurrence is observed', () => {
+    const recycledReverse = makeCard('reverse', 'blue', { id: 'recycled_reverse' });
+    const state = makeState({
+      players: [
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'green', { value: 2, id: 'other' }), recycledReverse],
+          score: 0,
+          connected: true,
+          autopilot: true,
+          calledUno: false,
+        },
+        { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
+      ],
+      currentColor: 'red',
+      deckLeft: [],
+      deckRight: [],
+      discardPile: [makeCard('reverse', 'red', { id: 'top_reverse' })],
+      lastAction: { type: 'DRAW_CARD', playerId: 'p1', side: 'left' },
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: {
+          ...DEFAULT_HOUSE_RULES,
+          drawUntilPlayable: true,
+          forcedPlayAfterDraw: true,
+        },
+      },
+    });
+
+    expect(chooseAutopilotAction(state, 'p1')).toEqual([
+      { type: 'PLAY_CARD', playerId: 'p1', cardId: 'recycled_reverse' },
     ]);
   });
 

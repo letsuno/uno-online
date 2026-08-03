@@ -7,6 +7,8 @@ import { getNextAliveIndex } from '../turn.js';
 import { DIFFICULTY_PARAMS } from './difficulty-params.js';
 import { PERSONALITY_WEIGHTS } from './personality-weights.js';
 import { evaluateCards, bestColorsForHand, evaluateHandQuality, electLeadBot } from './card-evaluator.js';
+import type { AutomationCycleGuard } from './automation-cycle-guard.js';
+import { enumerateLegalActionPlans } from './legal-action-plans.js';
 
 function isFinishBlocked(card: Card, hand: Card[], hr: { noWildFinish: boolean; noFunctionCardFinish: boolean }): boolean {
   if (hand.length !== 1) return false;
@@ -406,6 +408,8 @@ function handlePlaying(state: GameState, playerId: string, config: BotConfig): G
     state.deckLeft.length === 0 &&
     state.deckRight.length === 0 &&
     state.discardPile.length <= 1;
+  // handLimit rejects non-obligation draws at/above the limit; PASS instead.
+  const atHandLimit = hr.handLimit !== null && player.hand.length >= hr.handLimit;
 
   // Pending penalty draws (from misplay or uno catch)
   if ((state.pendingPenaltyDraws ?? 0) > 0) {
@@ -415,7 +419,7 @@ function handlePlaying(state: GameState, playerId: string, config: BotConfig): G
 
   const topCard = state.discardPile[state.discardPile.length - 1];
   if (!topCard || !state.currentColor) {
-    if (noCards) return [{ type: 'PASS', playerId }];
+    if (noCards || atHandLimit) return [{ type: 'PASS', playerId }];
     return [{ type: 'DRAW_CARD', playerId, side: drawSide }];
   }
 
@@ -430,7 +434,7 @@ function handlePlaying(state: GameState, playerId: string, config: BotConfig): G
       playableAfterDraw = playableAfterDraw.filter(c => !isFinishBlocked(c, player.hand, hr));
     }
     if (playableAfterDraw.length === 0) {
-      if (!noCards && hr.drawUntilPlayable) {
+      if (!noCards && !atHandLimit && hr.drawUntilPlayable) {
         return [{ type: 'DRAW_CARD', playerId, side: drawSide }];
       }
       return [{ type: 'PASS', playerId }];
@@ -501,7 +505,7 @@ function handlePlaying(state: GameState, playerId: string, config: BotConfig): G
     playable = playable.filter(c => !isFinishBlocked(c, player.hand, hr));
   }
   if (playable.length === 0) {
-    if (noCards) return [{ type: 'PASS', playerId }];
+    if (noCards || atHandLimit) return [{ type: 'PASS', playerId }];
     return [{ type: 'DRAW_CARD', playerId, side: drawSide }];
   }
 
@@ -586,12 +590,14 @@ function handlePlaying(state: GameState, playerId: string, config: BotConfig): G
  * Main bot action chooser. Dispatches to the appropriate phase handler.
  * Returns an array of actions to be applied sequentially.
  */
-export function chooseBotAction(state: GameState, playerId: string): GameAction[] {
+function chooseBotActionUnchecked(
+  state: GameState,
+  playerId: string,
+): GameAction[] {
   const player = state.players.find(p => p.id === playerId);
   if (!player) return [];
 
   const config: BotConfig = player.botConfig ?? DEFAULT_BOT_CONFIG;
-
   switch (state.phase) {
     case 'challenging':
       return handleChallenging(state, playerId, config);
@@ -606,11 +612,25 @@ export function chooseBotAction(state: GameState, playerId: string): GameAction[
   }
 }
 
+export function chooseBotAction(
+  state: GameState,
+  playerId: string,
+  cycleGuard?: AutomationCycleGuard,
+): GameAction[] {
+  const preferred = chooseBotActionUnchecked(state, playerId);
+  if (!cycleGuard || preferred.length === 0) return preferred;
+  const legal = enumerateLegalActionPlans(state, playerId, { kind: 'turn' });
+  return cycleGuard.selectPlan(state, preferred, legal);
+}
+
 /**
  * Bot jump-in check. Called asynchronously while it's another player's turn.
  * Uses `specialCardAwareness` as the probability to attempt a jump-in.
  */
-export function chooseBotJumpInAction(state: GameState, playerId: string): GameAction[] {
+function chooseBotJumpInActionUnchecked(
+  state: GameState,
+  playerId: string,
+): GameAction[] {
   if (!state.settings.houseRules.jumpIn) return [];
   if (state.phase !== 'playing') return [];
 
@@ -628,6 +648,9 @@ export function chooseBotJumpInAction(state: GameState, playerId: string): GameA
 
   const config: BotConfig = player.botConfig ?? DEFAULT_BOT_CONFIG;
   const params = DIFFICULTY_PARAMS[config.difficulty];
+
+  const jumpInCard = player.hand.find(c => isExactJumpInMatch(c, topCard));
+  if (!jumpInCard) return [];
 
   // specialCardAwareness controls jump-in probability
   if (Math.random() >= params.specialCardAwareness) return [];
@@ -668,4 +691,21 @@ export function chooseBotJumpInAction(state: GameState, playerId: string): GameA
 
   const color = chooseBestColor(state, playerId, player.hand, card.id, config);
   return playCardActions(playerId, card, color);
+}
+
+export function chooseBotJumpInAction(
+  state: GameState,
+  playerId: string,
+  cycleGuard?: AutomationCycleGuard,
+): GameAction[] {
+  const preferred = chooseBotJumpInActionUnchecked(state, playerId);
+  if (!cycleGuard || preferred.length === 0) return preferred;
+  const player = state.players.find(candidate => candidate.id === playerId);
+  const topCard = state.discardPile[state.discardPile.length - 1];
+  const card = topCard
+    ? player?.hand.find(candidate => isExactJumpInMatch(candidate, topCard))
+    : undefined;
+  if (!card) return preferred;
+  const legal = enumerateLegalActionPlans(state, playerId, { kind: 'jumpin', card });
+  return cycleGuard.selectPlan(state, preferred, legal);
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { applyActionWithHouseRules } from '../src/rules/house-rules-engine';
+import { enumerateLegalActionPlans } from '../src/rules/bot/legal-action-plans';
 import { initializeGame, initializeNextRound } from '../src/rules/setup';
 import type { GameState } from '../src/types/game';
 import { DEFAULT_HOUSE_RULES } from '../src/types/house-rules';
@@ -85,6 +86,61 @@ describe('bombCard', () => {
     const carol = paid.players.find(p => p.id === 'p3')!;
     expect(bob.hand.length).toBe(2);
     expect(carol.hand.length).toBe(2);
+  });
+
+  it('does not expose PASS while an active penalty waits ahead of a queued penalty', () => {
+    const state = makeState({
+      players: [
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'blocked' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'yellow', { value: 2, id: 'other' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+      ],
+      currentPlayerIndex: 0,
+      deckLeft: [makeCard('number', 'green', { value: 3, id: 'penalty-card' })],
+      deckRight: [],
+      discardPile: [makeCard('number', 'red', { value: 5, id: 'top' })],
+      currentColor: 'red',
+      pendingPenaltyDraws: 2,
+      pendingPenaltyNextPlayerIndex: 1,
+      pendingPenaltyQueue: [
+        { playerId: 'p2', count: 2, nextPlayerIndex: 0, sourcePlayerId: 'p1' },
+      ],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: {
+          ...DEFAULT_HOUSE_RULES,
+          drawUntilPlayable: true,
+          revengeMode: true,
+          noWildFinish: true,
+        },
+      },
+    });
+
+    const afterPass = applyActionWithHouseRules(state, { type: 'PASS', playerId: 'p1' });
+    const legal = enumerateLegalActionPlans(state, 'p1');
+
+    expect(afterPass).toBe(state);
+    expect(legal.plans).not.toContainEqual([{ type: 'PASS', playerId: 'p1' }]);
+    expect(legal.plans).toContainEqual([{
+      type: 'DRAW_CARD', playerId: 'p1', side: 'left',
+    }]);
+    expect(legal.plans).toContainEqual([{
+      type: 'DRAW_CARD', playerId: 'p1', side: 'right',
+    }]);
   });
 
   it('does not trigger bomb for fewer than 3 same-number cards', () => {
