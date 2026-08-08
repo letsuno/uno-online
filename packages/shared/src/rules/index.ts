@@ -14,7 +14,28 @@ export { PRE_CHECK_PLUGINS, POST_PROCESS_PLUGINS } from './rules/index.js';
 export { chooseAutopilotAction, chooseAutopilotJumpInAction, canJumpIn, chooseJumpInAction } from './autopilot-strategy.js';
 export { HOUSE_RULE_DESCRIPTIONS } from './rule-descriptions.js';
 export { BOT_NAMES, pickBotName } from './bot/bot-names.js';
-export { chooseBotAction, chooseBotJumpInAction } from './bot/bot-strategy.js';
+export {
+  chooseBotAction,
+  chooseBotJumpInAction,
+  chooseFairRuleBotAction,
+} from './bot/bot-strategy.js';
+export {
+  canonicalizeRlPlans,
+  encodeRlActionPlan,
+  heuristicRlPlanScore,
+  rlPlanKey,
+  RL_FEATURE_COUNT,
+  RL_FEATURE_NAMES,
+  RL_RECENT_DISCARD_SLOTS,
+  RL_RECENT_DISCARD_TOKEN_SIZE,
+  RL_SEQUENCE_FEATURE_OFFSET,
+  RL_TEACHER_FEATURE_INDEX,
+} from './bot/rl-features.js';
+export { enumerateLegalActionPlans } from './bot/legal-action-plans.js';
+export type {
+  AutomatedDecisionContext,
+  LegalActionPlans,
+} from './bot/legal-action-plans.js';
 export {
   AutomationCycleGuard,
   automationStateFingerprint,

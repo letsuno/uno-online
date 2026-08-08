@@ -23,9 +23,9 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
-      JWT_SECRET: ${JWT_SECRET:-uno-online-dev-secret-at-least-32-chars}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set to a unique random value}
       DOMAIN: ${DOMAIN:-localhost}
-      DEV_MODE: ${DEV_MODE:-true}
+      DEV_MODE: ${DEV_MODE:-false}
       ROOM_IDLE_TIMEOUT_MS: ${ROOM_IDLE_TIMEOUT_MS:-7200000}
       GITHUB_PROXY: ${GITHUB_PROXY:-}
       MUMBLE_ICE_ENABLED: ${MUMBLE_ICE_ENABLED:-true}
@@ -37,9 +37,15 @@ services:
       MUMBLE_CHANNEL_PREFIX: ${MUMBLE_CHANNEL_PREFIX:-UNO }
       TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      UNO_AI_PLUGINS_DIR: /ai/plugins
+      UNO_AI_PLUGIN_SETTINGS_FILE: /ai/state/settings.json
+      UNO_AI_DECISION_TIMEOUT_MS: ${UNO_AI_DECISION_TIMEOUT_MS:-1500}
+      UNO_RL_ONNX_EP: ${UNO_RL_ONNX_EP:-cpu}
       PORT: "3001"
     volumes:
       - ./data/sqlite:/data
+      - ${UNO_AI_PLUGINS_HOST_DIR:-./data/ai-plugins}:/ai/plugins:ro
+      - ${UNO_AI_PLUGIN_STATE_HOST_DIR:-./data/ai-plugin-state}:/ai/state
     restart: unless-stopped
 
   caddy:

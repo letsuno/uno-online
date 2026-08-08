@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 2,
+  "architecture": "sequence-gru-residual-safety-router",
+  "algorithm": "grouped-reinforce-reference-baseline",
+  "inputName": "features",
+  "outputName": "values",
+  "dynamicBatch": true,
+  "featureCount": 577,
+  "baseFeatureCount": 192,
+  "sequenceOffset": 192,
+  "sequenceLength": 16,
+  "tokenSize": 24,
+  "safetyFallback": [
+    {
+      "feature": "house_elimination",
+      "index": 111,
+      "threshold": 0
+    },
+    {
+      "feature": "total_players",
+      "index": 1,
+      "threshold": 0.6
+    }
+  ],
+  "safetyValue": "teacher-preferred",
+  "safetyValueFeatureIndex": 576,
+  "onnxSha256": "6c0dd1ef1cd34f012ac1cc70961f57327c719bca7882f1907c429c5084616aa4",
+  "maxAbsError": 4.172325134277344e-7
+}

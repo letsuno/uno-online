@@ -15,6 +15,7 @@ import { useCountdownPrecise } from '../hooks/useCountdown';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import { DIFFICULTY_DISPLAY } from '../constants/bot-difficulty';
 import type { PlayerInfo } from '../stores/game-store';
+import { BotAvatarIcon } from './BotAvatarIcon';
 
 interface PlayerNodeProps {
   player: PlayerInfo;
@@ -189,7 +190,7 @@ function PlayerNode({
           }}
         >
           {isConfiguredBot ? (
-            <Bot size={avatarInnerSize * 0.55} className="text-white drop-shadow-sm" />
+            <BotAvatarIcon difficulty={player.botConfig?.difficulty} size={avatarInnerSize * 0.55} className="text-white drop-shadow-sm" />
           ) : (
             <>
               <span>{AVATAR_EMOJIS[index % AVATAR_EMOJIS.length]}</span>

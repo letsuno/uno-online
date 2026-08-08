@@ -2,13 +2,23 @@ import type { Card, Color } from './card.js';
 import type { PlayerView } from './player-view.js';
 import type { ChatMessage } from './chat.js';
 import type { RoomSettings } from './game.js';
-import type { BotDifficulty, BotPersonality } from './bot.js';
+import type { BotDifficulty, BotPersonality, BotSelection, RuleBotDifficulty } from './bot.js';
 import type { RoomSeats, RoomSpectator } from './room.js';
 
 export interface SocketCallbackResult {
   success: boolean;
   error?: string;
 }
+
+export interface AiProviderInfo {
+  id: string;
+  displayName: string;
+  fairness: 'fair' | 'privileged' | 'cheat';
+}
+
+export type AiProviderListResult =
+  | { success: true; providers: AiProviderInfo[] }
+  | { success: false; error: string };
 
 export interface RoomCreateResult extends SocketCallbackResult {
   roomCode?: string;
@@ -85,9 +95,11 @@ export interface ClientToServerEvents {
   'room:dissolve': (callback?: (res: SocketCallbackResult) => void) => void;
   'room:transfer_owner': (payload: { targetId: string }, callback?: (res: SocketCallbackResult) => void) => void;
   'room:kick': (payload: { targetId: string }, callback?: (res: SocketCallbackResult) => void) => void;
-  'room:add_bot': (payload: { difficulty: BotDifficulty; seatIndex?: number }, callback: (res: SocketCallbackResult & { botId?: string }) => void) => void;
+  'room:add_bot': (payload: BotSelection & { seatIndex?: number }, callback: (res: SocketCallbackResult & { botId?: string }) => void) => void;
   'room:remove_bot': (payload: { botId: string }, callback: (res: SocketCallbackResult) => void) => void;
-  'room:set_bot_difficulty': (payload: { botId: string; difficulty: BotDifficulty }, callback: (res: SocketCallbackResult) => void) => void;
+  'room:set_bot_difficulty': (payload: { botId: string; difficulty: RuleBotDifficulty }, callback: (res: SocketCallbackResult) => void) => void;
+  'room:set_bot_ai': (payload: { botId: string; providerId: string }, callback: (res: SocketCallbackResult) => void) => void;
+  'room:list_ai_providers': (payload: { intent: 'add' | 'switch' }, callback: (res: AiProviderListResult) => void) => void;
   'seat:take': (seatIndex: number, callback: (res: SocketCallbackResult) => void) => void;
   'seat:leave': (callback: (res: SocketCallbackResult) => void) => void;
   'seat:swap_request': (targetUserId: string, callback: (res: SocketCallbackResult) => void) => void;

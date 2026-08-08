@@ -1,6 +1,5 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
-import { Bot } from 'lucide-react';
 import type { BotDifficulty } from '@uno-online/shared';
 import { useCountdown } from '../hooks/useCountdown';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
@@ -9,6 +8,7 @@ import GoogleRing from '@/shared/components/ui/GoogleRing';
 import { cn } from '@/shared/lib/utils';
 import { AiBadge } from '@/shared/components/ui/AiBadge';
 import { BotThinkingIndicator } from './BotThinkingIndicator';
+import { BotAvatarIcon } from './BotAvatarIcon';
 
 interface TurnIndicatorProps {
   playerName: string;
@@ -57,7 +57,7 @@ function TurnIndicator({ playerName, avatarUrl, playerIndex, isMe, turnEndTime, 
           }}
         >
           {botDifficulty ? (
-            <Bot size={15} className="text-white drop-shadow-sm" />
+            <BotAvatarIcon difficulty={botDifficulty} size={15} className="text-white drop-shadow-sm" />
           ) : (
             <>
               <span>{AVATAR_EMOJIS[playerIndex % AVATAR_EMOJIS.length]}</span>

@@ -97,6 +97,7 @@ interface ServerInfo {
 |------|------|------|------|------|
 | `GET` | `/api/auth/config` | 全部 | 无 | 获取 `devMode`、GitHub Client ID、Turnstile Site Key |
 | `POST` | `/api/auth/dev-login` | 仅 `DEV_MODE=true` | 无 | 开发模式临时用户登录 |
+| `POST` | `/api/auth/dev-admin-login` | 仅 `DEV_MODE=true` | 无 | 管理后台临时管理员登录；生产模式不注册 |
 | `GET` | `/api/auth/me` | 全部 | JWT | 获取当前用户 |
 | `POST` | `/api/auth/register` | 仅生产模式 | 无 | 用户名密码注册（限流 5次/小时/IP） |
 | `POST` | `/api/auth/login` | 仅生产模式 | 无 | 用户名密码登录（限流 10次/分钟/IP） |
@@ -117,6 +118,10 @@ interface ServerInfo {
 // POST /api/auth/dev-login
 { username: string }
 // -> { token: string; user: User }
+
+// POST /api/auth/dev-admin-login
+{ username: string }
+// -> { token: string; user: User } // role 固定为 admin，仅开发模式
 
 // GET /api/auth/config
 // -> { devMode: boolean; githubClientId: string; turnstileSiteKey: string | null; passkeyEnabled: boolean }
@@ -213,6 +218,8 @@ interface ServerInfo {
 | `GET` | `/api/admin/rooms` | 管理端房间列表 |
 | `DELETE` | `/api/admin/rooms/:code` | 强制解散房间数据 |
 | `POST` | `/api/admin/rooms/:code/cheat` | 触发反作弊全屏警告并解散房间 |
+| `GET` | `/api/admin/ai-plugins` | 查看启动时加载的内建 AI、社区插件、权限和失败信息 |
+| `PATCH` | `/api/admin/ai-plugins/:id` | 启用或停用一个已加载的社区插件；载荷 `{ enabled: boolean }` |
 
 ```typescript
 // GET /api/admin/dashboard
@@ -301,9 +308,11 @@ Array<{ id: string; name: string; keyPreview: string; createdAt: string; lastUse
 | `room:dissolve` | 无 | `{ success, error? }` |
 | `room:transfer_owner` | `{ targetId: string }` | `{ success, error? }` |
 | `room:kick` | `{ targetId: string }` | `{ success, error? }` |
-| `room:add_bot` | `{ difficulty: BotDifficulty; seatIndex?: number }` | `{ success, botId?, error? }` |
+| `room:add_bot` | 普通人机：`{ difficulty: RuleBotDifficulty; seatIndex? }`；AI：`{ difficulty: 'rl'; aiProviderId: string; seatIndex? }` | `{ success, botId?, error? }` |
 | `room:remove_bot` | `{ botId: string }` | `{ success, error? }` |
-| `room:set_bot_difficulty` | `{ botId: string; difficulty: BotDifficulty }` | `{ success, error? }` |
+| `room:set_bot_difficulty` | `{ botId: string; difficulty: RuleBotDifficulty }` | `{ success, error? }` |
+| `room:set_bot_ai` | `{ botId: string; providerId: string }` | `{ success, error? }` — 通用 AI 提供者接口 |
+| `room:list_ai_providers` | `{ intent: 'add' \| 'switch' }` | `{ success: true, providers }` 或 `{ success: false, error }` — 按新增后人数或当前人数及村规过滤的已启用 AI 列表（ID、名称、公平性） |
 | `seat:take` | `seatIndex: number` | `{ success, error? }` — 入座指定座位（0-9） |
 | `seat:leave` | 无 | `{ success, error? }` — 离开座位回到观战席 |
 | `seat:swap_request` | `targetUserId: string` | `{ success, error? }` — 请求与目标玩家交换座位（Bot 目标直接交换） |

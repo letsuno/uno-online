@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx dist/index.js",
-    "build": "tsc && pnpm run build:copy-voice",
+    "build": "tsc && pnpm run build:copy-voice && pnpm run build:copy-rl-model",
     "build:copy-voice": "node -e \"require('fs').mkdirSync('dist/voice/generated',{recursive:true});require('fs').copyFileSync('src/voice/generated/MumbleServer.js','dist/voice/generated/MumbleServer.js')\"",
+    "build:copy-rl-model": "node -e \"const f=require('fs');f.mkdirSync('dist/ai/models',{recursive:true});for(const n of ['uno-rl.onnx','uno-rl.manifest.json'])f.copyFileSync('src/ai/models/'+n,'dist/ai/models/'+n)\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "echo 'No codegen needed with Kysely'",
@@ -27,14 +28,15 @@
     "jsonwebtoken": "^9.0.2",
     "kysely": "^0.29.0",
     "nanoid": "^5.1.0",
+    "onnxruntime-node": "1.27.0",
     "sharp": "^0.34.5",
     "socket.io": "^4.8.0",
+    "typescript": "^6.0.0",
     "undici": "^8.3.0"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.9",
     "tsx": "^4.22.0",
-    "typescript": "^6.0.0",
     "vitest": "^4.1.0"
   }
 }

@@ -1,7 +1,7 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import type { KvStore } from '../kv/types.js';
-import type { GameAction, GameState, RoomSettings, BotDifficulty } from '@uno-online/shared';
-import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, chooseAutopilotAction, chooseJumpInAction, chooseBotAction, getPlayableCards, DIFFICULTY_PARAMS, BOT_DIFFICULTIES } from '@uno-online/shared';
+import type { AiProviderInfo, BotConfig, BotSelection, GameAction, GameState, HouseRules, RoomSettings, RuleBotDifficulty } from '@uno-online/shared';
+import { MIN_PLAYERS, DEFAULT_HOUSE_RULES, automationStateFingerprint, chooseAutopilotAction, chooseJumpInAction, chooseBotAction, getPlayableCards, DIFFICULTY_PARAMS, RULE_BOT_DIFFICULTIES } from '@uno-online/shared';
 import { RoomManager } from '../plugins/core/room/manager.js';
 import { getRoom, getRoomSeats, getRoomSpectators, setRoomSettings, setRoomStatus, setRoomOwner, touchRoomActivity, ensureNotInRoom, removeSpectatorFromRoom, clearRoomSpectators, getSeatedPlayers, pickNextOwner, findNextOwner, clearUserRoom, setSeatPlayerConnected } from '../plugins/core/room/store.js';
 import { joinRoomSocket, leaveRoomSocket } from './socket-room.js';
@@ -17,12 +17,16 @@ import { removeVoicePresence, setForceMuted } from './voice-presence.js';
 import { broadcastLobbyRooms } from '../plugins/core/spectate/routes.js';
 import { getAutopilotActionPlayerId } from './autopilot-action-player.js';
 import { broadcastSpectatorLeft, broadcastSpectatorList } from '../plugins/core/spectate/ws.js';
-import { addBot, removeBot, setBotDifficulty, calculateBotDelay } from './bot-manager.js';
+import { addBot, removeBot, setBotDifficulty, setBotAi, calculateBotDelay } from './bot-manager.js';
+import { chooseBotActionWithAi } from '../ai/rl-onnx.js';
+import { aiProviderRegistry, type AiProviderSummary } from '../ai/model-registry.js';
+import { enabledHouseRuleNames, providerSupportsContext } from '../ai/provider.js';
 import { checkBotUnoCatch, checkBotJumpIn, clearBotTimers } from './bot-uno-watcher.js';
 
 const AUTOPILOT_MIN_ACTION_INTERVAL_MS = 500;
 const AUTO_AUTOPILOT_THRESHOLD = 2;
 type AutopilotActionHandler = (roomCode: string, session: GameSession, action: GameAction) => void;
+type AiProviderListIntent = 'add' | 'switch';
 
 // Track consecutive timeouts per player per room
 const timeoutCounts = new Map<string, Map<string, number>>();
@@ -35,6 +39,28 @@ const blitzDeadlines = new Map<string, number>();
 const startingRooms = new Set<string>();
 const botTurnTimers = new Map<string, ReturnType<typeof setTimeout>>();
 let autopilotActionHandler: AutopilotActionHandler | null = null;
+
+export function filterAiProviderInfos(
+  providers: readonly AiProviderSummary[],
+  playerCount: number,
+  houseRules: HouseRules,
+): AiProviderInfo[] {
+  const enabledRules = enabledHouseRuleNames(houseRules);
+  return providers
+    .filter(provider => providerSupportsContext(provider, playerCount, enabledRules))
+    .map(provider => ({
+      id: provider.id,
+      displayName: provider.displayName,
+      fairness: provider.fairness,
+    }));
+}
+
+function sameBotConfig(left: BotConfig | undefined, right: BotConfig | undefined): boolean {
+  if (!left || !right) return left === right;
+  if (left.difficulty !== right.difficulty || left.personality !== right.personality) return false;
+  if (left.difficulty !== 'rl') return true;
+  return right.difficulty === 'rl' && left.aiProviderId === right.aiProviderId;
+}
 
 export function setAutopilotActionHandler(handler: AutopilotActionHandler | null): void {
   autopilotActionHandler = handler;
@@ -105,7 +131,6 @@ export function registerRoomEvents(
   armAllDisconnectTimer?: (roomCode: string) => void,
 ) {
   const data = socket.data as SocketData;
-
   socket.on('room:create', async (settings: Partial<RoomSettings>, callback) => {
     const conflict = await ensureNotInRoom(redis, data.user.userId);
     if (conflict) return callback({ success: false, error: conflict });
@@ -384,13 +409,46 @@ export function registerRoomEvents(
     callback?.({ success: true });
   });
 
-  socket.on('room:add_bot', async (payload: { difficulty: BotDifficulty; seatIndex?: number }, callback) => {
+  socket.on('room:list_ai_providers', async (payload: { intent: AiProviderListIntent }, callback) => {
     const roomCode = data.roomCode;
     if (!roomCode) return callback({ success: false, error: '不在房间中' });
-    if (!BOT_DIFFICULTIES.includes(payload.difficulty)) return callback({ success: false, error: '无效的难度等级' });
+    if (payload?.intent !== 'add' && payload?.intent !== 'switch') {
+      return callback({ success: false, error: '无效的 AI 引擎查询类型' });
+    }
+    const [room, seats, providers] = await Promise.all([
+      getRoom(redis, roomCode),
+      getRoomSeats(redis, roomCode),
+      aiProviderRegistry.listEnabled(),
+    ]);
+    if (!room) return callback({ success: false, error: '房间不存在' });
+    const playerCount = getSeatedPlayers(seats).length + (payload.intent === 'add' ? 1 : 0);
+    callback({
+      success: true,
+      providers: filterAiProviderInfos(providers, playerCount, room.settings.houseRules),
+    });
+  });
+
+  socket.on('room:add_bot', async (payload: BotSelection & { seatIndex?: number }, callback) => {
+    const roomCode = data.roomCode;
+    if (!roomCode) return callback({ success: false, error: '不在房间中' });
+    let selection: BotSelection;
+    if (payload.difficulty === 'rl') {
+      if (typeof payload.aiProviderId !== 'string' || payload.aiProviderId.length === 0) {
+        return callback({ success: false, error: 'RL AI 必须选择具体的 AI 引擎' });
+      }
+      selection = { difficulty: 'rl', aiProviderId: payload.aiProviderId };
+    } else {
+      if (!RULE_BOT_DIFFICULTIES.includes(payload.difficulty as RuleBotDifficulty)) {
+        return callback({ success: false, error: '无效的难度等级' });
+      }
+      if ('aiProviderId' in payload) {
+        return callback({ success: false, error: '普通人机不能指定 AI 引擎' });
+      }
+      selection = { difficulty: payload.difficulty };
+    }
 
     const session = sessions.get(roomCode);
-    const result = await addBot(io, redis, roomCode, data.user.userId, payload.difficulty, session, payload.seatIndex);
+    const result = await addBot(io, redis, roomCode, data.user.userId, selection, session, payload.seatIndex);
 
     if (result.success && session) {
       persister.markDirty(roomCode, session.getFullState());
@@ -453,14 +511,28 @@ export function registerRoomEvents(
     callback(result);
   });
 
-  socket.on('room:set_bot_difficulty', async (payload: { botId: string; difficulty: BotDifficulty }, callback) => {
+  socket.on('room:set_bot_difficulty', async (payload: { botId: string; difficulty: RuleBotDifficulty }, callback) => {
     const roomCode = data.roomCode;
     if (!roomCode) return callback({ success: false, error: '不在房间中' });
-    if (!BOT_DIFFICULTIES.includes(payload.difficulty)) return callback({ success: false, error: '无效的难度等级' });
+    if (!RULE_BOT_DIFFICULTIES.includes(payload.difficulty)) return callback({ success: false, error: '无效的难度等级' });
 
     const session = sessions.get(roomCode);
     const result = await setBotDifficulty(io, redis, roomCode, data.user.userId, payload.botId, payload.difficulty, session);
     callback(result);
+  });
+
+  socket.on('room:set_bot_ai', async (payload: { botId: string; providerId: string }, callback) => {
+    const roomCode = data.roomCode;
+    if (!roomCode) return callback({ success: false, error: '不在房间中' });
+    callback(await setBotAi(
+      io,
+      redis,
+      roomCode,
+      data.user.userId,
+      payload.botId,
+      payload.providerId,
+      sessions.get(roomCode),
+    ));
   });
 
   socket.on('voice:force_mute', async (payload: { targetId: string; muted: boolean }, callback) => {
@@ -747,7 +819,8 @@ export function startTurnTimer(
   const actingPlayer = actingPlayerId ? state.players.find(p => p.id === actingPlayerId) : null;
   if (actingPlayer?.isBot && !actingPlayer.autopilot) {
     const botConfig = actingPlayer.botConfig;
-    const difficulty = botConfig?.difficulty ?? 'easy';
+    if (!botConfig) throw new Error(`Bot ${actingPlayer.id} is missing botConfig`);
+    const difficulty = botConfig.difficulty;
     const topCard = state.discardPile[state.discardPile.length - 1];
     const playableCount = (state.phase === 'playing' && topCard && state.currentColor)
       ? getPlayableCards(actingPlayer.hand, topCard, state.currentColor).length
@@ -790,8 +863,22 @@ export function startTurnTimer(
       }
       let actions: GameAction[];
       const cycleGuard = s.getAutomationCycleGuard();
-      if (botPlayer?.isBot && botPlayer.botConfig) {
-        actions = chooseBotAction(fullState, pid, cycleGuard);
+      const currentBotConfig = botPlayer?.isBot ? botPlayer.botConfig : undefined;
+      if (botPlayer?.isBot) {
+        if (!currentBotConfig) throw new Error(`Bot ${botPlayer.id} is missing botConfig`);
+        if (currentBotConfig.difficulty === 'rl') {
+          const aiDecision = await chooseBotActionWithAi(fullState, pid, cycleGuard);
+          const latestState = s.getFullState();
+          const latestBotConfig = latestState.players.find(player => player.id === pid)?.botConfig;
+          if (automationStateFingerprint(latestState) !== aiDecision.stateFingerprint
+            || !sameBotConfig(latestBotConfig, currentBotConfig)) {
+            startTurnTimer(io, redis, roomCode, s, turnTimer, sessions, persister);
+            return;
+          }
+          actions = aiDecision.actions;
+        } else {
+          actions = chooseBotAction(fullState, pid, cycleGuard);
+        }
       } else {
         actions = chooseAutopilotAction(fullState, pid, cycleGuard);
       }
@@ -808,11 +895,11 @@ export function startTurnTimer(
       }
 
       // Bot UNO call
-      if (botPlayer?.isBot && botPlayer.botConfig) {
+      if (currentBotConfig) {
         const afterState = s.getFullState();
         const afterPlayer = afterState.players.find(p => p.id === pid);
         if (afterPlayer && afterPlayer.hand.length === 1 && !afterPlayer.calledUno) {
-          const params = DIFFICULTY_PARAMS[botPlayer.botConfig.difficulty];
+          const params = DIFFICULTY_PARAMS[currentBotConfig.difficulty];
           if (Math.random() < params.unoCallRate) {
             s.applyAction({ type: 'CALL_UNO', playerId: pid });
           }

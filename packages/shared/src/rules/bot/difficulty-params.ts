@@ -103,4 +103,24 @@ export const DIFFICULTY_PARAMS: Record<BotDifficulty, DifficultyParams> = {
     botCoalition: true,
     delay: { base: [800, 2000], perCard: 80, maxDelay: 3500 },
   },
+  rl: {
+    // The learned policy is deliberately fair: it only receives public state
+    // plus its own hand, never hidden hands or the tops of the draw piles.
+    infoAccess: { canSeeOpponentHands: false, canSeeDeckTopCards: 0 },
+    considerOpponentHandSize: true,
+    considerTeamStrategy: true,
+    mistakeRate: 0.0,
+    scoreNoise: 0,
+    unoCallRate: 1.0,
+    unoCatchRate: 0.9,
+    unoCatchDelay: [500, 1800],
+    challengeRate: 0.35,
+    specialCardAwareness: 1.0,
+    finishRestrictionAwareness: true,
+    wildFourLegalityAwareness: true,
+    conserveSpecialCards: true,
+    globalThreatAwareness: true,
+    botCoalition: false,
+    delay: { base: [700, 1600], perCard: 70, maxDelay: 3000 },
+  },
 };

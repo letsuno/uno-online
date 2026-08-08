@@ -33,7 +33,12 @@ interface AuthState {
   user: User | null;
   error: string | null;
   loading: boolean;
+  devMode: boolean | null;
+  configLoading: boolean;
+  configError: string | null;
+  loadConfig: () => Promise<void>;
   login: (username: string, password: string) => Promise<boolean>;
+  devLogin: (username: string) => Promise<boolean>;
   logout: () => void;
   init: () => void;
 }
@@ -43,6 +48,23 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   error: null,
   loading: false,
+  devMode: null,
+  configLoading: false,
+  configError: null,
+
+  loadConfig: async () => {
+    set({ configLoading: true, configError: null });
+    try {
+      const config = await apiFetch<{ devMode: boolean }>('/auth/config');
+      set({ devMode: config.devMode, configLoading: false });
+    } catch {
+      set({
+        devMode: null,
+        configLoading: false,
+        configError: '无法读取登录配置，请检查服务端连接后重试',
+      });
+    }
+  },
 
   init: () => {
     const token = localStorage.getItem('admin_token') ?? localStorage.getItem('token');
@@ -99,6 +121,39 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({
         loading: false,
         error: err instanceof Error ? err.message : 'Login failed',
+      });
+      return false;
+    }
+  },
+
+  devLogin: async (username: string) => {
+    set({ loading: true, error: null });
+    try {
+      const data = await apiFetch<{ token: string; user: User }>('/auth/dev-admin-login', {
+        method: 'POST',
+        body: JSON.stringify({ username }),
+      });
+      const payload = decodeJwt(data.token);
+      if (!payload || payload.role !== 'admin') {
+        set({ loading: false, error: '开发管理员凭证无效' });
+        return false;
+      }
+      localStorage.setItem('admin_token', data.token);
+      set({
+        token: data.token,
+        user: {
+          id: payload.userId,
+          username: payload.username,
+          nickname: payload.nickname,
+          role: payload.role,
+        },
+        loading: false,
+      });
+      return true;
+    } catch (err) {
+      set({
+        loading: false,
+        error: err instanceof Error ? err.message : '开发模式登录失败',
       });
       return false;
     }

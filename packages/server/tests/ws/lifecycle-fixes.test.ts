@@ -8,9 +8,10 @@ import {
 } from '../../src/plugins/core/room/store';
 import { saveGameState, loadGameState, GameStatePersister } from '../../src/plugins/core/game/state-store';
 import { GameSession } from '../../src/plugins/core/game/session';
-import { rearmBlitzAfterRestore, enforceBlitzDeadline } from '../../src/ws/room-events';
+import { rearmBlitzAfterRestore, enforceBlitzDeadline, filterAiProviderInfos } from '../../src/ws/room-events';
 import { cancelOwnerTransfer } from '../../src/ws/owner-transfer';
 import type { MumbleIceConfig } from '../../src/config';
+import type { AiProviderSummary } from '../../src/ai/model-registry';
 import { makeFakeIo, type FakeSocket } from '../helpers/fake-io';
 import { makeGameState, makePlayer } from '../helpers/test-utils';
 import { DEFAULT_HOUSE_RULES } from '@uno-online/shared';
@@ -130,6 +131,35 @@ describe('restart recovery reconciliation', () => {
 });
 
 describe('review-pass regressions', () => {
+  it('only lists AI providers compatible with the requested player count and current rules', () => {
+    const provider = (
+      id: string,
+      minPlayers: number,
+      supportedHouseRules: 'all' | string[],
+    ): AiProviderSummary => ({
+      id,
+      displayName: id,
+      version: '1.0.0',
+      source: 'community',
+      usesOnnx: false,
+      dataAccess: [],
+      fairness: 'fair',
+      capabilities: { minPlayers, maxPlayers: 10, supportedHouseRules },
+      enabled: true,
+    });
+    const providers = [
+      provider('universal', 2, 'all'),
+      provider('four-player-only', 4, 'all'),
+      provider('jump-in-only', 2, ['jumpIn']),
+    ];
+    const rules = { ...DEFAULT_HOUSE_RULES, stackDrawTwo: true };
+
+    expect(filterAiProviderInfos(providers, 2, rules).map(item => item.id))
+      .toEqual(['universal']);
+    expect(filterAiProviderInfos(providers, 4, DEFAULT_HOUSE_RULES).map(item => item.id))
+      .toEqual(['universal', 'four-player-only', 'jump-in-only']);
+  });
+
   it('a terminal snapshot restored by a non-owner schedules an owner transfer', async () => {
     const owner = await fake.connect('f6_owner', 'F6Owner');
     const other = await fake.connect('f6_other', 'F6Other');
@@ -204,6 +234,17 @@ describe('review-pass regressions', () => {
     const owner = await fake.connect('f7_owner', 'F7Owner');
     const created = await owner.call('room:create', {});
     const roomCode = created.roomCode as string;
+    await expect(owner.call('room:add_bot', { difficulty: 'rl' })).resolves.toMatchObject({
+      success: false,
+      error: 'RL AI 必须选择具体的 AI 引擎',
+    });
+    await expect(owner.call('room:add_bot', {
+      difficulty: 'easy',
+      aiProviderId: 'builtin-rl-v1',
+    })).resolves.toMatchObject({
+      success: false,
+      error: '普通人机不能指定 AI 引擎',
+    });
     const added = await owner.call('room:add_bot', { difficulty: 'easy' });
     expect(added.success).toBe(true);
     expect((await owner.call('room:ready', true)).success).toBe(true);

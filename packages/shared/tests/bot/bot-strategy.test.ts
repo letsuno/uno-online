@@ -379,8 +379,7 @@ describe('chooseBotJumpInAction', () => {
 // ─── Edge cases ───────────────────────────────────────────────────────────────
 
 describe('chooseBotAction — edge cases', () => {
-  it('uses a default fallback when botConfig is missing', () => {
-    // Player without botConfig — should still produce a valid action
+  it('rejects a bot whose required botConfig is missing', () => {
     const botHand: Card[] = [makeNumberCard('r5', 'red', 5)];
     const playerNoBotConfig: Player = {
       id: 'bot',
@@ -391,7 +390,6 @@ describe('chooseBotAction — edge cases', () => {
       autopilot: false,
       calledUno: false,
       isBot: true,
-      // no botConfig
     };
     const state = makeState({
       phase: 'playing',
@@ -404,9 +402,7 @@ describe('chooseBotAction — edge cases', () => {
       currentColor: 'red',
     });
 
-    const actions = chooseBotAction(state, 'bot');
-    expect(actions.length).toBeGreaterThan(0);
-    expect(actions[0]).toHaveProperty('type');
+    expect(() => chooseBotAction(state, 'bot')).toThrow('Bot bot is missing botConfig');
   });
 
   it('returns PASS when deck is empty and no playable cards', () => {

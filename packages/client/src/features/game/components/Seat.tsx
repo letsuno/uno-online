@@ -1,9 +1,10 @@
-import { Bot, Crown, WifiOff, Plus, Check } from 'lucide-react';
+import { Crown, WifiOff, Plus, Check } from 'lucide-react';
 import type { RoomSeatPlayer } from '@uno-online/shared';
 import { cn, getRoleColor } from '@/shared/lib/utils';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import { DIFFICULTY_DISPLAY } from '../constants/bot-difficulty';
 import PlayerVoiceStatus from '@/shared/voice/PlayerVoiceStatus';
+import { BotAvatarIcon } from './BotAvatarIcon';
 
 interface SeatProps {
   index: number;
@@ -64,7 +65,7 @@ export default function Seat({ index, player, isMe, isOwnerSeat, compact = false
           }
         >
           {isBot ? (
-            <Bot size={compact ? 16 : 22} className="text-white drop-shadow-sm" />
+            <BotAvatarIcon difficulty={player.botConfig?.difficulty} size={compact ? 16 : 22} className="text-white drop-shadow-sm" />
           ) : (
             <>
               <span style={{ fontSize: compact ? 14 : 20 }}>
@@ -137,7 +138,7 @@ export default function Seat({ index, player, isMe, isOwnerSeat, compact = false
           className="text-[9px] font-bold leading-none rounded px-1 py-0.5 whitespace-nowrap"
           style={{ color: botDiff.ringColor, backgroundColor: `${botDiff.avatarBg}25` }}
         >
-          AI · {botDiff.label}
+          {player.botConfig?.difficulty === 'rl' ? botDiff.label : `BOT · ${botDiff.label}`}
         </span>
       )}
 
