@@ -30,6 +30,7 @@ interface AiTurnDecision {
 }
 
 const warnedFailures = new Set<string>();
+const overdueProviderDecisions = new WeakMap<AiProvider, Set<Promise<AiProviderDecision>>>();
 
 function warnOnce(key: string, error: unknown): void {
   if (warnedFailures.has(key)) return;
@@ -140,10 +141,31 @@ async function predictWithDeadline(
   provider: AiProvider,
   request: AiDecisionRequest,
 ): Promise<AiProviderDecision> {
+  if ((overdueProviderDecisions.get(provider)?.size ?? 0) > 0) {
+    throw new Error('a timed-out AI decision is still running');
+  }
+
   const controller = new AbortController();
+  const decision = provider.decide(request, controller.signal);
+  void decision.then(
+    () => {
+      const overdue = overdueProviderDecisions.get(provider);
+      overdue?.delete(decision);
+      if (overdue?.size === 0) overdueProviderDecisions.delete(provider);
+    },
+    () => {
+      const overdue = overdueProviderDecisions.get(provider);
+      overdue?.delete(decision);
+      if (overdue?.size === 0) overdueProviderDecisions.delete(provider);
+    },
+  );
+
   let timeout: ReturnType<typeof setTimeout> | undefined;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeout = setTimeout(() => {
+      const overdue = overdueProviderDecisions.get(provider) ?? new Set();
+      overdue.add(decision);
+      overdueProviderDecisions.set(provider, overdue);
       controller.abort();
       reject(new Error(`AI decision exceeded ${request.deadlineMs}ms deadline`));
     }, request.deadlineMs);
@@ -151,7 +173,7 @@ async function predictWithDeadline(
   });
   try {
     return await Promise.race([
-      provider.decide(request, controller.signal),
+      decision,
       timeoutPromise,
     ]);
   } finally {

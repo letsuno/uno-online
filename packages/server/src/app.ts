@@ -17,6 +17,9 @@ export async function createApp(config: Config) {
   // Community AI plugins contain administrator-installed TypeScript code and
   // optional ONNX sessions. Discover and compile them exactly once at startup.
   await aiProviderRegistry.initialize();
+  fastify.addHook('onClose', async () => {
+    await aiProviderRegistry.dispose();
+  });
 
   await fastify.register(cors, {
     origin: config.clientUrl,

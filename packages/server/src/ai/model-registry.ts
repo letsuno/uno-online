@@ -292,6 +292,7 @@ export class AiProviderRegistry {
   private readonly disabledCommunityPluginIds = new Set<string>();
   private readonly loadFailures: AiPluginLoadFailure[] = [];
   private initializePromise: Promise<void> | null = null;
+  private disposePromise: Promise<void> | null = null;
   private settingsMutation: Promise<void> = Promise.resolve();
   private initializedAt = '';
 
@@ -406,14 +407,67 @@ export class AiProviderRegistry {
   }
 
   async initialize(): Promise<void> {
+    if (this.disposePromise) await this.disposePromise.catch(() => undefined);
     if (this.initializePromise) return this.initializePromise;
-    this.initializePromise = (async () => {
-      await this.initializeBuiltin();
-      await this.loadCommunityPackagesAtStartup();
-      await this.readSettings();
-      this.initializedAt = new Date().toISOString();
+    const operation = (async () => {
+      try {
+        await this.initializeBuiltin();
+        await this.loadCommunityPackagesAtStartup();
+        await this.readSettings();
+        this.initializedAt = new Date().toISOString();
+      } catch (error) {
+        await this.releaseProviders().catch(() => undefined);
+        this.resetState();
+        throw error;
+      }
     })();
-    return this.initializePromise;
+    this.initializePromise = operation;
+    try {
+      await operation;
+    } catch (error) {
+      if (this.initializePromise === operation) this.initializePromise = null;
+      throw error;
+    }
+  }
+
+  private async releaseProviders(): Promise<void> {
+    const providers = [...this.providers.values()];
+    this.providers.clear();
+    const results = await Promise.allSettled(providers.map(provider => provider.dispose()));
+    const errors = results
+      .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+      .map(result => result.reason);
+    if (errors.length > 0) {
+      throw new AggregateError(errors, 'Failed to dispose AI providers');
+    }
+  }
+
+  private resetState(): void {
+    this.disabledCommunityPluginIds.clear();
+    this.loadFailures.length = 0;
+    this.initializedAt = '';
+  }
+
+  async dispose(): Promise<void> {
+    if (this.disposePromise) return this.disposePromise;
+    const operation = (async () => {
+      const initialization = this.initializePromise;
+      if (initialization) await initialization.catch(() => undefined);
+      await this.settingsMutation.catch(() => undefined);
+      this.initializePromise = null;
+      this.settingsMutation = Promise.resolve();
+      try {
+        await this.releaseProviders();
+      } finally {
+        this.resetState();
+      }
+    })();
+    this.disposePromise = operation;
+    try {
+      await operation;
+    } finally {
+      if (this.disposePromise === operation) this.disposePromise = null;
+    }
   }
 
   private isEnabled(id: string): boolean {
@@ -505,7 +559,6 @@ export class AiProviderRegistry {
     await operation;
     return this.snapshot();
   }
-
 }
 
 export const aiProviderRegistry = new AiProviderRegistry();

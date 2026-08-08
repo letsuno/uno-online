@@ -5,7 +5,11 @@ import { join } from 'node:path';
 import * as ort from 'onnxruntime-node';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AI_FEATURE_SCHEMA } from '../../src/ai/provider.js';
-import { AiProviderRegistry, validateCommunityPluginManifest } from '../../src/ai/model-registry.js';
+import {
+  AiProviderRegistry,
+  BUILTIN_AI_PROVIDER_ID,
+  validateCommunityPluginManifest,
+} from '../../src/ai/model-registry.js';
 import { MAX_COMMUNITY_STRATEGY_BYTES } from '../../src/ai/community-plugin.js';
 import { MAX_COMMUNITY_ONNX_TENSOR_ELEMENTS } from '../../src/ai/community-onnx-runtime.js';
 
@@ -153,6 +157,26 @@ describe('community AI plugin manifest', () => {
 });
 
 describe('community AI plugin registry', () => {
+  it('releases providers on dispose and can initialize again', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'uno-ai-empty-'));
+    temporaryDirectories.push(root);
+    process.env['UNO_AI_PLUGINS_DIR'] = root;
+    process.env['UNO_AI_PLUGIN_SETTINGS_FILE'] = join(root, 'settings.json');
+
+    const registry = new AiProviderRegistry();
+    const original = await registry.get(BUILTIN_AI_PROVIDER_ID);
+    expect(original).not.toBeNull();
+    const dispose = vi.spyOn(original!, 'dispose');
+
+    await registry.dispose();
+    expect(dispose).toHaveBeenCalledOnce();
+
+    const reloaded = await registry.get(BUILTIN_AI_PROVIDER_ID);
+    expect(reloaded).not.toBeNull();
+    expect(reloaded).not.toBe(original);
+    await registry.dispose();
+  });
+
   it('does not expose a host-created module object to the VM context', async () => {
     const source = `
       declare const module: any;

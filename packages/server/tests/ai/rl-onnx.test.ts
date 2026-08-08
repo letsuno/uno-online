@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   canonicalizeRlPlans,
   enumerateLegalActionPlans,
@@ -16,6 +16,7 @@ import {
   validateManifest,
   type RlOnnxManifest,
 } from '../../src/ai/model-registry.js';
+import type { AiProvider } from '../../src/ai/provider.js';
 
 const originalRandom = Math.random;
 
@@ -121,5 +122,64 @@ describe('server production ONNX RL runtime', () => {
       ],
       drawPiles: { left: state.deckLeft, right: state.deckRight },
     });
+  });
+
+  it('does not start another provider decision while a timed-out run is still active', async () => {
+    vi.useFakeTimers();
+    const state = initializeGame(Array.from({ length: 2 }, (_, index) => ({
+      id: `single-flight-p${index}`,
+      name: `Bot ${index}`,
+      isBot: true,
+      botConfig: {
+        difficulty: 'rl' as const,
+        personality: 'strategic' as const,
+        aiProviderId: 'single-flight-test',
+      },
+    })));
+    const playerId = state.players[state.currentPlayerIndex]!.id;
+    let finishFirstDecision: (() => void) | undefined;
+    const firstDecision = new Promise<void>(resolve => {
+      finishFirstDecision = resolve;
+    });
+    let markFirstDecisionStarted: (() => void) | undefined;
+    const firstDecisionStarted = new Promise<void>(resolve => {
+      markFirstDecisionStarted = resolve;
+    });
+    let calls = 0;
+    const provider: AiProvider = {
+      metadata: {
+        id: 'single-flight-test',
+        displayName: 'Single Flight Test',
+        version: '1.0.0',
+        source: 'community',
+        usesOnnx: true,
+        dataAccess: ['candidate-features'],
+        fairness: 'fair',
+        capabilities: { minPlayers: 2, maxPlayers: 10, supportedHouseRules: 'all' },
+      },
+      async decide(request) {
+        calls += 1;
+        if (calls === 1) {
+          markFirstDecisionStarted?.();
+          await firstDecision;
+        }
+        return { kind: 'candidate', candidateId: request.candidates[0]!.id };
+      },
+      async dispose() {},
+    };
+    const getProvider = vi.spyOn(aiProviderRegistry, 'get').mockResolvedValue(provider);
+    const first = chooseBotActionWithAi(state, playerId);
+    try {
+      await firstDecisionStarted;
+      await vi.advanceTimersByTimeAsync(1_500);
+      await first;
+      await chooseBotActionWithAi(state, playerId);
+      expect(calls).toBe(1);
+    } finally {
+      finishFirstDecision?.();
+      await Promise.resolve();
+      getProvider.mockRestore();
+      vi.useRealTimers();
+    }
   });
 });
