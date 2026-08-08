@@ -43,6 +43,18 @@ function registerDevRoutes(fastify: FastifyInstance, ctx: PluginContext) {
     return { token, user: { id, username: name, nickname: name, avatarUrl: null, role: 'normal' } };
   });
 
+  fastify.post<{ Body: { username: string } }>('/auth/dev-admin-login', async (request, reply) => {
+    const { username } = request.body;
+    if (!username?.trim()) {
+      return reply.code(400).send({ error: 'Missing username' });
+    }
+    const name = username.trim();
+    const id = `ephemeral_admin_${++counter}_${Date.now()}`;
+    const user = { id, username: name, nickname: name, avatarUrl: null, role: 'admin' as const };
+    const token = makeToken(user, config.jwtSecret);
+    return { token, user };
+  });
+
   fastify.get('/auth/me', { preHandler: authPreHandler(config.jwtSecret) }, async (request) => {
     const p = (request as AuthenticatedRequest).user;
     return { id: p.userId, username: p.username, nickname: p.nickname, avatarUrl: p.avatarUrl ?? null, role: p.role ?? 'normal' };

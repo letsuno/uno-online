@@ -9,9 +9,17 @@ import { dissolveRoom } from './ws/room-lifecycle.js';
 import { createKvStore } from './kv/index.js';
 import type { PluginContext } from './plugin-context.js';
 import { adminOnly } from './plugins/core/admin/middleware.js';
+import { aiProviderRegistry } from './ai/model-registry.js';
 
 export async function createApp(config: Config) {
   const fastify = Fastify({ logger: true });
+
+  // Community AI plugins contain administrator-installed TypeScript code and
+  // optional ONNX sessions. Discover and compile them exactly once at startup.
+  await aiProviderRegistry.initialize();
+  fastify.addHook('onClose', async () => {
+    await aiProviderRegistry.dispose();
+  });
 
   await fastify.register(cors, {
     origin: config.clientUrl,

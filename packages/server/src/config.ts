@@ -8,6 +8,18 @@ function required(name: string): string {
   return value;
 }
 
+const INSECURE_PRODUCTION_JWT_SECRETS = new Set([
+  'please-change-this-to-a-random-string-at-least-32-chars',
+  'uno-online-dev-secret-at-least-32-chars',
+]);
+
+function validateJwtSecret(jwtSecret: string, devMode: boolean): void {
+  if (devMode) return;
+  if (jwtSecret.length < 32 || INSECURE_PRODUCTION_JWT_SECRETS.has(jwtSecret)) {
+    throw new Error('JWT_SECRET must be a unique random string of at least 32 characters in production');
+  }
+}
+
 export interface MumbleIceConfig {
   enabled: boolean;
   host: string;
@@ -59,6 +71,8 @@ function loadMumbleIceConfig(): MumbleIceConfig {
 
 export function loadConfig(): Config {
   const devMode = process.env['DEV_MODE'] === 'true';
+  const jwtSecret = required('JWT_SECRET');
+  validateJwtSecret(jwtSecret, devMode);
   return {
     port: parseInt(process.env['PORT'] ?? '3001', 10),
     databasePath: process.env['DATABASE_PATH'] ?? 'uno.db',
@@ -66,7 +80,7 @@ export function loadConfig(): Config {
     githubClientId: devMode ? (process.env['GITHUB_CLIENT_ID'] ?? '') : required('GITHUB_CLIENT_ID'),
     githubClientSecret: devMode ? (process.env['GITHUB_CLIENT_SECRET'] ?? '') : required('GITHUB_CLIENT_SECRET'),
     githubProxy: process.env['GITHUB_PROXY'] || undefined,
-    jwtSecret: required('JWT_SECRET'),
+    jwtSecret,
     clientUrl: resolveClientUrl(),
     devMode,
     serverName: process.env['SERVER_NAME'] ?? 'UNO Online',

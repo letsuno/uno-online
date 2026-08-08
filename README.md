@@ -92,6 +92,7 @@ pnpm --filter client exec tsc --noEmit
 - [通信协议文档](docs/protocol.md)
 - [部署与镜像](docs/deployment.md)
 - [MCP 使用指南](docs/mcp.md)
+- [社区 AI 插件接口](docs/ai-model-provider.md)
 - [UI/UX 规范](UIUX-GUIDELINES.md)
 
 环境变量以 `.env.example` 为准。HTTP API 统一挂载在 `/api` 下；路由和 Socket.IO 事件见通信协议文档。

@@ -26,7 +26,7 @@ import SpectatorBar from '../components/SpectatorBar';
 import SettingsDrawer from '../components/SettingsDrawer';
 import SwapRequestDialog from '../components/SwapRequestDialog';
 import { SeatContextMenu } from '../components/SeatContextMenu';
-import type { BotDifficulty } from '@uno-online/shared';
+import type { RuleBotDifficulty } from '@uno-online/shared';
 
 /* ── Component ── */
 
@@ -243,9 +243,15 @@ export default function RoomPage() {
     });
   };
 
-  const handleAddBot = (difficulty: BotDifficulty, seatIndex: number) => {
-    getSocket().emit('room:add_bot', { difficulty, seatIndex }, (res: { success?: boolean; error?: string }) => {
-      if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
+  const handleAddRuleBot = (difficulty: RuleBotDifficulty, seatIndex: number) => {
+    getSocket().emit('room:add_bot', { difficulty, seatIndex }, (res) => {
+      if (!res.success && res.error) useToastStore.getState().addToast(res.error, 'error');
+    });
+  };
+
+  const handleAddAiBot = (aiProviderId: string, seatIndex: number) => {
+    getSocket().emit('room:add_bot', { difficulty: 'rl', seatIndex, aiProviderId }, (res) => {
+      if (!res.success && res.error) useToastStore.getState().addToast(res.error, 'error');
     });
   };
 
@@ -255,15 +261,21 @@ export default function RoomPage() {
     });
   };
 
-  const handleSetBotDifficulty = (botId: string, difficulty: BotDifficulty) => {
-    getSocket().emit('room:set_bot_difficulty', { botId, difficulty }, (res: { success?: boolean; error?: string }) => {
-      if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
+  const handleSetBotDifficulty = (botId: string, difficulty: RuleBotDifficulty) => {
+    getSocket().emit('room:set_bot_difficulty', { botId, difficulty }, (res) => {
+      if (!res.success && res.error) useToastStore.getState().addToast(res.error, 'error');
+    });
+  };
+
+  const handleSetBotAi = (botId: string, providerId: string) => {
+    getSocket().emit('room:set_bot_ai', { botId, providerId }, (res) => {
+      if (!res.success && res.error) useToastStore.getState().addToast(res.error, 'error');
     });
   };
 
   const handleRemoveBot = (botId: string) => {
-    getSocket().emit('room:remove_bot', { botId }, (res: { success?: boolean; error?: string }) => {
-      if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
+    getSocket().emit('room:remove_bot', { botId }, (res) => {
+      if (!res.success && res.error) useToastStore.getState().addToast(res.error, 'error');
     });
   };
 
@@ -468,9 +480,11 @@ export default function RoomPage() {
           position={seatMenu.position}
           onClose={() => setSeatMenu(null)}
           onTakeSeat={() => handleTakeSeat(seatMenu.seatIndex)}
-          onAddBot={handleAddBot}
+          onAddRuleBot={handleAddRuleBot}
+          onAddAiBot={handleAddAiBot}
           onSwapRequest={handleSwapWithBot}
           onSetBotDifficulty={handleSetBotDifficulty}
+          onSetBotAi={handleSetBotAi}
           onRemoveBot={handleRemoveBot}
         />
       )}

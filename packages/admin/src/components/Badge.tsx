@@ -3,6 +3,7 @@ const variantStyles = {
   secondary: 'bg-slate-700 text-slate-300',
   success: 'bg-green-700/40 text-green-300',
   warning: 'bg-yellow-700/40 text-yellow-300',
+  danger: 'bg-red-700/40 text-red-300',
 };
 
 interface BadgeProps {

@@ -1,6 +1,6 @@
 import type { GameState, GameAction, DrawSide } from '../../types/game.js';
 import type { Color, Card } from '../../types/card.js';
-import type { BotConfig } from '../../types/bot.js';
+import type { BotConfig, BotDifficulty, BotPersonality } from '../../types/bot.js';
 import { getPlayableCards, canPlayCard, isExactJumpInMatch, isValidWildDrawFour } from '../validation.js';
 import { isWildCard, isColoredCard, getEffectiveColor } from '../../types/card.js';
 import { getNextAliveIndex } from '../turn.js';
@@ -17,8 +17,12 @@ function isFinishBlocked(card: Card, hand: Card[], hr: { noWildFinish: boolean; 
   return false;
 }
 
-// Default config when a bot doesn't have one set
-const DEFAULT_BOT_CONFIG: BotConfig = { difficulty: 'normal', personality: 'balanced' };
+type BotStrategyConfig = { difficulty: BotDifficulty; personality: BotPersonality };
+
+function requireBotConfig(player: { id: string; botConfig?: BotConfig }): BotConfig {
+  if (!player.botConfig) throw new Error(`Bot ${player.id} is missing botConfig`);
+  return player.botConfig;
+}
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -47,7 +51,7 @@ function playCardActions(
 /**
  * Pick which deck side to draw from based on difficulty.
  */
-function chooseDrawSide(state: GameState, config: BotConfig): DrawSide {
+function chooseDrawSide(state: GameState, config: BotStrategyConfig): DrawSide {
   const params = DIFFICULTY_PARAMS[config.difficulty];
 
   if (params.infoAccess.canSeeDeckTopCards > 0) {
@@ -82,7 +86,7 @@ function chooseDrawSide(state: GameState, config: BotConfig): DrawSide {
 /**
  * Choose the best color to declare after playing a wild card.
  */
-function chooseBestColor(state: GameState, botId: string, hand: Card[], playedCardId: string, config: BotConfig): Color {
+function chooseBestColor(state: GameState, botId: string, hand: Card[], playedCardId: string, config: BotStrategyConfig): Color {
   const params = DIFFICULTY_PARAMS[config.difficulty];
 
   if (config.difficulty === 'novice') {
@@ -166,7 +170,7 @@ function applyMistake(scored: Array<{ card: Card; score: number }>, mistakeRate:
 
 // ─── Phase handlers ───────────────────────────────────────────────────────────
 
-function handleChallenging(state: GameState, playerId: string, config: BotConfig): GameAction[] {
+function handleChallenging(state: GameState, playerId: string, config: BotStrategyConfig): GameAction[] {
   if (state.pendingDrawPlayerId !== playerId) return [];
 
   const player = state.players.find(p => p.id === playerId);
@@ -275,7 +279,7 @@ function handleChallenging(state: GameState, playerId: string, config: BotConfig
   return [{ type: 'ACCEPT', playerId }];
 }
 
-function handleChoosingColor(state: GameState, playerId: string, config: BotConfig): GameAction[] {
+function handleChoosingColor(state: GameState, playerId: string, config: BotStrategyConfig): GameAction[] {
   const player = state.players.find(p => p.id === playerId);
   if (!player) return [];
 
@@ -283,7 +287,7 @@ function handleChoosingColor(state: GameState, playerId: string, config: BotConf
   return [{ type: 'CHOOSE_COLOR', playerId, color }];
 }
 
-function handleChoosingSwapTarget(state: GameState, playerId: string, config: BotConfig): GameAction[] {
+function handleChoosingSwapTarget(state: GameState, playerId: string, config: BotStrategyConfig): GameAction[] {
   const params = DIFFICULTY_PARAMS[config.difficulty];
   const player = state.players.find(p => p.id === playerId)!;
   const targets = state.players.filter(p => p.id !== playerId && !p.eliminated);
@@ -392,7 +396,7 @@ function solveEndgame(hand: Card[], topCard: Card, currentColor: Color, hr: { no
   return winningStarts;
 }
 
-function handlePlaying(state: GameState, playerId: string, config: BotConfig): GameAction[] {
+function handlePlaying(state: GameState, playerId: string, config: BotStrategyConfig): GameAction[] {
   const player = state.players.find(p => p.id === playerId);
   if (!player) return [];
 
@@ -519,7 +523,8 @@ function handlePlaying(state: GameState, playerId: string, config: BotConfig): G
   // Hard bot endgame solver: restrict candidates to cards that start a
   // winning sequence, then let the evaluator pick the strongest of them
   // (e.g. prefer a draw-two that guarantees the follow-up over a gamble).
-  if (config.difficulty === 'hard' && player.hand.length <= 3 && topCard && state.currentColor) {
+  if ((config.difficulty === 'hard' || config.difficulty === 'rl')
+    && player.hand.length <= 3 && topCard && state.currentColor) {
     const winningStarts = solveEndgame(player.hand, topCard, state.currentColor, hr);
     if (winningStarts.length > 0) {
       const scored = evaluateCards(player.hand, winningStarts, state, playerId, params, weights);
@@ -590,14 +595,11 @@ function handlePlaying(state: GameState, playerId: string, config: BotConfig): G
  * Main bot action chooser. Dispatches to the appropriate phase handler.
  * Returns an array of actions to be applied sequentially.
  */
-function chooseBotActionUnchecked(
+function chooseRuleBotActionUnchecked(
   state: GameState,
   playerId: string,
+  config: BotStrategyConfig,
 ): GameAction[] {
-  const player = state.players.find(p => p.id === playerId);
-  if (!player) return [];
-
-  const config: BotConfig = player.botConfig ?? DEFAULT_BOT_CONFIG;
   switch (state.phase) {
     case 'challenging':
       return handleChallenging(state, playerId, config);
@@ -610,6 +612,36 @@ function chooseBotActionUnchecked(
     default:
       return [];
   }
+}
+
+function chooseBotActionUnchecked(
+  state: GameState,
+  playerId: string,
+): GameAction[] {
+  const player = state.players.find(p => p.id === playerId);
+  if (!player) return [];
+
+  const config = requireBotConfig(player);
+  if (config.difficulty === 'rl') return chooseFairRuleBotAction(state, playerId);
+  return chooseRuleBotActionUnchecked(state, playerId, config);
+}
+
+/**
+ * Fair rule-based fallback for production ONNX inference. It uses the RL
+ * difficulty's no-peeking information limits.
+ */
+export function chooseFairRuleBotAction(
+  state: GameState,
+  playerId: string,
+): GameAction[] {
+  const player = state.players.find(candidate => candidate.id === playerId);
+  if (!player) return [];
+  const botConfig = requireBotConfig(player);
+  const config: BotStrategyConfig = {
+    difficulty: 'rl',
+    personality: botConfig.personality,
+  };
+  return chooseRuleBotActionUnchecked(state, playerId, config);
 }
 
 export function chooseBotAction(
@@ -646,7 +678,7 @@ function chooseBotJumpInActionUnchecked(
   const topCard = state.discardPile[state.discardPile.length - 1];
   if (!topCard) return [];
 
-  const config: BotConfig = player.botConfig ?? DEFAULT_BOT_CONFIG;
+  const config = requireBotConfig(player);
   const params = DIFFICULTY_PARAMS[config.difficulty];
 
   const jumpInCard = player.hand.find(c => isExactJumpInMatch(c, topCard));

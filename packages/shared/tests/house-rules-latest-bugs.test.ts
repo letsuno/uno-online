@@ -4,6 +4,55 @@ import { DEFAULT_HOUSE_RULES } from '../src/types/house-rules';
 import { makeCard, makeState } from './helpers/test-utils';
 
 describe('latest house rule bug fixes', () => {
+  it('allows a WD4 challenge deflection when misplay penalty is also enabled', () => {
+    const reverse = makeCard('reverse', 'blue', { id: 'challenge-reverse' });
+    const state = makeState({
+      phase: 'challenging',
+      players: [
+        {
+          id: 'p1', name: 'Alice', hand: [], score: 0, connected: true,
+          autopilot: false, calledUno: false, isBot: false,
+        },
+        {
+          id: 'p2', name: 'Bob', hand: [reverse, makeCard('number', 'green', {
+            value: 3, id: 'p2-other',
+          })], score: 0, connected: true, autopilot: false, calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', {
+            value: 1, id: 'p3-card',
+          })], score: 0, connected: true, autopilot: false, calledUno: false,
+          isBot: false,
+        },
+      ],
+      currentPlayerIndex: 0,
+      pendingDrawPlayerId: 'p2',
+      currentColor: 'blue',
+      discardPile: [makeCard('wild_draw_four', null, { id: 'challenge-wd4' })],
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        allowSpectators: true,
+        spectatorMode: 'hidden',
+        houseRules: {
+          ...DEFAULT_HOUSE_RULES,
+          misplayPenalty: true,
+          reverseDeflectDrawFour: true,
+        },
+      },
+    });
+
+    const next = applyActionWithHouseRules(state, {
+      type: 'PLAY_CARD', playerId: 'p2', cardId: reverse.id,
+    });
+
+    expect(next).not.toBe(state);
+    expect(next.phase).toBe('playing');
+    expect(next.discardPile.at(-1)?.id).toBe(reverse.id);
+    expect(next.players[1]!.hand.map(card => card.id)).not.toContain(reverse.id);
+  });
+
   it('does not let draw-until-playable inherit a previous skip as a continuing draw turn', () => {
     const skip = makeCard('skip', 'red', { id: 'skip' });
     const state = makeState({

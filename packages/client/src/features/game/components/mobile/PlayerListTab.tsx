@@ -1,9 +1,11 @@
-import { Bot, Crown, WifiOff } from 'lucide-react';
+import { Crown, WifiOff } from 'lucide-react';
 import { useGameStore } from '../../stores/game-store';
 import { useSpectatorStore } from '../../stores/spectator-store';
 import { useRoomStore } from '@/shared/stores/room-store';
 import { useEffectiveUserId } from '../../hooks/useEffectiveUserId';
 import { cn } from '@/shared/lib/utils';
+import { DIFFICULTY_DISPLAY } from '../../constants/bot-difficulty';
+import { BotAvatarIcon } from '../BotAvatarIcon';
 
 const AVATAR_COLORS = [
   'var(--color-avatar-1)', 'var(--color-avatar-2)', 'var(--color-avatar-3)',
@@ -41,9 +43,13 @@ export default function PlayerListTab() {
                 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white overflow-hidden shrink-0 relative',
                 isCurrent && 'ring-2 ring-primary',
               )}
-              style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
+              style={{
+                background: p.isBot && p.botConfig
+                  ? DIFFICULTY_DISPLAY[p.botConfig.difficulty].avatarBg
+                  : AVATAR_COLORS[i % AVATAR_COLORS.length],
+              }}
             >
-              {p.isBot ? <Bot size={14} /> : p.avatarUrl
+              {p.isBot ? <BotAvatarIcon difficulty={p.botConfig?.difficulty} size={14} /> : p.avatarUrl
                 ? <img src={p.avatarUrl} className="w-full h-full object-cover" alt="" />
                 : p.name[0]?.toUpperCase()}
               {!p.connected && (

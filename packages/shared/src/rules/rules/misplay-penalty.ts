@@ -13,7 +13,10 @@ export const misplayPenalty: HouseRulePlugin = {
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     if (action.type !== 'PLAY_CARD') return { handled: false };
     const currentPlayer = state.players[state.currentPlayerIndex];
-    if (state.phase !== 'playing') return { handled: true, state };
+    // Challenge-phase PLAY_CARD may be a legal stack or deflection handled by
+    // later plugins. Misplay penalties only judge normal-turn plays; claiming
+    // every other phase here makes valid combined-rule responses a no-op.
+    if (state.phase !== 'playing') return { handled: false };
     if (currentPlayer?.id !== action.playerId) {
       if (state.settings.houseRules.jumpIn) return { handled: false };
       return { handled: true, state };

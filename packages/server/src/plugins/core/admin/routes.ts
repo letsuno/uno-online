@@ -5,6 +5,7 @@ import type { AuthenticatedRequest } from '../auth/service.js';
 import { adminOnly } from './middleware.js';
 import { getRoom, getRoomSeats, getSeatedPlayers, deleteRoom } from '../room/store.js';
 import { sql } from 'kysely';
+import { aiProviderRegistry } from '../../../ai/model-registry.js';
 
 export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const { config, kv, db } = ctx;
@@ -181,6 +182,29 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
 
     await deleteRoom(kv, code);
     return { success: true };
+  });
+
+  fastify.get('/admin/ai-plugins', { preHandler }, async () => (
+    aiProviderRegistry.snapshot()
+  ));
+
+  fastify.patch<{
+    Params: { id: string };
+    Body: { enabled?: boolean };
+  }>('/admin/ai-plugins/:id', { preHandler }, async (request, reply) => {
+    if (typeof request.body?.enabled !== 'boolean') {
+      return reply.code(400).send({ error: 'enabled 必须是布尔值' });
+    }
+    try {
+      return await aiProviderRegistry.setCommunityPluginEnabled(
+        request.params.id,
+        request.body.enabled,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const status = message === 'AI plugin not found' ? 404 : 400;
+      return reply.code(status).send({ error: message });
+    }
   });
 
 }

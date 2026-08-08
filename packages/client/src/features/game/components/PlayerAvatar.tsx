@@ -1,8 +1,8 @@
-import { Bot } from 'lucide-react';
 import { AVATAR_COLORS, AVATAR_EMOJIS } from '../constants/avatars';
 import { DIFFICULTY_DISPLAY } from '../constants/bot-difficulty';
 import type { BotConfig } from '@uno-online/shared';
 import { cn } from '@/shared/lib/utils';
+import { BotAvatarIcon } from './BotAvatarIcon';
 
 interface PlayerAvatarProps {
   /** 玩家在 players 数组中的原始序号（决定兜底配色与 emoji） */
@@ -37,7 +37,7 @@ export default function PlayerAvatar({ index, name, avatarUrl, isBot, botConfig,
       }}
     >
       {botDisplay ? (
-        <Bot size={size * 0.5} className="text-white drop-shadow-sm" />
+        <BotAvatarIcon difficulty={botConfig?.difficulty} size={size * 0.5} className="text-white drop-shadow-sm" />
       ) : (
         <>
           <span>{AVATAR_EMOJIS[index % AVATAR_EMOJIS.length]}</span>
