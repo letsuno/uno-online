@@ -4,7 +4,9 @@ import { verifyTurnstile } from '../../src/auth/turnstile';
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
-afterEach(() => { mockFetch.mockReset(); });
+afterEach(() => {
+  mockFetch.mockReset();
+});
 
 describe('verifyTurnstile', () => {
   it('returns true when Cloudflare responds with success', async () => {

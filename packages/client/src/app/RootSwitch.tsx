@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense } from 'react';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { Button } from '@/shared/components/ui/Button';
 
@@ -6,17 +6,13 @@ const HomePage = lazy(() => import('@/features/auth/pages/HomePage'));
 const LobbyPage = lazy(() => import('@/features/lobby/pages/LobbyPage'));
 
 export default function RootSwitch() {
-  const token = useAuthStore((s) => s.token);
-  const user = useAuthStore((s) => s.user);
-  const initialized = useAuthStore((s) => s.initialized);
-  const loading = useAuthStore((s) => s.loading);
-  const authError = useAuthStore((s) => s.authError);
-  const logout = useAuthStore((s) => s.logout);
-  const loadUser = useAuthStore((s) => s.loadUser);
-
-  useEffect(() => {
-    if (token && !user && !initialized) void loadUser().catch(() => {});
-  }, [token, user, initialized, loadUser]);
+  const token = useAuthStore(s => s.token);
+  const user = useAuthStore(s => s.user);
+  const initialized = useAuthStore(s => s.initialized);
+  const loading = useAuthStore(s => s.loading);
+  const authError = useAuthStore(s => s.authError);
+  const logout = useAuthStore(s => s.logout);
+  const loadUser = useAuthStore(s => s.loadUser);
 
   if (!initialized) return <LoadingScreen />;
 
@@ -48,7 +44,15 @@ function LoadingScreen() {
   );
 }
 
-function AuthRestoreFailed({ message, onRetry, onLogout }: { message: string | null; onRetry: () => void; onLogout: () => void }) {
+function AuthRestoreFailed({
+  message,
+  onRetry,
+  onLogout,
+}: {
+  message: string | null;
+  onRetry: () => void;
+  onLogout: () => void;
+}) {
   return (
     <div className="flex-1 flex items-center justify-center p-6">
       <div className="glass-panel max-w-sm w-full p-5 text-center space-y-4">
@@ -57,8 +61,12 @@ function AuthRestoreFailed({ message, onRetry, onLogout }: { message: string | n
           <p className="mt-2 text-sm text-muted-foreground">{message ?? '请检查网络后重试。'}</p>
         </div>
         <div className="flex justify-center gap-2">
-          <Button type="button" variant="primary" onClick={onRetry}>重试</Button>
-          <Button type="button" variant="secondary" onClick={onLogout}>退出登录</Button>
+          <Button type="button" variant="primary" onClick={onRetry}>
+            重试
+          </Button>
+          <Button type="button" variant="secondary" onClick={onLogout}>
+            退出登录
+          </Button>
         </div>
       </div>
     </div>

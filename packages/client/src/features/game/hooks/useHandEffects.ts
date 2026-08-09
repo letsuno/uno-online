@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import type { GameAction, HouseRules } from '@uno-online/shared';
+import type { CommittedGameAction, RoomSettings } from '@uno-online/shared';
 import { useGameStore } from '../stores/game-store';
 import type { PlayerInfo } from '../stores/game-store';
 import type { Position } from './usePlayerLayout';
@@ -25,8 +25,8 @@ let handSwapEffectId = 0;
  */
 export function useHandEffects(
   players: PlayerInfo[],
-  lastAction: GameAction | null,
-  settings: { turnTimeLimit: number; targetScore: number; houseRules?: HouseRules } | null,
+  lastAction: CommittedGameAction | null,
+  settings: RoomSettings | null,
   direction: 'clockwise' | 'counter_clockwise',
   roundNumber: number,
   getPlayerPosition: (playerId: string) => Position | null,
@@ -38,12 +38,16 @@ export function useHandEffects(
   const [handSwapEffects, setHandSwapEffects] = useState<Map<string, HandSwapEffect>>(new Map());
 
   const prevHandCountsRef = useRef<Map<string, number>>(new Map());
-  const drawUntilRef = useRef<{ playerId: string | null; count: number; handCount: number | null }>({ playerId: null, count: 0, handCount: null });
+  const drawUntilRef = useRef<{ playerId: string | null; count: number; handCount: number | null }>({
+    playerId: null,
+    count: 0,
+    handCount: null,
+  });
   const handGainTimersRef = useRef<Map<string, number>>(new Map());
   const handSwapEffectTimersRef = useRef<number[]>([]);
   const lastHandSwapActionKeyRef = useRef<string | null>(null);
 
-  const drawUntilEnabled = Boolean(settings?.houseRules?.drawUntilPlayable);
+  const drawUntilEnabled = Boolean(settings?.houseRules.drawUntilPlayable);
 
   // 换手牌抖动 + 摸牌 +N：对 handCount 与 lastAction 做差分
   useEffect(() => {
@@ -53,7 +57,7 @@ export function useHandEffects(
     const topCard = pile[pile.length - 1];
     const isZeroRotate =
       lastAction?.type === 'PLAY_CARD' &&
-      settings?.houseRules?.zeroRotateHands &&
+      settings?.houseRules.zeroRotateHands &&
       topCard?.type === 'number' &&
       topCard.value === 0;
     const isSevenSwap = lastAction?.type === 'CHOOSE_SWAP_TARGET';
@@ -75,9 +79,8 @@ export function useHandEffects(
         );
       } else if (isZeroRotate) {
         for (let index = 0; index < players.length; index++) {
-          const sourceIndex = direction === 'clockwise'
-            ? (index - 1 + players.length) % players.length
-            : (index + 1) % players.length;
+          const sourceIndex =
+            direction === 'clockwise' ? (index - 1 + players.length) % players.length : (index + 1) % players.length;
           routes.push({ fromId: players[sourceIndex]!.id, toId: players[index]!.id });
         }
       }
@@ -97,7 +100,7 @@ export function useHandEffects(
       if (effects.size > 0) {
         setHandSwapEffects(effects);
         const timer = window.setTimeout(() => {
-          setHandSwapEffects((prev) => {
+          setHandSwapEffects(prev => {
             const next = new Map(prev);
             for (const [playerId, effect] of effects) {
               if (next.get(playerId)?.id === effect.id) {
@@ -119,7 +122,7 @@ export function useHandEffects(
       if (shouldAnimateDraw && player.id === lastAction.playerId && before !== undefined && after > before) {
         const added = after - before;
         const bumpId = ++handGainBumpId;
-        setHandGainBumps((prev) => {
+        setHandGainBumps(prev => {
           const next = new Map(prev);
           const current = next.get(player.id);
           next.set(player.id, { id: bumpId, count: (current?.count ?? 0) + added });
@@ -130,7 +133,7 @@ export function useHandEffects(
           window.clearTimeout(existingTimer);
         }
         const removeTimer = window.setTimeout(() => {
-          setHandGainBumps((prev) => {
+          setHandGainBumps(prev => {
             const current = prev.get(player.id);
             if (!current || current.id !== bumpId) return prev;
             const next = new Map(prev);
@@ -142,7 +145,7 @@ export function useHandEffects(
         handGainTimersRef.current.set(player.id, removeTimer);
       }
     }
-    prevHandCountsRef.current = new Map(players.map((p) => [p.id, p.handCount]));
+    prevHandCountsRef.current = new Map(players.map(p => [p.id, p.handCount]));
   }, [players, lastAction, settings, direction, roundNumber, getPlayerPosition]);
 
   // 「摸到能出为止」计数

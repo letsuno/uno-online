@@ -6,7 +6,7 @@ interface LobbyState {
   setActiveRooms: (rooms: ActiveRoomInfo[]) => void;
 }
 
-export const useLobbyStore = create<LobbyState>((set) => ({
+export const useLobbyStore = create<LobbyState>(set => ({
   activeRooms: [],
-  setActiveRooms: (rooms) => set({ activeRooms: rooms }),
+  setActiveRooms: rooms => set({ activeRooms: rooms }),
 }));

@@ -8,7 +8,6 @@ import { cn } from '@/shared/lib/utils';
 import { useServerStore } from '../stores/server-store';
 import type { ServerEntry } from '../stores/server-store';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
-import { disconnectSocket } from '../socket';
 import { getPingColor } from '../lib/ping';
 
 function formatUptime(seconds: number): string {
@@ -30,7 +29,14 @@ function ServerCard({
   isSelected: boolean;
   onSelect: () => void;
   onRemove?: () => void;
-  info: { name: string; version: string; motd: string; onlinePlayers: number; activeRooms: number; uptime: number } | null;
+  info: {
+    name: string;
+    version: string;
+    motd: string;
+    onlinePlayers: number;
+    activeRooms: number;
+    uptime: number;
+  } | null;
   latency: number | null | undefined;
 }) {
   const isOnline = info !== null;
@@ -40,9 +46,7 @@ function ServerCard({
       onClick={onSelect}
       className={cn(
         'cursor-pointer rounded-xl border p-3.5 transition-colors',
-        isSelected
-          ? 'border-primary/30 bg-primary/[0.08]'
-          : 'border-white/10 bg-white/[0.04]',
+        isSelected ? 'border-primary/30 bg-primary/[0.08]' : 'border-white/10 bg-white/[0.04]',
         !isOnline && 'opacity-50',
       )}
     >
@@ -55,20 +59,17 @@ function ServerCard({
               isOnline ? 'bg-uno-green' : 'bg-destructive',
             )}
           />
-          <span className="text-[15px] font-bold text-foreground">
-            {info?.name ?? server.name}
-          </span>
-          {info && (
-            <span className="text-xs text-muted-foreground">v{info.version}</span>
-          )}
+          <span className="text-[15px] font-bold text-foreground">{info?.name ?? server.name}</span>
+          {info && <span className="text-xs text-muted-foreground">v{info.version}</span>}
         </div>
         <div className="flex items-center gap-2">
-          {!isOnline && !server.isDefault && (
-            <span className="text-xs text-muted-foreground">离线</span>
-          )}
+          {!isOnline && !server.isDefault && <span className="text-xs text-muted-foreground">离线</span>}
           {!server.isDefault && onRemove && (
             <button
-              onClick={(e) => { e.stopPropagation(); onRemove(); }}
+              onClick={e => {
+                e.stopPropagation();
+                onRemove();
+              }}
               className="p-0.5 text-muted-foreground transition-colors hover:text-destructive"
             >
               <Trash2 size={14} />
@@ -81,9 +82,7 @@ function ServerCard({
       {info ? (
         <p className="mb-2 text-[13px] text-muted-foreground">{info.motd}</p>
       ) : (
-        <p className="text-[13px] text-muted-foreground">
-          {server.address || '当前部署'}
-        </p>
+        <p className="text-[13px] text-muted-foreground">{server.address || '当前部署'}</p>
       )}
 
       {/* Stats row */}
@@ -100,10 +99,7 @@ function ServerCard({
               <Clock size={12} /> 运行 {formatUptime(info.uptime)}
             </span>
           </div>
-          <span
-            className="flex items-center gap-1 font-medium"
-            style={{ color: getPingColor(latency).text }}
-          >
+          <span className="flex items-center gap-1 font-medium" style={{ color: getPingColor(latency).text }}>
             <Signal size={12} /> {latency !== null && latency !== undefined ? `${latency}ms` : '--'}
           </span>
         </div>
@@ -125,7 +121,7 @@ export function ServerSelectModal() {
     removeServer,
     refreshAll,
   } = useServerStore();
-  const logout = useAuthStore((s) => s.logout);
+  const logout = useAuthStore(s => s.logout);
   const navigate = useNavigate();
   const [newAddress, setNewAddress] = useState('');
   const [adding, setAdding] = useState(false);
@@ -137,10 +133,9 @@ export function ServerSelectModal() {
     }
   }, [isModalOpen]);
 
-  const handleSelect = (id: string) => {
+  const handleSelect = async (id: string) => {
     if (id === currentServerId) return;
-    disconnectSocket();
-    logout();
+    await logout();
     selectServer(id);
     closeModal();
     navigate('/');
@@ -176,33 +171,30 @@ export function ServerSelectModal() {
               inputSize="sm"
               className="flex-1"
               value={newAddress}
-              onChange={(e) => { setNewAddress(e.target.value); setAddError(''); }}
-              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+              onChange={e => {
+                setNewAddress(e.target.value);
+                setAddError('');
+              }}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
               placeholder="输入服务器地址  如 uno.example.com"
             />
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleAdd}
-              disabled={adding}
-              className="whitespace-nowrap"
-            >
+            <Button variant="primary" size="sm" onClick={handleAdd} disabled={adding} className="whitespace-nowrap">
               <Plus size={14} /> {adding ? '添加中...' : '添加'}
             </Button>
           </div>
-          {addError && (
-            <p className="mt-1.5 text-xs text-destructive">{addError}</p>
-          )}
+          {addError && <p className="mt-1.5 text-xs text-destructive">{addError}</p>}
         </div>
       }
     >
       <div className="flex flex-col gap-2">
-        {servers.map((server) => (
+        {servers.map(server => (
           <ServerCard
             key={server.id}
             server={server}
             isSelected={server.id === currentServerId}
-            onSelect={() => handleSelect(server.id)}
+            onSelect={() => {
+              void handleSelect(server.id);
+            }}
             onRemove={server.isDefault ? undefined : () => removeServer(server.id)}
             info={serverInfoMap[server.id] ?? null}
             latency={latencyMap[server.id]}

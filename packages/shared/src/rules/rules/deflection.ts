@@ -10,7 +10,7 @@ export const deflection: HouseRulePlugin = {
     label: 'Reverse/Skip 反弹',
     description: '被 +2/+4 时出 Reverse 反弹或 Skip 转移',
   },
-  isEnabled: (hr) => hr.reverseDeflectDrawTwo || hr.reverseDeflectDrawFour || hr.skipDeflect,
+  isEnabled: hr => hr.reverseDeflectDrawTwo || hr.reverseDeflectDrawFour || hr.skipDeflect,
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     const hr = state.settings.houseRules;
 
@@ -27,64 +27,54 @@ export const deflection: HouseRulePlugin = {
       if (hr.reverseDeflectDrawFour && card.type === 'reverse' && topCard?.type === 'wild_draw_four') {
         const newHand = player.hand.filter(c => c.id !== action.cardId);
         const newDirection = state.direction === 'clockwise' ? 'counter_clockwise' : 'clockwise';
-        const players = state.players.map((p, i) =>
-          i === playerIdx ? { ...p, hand: newHand } : p,
-        );
+        const players = state.players.map((p, i) => (i === playerIdx ? { ...p, hand: newHand } : p));
         const wd4PlayerIdx = state.currentPlayerIndex;
         const wd4PlayerId = state.players[wd4PlayerIdx]!.id;
         const afterPenaltyNextIdx = ctx.getNextAliveIndex(players, wd4PlayerIdx, newDirection);
-        const revengeBonus = state.pendingRevengeDraws ?? 0;
-        const baseState = checkRoundEnd({
-          ...state,
-          players,
-          discardPile: [...state.discardPile, card],
-          currentColor: card.color ?? state.currentColor,
-          direction: newDirection,
-          phase: 'playing',
-          pendingDrawPlayerId: null,
-          pendingRevengeDraws: 0,
-          lastAction: action,
-        }, action.playerId);
+        const revengeBonus = state.pendingRevengeDraws;
+        const baseState = checkRoundEnd(
+          {
+            ...state,
+            players,
+            discardPile: [...state.discardPile, card],
+            currentColor: card.color ?? state.currentColor,
+            direction: newDirection,
+            phase: 'playing',
+            pendingDrawPlayerId: null,
+            pendingRevengeDraws: 0,
+            lastAction: action,
+          },
+          action.playerId,
+        );
         return {
           handled: true,
-          state: ctx.startPenaltyDraw(
-            baseState,
-            wd4PlayerId,
-            4 + revengeBonus,
-            afterPenaltyNextIdx,
-            action.playerId,
-          ),
+          state: ctx.startPenaltyDraw(baseState, wd4PlayerId, 4 + revengeBonus, afterPenaltyNextIdx, action.playerId),
         };
       }
 
       if (hr.skipDeflect && card.type === 'skip') {
         const newHand = player.hand.filter(c => c.id !== action.cardId);
-        const players = state.players.map((p, i) =>
-          i === playerIdx ? { ...p, hand: newHand } : p,
-        );
+        const players = state.players.map((p, i) => (i === playerIdx ? { ...p, hand: newHand } : p));
         const nextIdx = ctx.getNextAliveIndex(players, playerIdx, state.direction);
         const nextPlayerId = state.players[nextIdx]!.id;
         const afterPenaltyNextIdx = ctx.getNextAliveIndex(players, nextIdx, state.direction);
-        const revengeBonus = state.pendingRevengeDraws ?? 0;
-        const baseState = checkRoundEnd({
-          ...state,
-          players,
-          discardPile: [...state.discardPile, card],
-          currentColor: card.color ?? state.currentColor,
-          phase: 'playing',
-          pendingDrawPlayerId: null,
-          pendingRevengeDraws: 0,
-          lastAction: action,
-        }, action.playerId);
+        const revengeBonus = state.pendingRevengeDraws;
+        const baseState = checkRoundEnd(
+          {
+            ...state,
+            players,
+            discardPile: [...state.discardPile, card],
+            currentColor: card.color ?? state.currentColor,
+            phase: 'playing',
+            pendingDrawPlayerId: null,
+            pendingRevengeDraws: 0,
+            lastAction: action,
+          },
+          action.playerId,
+        );
         return {
           handled: true,
-          state: ctx.startPenaltyDraw(
-            baseState,
-            nextPlayerId,
-            4 + revengeBonus,
-            afterPenaltyNextIdx,
-            action.playerId,
-          ),
+          state: ctx.startPenaltyDraw(baseState, nextPlayerId, 4 + revengeBonus, afterPenaltyNextIdx, action.playerId),
         };
       }
 
@@ -105,40 +95,42 @@ export const deflection: HouseRulePlugin = {
     if (canReverseDeflect) {
       const newHand = player.hand.filter(c => c.id !== action.cardId);
       const newDirection = state.direction === 'clockwise' ? 'counter_clockwise' : 'clockwise';
-      const players = state.players.map((p, i) =>
-        i === state.currentPlayerIndex ? { ...p, hand: newHand } : p,
-      );
+      const players = state.players.map((p, i) => (i === state.currentPlayerIndex ? { ...p, hand: newHand } : p));
       const nextIdx = ctx.getNextAliveIndex(players, state.currentPlayerIndex, newDirection);
       return {
         handled: true,
-        state: checkRoundEnd({
-          ...state,
-          players,
-          discardPile: [...state.discardPile, card],
-          currentColor: card.color ?? state.currentColor,
-          direction: newDirection,
-          currentPlayerIndex: nextIdx,
-          lastAction: action,
-        }, action.playerId),
+        state: checkRoundEnd(
+          {
+            ...state,
+            players,
+            discardPile: [...state.discardPile, card],
+            currentColor: card.color ?? state.currentColor,
+            direction: newDirection,
+            currentPlayerIndex: nextIdx,
+            lastAction: action,
+          },
+          action.playerId,
+        ),
       };
     }
 
     if (hr.skipDeflect && card.type === 'skip') {
       const newHand = player.hand.filter(c => c.id !== action.cardId);
-      const players = state.players.map((p, i) =>
-        i === state.currentPlayerIndex ? { ...p, hand: newHand } : p,
-      );
+      const players = state.players.map((p, i) => (i === state.currentPlayerIndex ? { ...p, hand: newHand } : p));
       const nextIdx = ctx.getNextAliveIndex(players, state.currentPlayerIndex, state.direction);
       return {
         handled: true,
-        state: checkRoundEnd({
-          ...state,
-          players,
-          discardPile: [...state.discardPile, card],
-          currentColor: card.color ?? state.currentColor,
-          currentPlayerIndex: nextIdx,
-          lastAction: action,
-        }, action.playerId),
+        state: checkRoundEnd(
+          {
+            ...state,
+            players,
+            discardPile: [...state.discardPile, card],
+            currentColor: card.color ?? state.currentColor,
+            currentPlayerIndex: nextIdx,
+            lastAction: action,
+          },
+          action.playerId,
+        ),
       };
     }
 

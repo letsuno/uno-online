@@ -4,9 +4,7 @@ import { applyActionWithHouseRules } from '../house-rules-engine.js';
 
 const COLORS: readonly Color[] = ['red', 'blue', 'green', 'yellow'];
 
-export type AutomatedDecisionContext =
-  | { kind: 'turn' }
-  | { kind: 'jumpin'; card: Card };
+export type AutomatedDecisionContext = { kind: 'turn' } | { kind: 'jumpin'; card: Card };
 
 export interface LegalActionPlans {
   plans: GameAction[][];
@@ -34,33 +32,33 @@ function validationStateForPlay(state: GameState): GameState {
   };
 }
 
-function cardPlans(
-  state: GameState,
-  playerId: string,
-  card: Card,
-  options: { jumpIn: boolean },
-): GameAction[][] {
+function cardPlans(state: GameState, playerId: string, card: Card, options: { jumpIn: boolean }): GameAction[][] {
   const { jumpIn } = options;
   if (card.type !== 'wild' && card.type !== 'wild_draw_four') {
-    return [[{
-      type: 'PLAY_CARD',
-      playerId,
-      cardId: card.id,
-      ...(jumpIn ? { isJumpIn: true } : {}),
-    }]];
+    return [
+      [
+        {
+          type: 'PLAY_CARD',
+          playerId,
+          cardId: card.id,
+          ...(jumpIn ? { isJumpIn: true } : {}),
+        },
+      ],
+    ];
   }
 
-  const inlineOnly = jumpIn
-    || (card.type === 'wild_draw_four'
-      && (state.phase === 'challenging' || state.drawStack > 0));
+  const inlineOnly =
+    jumpIn || (card.type === 'wild_draw_four' && (state.phase === 'challenging' || state.drawStack > 0));
   return COLORS.flatMap(color => {
-    const inline: GameAction[] = [{
-      type: 'PLAY_CARD',
-      playerId,
-      cardId: card.id,
-      chosenColor: color,
-      ...(jumpIn ? { isJumpIn: true } : {}),
-    }];
+    const inline: GameAction[] = [
+      {
+        type: 'PLAY_CARD',
+        playerId,
+        cardId: card.id,
+        chosenColor: color,
+        ...(jumpIn ? { isJumpIn: true } : {}),
+      },
+    ];
     if (inlineOnly) return [inline];
     return [
       [
@@ -72,11 +70,7 @@ function cardPlans(
   });
 }
 
-function addLegal(
-  output: GameAction[][],
-  state: GameState,
-  candidates: readonly GameAction[][],
-): void {
+function addLegal(output: GameAction[][], state: GameState, candidates: readonly GameAction[][]): void {
   for (const candidate of candidates) {
     if (isLegalPlan(state, candidate)) output.push(candidate);
   }
@@ -99,17 +93,12 @@ export function enumerateLegalActionPlans(
   if (!player) return { plans: output };
 
   if (context.kind === 'jumpin') {
-    addLegal(
-      output,
-      validationStateForPlay(state),
-      cardPlans(state, playerId, context.card, { jumpIn: true }),
-    );
+    addLegal(output, validationStateForPlay(state), cardPlans(state, playerId, context.card, { jumpIn: true }));
     return { plans: output };
   }
 
-  const actorId = state.phase === 'challenging'
-    ? state.pendingDrawPlayerId
-    : state.players[state.currentPlayerIndex]?.id;
+  const actorId =
+    state.phase === 'challenging' ? state.pendingDrawPlayerId : state.players[state.currentPlayerIndex]?.id;
   if (actorId !== playerId) return { plans: output };
 
   if (state.phase === 'choosing_color') {
@@ -127,31 +116,26 @@ export function enumerateLegalActionPlans(
       state,
       state.players
         .filter(target => target.id !== playerId && !target.eliminated)
-        .map(target => [{
-          type: 'CHOOSE_SWAP_TARGET' as const,
-          playerId,
-          targetId: target.id,
-        }]),
+        .map(target => [
+          {
+            type: 'CHOOSE_SWAP_TARGET' as const,
+            playerId,
+            targetId: target.id,
+          },
+        ]),
     );
     return { plans: output };
   }
 
   if (state.phase === 'challenging') {
-    addLegal(output, state, [
-      [{ type: 'CHALLENGE', playerId }],
-      [{ type: 'ACCEPT', playerId }],
-    ]);
+    addLegal(output, state, [[{ type: 'CHALLENGE', playerId }], [{ type: 'ACCEPT', playerId }]]);
   } else if (state.phase !== 'playing') {
     return { plans: output };
   }
 
   const playState = validationStateForPlay(state);
   for (const card of player.hand) {
-    addLegal(
-      output,
-      playState,
-      cardPlans(state, playerId, card, { jumpIn: false }),
-    );
+    addLegal(output, playState, cardPlans(state, playerId, card, { jumpIn: false }));
   }
 
   if (state.phase === 'playing') {

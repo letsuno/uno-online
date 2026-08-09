@@ -1,10 +1,5 @@
 import * as ort from 'onnxruntime-node';
-import type {
-  AiDecisionRequest,
-  AiProvider,
-  AiProviderMetadata,
-  AiValueDecision,
-} from './provider.js';
+import type { AiDecisionRequest, AiProvider, AiProviderMetadata, AiValueDecision } from './provider.js';
 import { loadOnnxSession } from './onnx-runtime.js';
 
 interface OnnxProviderOptions {
@@ -50,17 +45,12 @@ export class OnnxValueProvider implements AiProvider {
       modelId: options.metadata.id,
     });
 
-    if (!session.inputNames.includes(options.inputName)
-      || !session.outputNames.includes(options.outputName)) {
+    if (!session.inputNames.includes(options.inputName) || !session.outputNames.includes(options.outputName)) {
       await session.release();
       throw new Error(`ONNX input/output mismatch for model ${options.metadata.id}`);
     }
 
-    const warmup = new ort.Tensor(
-      'float32',
-      new Float32Array(options.featureCount),
-      [1, options.featureCount],
-    );
+    const warmup = new ort.Tensor('float32', new Float32Array(options.featureCount), [1, options.featureCount]);
     let outputs: ort.InferenceSession.ReturnType | undefined;
     try {
       outputs = await session.run({ [options.inputName]: warmup }, [options.outputName]);
@@ -92,25 +82,22 @@ export class OnnxValueProvider implements AiProvider {
     }
     if (signal.aborted) throw abortError();
 
-    const input = new ort.Tensor(
-      'float32',
-      flat,
-      [request.candidates.length, this.featureCount],
-    );
+    const input = new ort.Tensor('float32', flat, [request.candidates.length, this.featureCount]);
     let outputs: ort.InferenceSession.ReturnType | undefined;
     try {
-      outputs = await this.session.run(
-        { [this.inputName]: input },
-        [this.outputName],
-      );
+      outputs = await this.session.run({ [this.inputName]: input }, [this.outputName]);
       if (signal.aborted) throw abortError();
       const output = outputs[this.outputName];
       if (!(output instanceof ort.Tensor) || output.data.length !== request.candidates.length) {
         throw new Error(`ONNX output shape mismatch for model ${this.metadata.id}`);
       }
-      const values = Array.from(output.data as Float32Array, (value, index) => Number(value)
-        + request.candidates[index]!.heuristicScore * this.rulePriorBlend
-        + (request.candidates[index]!.teacherPreferred ? this.teacherPriorBonus : 0));
+      const values = Array.from(
+        output.data as Float32Array,
+        (value, index) =>
+          Number(value) +
+          request.candidates[index]!.heuristicScore * this.rulePriorBlend +
+          (request.candidates[index]!.teacherPreferred ? this.teacherPriorBonus : 0),
+      );
       if (!values.every(Number.isFinite)) {
         throw new Error(`ONNX returned non-finite values for model ${this.metadata.id}`);
       }

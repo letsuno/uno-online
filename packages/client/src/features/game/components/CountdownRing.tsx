@@ -5,22 +5,12 @@ interface CountdownRingProps {
   strokeWidth?: number;
 }
 
-export default function CountdownRing({
-  totalSeconds,
-  remainingSeconds,
-  size,
-  strokeWidth = 3,
-}: CountdownRingProps) {
+export default function CountdownRing({ totalSeconds, remainingSeconds, size, strokeWidth = 3 }: CountdownRingProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = totalSeconds > 0 ? remainingSeconds / totalSeconds : 0;
   const offset = circumference * (1 - progress);
-  const colorClass =
-    progress > 0.5
-      ? 'stroke-uno-green'
-      : progress > 0.25
-        ? 'stroke-uno-yellow'
-        : 'stroke-destructive';
+  const colorClass = progress > 0.5 ? 'stroke-uno-green' : progress > 0.25 ? 'stroke-uno-yellow' : 'stroke-destructive';
 
   return (
     <svg width={size} height={size} className="absolute inset-0 -rotate-90">

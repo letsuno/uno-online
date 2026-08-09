@@ -9,7 +9,7 @@ export const stacking: HouseRulePlugin = {
     label: '+2/+4 叠加',
     description: '被 +2/+4 时可叠加给下家',
   },
-  isEnabled: (hr) => hr.stackDrawTwo || hr.stackDrawFour || hr.crossStack,
+  isEnabled: hr => hr.stackDrawTwo || hr.stackDrawFour || hr.crossStack,
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     const hr = state.settings.houseRules;
 
@@ -41,7 +41,7 @@ export const stacking: HouseRulePlugin = {
         ...state,
         phase: 'playing',
         pendingDrawPlayerId: null,
-        drawStack: 4 + (state.pendingRevengeDraws ?? 0),
+        drawStack: 4 + state.pendingRevengeDraws,
         pendingRevengeDraws: 0,
         currentPlayerIndex: playerIdx,
       };
@@ -58,7 +58,9 @@ export const stacking: HouseRulePlugin = {
       const canStack =
         (hr.stackDrawTwo && card.type === 'draw_two' && topCard?.type === 'draw_two') ||
         (hr.stackDrawFour && card.type === 'wild_draw_four' && topCard?.type === 'wild_draw_four') ||
-        (hr.crossStack && ((card.type === 'draw_two' && topCard?.type === 'wild_draw_four') || (card.type === 'wild_draw_four' && topCard?.type === 'draw_two')));
+        (hr.crossStack &&
+          ((card.type === 'draw_two' && topCard?.type === 'wild_draw_four') ||
+            (card.type === 'wild_draw_four' && topCard?.type === 'draw_two')));
       if (canStack) {
         return { handled: true, state: ctx.putAttackCardOnStack(state, action, card, ctx.getCardDrawPenalty(card)) };
       }
@@ -87,7 +89,7 @@ export const stacking: HouseRulePlugin = {
 
     // Case (c): DRAW_CARD when drawStack > 0 — resolve stack
     if (action.type === 'DRAW_CARD' && state.drawStack > 0) {
-      if ((state.pendingPenaltyDraws ?? 0) > 0) return { handled: false };
+      if (state.pendingPenaltyDraws > 0) return { handled: false };
       const player = state.players[state.currentPlayerIndex];
       if (!player || player.id !== action.playerId) return { handled: true, state };
       const nextIdx = ctx.getNextAliveIndex(state.players, state.currentPlayerIndex, state.direction);

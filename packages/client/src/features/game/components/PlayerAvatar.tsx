@@ -19,7 +19,16 @@ interface PlayerAvatarProps {
 }
 
 /** 圆形玩家头像：真实头像 > Bot 难度配色 > 序号 emoji 兜底；img 在容器内裁圆 */
-export default function PlayerAvatar({ index, name, avatarUrl, isBot, botConfig, size = 28, className, highlighted = false }: PlayerAvatarProps) {
+export default function PlayerAvatar({
+  index,
+  name,
+  avatarUrl,
+  isBot,
+  botConfig,
+  size = 28,
+  className,
+  highlighted = false,
+}: PlayerAvatarProps) {
   const botDisplay = isBot && botConfig ? DIFFICULTY_DISPLAY[botConfig.difficulty] : undefined;
   return (
     <div
@@ -47,7 +56,9 @@ export default function PlayerAvatar({ index, name, avatarUrl, isBot, botConfig,
               alt={name}
               className="absolute inset-0 w-full h-full object-cover"
               referrerPolicy="no-referrer"
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              onError={e => {
+                e.currentTarget.style.display = 'none';
+              }}
             />
           )}
         </>

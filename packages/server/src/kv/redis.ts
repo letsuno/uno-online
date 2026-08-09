@@ -1,5 +1,5 @@
 import { Redis } from 'ioredis';
-import type { KvStore } from './types.js';
+import type { KvStore, KvStringBatchOperation } from './types.js';
 
 export class RedisKvStore implements KvStore {
   private client: Redis;
@@ -20,8 +20,36 @@ export class RedisKvStore implements KvStore {
     }
   }
 
+  async setIfAbsent(key: string, value: string) {
+    return (await this.client.set(key, value, 'NX')) === 'OK';
+  }
+
   async del(...keys: string[]) {
     if (keys.length > 0) await this.client.del(...keys);
+  }
+
+  async batchStrings(operations: readonly KvStringBatchOperation[]) {
+    if (operations.length === 0) return;
+
+    const transaction = this.client.multi();
+    for (const operation of operations) {
+      if (operation.type === 'set') transaction.set(operation.key, operation.value);
+      else transaction.del(operation.key);
+    }
+    const results = await transaction.exec();
+    if (results === null) throw new Error('Redis string batch transaction was aborted');
+    const commandError = results.find(([error]) => error !== null)?.[0];
+    if (commandError) throw commandError;
+  }
+
+  async compareAndDelete(key: string, expectedValue: string) {
+    const deleted = await this.client.eval(
+      "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+      1,
+      key,
+      expectedValue,
+    );
+    return deleted === 1;
   }
 
   async expire(key: string, ttlSeconds: number) {

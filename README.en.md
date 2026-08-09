@@ -28,7 +28,7 @@ Web-based multiplayer UNO with real-time play, voice chat, spectator mode, confi
 - **Frontend**: React 19, TypeScript, Vite 8, Tailwind CSS v4, Zustand
 - **Backend**: Fastify, Socket.IO, TypeScript
 - **Shared logic**: pure TypeScript rules engine in `packages/shared`
-- **Storage**: SQLite via Kysely; Redis is optional with in-memory fallback
+- **Storage**: SQLite via Kysely; persistent Redis in production, with an in-memory KV option for development
 - **Voice**: Mumble + mumble-web-gateway
 - **Deployment**: Docker + Caddy
 - **Monorepo**: pnpm workspaces
@@ -85,14 +85,10 @@ pnpm --filter client exec tsc --noEmit
 
 ## More Documentation
 
-- [Backend development guide](docs/backend-development-guide.md)
-- [Frontend development guide](docs/frontend-development-guide.md)
-- [Plugin extension guide](docs/plugin-extension-guide.md)
 - [House rules extension guide](docs/house-rules-extension-guide.md)
 - [Protocol reference](docs/protocol.md)
 - [Deployment guide](docs/deployment.md)
 - [MCP guide](docs/mcp.md)
-- [UI/UX guidelines](UIUX-GUIDELINES.md)
 
 Configuration lives in `.env.example`. HTTP APIs are mounted under `/api`; see the protocol reference for routes and Socket.IO events.
 

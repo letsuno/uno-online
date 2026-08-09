@@ -14,15 +14,13 @@ export default function DashboardPage() {
   useEffect(() => {
     apiFetch<DashboardStats>('/admin/dashboard')
       .then(setStats)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load stats'));
+      .catch(err => setError(err instanceof Error ? err.message : 'Failed to load stats'));
   }, []);
 
   if (error) {
     return (
       <div className="p-6">
-        <div className="bg-red-900/40 border border-red-700 text-red-300 rounded px-4 py-3">
-          {error}
-        </div>
+        <div className="bg-red-900/40 border border-red-700 text-red-300 rounded px-4 py-3">{error}</div>
       </div>
     );
   }
@@ -40,7 +38,7 @@ export default function DashboardPage() {
     <div className="p-6">
       <h2 className="text-xl font-bold text-white mb-6">Dashboard</h2>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {cards.map((card) => (
+        {cards.map(card => (
           <div key={card.label} className="rounded-lg border border-slate-700 bg-slate-800">
             <div className="p-4 pb-2">
               <div className="text-sm font-medium">

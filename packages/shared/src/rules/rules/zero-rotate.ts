@@ -9,7 +9,7 @@ export const zeroRotate: HouseRulePlugin = {
     label: '0 牌交换手牌',
     description: '打出 0 时所有人按方向传递手牌',
   },
-  isEnabled: (hr) => hr.zeroRotateHands,
+  isEnabled: hr => hr.zeroRotateHands,
   postProcess: (before: GameState, after: GameState, action: GameAction, ctx: RuleContext): GameState => {
     if (action.type !== 'PLAY_CARD') return after;
     if (after === before) return after;

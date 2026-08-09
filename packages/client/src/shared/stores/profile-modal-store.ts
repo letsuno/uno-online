@@ -6,7 +6,7 @@ interface ProfileModalStore {
   close: () => void;
 }
 
-export const useProfileModalStore = create<ProfileModalStore>((set) => ({
+export const useProfileModalStore = create<ProfileModalStore>(set => ({
   isOpen: false,
   open: () => set({ isOpen: true }),
   close: () => set({ isOpen: false }),

@@ -8,7 +8,13 @@ import {
 } from '@simplewebauthn/server';
 import { isoBase64URL } from '@simplewebauthn/server/helpers';
 import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
-import { getPasskeysByUserId, getPasskeyById, createPasskey, updatePasskeyCounter, deletePasskey } from '../../../db/passkey-repo.js';
+import {
+  getPasskeysByUserId,
+  getPasskeyById,
+  createPasskey,
+  updatePasskeyCounter,
+  deletePasskey,
+} from '../../../db/passkey-repo.js';
 import { getUserById } from '../../../db/user-repo.js';
 import { authPreHandler, makeToken, userResponse } from './service.js';
 import type { AuthenticatedRequest } from './service.js';
@@ -23,7 +29,7 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
   function getRpId(): string | string[] {
     if (config.webauthnRpId) {
       return config.webauthnRpId.includes(',')
-        ? config.webauthnRpId.split(',').map((s) => s.trim())
+        ? config.webauthnRpId.split(',').map(s => s.trim())
         : config.webauthnRpId;
     }
     return new URL(config.clientUrl).hostname;
@@ -37,7 +43,7 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
   function getOrigin(): string | string[] {
     if (config.webauthnOrigin) {
       return config.webauthnOrigin.includes(',')
-        ? config.webauthnOrigin.split(',').map((s) => s.trim())
+        ? config.webauthnOrigin.split(',').map(s => s.trim())
         : config.webauthnOrigin;
     }
     return new URL(config.clientUrl).origin;
@@ -45,7 +51,7 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
 
   // ── Registration (authenticated) ──
 
-  fastify.post('/auth/passkey/register-options', { preHandler }, async (request) => {
+  fastify.post('/auth/passkey/register-options', { preHandler }, async request => {
     const { userId, username } = (request as AuthenticatedRequest).user;
     const userPasskeys = await getPasskeysByUserId(userId);
 
@@ -54,7 +60,7 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
       rpID: getFirstRpId(),
       userName: username,
       attestationType: 'none',
-      excludeCredentials: userPasskeys.map((pk) => ({
+      excludeCredentials: userPasskeys.map(pk => ({
         id: pk.id,
         transports: pk.transports ? (JSON.parse(pk.transports) as AuthenticatorTransportFuture[]) : undefined,
       })),
@@ -120,7 +126,7 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
 
   // ── Authentication (public) ──
 
-  fastify.post('/auth/passkey/login-options', async (request) => {
+  fastify.post('/auth/passkey/login-options', async request => {
     const options = await generateAuthenticationOptions({
       rpID: getFirstRpId(),
       userVerification: 'preferred',
@@ -166,7 +172,9 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
             id: passkey.id,
             publicKey: isoBase64URL.toBuffer(passkey.publicKey),
             counter: passkey.counter,
-            transports: passkey.transports ? (JSON.parse(passkey.transports) as AuthenticatorTransportFuture[]) : undefined,
+            transports: passkey.transports
+              ? (JSON.parse(passkey.transports) as AuthenticatorTransportFuture[])
+              : undefined,
           },
         });
       } catch (err) {
@@ -192,10 +200,10 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
 
   // ── Management (authenticated) ──
 
-  fastify.get('/auth/passkey/list', { preHandler }, async (request) => {
+  fastify.get('/auth/passkey/list', { preHandler }, async request => {
     const { userId } = (request as AuthenticatedRequest).user;
     const passkeys = await getPasskeysByUserId(userId);
-    return passkeys.map((pk) => ({ id: pk.id, name: pk.name, createdAt: pk.createdAt }));
+    return passkeys.map(pk => ({ id: pk.id, name: pk.name, createdAt: pk.createdAt }));
   });
 
   fastify.delete<{ Params: { id: string } }>('/auth/passkey/:id', { preHandler }, async (request, reply) => {

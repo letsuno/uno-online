@@ -2,13 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Badge } from '@/components/Badge';
 
-type DataAccess =
-  | 'candidate-features'
-  | 'public-state'
-  | 'own-hand'
-  | 'opponent-hands'
-  | 'draw-piles'
-  | 'chat-history';
+type DataAccess = 'candidate-features' | 'public-state' | 'own-hand' | 'opponent-hands' | 'draw-piles' | 'chat-history';
 
 interface AiPluginInfo {
   id: string;
@@ -75,10 +69,12 @@ export default function AiPluginsPage() {
   const updateEnabled = async (plugin: AiPluginInfo) => {
     setBusyId(plugin.id);
     try {
-      setSnapshot(await apiFetch<RegistrySnapshot>(`/admin/ai-plugins/${encodeURIComponent(plugin.id)}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ enabled: !plugin.enabled }),
-      }));
+      setSnapshot(
+        await apiFetch<RegistrySnapshot>(`/admin/ai-plugins/${encodeURIComponent(plugin.id)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ enabled: !plugin.enabled }),
+        }),
+      );
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '更新插件状态失败');
     } finally {
@@ -95,11 +91,7 @@ export default function AiPluginsPage() {
         <div className="mt-1 text-amber-200/80">数据权限仅用于功能和公平性标识，不提供安全隔离。</div>
       </div>
 
-      {error && (
-        <div className="rounded border border-red-700 bg-red-900/40 px-4 py-3 text-red-300">
-          {error}
-        </div>
-      )}
+      {error && <div className="rounded border border-red-700 bg-red-900/40 px-4 py-3 text-red-300">{error}</div>}
 
       {!snapshot ? (
         <div className="text-slate-400">正在读取...</div>
@@ -112,7 +104,9 @@ export default function AiPluginsPage() {
             </div>
             <div>
               <span className="text-slate-400">插件目录</span>
-              <div className="mt-1 break-all font-mono text-xs text-slate-200">{snapshot.communityPluginsDirectory}</div>
+              <div className="mt-1 break-all font-mono text-xs text-slate-200">
+                {snapshot.communityPluginsDirectory}
+              </div>
             </div>
           </div>
 
@@ -125,7 +119,7 @@ export default function AiPluginsPage() {
             </div>
 
             <div className="divide-y divide-slate-700/80">
-              {snapshot.providers.map((plugin) => (
+              {snapshot.providers.map(plugin => (
                 <div
                   key={plugin.id}
                   className={`px-4 py-4 transition-colors ${plugin.enabled ? 'bg-slate-800' : 'bg-slate-900/45'}`}
@@ -136,28 +130,31 @@ export default function AiPluginsPage() {
                         <h4 className={`font-semibold ${plugin.enabled ? 'text-white' : 'text-slate-400'}`}>
                           {plugin.displayName}
                         </h4>
-                        <Badge variant={fairnessVariants[plugin.fairness]}>
-                          {fairnessLabels[plugin.fairness]}
-                        </Badge>
+                        <Badge variant={fairnessVariants[plugin.fairness]}>{fairnessLabels[plugin.fairness]}</Badge>
                         <Badge variant="secondary">
                           {plugin.source === 'builtin' ? '内建' : '社区'} · {plugin.usesOnnx ? 'ONNX' : '决策脚本'}
                         </Badge>
                       </div>
                       <p className="mt-1 truncate font-mono text-xs text-slate-500">
-                        {plugin.id} · v{plugin.version} · {plugin.capabilities.minPlayers}–{plugin.capabilities.maxPlayers} 人
+                        {plugin.id} · v{plugin.version} · {plugin.capabilities.minPlayers}–
+                        {plugin.capabilities.maxPlayers} 人
                       </p>
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
                         <span className="mr-1 text-xs text-slate-500">数据权限</span>
                         {plugin.dataAccess.length === 0 ? (
                           <Badge variant="secondary">仅候选 ID</Badge>
-                        ) : plugin.dataAccess.map(permission => (
-                          <Badge
-                            key={permission}
-                            variant={permission === 'opponent-hands' || permission === 'draw-piles' ? 'danger' : 'secondary'}
-                          >
-                            {permissionLabels[permission]}
-                          </Badge>
-                        ))}
+                        ) : (
+                          plugin.dataAccess.map(permission => (
+                            <Badge
+                              key={permission}
+                              variant={
+                                permission === 'opponent-hands' || permission === 'draw-piles' ? 'danger' : 'secondary'
+                              }
+                            >
+                              {permissionLabels[permission]}
+                            </Badge>
+                          ))
+                        )}
                       </div>
                     </div>
 

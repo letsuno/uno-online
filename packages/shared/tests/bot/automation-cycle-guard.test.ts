@@ -59,11 +59,13 @@ describe('AutomationCycleGuard', () => {
   it('allows two identical tactics and avoids only the demonstrated third transition', () => {
     const { state, recycledSkip } = recycledActionCardState();
     const guard = new AutomationCycleGuard();
-    const preferred = [{
-      type: 'PLAY_CARD' as const,
-      playerId: 'p1',
-      cardId: recycledSkip.id,
-    }];
+    const preferred = [
+      {
+        type: 'PLAY_CARD' as const,
+        playerId: 'p1',
+        cardId: recycledSkip.id,
+      },
+    ];
     const after = applyActionWithHouseRules(state, preferred[0]!);
 
     expect(after).not.toBe(state);
@@ -80,11 +82,13 @@ describe('AutomationCycleGuard', () => {
     const legal = enumerateLegalActionPlans(state, 'p1', { kind: 'turn' });
     const filtered = guard.filterLegalActions(state, legal);
     expect(filtered.plans).not.toContainEqual(preferred);
-    expect(filtered.plans).toContainEqual([{
-      type: 'PLAY_CARD',
-      playerId: 'p1',
-      cardId: state.players[0]!.hand[1]!.id,
-    }]);
+    expect(filtered.plans).toContainEqual([
+      {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: state.players[0]!.hand[1]!.id,
+      },
+    ]);
     expect(filtered.plans).toContainEqual([{ type: 'PASS', playerId: 'p1' }]);
 
     const guardedChoice = chooseAutopilotAction(state, 'p1', guard);
@@ -98,11 +102,13 @@ describe('AutomationCycleGuard', () => {
   it('avoids convergence to a repeated after-state from a different before-state', () => {
     const { state, recycledSkip } = recycledActionCardState();
     const guard = new AutomationCycleGuard();
-    const plan = [{
-      type: 'PLAY_CARD' as const,
-      playerId: 'p1',
-      cardId: recycledSkip.id,
-    }];
+    const plan = [
+      {
+        type: 'PLAY_CARD' as const,
+        playerId: 'p1',
+        cardId: recycledSkip.id,
+      },
+    ];
     const secondBefore = {
       ...state,
       lastAction: { type: 'DRAW_CARD' as const, playerId: 'p1', side: 'right' as const },
@@ -127,9 +133,7 @@ describe('AutomationCycleGuard', () => {
 
     const differentAfterState = {
       ...thirdBefore,
-      players: thirdBefore.players.map((player, index) => (
-        index === 1 ? { ...player, calledUno: true } : player
-      )),
+      players: thirdBefore.players.map((player, index) => (index === 1 ? { ...player, calledUno: true } : player)),
     };
     expect(guard.shouldAvoidPlan(differentAfterState, plan)).toBe(false);
     expect(chooseAutopilotAction(differentAfterState, 'p1', guard)).toEqual(plan);
@@ -138,11 +142,13 @@ describe('AutomationCycleGuard', () => {
   it('resets bounded history when the round number changes', () => {
     const { state, recycledSkip } = recycledActionCardState();
     const guard = new AutomationCycleGuard();
-    const plan = [{
-      type: 'PLAY_CARD' as const,
-      playerId: 'p1',
-      cardId: recycledSkip.id,
-    }];
+    const plan = [
+      {
+        type: 'PLAY_CARD' as const,
+        playerId: 'p1',
+        cardId: recycledSkip.id,
+      },
+    ];
     const after = applyActionWithHouseRules(state, plan[0]!);
     guard.recordTransition(state, plan, after);
     guard.recordTransition(state, plan, after);

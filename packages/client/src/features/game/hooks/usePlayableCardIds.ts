@@ -7,35 +7,35 @@ import { canRespondToDrawStack } from '@uno-online/shared';
 
 export function usePlayableCardIds(): Set<string> {
   const userId = useEffectiveUserId();
-  const myHand = useGameStore((s) => s.players.find((p) => p.id === userId)?.hand);
-  const topCard = useGameStore((s) => s.discardPile[s.discardPile.length - 1]);
-  const currentColor = useGameStore((s) => s.currentColor);
-  const drawStack = useGameStore((s) => s.drawStack);
-  const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
-  const pendingDrawPlayerId = useGameStore((s) => s.pendingDrawPlayerId);
-  const settings = useGameStore((s) => s.settings);
-  const phase = useGameStore((s) => s.phase);
+  const myHand = useGameStore(s => s.players.find(p => p.id === userId)?.hand);
+  const topCard = useGameStore(s => s.discardPile[s.discardPile.length - 1]);
+  const currentColor = useGameStore(s => s.currentColor);
+  const drawStack = useGameStore(s => s.drawStack);
+  const pendingPenaltyDraws = useGameStore(s => s.pendingPenaltyDraws);
+  const pendingDrawPlayerId = useGameStore(s => s.pendingDrawPlayerId);
+  const settings = useGameStore(s => s.settings);
+  const phase = useGameStore(s => s.phase);
   const isMyTurn = useIsMyTurn();
 
   return useMemo(() => {
+    if (!settings || !myHand) return new Set<string>();
     if (phase === 'challenging' && pendingDrawPlayerId === userId && topCard) {
-      const hr = settings?.houseRules;
-      const ids = (myHand ?? []).filter(c => canRespondToDrawStack(c, topCard, hr)).map(c => c.id);
+      const ids = myHand.filter(c => canRespondToDrawStack(c, topCard, settings.houseRules)).map(c => c.id);
       return new Set(ids);
     }
     if (phase !== 'playing') return new Set<string>();
     if (!isMyTurn) {
-      if (!settings?.houseRules?.jumpIn) return new Set<string>();
+      if (!settings.houseRules.jumpIn) return new Set<string>();
       if (pendingPenaltyDraws > 0 || drawStack > 0) return new Set<string>();
-      return getJumpInCardIds(myHand ?? [], topCard);
+      return getJumpInCardIds(myHand, topCard);
     }
     if (pendingPenaltyDraws > 0) return new Set<string>();
     return getPlayableCardIds({
-      hand: myHand ?? [],
+      hand: myHand,
       topCard,
       currentColor,
       drawStack,
-      houseRules: settings?.houseRules,
+      houseRules: settings.houseRules,
     });
   }, [currentColor, drawStack, isMyTurn, myHand, pendingPenaltyDraws, phase, settings?.houseRules, topCard]);
 }

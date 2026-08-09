@@ -1,19 +1,31 @@
 import { create } from 'zustand';
 import { apiFetch } from '@/lib/api';
 
+type UserRole = 'normal' | 'member' | 'vip' | 'admin';
+
 interface User {
   id: string;
   username: string;
   nickname: string;
-  role: string;
+  role: UserRole;
 }
 
 interface JwtPayload {
   userId: string;
   username: string;
   nickname: string;
-  role: string;
+  role: UserRole;
   exp: number;
+}
+
+const USER_ROLES = new Set<UserRole>(['normal', 'member', 'vip', 'admin']);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isUserRole(value: unknown): value is UserRole {
+  return typeof value === 'string' && USER_ROLES.has(value as UserRole);
 }
 
 function decodeJwt(token: string): JwtPayload | null {
@@ -22,7 +34,27 @@ function decodeJwt(token: string): JwtPayload | null {
     if (parts.length !== 3) return null;
     const payload = parts[1]!;
     const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-    return JSON.parse(decoded) as JwtPayload;
+    const value: unknown = JSON.parse(decoded);
+    if (
+      !isRecord(value) ||
+      typeof value['userId'] !== 'string' ||
+      value['userId'].length === 0 ||
+      typeof value['username'] !== 'string' ||
+      value['username'].length === 0 ||
+      typeof value['nickname'] !== 'string' ||
+      value['nickname'].length === 0 ||
+      !isUserRole(value['role']) ||
+      typeof value['exp'] !== 'number' ||
+      !Number.isSafeInteger(value['exp'])
+    )
+      return null;
+    return {
+      userId: value['userId'],
+      username: value['username'],
+      nickname: value['nickname'],
+      role: value['role'],
+      exp: value['exp'],
+    };
   } catch {
     return null;
   }
@@ -43,7 +75,7 @@ interface AuthState {
   init: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>(set => ({
   token: null,
   user: null,
   error: null,
@@ -67,7 +99,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   init: () => {
-    const token = localStorage.getItem('admin_token') ?? localStorage.getItem('token');
+    const token = localStorage.getItem('admin_token');
     if (!token) return;
     const payload = decodeJwt(token);
     if (!payload || payload.exp * 1000 < Date.now()) {

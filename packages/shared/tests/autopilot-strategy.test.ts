@@ -44,9 +44,7 @@ describe('chooseAutopilotAction after drawing', () => {
       },
     });
 
-    expect(chooseAutopilotAction(state, 'p1')).toEqual([
-      { type: 'DRAW_CARD', playerId: 'p1', side: 'left' },
-    ]);
+    expect(chooseAutopilotAction(state, 'p1')).toEqual([{ type: 'DRAW_CARD', playerId: 'p1', side: 'left' }]);
   });
 
   it('plays a playable drawn card instead of passing', () => {
@@ -59,9 +57,7 @@ describe('chooseAutopilotAction after drawing', () => {
       lastAction: { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const },
     });
 
-    expect(chooseAutopilotAction(state, 'p1')).toEqual([
-      { type: 'PLAY_CARD', playerId: 'p1', cardId: 'drawn_red_9' },
-    ]);
+    expect(chooseAutopilotAction(state, 'p1')).toEqual([{ type: 'PLAY_CARD', playerId: 'p1', cardId: 'drawn_red_9' }]);
   });
 
   it('may play the final recycled card before recurrence is observed', () => {
@@ -127,9 +123,7 @@ describe('chooseAutopilotAction after drawing', () => {
       lastAction: { type: 'DRAW_CARD', playerId: 'p1', side: 'left' as const },
     });
 
-    expect(chooseAutopilotAction(state, 'p1')).toEqual([
-      { type: 'PASS', playerId: 'p1' },
-    ]);
+    expect(chooseAutopilotAction(state, 'p1')).toEqual([{ type: 'PASS', playerId: 'p1' }]);
   });
 
   it('keeps drawing after drawing an unplayable card in draw-until-playable mode', () => {
@@ -207,10 +201,21 @@ describe('chooseAutopilotAction with wild_draw_four and stacking', () => {
     const wd4 = makeCard('wild_draw_four', null, { id: 'wd4' });
     const state = makeState({
       drawStack: 4,
-      discardPile: [makeCard('number', 'red', { value: 1, id: 'base' }), makeCard('wild_draw_four', null, { id: 'top_wd4' })],
+      discardPile: [
+        makeCard('number', 'red', { value: 1, id: 'base' }),
+        makeCard('wild_draw_four', null, { id: 'top_wd4' }),
+      ],
       players: [
         { id: 'p1', name: 'Alice', hand: [wd4], score: 0, connected: true, autopilot: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'red', { value: 1, id: 'r1' })], score: 0, connected: true, autopilot: false, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'red', { value: 1, id: 'r1' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -237,7 +242,15 @@ describe('chooseAutopilotAction with wild_draw_four and stacking', () => {
       drawStack: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [wd4], score: 0, connected: true, autopilot: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'red', { value: 1, id: 'r1' })], score: 0, connected: true, autopilot: false, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'red', { value: 1, id: 'r1' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -261,7 +274,15 @@ describe('chooseAutopilotAction with wild_draw_four and stacking', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [wd4, blue], score: 0, connected: true, autopilot: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'red', { value: 1, id: 'r1' })], score: 0, connected: true, autopilot: false, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'red', { value: 1, id: 'r1' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+        },
       ],
     });
 

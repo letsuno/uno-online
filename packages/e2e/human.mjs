@@ -18,20 +18,20 @@ async function newHumanContext(browser, { width, height, touch = false, token = 
     hasTouch: touch,
     isMobile: touch,
   });
-  await context.addInitScript((t) => {
+  await context.addInitScript(t => {
     if (t) localStorage.setItem('token', t);
     sessionStorage.setItem('start-screen-passed', '1');
     localStorage.setItem('tutorialShown', 'true');
     localStorage.setItem('notificationPromptDismissed', 'true');
   }, token);
-  await context.addInitScript((v) => localStorage.setItem('app-last-seen-version', v), CLIENT_VERSION);
+  await context.addInitScript(v => localStorage.setItem('app-last-seen-version', v), CLIENT_VERSION);
   const page = await context.newPage();
   const errors = [];
-  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
-  page.on('console', (m) => {
+  page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
+  page.on('console', m => {
     if (m.type() !== 'error') return;
     const text = m.text();
-    if (text.includes('64737') || (text.includes('404') && (m.location()?.url ?? '').includes('/api/profile'))) return;
+    if (text.includes('WebSocket connection') && text.includes('64737')) return;
     errors.push(`console.error: ${text}`);
   });
   return { page, context, errors };
@@ -65,7 +65,9 @@ async function humanClick(page, point, label) {
   const vw = page.viewportSize().width;
   const vh = page.viewportSize().height;
   if (point.x < 0 || point.y < 0 || point.x > vw || point.y > vh) {
-    throw new Error(`${label} 中心坐标 (${Math.round(point.x)},${Math.round(point.y)}) 超出屏幕 ${vw}x${vh}——真人无法点击`);
+    throw new Error(
+      `${label} 中心坐标 (${Math.round(point.x)},${Math.round(point.y)}) 超出屏幕 ${vw}x${vh}——真人无法点击`,
+    );
   }
   await page.mouse.move(point.x, point.y, { steps: 6 });
   await page.mouse.down();
@@ -82,11 +84,12 @@ async function dismissFloating(page, touch) {
   await page.waitForTimeout(400);
 }
 
-const roomState = (page) => page.evaluate(() => {
-  const r = window.__uno.useRoomStore.getState();
-  const seated = r.seats.filter(Boolean);
-  return { seated: seated.length, allReady: seated.length >= 2 && seated.every((p) => p.ready) };
-});
+const roomState = page =>
+  page.evaluate(() => {
+    const r = window.__uno.useRoomStore.getState();
+    const seated = r.seats.filter(Boolean);
+    return { seated: seated.length, allReady: seated.length >= 2 && seated.every(p => p.ready) };
+  });
 
 async function shot(page, name) {
   const file = `output/human-${name}.png`;
@@ -94,35 +97,43 @@ async function shot(page, name) {
   shots.push(file);
 }
 
-const state = (page) => page.evaluate(() => {
-  const s = window.__uno.useGameStore.getState();
-  const me = s.players.find((p) => p.id === s.viewerId);
-  return {
-    phase: s.phase,
-    isMyTurn: s.players[s.currentPlayerIndex]?.id === s.viewerId,
-    handCount: me?.handCount ?? 0,
-    hand: (me?.hand ?? []).map((c) => c.id),
-    hasDrawnThisTurn: s.hasDrawnThisTurn,
-    currentColor: s.currentColor,
-    topCard: s.discardPile[s.discardPile.length - 1] ?? null,
-    drawStack: (s.drawStack ?? 0) + (s.pendingPenaltyDraws ?? 0),
-  };
-});
-
-const pickPlayableId = (page) => page.evaluate(() => {
-  const s = window.__uno.useGameStore.getState();
-  const me = s.players.find((p) => p.id === s.viewerId);
-  const top = s.discardPile[s.discardPile.length - 1];
-  const stack = (s.drawStack ?? 0) + (s.pendingPenaltyDraws ?? 0);
-  const playable = (me?.hand ?? []).filter((c) => {
-    if (stack > 0) return c.type === 'draw_two' || c.type === 'wild_draw_four';
-    return c.type === 'wild' || c.type === 'wild_draw_four' ||
-      c.color === s.currentColor ||
-      (top && c.type === 'number' && top.type === 'number' && c.value === top.value) ||
-      (top && c.type === top.type && c.type !== 'number');
+const state = page =>
+  page.evaluate(() => {
+    const s = window.__uno.useGameStore.getState();
+    const me = s.players.find(p => p.id === s.viewerId);
+    const topCard = s.discardPile[s.discardPile.length - 1];
+    return {
+      phase: s.phase,
+      isMyTurn: s.players[s.currentPlayerIndex]?.id === s.viewerId,
+      handCount: me?.handCount ?? 0,
+      hand: (me?.hand ?? []).map(c => c.id),
+      hasDrawnThisTurn: s.hasDrawnThisTurn,
+      currentColor: s.currentColor,
+      topCard: topCard ?? null,
+      drawStack: s.drawStack + s.pendingPenaltyDraws,
+    };
   });
-  return playable[0]?.id ?? null;
-});
+
+const pickPlayableId = page =>
+  page.evaluate(() => {
+    const s = window.__uno.useGameStore.getState();
+    const me = s.players.find(p => p.id === s.viewerId);
+    if (!me) throw new Error('当前 PlayerView 中缺少 viewer 玩家');
+    const top = s.discardPile[s.discardPile.length - 1];
+    if (!top) throw new Error('当前 PlayerView 中缺少弃牌堆顶牌');
+    const stack = s.drawStack + s.pendingPenaltyDraws;
+    const playable = me.hand.filter(c => {
+      if (stack > 0) return c.type === 'draw_two' || c.type === 'wild_draw_four';
+      return (
+        c.type === 'wild' ||
+        c.type === 'wild_draw_four' ||
+        c.color === s.currentColor ||
+        (top && c.type === 'number' && top.type === 'number' && c.value === top.value) ||
+        (top && c.type === top.type && c.type !== 'number')
+      );
+    });
+    return playable[0]?.id ?? null;
+  });
 
 /** 等某个 store 条件成立 */
 async function waitState(page, desc, fn, timeoutMs = 12000) {
@@ -187,7 +198,7 @@ async function runScenario(browser, { tag, width, height, touch }) {
     await dismissFloating(p, touch);
     await tap(await centerOf(p, `button[title="${seatTitle}"]`), seatTitle);
     await p.waitForTimeout(500);
-    await tap(await centerOf(p, 'div.glass-panel-sm >> text=简单', { timeout: 3000 }), 'Bot 难度-简单');
+    await tap(await centerOf(p, 'div.glass-panel-sm >> text=Easy', { timeout: 3000 }), 'Bot 难度-Easy');
     await p.waitForTimeout(800);
   }
   await dismissFloating(p, touch);
@@ -207,10 +218,12 @@ async function runScenario(browser, { tag, width, height, touch }) {
   // ── 5. 开始游戏 ──
   await dismissFloating(p, touch);
   await tap(await centerOf(p, 'button:has-text("开始游戏")'), '开始游戏按钮');
-  await waitState(p, '进入对局', (s) => s.phase === 'playing' || s.phase === 'choosing_color');
+  await waitState(p, '进入对局', s => s.phase === 'playing' || s.phase === 'choosing_color');
   await p.waitForTimeout(1200);
   // 关闭「本局规则已载入」弹窗（点其主按钮）
-  const rulesBtn = await centerOf(p, 'div.glass-panel button:has-text("开始游戏")', { timeout: 2500 }).catch(() => null);
+  const rulesBtn = await centerOf(p, 'div.glass-panel button:has-text("开始游戏")', { timeout: 2500 }).catch(
+    () => null,
+  );
   if (rulesBtn) await tap(rulesBtn, '规则弹窗-开始游戏');
   await p.waitForTimeout(600);
   await shot(p, `${tag}-6-game`);
@@ -220,7 +233,7 @@ async function runScenario(browser, { tag, width, height, touch }) {
   if (touch) {
     const oppId = await p.evaluate(() => {
       const s = window.__uno.useGameStore.getState();
-      return s.players.find((pl) => pl.id !== s.viewerId)?.id ?? null;
+      return s.players.find(pl => pl.id !== s.viewerId)?.id ?? null;
     });
     // 关闭开局弹窗的退出动画有短暂遮罩残留，点击可能被吞——失败重试一次（真人同理会再点）
     let hasPicker = false;
@@ -228,7 +241,9 @@ async function runScenario(browser, { tag, width, height, touch }) {
       const opp = oppId ? await centerOf(p, `[data-player-id="${oppId}"]`, { timeout: 4000 }).catch(() => null) : null;
       await tap(opp, '对手卡片');
       await p.waitForTimeout(700);
-      hasPicker = await p.evaluate(() => document.body.textContent.includes('番茄') || document.body.textContent.includes('鸡蛋'));
+      hasPicker = await p.evaluate(
+        () => document.body.textContent.includes('番茄') || document.body.textContent.includes('鸡蛋'),
+      );
     }
     if (!hasPicker) throw new Error('对手投掷选择器未打开');
     await shot(p, `${tag}-6b-opponent`);
@@ -267,13 +282,18 @@ async function runScenario(browser, { tag, width, height, touch }) {
       continue;
     }
     if (st.phase !== 'playing') break;
-    if (!st.isMyTurn) { await p.waitForTimeout(400); continue; }
+    if (!st.isMyTurn) {
+      await p.waitForTimeout(400);
+      continue;
+    }
 
     const cardId = await pickPlayableId(p);
     if (cardId) {
       // 真人会先把手牌滑到目标牌，再点——先滚入视野再取坐标
-      await p.evaluate((id) => {
-        document.querySelector(`[data-card-id="${id}"]`)?.scrollIntoView({ behavior: 'instant', inline: 'nearest', block: 'nearest' });
+      await p.evaluate(id => {
+        document
+          .querySelector(`[data-card-id="${id}"]`)
+          ?.scrollIntoView({ behavior: 'instant', inline: 'nearest', block: 'nearest' });
       }, cardId);
       await p.waitForTimeout(300);
       const pt = await centerOf(p, `[data-card-id="${cardId}"]`).catch(() => null);
@@ -330,8 +350,7 @@ async function runScenario(browser, { tag, width, height, touch }) {
     console.log('  ✓ 菜单 BottomSheet 打开并切换音效');
   }
 
-  const realErrors = errors.filter((e) => !e.includes('64737') && !e.includes('/api/profile'));
-  if (realErrors.length > 0) throw new Error(`console 错误: ${realErrors[0]}`);
+  if (errors.length > 0) throw new Error(`console 错误: ${errors[0]}`);
   await ctx.close();
 }
 

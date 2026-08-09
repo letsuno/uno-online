@@ -2,8 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TurnTimer } from '../../src/plugins/core/game/turn-timer';
 
 describe('TurnTimer', () => {
-  beforeEach(() => { vi.useFakeTimers(); });
-  afterEach(() => { vi.useRealTimers(); });
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it('calls onTimeout after the specified duration', () => {
     const onTimeout = vi.fn();
@@ -34,6 +38,20 @@ describe('TurnTimer', () => {
     vi.advanceTimersByTime(30_000);
     expect(onTimeout1).not.toHaveBeenCalled();
     expect(onTimeout2).toHaveBeenCalledOnce();
+  });
+
+  it('invalidates the generation of a callback that has already started', () => {
+    const timer = new TurnTimer();
+    const firstGeneration = timer.start('ROOM01', 1, () => {});
+    vi.advanceTimersByTime(1_000);
+    expect(timer.isGenerationCurrent('ROOM01', firstGeneration)).toBe(true);
+
+    const nextGeneration = timer.start('ROOM01', 30, () => {});
+    expect(timer.isGenerationCurrent('ROOM01', firstGeneration)).toBe(false);
+    expect(timer.isGenerationCurrent('ROOM01', nextGeneration)).toBe(true);
+
+    timer.stop('ROOM01');
+    expect(timer.isGenerationCurrent('ROOM01', nextGeneration)).toBe(false);
   });
 
   it('manages multiple rooms independently', () => {

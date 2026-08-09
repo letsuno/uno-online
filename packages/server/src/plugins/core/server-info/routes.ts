@@ -13,14 +13,14 @@ export function registerServerInfoRoutes(fastify: FastifyInstance, ctx: PluginCo
     void reply.header('Access-Control-Allow-Origin', '*');
 
     const roomKeys = await kv.keys('room:*');
-    const roomCodes = new Set(roomKeys.map(k => k.split(':')[1]!));
+    const roomCodes = roomKeys.filter(key => /^room:[^:]+$/u.test(key)).map(key => key.slice('room:'.length));
 
     const info: ServerInfo = {
       name: config.serverName,
       version: pkg.version,
       motd: config.serverMotd,
       onlinePlayers: io.engine.clientsCount,
-      activeRooms: roomCodes.size,
+      activeRooms: roomCodes.length,
       uptime: Math.floor(process.uptime()),
     };
 

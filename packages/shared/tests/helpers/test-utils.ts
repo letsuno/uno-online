@@ -8,12 +8,18 @@ import { DEFAULT_HOUSE_RULES } from '../../src/types/house-rules';
 export function makeCard(type: Card['type'], color: Color | null, extra?: { value?: number; id?: string }): Card {
   const id = extra?.id ?? `card_${Math.random().toString(36).slice(2, 8)}`;
   switch (type) {
-    case 'number': return { id, type, color: color as Color, value: extra?.value ?? 0 };
-    case 'skip': return { id, type, color: color as Color };
-    case 'reverse': return { id, type, color: color as Color };
-    case 'draw_two': return { id, type, color: color as Color };
-    case 'wild': return { id, type, color: null };
-    case 'wild_draw_four': return { id, type, color: null };
+    case 'number':
+      return { id, type, color: color as Color, value: extra?.value ?? 0 };
+    case 'skip':
+      return { id, type, color: color as Color };
+    case 'reverse':
+      return { id, type, color: color as Color };
+    case 'draw_two':
+      return { id, type, color: color as Color };
+    case 'wild':
+      return { id, type, color: null };
+    case 'wild_draw_four':
+      return { id, type, color: null };
   }
 }
 
@@ -25,9 +31,45 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
   const defaults: GameState = {
     phase: 'playing',
     players: [
-      { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
-      { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
-      { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
+      {
+        id: 'p1',
+        name: 'Alice',
+        hand: [],
+        score: 0,
+        roundWins: 0,
+        connected: true,
+        autopilot: false,
+        calledUno: false,
+        unoCaught: false,
+        eliminated: false,
+        isBot: false,
+      },
+      {
+        id: 'p2',
+        name: 'Bob',
+        hand: [],
+        score: 0,
+        roundWins: 0,
+        connected: true,
+        autopilot: false,
+        calledUno: false,
+        unoCaught: false,
+        eliminated: false,
+        isBot: false,
+      },
+      {
+        id: 'p3',
+        name: 'Carol',
+        hand: [],
+        score: 0,
+        roundWins: 0,
+        connected: true,
+        autopilot: false,
+        calledUno: false,
+        unoCaught: false,
+        eliminated: false,
+        isBot: false,
+      },
     ],
     currentPlayerIndex: 0,
     direction: 'clockwise',
@@ -56,7 +98,15 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
       houseRules: DEFAULT_HOUSE_RULES,
     },
   };
-  return { ...defaults, ...overrides };
+  const players = (overrides.players ?? defaults.players).map(player => ({
+    roundWins: 0,
+    autopilot: false,
+    unoCaught: false,
+    eliminated: false,
+    isBot: false,
+    ...player,
+  }));
+  return { ...defaults, ...overrides, players };
 }
 
 /**
@@ -68,7 +118,7 @@ export function drawPendingPenalty(
   applyFn: (state: GameState, action: GameAction) => GameState,
 ): GameState {
   let current = state;
-  while ((current.pendingPenaltyDraws ?? 0) > 0) {
+  while (current.pendingPenaltyDraws > 0) {
     const playerId = current.players[current.currentPlayerIndex]!.id;
     current = applyFn(current, { type: 'DRAW_CARD', playerId, side: 'left' as const });
   }

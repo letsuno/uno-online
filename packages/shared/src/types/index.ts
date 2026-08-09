@@ -8,4 +8,21 @@ export * from './event.js';
 export * from './chat.js';
 export * from './room.js';
 export type { PlayerView, PlayerViewPlayer } from './player-view.js';
-export type { ServerToClientEvents, ClientToServerEvents, SocketCallbackResult, ActiveRoomInfo, AiProviderInfo, AiProviderListResult } from './socket-events.js';
+export type {
+  ServerToClientEvents,
+  ClientToServerEvents,
+  SocketResult,
+  SocketCallbackResult,
+  RoomLeaveResult,
+  BackToRoomResult,
+  RoomCreateResult,
+  RoomJoinResult,
+  RoomRejoinResult,
+  RoomMembershipEndReason,
+  ActiveRoomInfo,
+  AiProviderInfo,
+  AiProviderListResult,
+  VoicePresence,
+  SpectatorQueueEntry,
+  SpectatorInfo,
+} from './socket-events.js';

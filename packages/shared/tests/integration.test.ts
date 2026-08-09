@@ -16,15 +16,10 @@ function playOneRound(state: GameState, maxTurns = 500): GameState {
     }
   }
 
-  while (
-    current.phase !== 'round_end' &&
-    current.phase !== 'game_over' &&
-    turns < maxTurns
-  ) {
+  while (current.phase !== 'round_end' && current.phase !== 'game_over' && turns < maxTurns) {
     turns++;
-    const playerId = current.phase === 'challenging'
-      ? current.pendingDrawPlayerId!
-      : current.players[current.currentPlayerIndex]!.id;
+    const playerId =
+      current.phase === 'challenging' ? current.pendingDrawPlayerId! : current.players[current.currentPlayerIndex]!.id;
     const actions = chooseAutopilotAction(current, playerId);
     if (actions.length === 0) break;
 

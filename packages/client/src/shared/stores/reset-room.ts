@@ -5,13 +5,14 @@ import { useChatStore } from '@/features/game/stores/chat-store';
 import { useGameLogStore } from '@/features/game/stores/game-log-store';
 import { leaveVoiceSession } from '@/shared/voice/voice-runtime';
 import { clearRoomJoinRecord } from '@/shared/room-join-tracker';
+import { clearSuspendedRoom } from './suspended-room-store';
 
 /**
  * Reset all client-side room/game/voice state. Use this on the boundary where
  * the user is no longer in any room — voluntary leave, kicked, room dissolved,
  * cheat detected, auth failure. Pure side effects, no navigation.
  */
-export function resetClientRoomState(): void {
+export function resetClientRoomState(options?: { preserveSuspendedRoom?: boolean }): void {
   useRoomStore.getState().clearRoom();
   useGameStore.getState().clearGame();
   useSpectatorStore.getState().clearSpectators();
@@ -21,5 +22,6 @@ export function resetClientRoomState(): void {
   useChatStore.getState().clearMessages();
   useGameLogStore.getState().clear();
   clearRoomJoinRecord();
+  if (!options?.preserveSuspendedRoom) clearSuspendedRoom();
   leaveVoiceSession();
 }

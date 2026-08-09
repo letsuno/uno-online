@@ -1,10 +1,18 @@
 import type { FastifyInstance } from 'fastify';
 import type { PluginContext } from '../../../plugin-context.js';
-import { authPreHandler } from '../auth/service.js';
+import { authPreHandler, currentUserRole } from '../auth/service.js';
 import type { AuthenticatedRequest } from '../auth/service.js';
 import { getUserById, updateNickname, updateAvatar, updateUsername, resolveAvatar } from '../../../db/user-repo.js';
 import { validateNickname, validateUsername } from '../../../auth/validation.js';
 import { processAvatar, AvatarError } from '../../../auth/avatar.js';
+
+const SQLITE_CONSTRAINT_UNIQUE = 2067;
+
+function isSqliteUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === 'object' && error !== null && 'errcode' in error && error.errcode === SQLITE_CONSTRAINT_UNIQUE
+  );
+}
 
 export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const { config } = ctx;
@@ -13,16 +21,16 @@ export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginConte
   // 让个人资料弹窗在开发/测试环境可用（PATCH/头像上传等写操作不注册）
   if (config.devMode) {
     const devPreHandler = authPreHandler(config.jwtSecret);
-    fastify.get('/profile', { preHandler: devPreHandler }, async (request) => {
+    fastify.get('/profile', { preHandler: devPreHandler }, async request => {
       const u = (request as AuthenticatedRequest).user;
       return {
         user: {
           id: u.userId,
           username: u.username,
           nickname: u.nickname,
-          avatarUrl: u.avatarUrl ?? null,
+          avatarUrl: u.avatarUrl,
           githubId: null,
-          role: u.role ?? 'normal',
+          role: u.role,
         },
       };
     });
@@ -68,33 +76,40 @@ export function registerProfileRoutes(fastify: FastifyInstance, ctx: PluginConte
         nickname: user.nickname,
         avatarUrl: resolveAvatar(user),
         githubId: user.githubId ?? null,
-        role: user.role ?? 'normal',
+        role: currentUserRole(user.role),
       },
     };
   });
 
-  fastify.patch<{ Body: { nickname?: string; username?: string } }>('/profile', { preHandler }, async (request, reply) => {
-    const { userId } = (request as AuthenticatedRequest).user;
-    const { nickname, username } = request.body;
+  fastify.patch<{ Body: { nickname?: string; username?: string } }>(
+    '/profile',
+    { preHandler },
+    async (request, reply) => {
+      const { userId } = (request as AuthenticatedRequest).user;
+      const { nickname, username } = request.body;
 
-    if (nickname !== undefined) {
-      const nv = validateNickname(nickname);
-      if (!nv.valid) return reply.code(400).send({ error: nv.error });
-      await updateNickname(userId, nickname.trim());
-    }
-
-    if (username !== undefined) {
-      const uv = validateUsername(username);
-      if (!uv.valid) return reply.code(400).send({ error: uv.error });
-      try {
-        await updateUsername(userId, username);
-      } catch {
-        return reply.code(409).send({ error: '用户名已被使用' });
+      if (nickname !== undefined) {
+        const nv = validateNickname(nickname);
+        if (!nv.valid) return reply.code(400).send({ error: nv.error });
+        await updateNickname(userId, nickname.trim());
       }
-    }
 
-    return { success: true };
-  });
+      if (username !== undefined) {
+        const uv = validateUsername(username);
+        if (!uv.valid) return reply.code(400).send({ error: uv.error });
+        try {
+          await updateUsername(userId, username);
+        } catch (error) {
+          if (isSqliteUniqueConstraintError(error)) {
+            return reply.code(409).send({ error: '用户名已被使用' });
+          }
+          throw new Error('更新用户名失败', { cause: error });
+        }
+      }
+
+      return { success: true };
+    },
+  );
 
   fastify.post<{ Body: { avatar: string } }>(
     '/profile/avatar',

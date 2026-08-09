@@ -10,12 +10,13 @@ function formatSeconds(total: number): string {
 }
 
 export default function BlitzTimer() {
-  const phase = useGameStore((s) => s.phase);
-  const gameStartedAt = useGameStore((s) => s.gameStartedAt);
-  const blitzLimit = useGameStore((s) => s.settings?.houseRules?.blitzTimeLimit ?? null);
-  const endTime = gameStartedAt && blitzLimit && phase !== 'round_end' && phase !== 'game_over'
-    ? gameStartedAt + blitzLimit * 1000
-    : null;
+  const phase = useGameStore(s => s.phase);
+  const gameStartedAt = useGameStore(s => s.gameStartedAt);
+  const blitzLimit = useGameStore(s => s.settings?.houseRules.blitzTimeLimit ?? null);
+  const endTime =
+    gameStartedAt && blitzLimit && phase !== 'round_end' && phase !== 'game_over'
+      ? gameStartedAt + blitzLimit * 1000
+      : null;
   const secondsLeft = useCountdown(endTime);
 
   if (secondsLeft === null) return null;

@@ -44,7 +44,7 @@ function EffectAvatar({ index, avatarUrl, name }: { index: number; avatarUrl?: s
           alt={name ?? ''}
           className="absolute inset-0 w-full h-full object-cover"
           referrerPolicy="no-referrer"
-          onError={(e) => {
+          onError={e => {
             e.currentTarget.style.display = 'none';
           }}
         />
@@ -55,26 +55,26 @@ function EffectAvatar({ index, avatarUrl, name }: { index: number; avatarUrl?: s
 
 export default function GameEffects() {
   const [effects, setEffects] = useState<Effect[]>([]);
-  const phase = useGameStore((s) => s.phase);
-  const winnerId = useGameStore((s) => s.winnerId);
-  const players = useGameStore((s) => s.players);
+  const phase = useGameStore(s => s.phase);
+  const winnerId = useGameStore(s => s.winnerId);
+  const players = useGameStore(s => s.players);
   const userId = useEffectiveUserId();
-  const topCard = useGameStore((s) => s.discardPile[s.discardPile.length - 1]);
-  const direction = useGameStore((s) => s.direction);
-  const lastAction = useGameStore((s) => s.lastAction);
-  const pendingDrawPlayerId = useGameStore((s) => s.pendingDrawPlayerId);
-  const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
-  const drawStack = useGameStore((s) => s.drawStack);
-  const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
+  const topCard = useGameStore(s => s.discardPile[s.discardPile.length - 1]);
+  const direction = useGameStore(s => s.direction);
+  const lastAction = useGameStore(s => s.lastAction);
+  const pendingDrawPlayerId = useGameStore(s => s.pendingDrawPlayerId);
+  const pendingPenaltyDraws = useGameStore(s => s.pendingPenaltyDraws);
+  const drawStack = useGameStore(s => s.drawStack);
+  const currentPlayerIndex = useGameStore(s => s.currentPlayerIndex);
   const prevTopCardRef = useRef<string | undefined>(undefined);
   const prevActionRef = useRef<typeof lastAction>(null);
   const prevPendingPenaltyRef = useRef(0);
 
   const addEffect = useCallback((effect: Omit<Effect, 'id'>) => {
     const id = `effect_${++effectId}`;
-    setEffects((prev) => [...prev, { id, ...effect }]);
+    setEffects(prev => [...prev, { id, ...effect }]);
     setTimeout(() => {
-      setEffects((prev) => prev.filter((e) => e.id !== id));
+      setEffects(prev => prev.filter(e => e.id !== id));
     }, EFFECT_DURATION);
   }, []);
 
@@ -82,14 +82,14 @@ export default function GameEffects() {
     if (!topCard || topCard.id === prevTopCardRef.current) return;
     prevTopCardRef.current = topCard.id;
 
-    const findIdx = (id: string) => players.findIndex((p) => p.id === id);
+    const findIdx = (id: string) => players.findIndex(p => p.id === id);
 
     const getNextFromActor = () => {
       if (lastAction?.type !== 'PLAY_CARD') return null;
       const actorIdx = findIdx(lastAction.playerId);
       if (actorIdx < 0 || players.length === 0) return null;
       const step = direction === 'clockwise' ? 1 : -1;
-      const targetIdx = ((actorIdx + step) % players.length + players.length) % players.length;
+      const targetIdx = (((actorIdx + step) % players.length) + players.length) % players.length;
       const t = players[targetIdx];
       return t ? { player: t, index: targetIdx } : null;
     };
@@ -102,11 +102,23 @@ export default function GameEffects() {
     const affected = getNextFromActor();
 
     if (topCard.type === 'skip') {
-      addEffect({ type: 'skip', text: '跳过!', targetName: affected?.player.name, targetIndex: affected?.index, targetAvatarUrl: affected?.player.avatarUrl });
+      addEffect({
+        type: 'skip',
+        text: '跳过!',
+        targetName: affected?.player.name,
+        targetIndex: affected?.index,
+        targetAvatarUrl: affected?.player.avatarUrl,
+      });
       playSound('skip');
     } else if (topCard.type === 'reverse') {
       if (players.length === 2) {
-        addEffect({ type: 'skip', text: '跳过!', targetName: affected?.player.name, targetIndex: affected?.index, targetAvatarUrl: affected?.player.avatarUrl });
+        addEffect({
+          type: 'skip',
+          text: '跳过!',
+          targetName: affected?.player.name,
+          targetIndex: affected?.index,
+          targetAvatarUrl: affected?.player.avatarUrl,
+        });
       } else {
         addEffect({ type: 'reverse', text: '反转!' });
       }
@@ -115,15 +127,31 @@ export default function GameEffects() {
       const stacked = drawStack > 0 ? getStackTarget() : null;
       const dc = drawStack > 0 ? drawStack : 2;
       const target = stacked ?? affected;
-      addEffect({ type: 'draw', text: `+${dc}!`, targetName: target?.player.name, targetIndex: target?.index, targetAvatarUrl: target?.player.avatarUrl, drawCount: dc });
+      addEffect({
+        type: 'draw',
+        text: `+${dc}!`,
+        targetName: target?.player.name,
+        targetIndex: target?.index,
+        targetAvatarUrl: target?.player.avatarUrl,
+        drawCount: dc,
+      });
       playSound('draw_two');
     } else if (topCard.type === 'wild_draw_four') {
       const stacked = drawStack > 0 ? getStackTarget() : null;
       const pendingIdx = pendingDrawPlayerId ? findIdx(pendingDrawPlayerId) : -1;
       const pendingPlayer = pendingIdx >= 0 ? players[pendingIdx] : affected?.player;
-      const target = stacked ?? (pendingPlayer ? { player: pendingPlayer, index: pendingIdx >= 0 ? pendingIdx : affected?.index } : affected);
+      const target =
+        stacked ??
+        (pendingPlayer ? { player: pendingPlayer, index: pendingIdx >= 0 ? pendingIdx : affected?.index } : affected);
       const dc = drawStack > 0 ? drawStack : 4;
-      addEffect({ type: 'draw', text: `+${dc}!`, targetName: target?.player.name, targetIndex: target?.index, targetAvatarUrl: target?.player.avatarUrl, drawCount: dc });
+      addEffect({
+        type: 'draw',
+        text: `+${dc}!`,
+        targetName: target?.player.name,
+        targetIndex: target?.index,
+        targetAvatarUrl: target?.player.avatarUrl,
+        drawCount: dc,
+      });
       playSound('wild');
     } else if (topCard.type === 'wild') {
       playSound('wild');
@@ -141,10 +169,16 @@ export default function GameEffects() {
 
   useEffect(() => {
     if (phase === 'round_end' || phase === 'game_over') {
-      const winner = players.find((p) => p.id === winnerId);
+      const winner = players.find(p => p.id === winnerId);
       if (winner) {
-        const winnerIdx = players.findIndex((p) => p.id === winner.id);
-        addEffect({ type: 'victory', text: winner.id === userId ? '你赢了!' : `${winner.name} 获胜!`, targetName: winner.name, targetIndex: winnerIdx >= 0 ? winnerIdx : undefined, targetAvatarUrl: winner.avatarUrl });
+        const winnerIdx = players.findIndex(p => p.id === winner.id);
+        addEffect({
+          type: 'victory',
+          text: winner.id === userId ? '你赢了!' : `${winner.name} 获胜!`,
+          targetName: winner.name,
+          targetIndex: winnerIdx >= 0 ? winnerIdx : undefined,
+          targetAvatarUrl: winner.avatarUrl,
+        });
         playSound(winner.id === userId ? 'win' : 'lose');
       }
     }
@@ -154,16 +188,14 @@ export default function GameEffects() {
     if (!lastAction || lastAction === prevActionRef.current) return;
     prevActionRef.current = lastAction;
 
-    const findIdx = (id: string) => players.findIndex((p) => p.id === id);
+    const findIdx = (id: string) => players.findIndex(p => p.id === id);
 
-    if (lastAction.type === 'CHALLENGE' && lastAction.succeeded !== undefined) {
-      const challenger = players.find((p) => p.id === lastAction.playerId);
+    if (lastAction.type === 'CHALLENGE') {
+      const challenger = players.find(p => p.id === lastAction.playerId);
       const challengerIdx = findIdx(lastAction.playerId);
 
-      const penaltyId = lastAction.penaltyPlayerId ?? (lastAction.succeeded ? undefined : lastAction.playerId);
-      const penaltyCount = lastAction.penaltyCount ?? (lastAction.succeeded ? 4 : 6);
-      const penaltyPlayer = penaltyId ? players.find((p) => p.id === penaltyId) : undefined;
-      const penaltyIdx = penaltyId ? findIdx(penaltyId) : -1;
+      const penaltyPlayer = players.find(p => p.id === lastAction.penaltyPlayerId);
+      const penaltyIdx = findIdx(lastAction.penaltyPlayerId);
 
       addEffect({
         type: 'challenge',
@@ -174,10 +206,10 @@ export default function GameEffects() {
         penaltyName: penaltyPlayer?.name,
         penaltyIndex: penaltyIdx >= 0 ? penaltyIdx : undefined,
         penaltyAvatarUrl: penaltyPlayer?.avatarUrl,
-        penaltyCount,
+        penaltyCount: lastAction.penaltyCount,
       });
     } else if (lastAction.type === 'CALL_UNO') {
-      const caller = players.find((p) => p.id === lastAction.playerId);
+      const caller = players.find(p => p.id === lastAction.playerId);
       const callerIdx = findIdx(lastAction.playerId);
 
       addEffect({
@@ -189,26 +221,26 @@ export default function GameEffects() {
       });
       playSound('uno_call');
     } else if (lastAction.type === 'ACCEPT') {
-      const accepter = players.find((p) => p.id === lastAction.playerId);
+      const accepter = players.find(p => p.id === lastAction.playerId);
       const accepterIdx = findIdx(lastAction.playerId);
 
       addEffect({
         type: 'accept',
-        text: '接受 +4!',
+        text: `接受 +${lastAction.penaltyCount}!`,
         targetName: accepter?.name,
         targetIndex: accepterIdx >= 0 ? accepterIdx : undefined,
         targetAvatarUrl: accepter?.avatarUrl,
       });
     } else if (lastAction.type === 'CATCH_UNO') {
-      const catcher = players.find((p) => p.id === lastAction.catcherId);
-      const target = players.find((p) => p.id === lastAction.targetId);
+      const catcher = players.find(p => p.id === lastAction.catcherId);
+      const target = players.find(p => p.id === lastAction.targetId);
       const catcherIdx = findIdx(lastAction.catcherId);
       const targetIdx = findIdx(lastAction.targetId);
 
       addEffect({
         type: 'catch_uno',
         text: '抓 UNO!',
-        catcherName: catcher?.name ?? lastAction.catcherName ?? '观众',
+        catcherName: lastAction.catcherName,
         catcherIndex: catcherIdx >= 0 ? catcherIdx : undefined,
         catcherAvatarUrl: catcher?.avatarUrl,
         targetName: target?.name,
@@ -236,7 +268,7 @@ export default function GameEffects() {
       </AnimatePresence>
       <div className="pointer-events-none fixed inset-0 z-effects flex items-center justify-center">
         <AnimatePresence>
-          {effects.map((effect) => (
+          {effects.map(effect => (
             <motion.div
               key={effect.id}
               // 缩放区间从 0.3→1.2→2（6.7 倍跨度）收窄到 0.9→1.2→1.35（1.5 倍）：
@@ -270,7 +302,13 @@ export default function GameEffects() {
                   transition={{ delay: 0.1, duration: 0.3 }}
                   className="flex items-center gap-2"
                 >
-                  {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} avatarUrl={effect.targetAvatarUrl} name={effect.targetName} />}
+                  {effect.targetIndex !== undefined && (
+                    <EffectAvatar
+                      index={effect.targetIndex}
+                      avatarUrl={effect.targetAvatarUrl}
+                      name={effect.targetName}
+                    />
+                  )}
                   <span className="text-2xl font-bold text-accent text-shadow-bold">{effect.targetName}</span>
                 </motion.div>
               )}
@@ -283,14 +321,26 @@ export default function GameEffects() {
                 >
                   {effect.catcherName && (
                     <div className="flex items-center gap-2">
-                      {effect.catcherIndex !== undefined && <EffectAvatar index={effect.catcherIndex} avatarUrl={effect.catcherAvatarUrl} name={effect.catcherName} />}
+                      {effect.catcherIndex !== undefined && (
+                        <EffectAvatar
+                          index={effect.catcherIndex}
+                          avatarUrl={effect.catcherAvatarUrl}
+                          name={effect.catcherName}
+                        />
+                      )}
                       <span className="text-2xl font-bold text-accent text-shadow-bold">{effect.catcherName}</span>
                     </div>
                   )}
                   <span className="text-2xl font-bold text-destructive text-shadow-bold">抓到</span>
                   {effect.targetName && (
                     <div className="flex items-center gap-2">
-                      {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} avatarUrl={effect.targetAvatarUrl} name={effect.targetName} />}
+                      {effect.targetIndex !== undefined && (
+                        <EffectAvatar
+                          index={effect.targetIndex}
+                          avatarUrl={effect.targetAvatarUrl}
+                          name={effect.targetName}
+                        />
+                      )}
                       <span className="text-2xl font-bold text-destructive text-shadow-bold">{effect.targetName}</span>
                     </div>
                   )}
@@ -303,9 +353,16 @@ export default function GameEffects() {
                   transition={{ delay: 0.1, duration: 0.3 }}
                   className="flex items-center gap-2"
                 >
-                  {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} avatarUrl={effect.targetAvatarUrl} name={effect.targetName} />}
+                  {effect.targetIndex !== undefined && (
+                    <EffectAvatar
+                      index={effect.targetIndex}
+                      avatarUrl={effect.targetAvatarUrl}
+                      name={effect.targetName}
+                    />
+                  )}
                   <span className="text-2xl font-bold text-shadow-bold">
-                    <Ban size={14} className="inline mr-1" />{effect.targetName}
+                    <Ban size={14} className="inline mr-1" />
+                    {effect.targetName}
                   </span>
                 </motion.div>
               )}
@@ -316,7 +373,13 @@ export default function GameEffects() {
                   transition={{ delay: 0.1, duration: 0.3 }}
                   className="flex items-center gap-2"
                 >
-                  {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} avatarUrl={effect.targetAvatarUrl} name={effect.targetName} />}
+                  {effect.targetIndex !== undefined && (
+                    <EffectAvatar
+                      index={effect.targetIndex}
+                      avatarUrl={effect.targetAvatarUrl}
+                      name={effect.targetName}
+                    />
+                  )}
                   <span className="text-2xl font-bold text-destructive">→ {effect.targetName}</span>
                 </motion.div>
               )}
@@ -349,7 +412,13 @@ export default function GameEffects() {
                   transition={{ delay: 0.1, duration: 0.3 }}
                   className="flex items-center gap-2"
                 >
-                  {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} avatarUrl={effect.targetAvatarUrl} name={effect.targetName} />}
+                  {effect.targetIndex !== undefined && (
+                    <EffectAvatar
+                      index={effect.targetIndex}
+                      avatarUrl={effect.targetAvatarUrl}
+                      name={effect.targetName}
+                    />
+                  )}
                   <span className="text-2xl font-bold text-accent text-shadow-bold">{effect.targetName}</span>
                 </motion.div>
               )}
@@ -362,7 +431,13 @@ export default function GameEffects() {
                 >
                   {effect.penaltyName && effect.penaltyCount && (
                     <div className="flex items-center gap-2">
-                      {effect.penaltyIndex !== undefined && <EffectAvatar index={effect.penaltyIndex} avatarUrl={effect.penaltyAvatarUrl} name={effect.penaltyName} />}
+                      {effect.penaltyIndex !== undefined && (
+                        <EffectAvatar
+                          index={effect.penaltyIndex}
+                          avatarUrl={effect.penaltyAvatarUrl}
+                          name={effect.penaltyName}
+                        />
+                      )}
                       <span className="text-2xl font-bold text-destructive">{effect.penaltyName}</span>
                       <div className="flex items-center gap-1 ml-1">
                         <div className="flex -space-x-1.5">
@@ -383,7 +458,13 @@ export default function GameEffects() {
                   transition={{ delay: 0.1, duration: 0.3 }}
                   className="flex items-center gap-2"
                 >
-                  {effect.targetIndex !== undefined && <EffectAvatar index={effect.targetIndex} avatarUrl={effect.targetAvatarUrl} name={effect.targetName} />}
+                  {effect.targetIndex !== undefined && (
+                    <EffectAvatar
+                      index={effect.targetIndex}
+                      avatarUrl={effect.targetAvatarUrl}
+                      name={effect.targetName}
+                    />
+                  )}
                 </motion.div>
               )}
             </motion.div>

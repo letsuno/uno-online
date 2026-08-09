@@ -22,7 +22,17 @@ interface TurnIndicatorProps {
   botDifficulty?: BotDifficulty;
 }
 
-function TurnIndicator({ playerName, avatarUrl, playerIndex, isMe, turnEndTime, phase, cy, isBot, botDifficulty }: TurnIndicatorProps) {
+function TurnIndicator({
+  playerName,
+  avatarUrl,
+  playerIndex,
+  isMe,
+  turnEndTime,
+  phase,
+  cy,
+  isBot,
+  botDifficulty,
+}: TurnIndicatorProps) {
   const secondsLeft = useCountdown(turnEndTime);
 
   let label: string;
@@ -67,7 +77,7 @@ function TurnIndicator({ playerName, avatarUrl, playerIndex, isMe, turnEndTime, 
                   alt={playerName}
                   className="absolute inset-0 w-full h-full object-cover"
                   referrerPolicy="no-referrer"
-                  onError={(e) => {
+                  onError={e => {
                     e.currentTarget.style.display = 'none';
                   }}
                 />
@@ -85,20 +95,19 @@ function TurnIndicator({ playerName, avatarUrl, playerIndex, isMe, turnEndTime, 
             <GoogleRing size={0} className="w-full h-full" />
           )}
         </div>
-        <span className={cn(
-          'font-game text-lg',
-          isMe ? 'text-primary font-bold' : 'text-foreground',
-        )}>
+        <span className={cn('font-game text-lg', isMe ? 'text-primary font-bold' : 'text-foreground')}>
           {label}
           {isBot && <AiBadge className="ml-1.5" />}
           {isBot && <BotThinkingIndicator />}
         </span>
       </div>
       {secondsLeft !== null && (
-        <span className={cn(
-          'font-game text-base tabular-nums',
-          urgent ? 'text-destructive font-bold animate-timer-flash' : 'text-muted-foreground',
-        )}>
+        <span
+          className={cn(
+            'font-game text-base tabular-nums',
+            urgent ? 'text-destructive font-bold animate-timer-flash' : 'text-muted-foreground',
+          )}
+        >
           {secondsLeft}s
         </span>
       )}

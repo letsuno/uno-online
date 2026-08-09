@@ -22,7 +22,10 @@ export default function ProfileSetupPage() {
   useBgm('lobby');
 
   const handleSave = async () => {
-    if (!username.trim()) { setFieldError('请输入用户名'); return; }
+    if (!username.trim()) {
+      setFieldError('请输入用户名');
+      return;
+    }
     setFieldError('');
     setSubmitting(true);
     try {
@@ -44,7 +47,9 @@ export default function ProfileSetupPage() {
         avatarUrl: finalAvatar ?? user!.avatarUrl,
         role: user!.role,
       });
-      navigate('/');
+      const target = sessionStorage.getItem('loginRedirect') || '/';
+      sessionStorage.removeItem('loginRedirect');
+      navigate(target);
     } catch (err) {
       useToastStore.getState().addToast((err as Error).message || '保存失败', 'error');
     } finally {
@@ -53,10 +58,7 @@ export default function ProfileSetupPage() {
   };
 
   return (
-    <AuthLayout
-      title="完善个人信息"
-      subtitle="首次登录，请确认你的用户名和昵称"
-    >
+    <AuthLayout title="完善个人信息" subtitle="首次登录，请确认你的用户名和昵称">
       <div className="flex flex-col gap-4">
         <div className="flex justify-center">
           <AvatarUpload avatarUrl={avatar} size={96} onUpload={setAvatar} />
@@ -67,7 +69,10 @@ export default function ProfileSetupPage() {
           <Input
             icon={<User size={20} />}
             value={username}
-            onChange={(e) => { setUsername(e.target.value); setFieldError(''); }}
+            onChange={e => {
+              setUsername(e.target.value);
+              setFieldError('');
+            }}
           />
         </div>
 
@@ -76,7 +81,7 @@ export default function ProfileSetupPage() {
           <Input
             icon={<Pencil size={20} />}
             value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
+            onChange={e => setNickname(e.target.value)}
             placeholder="留空则使用用户名"
           />
         </div>

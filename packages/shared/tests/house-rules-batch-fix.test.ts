@@ -13,11 +13,36 @@ describe('reverseDeflectDrawTwo', () => {
       discardPile: [makeCard('number', 'blue', { value: 1 }), dt],
       currentColor: 'red',
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'green', { value: 1 })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [rev, makeCard('number', 'green', { value: 3 })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'green', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [rev, makeCard('number', 'green', { value: 3 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'yellow', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
-      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, reverseDeflectDrawTwo: true } },
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, reverseDeflectDrawTwo: true },
+      },
     });
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p2', cardId: 'rev1' });
     expect(next.direction).not.toBe(state.direction);
@@ -34,11 +59,36 @@ describe('reverseDeflectDrawTwo', () => {
       discardPile: [makeCard('number', 'blue', { value: 1 }), dt],
       currentColor: 'red',
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'green', { value: 1 })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [rev, makeCard('number', 'green', { value: 3 })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'green', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [rev, makeCard('number', 'green', { value: 3 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'yellow', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
-      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, reverseDeflectDrawTwo: false } },
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, reverseDeflectDrawTwo: false },
+      },
     });
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p2', cardId: 'rev2' });
     // Without the deflect rule, drawStack is unchanged (it's not a stack play either)
@@ -58,11 +108,36 @@ describe('reverseDeflectDrawFour', () => {
       discardPile: [makeCard('number', 'blue', { value: 1 }), wdf],
       currentColor: 'red',
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'green', { value: 1 })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [rev, makeCard('number', 'green', { value: 3 })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'green', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [rev, makeCard('number', 'green', { value: 3 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'yellow', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
-      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, reverseDeflectDrawFour: true } },
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, reverseDeflectDrawFour: true },
+      },
     });
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p2', cardId: 'rev3' });
     expect(next.direction).not.toBe(state.direction);
@@ -81,9 +156,30 @@ describe('skipDeflect', () => {
       discardPile: [makeCard('number', 'blue', { value: 1 }), dt],
       currentColor: 'red',
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'green', { value: 1 })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [skip, makeCard('number', 'green', { value: 3 })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'green', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [skip, makeCard('number', 'green', { value: 3 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'yellow', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, skipDeflect: true } },
     });
@@ -104,7 +200,14 @@ describe('stacking last card round end', () => {
       currentColor: 'red',
       players: [
         { id: 'p1', name: 'Alice', hand: [dt], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('draw_two', 'blue', { id: 'bob_dt' }), makeCard('number', 'green', { value: 3 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('draw_two', 'blue', { id: 'bob_dt' }), makeCard('number', 'green', { value: 3 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, stackDrawTwo: true } },
     });
@@ -123,12 +226,24 @@ describe('stacking last card round end', () => {
       currentColor: 'red',
       players: [
         { id: 'p1', name: 'Alice', hand: [wd4], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 3 }), makeCard('number', 'blue', { value: 5 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'green', { value: 3 }), makeCard('number', 'blue', { value: 5 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, stackDrawFour: true } },
     });
 
-    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'last_wd4', chosenColor: 'red' });
+    const next = applyActionWithHouseRules(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: 'last_wd4',
+      chosenColor: 'red',
+    });
     expect(next.phase).toBe('round_end');
     expect(next.winnerId).toBe('p1');
     expect(next.drawStack).toBe(0);
@@ -145,11 +260,29 @@ describe('deflection last card round end', () => {
       discardPile: [makeCard('number', 'blue', { value: 1 }), dt],
       currentColor: 'red',
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'green', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'green', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p2', name: 'Bob', hand: [rev], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'yellow', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
-      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, reverseDeflectDrawTwo: true } },
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, reverseDeflectDrawTwo: true },
+      },
     });
 
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p2', cardId: 'last_rev' });
@@ -167,7 +300,14 @@ describe('jumpIn last card round end', () => {
       currentColor: 'red',
       discardPile: [topWild],
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'red', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'red', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p2', name: 'Bob', hand: [jumpWild], score: 0, connected: true, calledUno: false },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, jumpIn: true } },
@@ -186,7 +326,14 @@ describe('jumpIn last card round end', () => {
       currentColor: 'red',
       discardPile: [topWd4],
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'red', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'red', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p2', name: 'Bob', hand: [jumpWd4], score: 0, connected: true, calledUno: false },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, jumpIn: true } },
@@ -204,7 +351,14 @@ describe('sevenSwap last card round end', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [seven], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 2 }), makeCard('number', 'blue', { value: 3 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'green', { value: 2 }), makeCard('number', 'blue', { value: 3 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, sevenSwapHands: true } },
     });
@@ -220,9 +374,30 @@ describe('jumpIn', () => {
     const matchCard = makeCard('number', 'red', { value: 5, id: 'jump1' });
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'blue', { value: 1 })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [matchCard, makeCard('number', 'green', { value: 3 })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'blue', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [matchCard, makeCard('number', 'green', { value: 3 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'yellow', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, jumpIn: true } },
     });
@@ -240,9 +415,30 @@ describe('jumpIn', () => {
       currentColor: 'red',
       discardPile: [topWild],
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'red', { value: 1 })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [jumpWild, makeCard('number', 'blue', { value: 3 })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'red', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [jumpWild, makeCard('number', 'blue', { value: 3 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'yellow', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, jumpIn: true } },
     });
@@ -258,9 +454,23 @@ describe('jumpIn', () => {
     const matchCard = makeCard('number', 'red', { value: 5, id: 'last_jump' });
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'blue', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'blue', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p2', name: 'Bob', hand: [matchCard], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'yellow', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, jumpIn: true } },
     });
@@ -275,7 +485,14 @@ describe('jumpIn', () => {
     const noMatch = makeCard('number', 'red', { value: 3, id: 'nope' });
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'blue', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'blue', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p2', name: 'Bob', hand: [noMatch], score: 0, connected: true, calledUno: false },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, jumpIn: true } },
@@ -288,7 +505,14 @@ describe('jumpIn', () => {
     const matchCard = makeCard('number', 'red', { value: 5, id: 'jump2' });
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'blue', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'blue', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p2', name: 'Bob', hand: [matchCard], score: 0, connected: true, calledUno: false },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, jumpIn: false } },
@@ -304,9 +528,33 @@ describe('sevenSwapHands', () => {
     const seven = makeCard('number', 'red', { value: 7, id: 'seven1' });
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [seven, makeCard('number', 'blue', { value: 1, id: 'a1' })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 2, id: 'b1' }), makeCard('number', 'yellow', { value: 3, id: 'b2' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 4, id: 'c1' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [seven, makeCard('number', 'blue', { value: 1, id: 'a1' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [
+            makeCard('number', 'green', { value: 2, id: 'b1' }),
+            makeCard('number', 'yellow', { value: 3, id: 'b2' }),
+          ],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'yellow', { value: 4, id: 'c1' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, sevenSwapHands: true } },
     });
@@ -314,7 +562,11 @@ describe('sevenSwapHands', () => {
     expect(afterPlay.phase).toBe('choosing_swap_target');
     expect(afterPlay.currentPlayerIndex).toBe(0);
 
-    const afterSwap = applyActionWithHouseRules(afterPlay, { type: 'CHOOSE_SWAP_TARGET', playerId: 'p1', targetId: 'p3' });
+    const afterSwap = applyActionWithHouseRules(afterPlay, {
+      type: 'CHOOSE_SWAP_TARGET',
+      playerId: 'p1',
+      targetId: 'p3',
+    });
     expect(afterSwap.phase).toBe('playing');
     expect(afterSwap.players[0]!.hand.some(c => c.id === 'c1')).toBe(true);
     expect(afterSwap.players[2]!.hand.some(c => c.id === 'a1')).toBe(true);
@@ -324,19 +576,52 @@ describe('sevenSwapHands', () => {
     const seven = makeCard('number', 'red', { value: 7, id: 'seven_uno_swap' });
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [seven, makeCard('number', 'blue', { value: 1, id: 'alice_left' })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 2, id: 'bob_a' }), makeCard('number', 'yellow', { value: 3, id: 'bob_b' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 4, id: 'carol_only' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [seven, makeCard('number', 'blue', { value: 1, id: 'alice_left' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [
+            makeCard('number', 'green', { value: 2, id: 'bob_a' }),
+            makeCard('number', 'yellow', { value: 3, id: 'bob_b' }),
+          ],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'yellow', { value: 4, id: 'carol_only' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, sevenSwapHands: true } },
     });
 
     const afterPlay = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'seven_uno_swap' });
-    const afterSwap = applyActionWithHouseRules(afterPlay, { type: 'CHOOSE_SWAP_TARGET', playerId: 'p1', targetId: 'p3' });
+    const afterSwap = applyActionWithHouseRules(afterPlay, {
+      type: 'CHOOSE_SWAP_TARGET',
+      playerId: 'p1',
+      targetId: 'p3',
+    });
     expect(afterSwap.players[0]!.hand).toHaveLength(1);
     expect(afterSwap.players[0]!.calledUno).toBe(true);
 
-    const caught = applyActionWithHouseRules(afterSwap, { type: 'CATCH_UNO', catcherId: 'p2', targetId: 'p1' });
+    const caught = applyActionWithHouseRules(afterSwap, {
+      type: 'CATCH_UNO',
+      catcherId: 'p2',
+      targetId: 'p1',
+      catcherName: 'Player p2',
+    });
     expect(caught).toBe(afterSwap);
   });
 
@@ -344,9 +629,30 @@ describe('sevenSwapHands', () => {
     const seven = makeCard('number', 'red', { value: 7, id: 'seven2' });
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [seven, makeCard('number', 'red', { value: 1, id: 'a2' })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 2, id: 'b3' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 4 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [seven, makeCard('number', 'red', { value: 1, id: 'a2' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'green', { value: 2, id: 'b3' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'yellow', { value: 4 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, sevenSwapHands: false } },
     });

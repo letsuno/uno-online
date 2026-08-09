@@ -21,8 +21,8 @@ function getSeatPosition(index: number, total: number, rx: number, ry: number) {
  * 实际屏幕适配由外层 FitScaler 整体缩放完成。
  */
 export default function SeatCircle({ seats, onSeatClick }: SeatCircleProps) {
-  const userId = useAuthStore((s) => s.user?.id);
-  const ownerId = useRoomStore((s) => s.room?.ownerId);
+  const userId = useAuthStore(s => s.user?.id);
+  const ownerId = useRoomStore(s => s.room?.ownerId);
   const portrait = useIsPortrait();
 
   const rx = portrait ? 140 : 190;
@@ -43,8 +43,10 @@ export default function SeatCircle({ seats, onSeatClick }: SeatCircleProps) {
         style={{
           width: rx * 1.1,
           height: ry * 1.1,
-          background: 'radial-gradient(circle at 50% 38%, rgba(246,190,62,0.10), rgba(255,255,255,0.02) 55%, transparent 75%)',
-          boxShadow: 'inset 0 0 40px rgba(246,190,62,0.10), inset 0 1px 0 rgba(255,255,255,0.06), 0 18px 50px rgba(0,0,0,0.4)',
+          background:
+            'radial-gradient(circle at 50% 38%, rgba(246,190,62,0.10), rgba(255,255,255,0.02) 55%, transparent 75%)',
+          boxShadow:
+            'inset 0 0 40px rgba(246,190,62,0.10), inset 0 1px 0 rgba(255,255,255,0.06), 0 18px 50px rgba(0,0,0,0.4)',
           backdropFilter: 'blur(6px)',
         }}
       >
@@ -72,7 +74,7 @@ export default function SeatCircle({ seats, onSeatClick }: SeatCircleProps) {
               isMe={!!userId && player?.userId === userId}
               isOwnerSeat={!!ownerId && player?.userId === ownerId}
               compact={portrait}
-              onClick={(e) => onSeatClick(index, e)}
+              onClick={e => onSeatClick(index, e)}
             />
           </div>
         );

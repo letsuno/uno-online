@@ -9,13 +9,13 @@ interface ChatState {
   clearMessages: () => void;
 }
 
-export const useChatStore = create<ChatState>((set) => ({
+export const useChatStore = create<ChatState>(set => ({
   messages: [],
   latestLiveMessage: null,
-  setHistory: (messages) => set({ messages: messages.slice(-200), latestLiveMessage: null }),
-  addMessage: (message) =>
-    set((state) => {
-      if (state.messages.some((m) => m.id === message.id)) return state;
+  setHistory: messages => set({ messages: messages.slice(-200), latestLiveMessage: null }),
+  addMessage: message =>
+    set(state => {
+      if (state.messages.some(m => m.id === message.id)) return state;
       return { messages: [...state.messages, message].slice(-200), latestLiveMessage: message };
     }),
   clearMessages: () => set({ messages: [], latestLiveMessage: null }),

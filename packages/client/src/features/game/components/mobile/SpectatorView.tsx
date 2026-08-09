@@ -10,7 +10,6 @@ import { cn } from '@/shared/lib/utils';
 interface SpectatorViewProps {
   onDraw: (side: 'left' | 'right') => void;
   onBackToLobby: () => void;
-  onJoined: () => void;
   /** 覆盖层（弹幕、回合横幅） */
   children?: React.ReactNode;
 }
@@ -19,11 +18,11 @@ interface SpectatorViewProps {
  * 移动端观战布局（替代沿用 PC 的浮层方案）：
  * 内联观战横幅（下局加入/退出 + 观战头像列表）+ 玩家行 + 牌桌区 + 抓 UNO 区。
  */
-export default function SpectatorView({ onDraw, onBackToLobby, onJoined, children }: SpectatorViewProps) {
+export default function SpectatorView({ onDraw, onBackToLobby, children }: SpectatorViewProps) {
   const compact = useShortLandscape();
-  const phase = useGameStore((s) => s.phase);
-  const spectators = useSpectatorStore((s) => s.spectators);
-  const pendingJoinQueue = useSpectatorStore((s) => s.pendingJoinQueue);
+  const phase = useGameStore(s => s.phase);
+  const spectators = useSpectatorStore(s => s.spectators);
+  const pendingJoinQueue = useSpectatorStore(s => s.pendingJoinQueue);
   const showScoreBoard = phase === 'round_end' || phase === 'game_over';
 
   return (
@@ -36,8 +35,8 @@ export default function SpectatorView({ onDraw, onBackToLobby, onJoined, childre
           {/* 观战头像列表（含排队状态） */}
           {spectators.length > 0 && (
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-hidden min-w-0">
-              {spectators.map((s) => {
-                const isQueued = pendingJoinQueue.includes(s.nickname);
+              {spectators.map(s => {
+                const isQueued = pendingJoinQueue.some(entry => entry.userId === s.userId);
                 return (
                   <div
                     key={s.nickname}
@@ -50,15 +49,24 @@ export default function SpectatorView({ onDraw, onBackToLobby, onJoined, childre
                       !s.connected && 'opacity-40',
                     )}
                   >
-                    {s.avatarUrl
-                      ? <img src={s.avatarUrl} alt={s.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                      : s.nickname.charAt(0).toUpperCase()}
+                    {s.avatarUrl ? (
+                      <img
+                        src={s.avatarUrl}
+                        alt={s.nickname}
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                        onError={e => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      s.nickname.charAt(0).toUpperCase()
+                    )}
                   </div>
                 );
               })}
             </div>
           )}
-
         </div>
       )}
 
@@ -71,7 +79,7 @@ export default function SpectatorView({ onDraw, onBackToLobby, onJoined, childre
         {children}
       </div>
 
-      <SpectatorDock compact={compact} onBackToLobby={onBackToLobby} onJoined={onJoined} />
+      <SpectatorDock compact={compact} onBackToLobby={onBackToLobby} />
     </>
   );
 }

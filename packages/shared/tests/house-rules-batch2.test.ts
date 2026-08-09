@@ -18,9 +18,20 @@ describe('multiplePlaySameNumber', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [red5, blue5, green3], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
-      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, multiplePlaySameNumber: true } },
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, multiplePlaySameNumber: true },
+      },
     });
 
     const result = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'red5' });
@@ -33,9 +44,20 @@ describe('multiplePlaySameNumber', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [red5, green3], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
-      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, multiplePlaySameNumber: true } },
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, multiplePlaySameNumber: true },
+      },
     });
 
     const result = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'red5' });
@@ -47,11 +69,22 @@ describe('multiplePlaySameNumber', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [blue5], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       discardPile: [makeCard('number', 'red', { value: 5, id: 'discard_top' })],
       lastAction: { type: 'PLAY_CARD', playerId: 'p1', cardId: 'prev_card' },
-      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, multiplePlaySameNumber: true } },
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, multiplePlaySameNumber: true },
+      },
     });
 
     const result = applyActionWithHouseRules(state, { type: 'PASS', playerId: 'p1' });
@@ -63,9 +96,30 @@ describe('bombCard', () => {
   it('makes all other players draw 1 when 3+ same-number cards are on top of discard', () => {
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'green', { value: 7, id: 'g7' })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1 })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'blue', { value: 2 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'green', { value: 7, id: 'g7' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'blue', { value: 2 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       discardPile: [
         makeCard('number', 'red', { value: 7, id: 'd1' }),
@@ -115,9 +169,7 @@ describe('bombCard', () => {
       currentColor: 'red',
       pendingPenaltyDraws: 2,
       pendingPenaltyNextPlayerIndex: 1,
-      pendingPenaltyQueue: [
-        { playerId: 'p2', count: 2, nextPlayerIndex: 0, sourcePlayerId: 'p1' },
-      ],
+      pendingPenaltyQueue: [{ playerId: 'p2', count: 2, nextPlayerIndex: 0, sourcePlayerId: 'p1' }],
       settings: {
         turnTimeLimit: 30,
         targetScore: 500,
@@ -135,19 +187,41 @@ describe('bombCard', () => {
 
     expect(afterPass).toBe(state);
     expect(legal.plans).not.toContainEqual([{ type: 'PASS', playerId: 'p1' }]);
-    expect(legal.plans).toContainEqual([{
-      type: 'DRAW_CARD', playerId: 'p1', side: 'left',
-    }]);
-    expect(legal.plans).toContainEqual([{
-      type: 'DRAW_CARD', playerId: 'p1', side: 'right',
-    }]);
+    expect(legal.plans).toContainEqual([
+      {
+        type: 'DRAW_CARD',
+        playerId: 'p1',
+        side: 'left',
+      },
+    ]);
+    expect(legal.plans).toContainEqual([
+      {
+        type: 'DRAW_CARD',
+        playerId: 'p1',
+        side: 'right',
+      },
+    ]);
   });
 
   it('does not trigger bomb for fewer than 3 same-number cards', () => {
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'green', { value: 7, id: 'g7' })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'green', { value: 7, id: 'g7' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       discardPile: [
         makeCard('number', 'red', { value: 7, id: 'd1' }),
@@ -168,9 +242,30 @@ describe('elimination', () => {
   it('eliminates player with most cards at round end', () => {
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'red', { value: 5, id: 'last' })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: Array.from({ length: 5 }, (_, i) => makeCard('number', 'blue', { value: i, id: `b${i}` })), score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: Array.from({ length: 3 }, (_, i) => makeCard('number', 'green', { value: i, id: `c${i}` })), score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'red', { value: 5, id: 'last' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: Array.from({ length: 5 }, (_, i) => makeCard('number', 'blue', { value: i, id: `b${i}` })),
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: Array.from({ length: 3 }, (_, i) => makeCard('number', 'green', { value: i, id: `c${i}` })),
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, elimination: true } },
     });
@@ -186,9 +281,31 @@ describe('elimination', () => {
   it('ends game when only 1 non-eliminated player remains', () => {
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'red', { value: 5, id: 'last' })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: Array.from({ length: 3 }, (_, i) => makeCard('number', 'blue', { value: i, id: `b${i}` })), score: 0, connected: true, calledUno: false, eliminated: true },
-        { id: 'p3', name: 'Carol', hand: Array.from({ length: 5 }, (_, i) => makeCard('number', 'green', { value: i, id: `c${i}` })), score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'red', { value: 5, id: 'last' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: Array.from({ length: 3 }, (_, i) => makeCard('number', 'blue', { value: i, id: `b${i}` })),
+          score: 0,
+          connected: true,
+          calledUno: false,
+          eliminated: true,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: Array.from({ length: 5 }, (_, i) => makeCard('number', 'green', { value: i, id: `c${i}` })),
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, elimination: true } },
     });
@@ -201,7 +318,12 @@ describe('elimination', () => {
 describe('teamMode', () => {
   it('assigns alternating teams with even player count', () => {
     const state = initializeGame(
-      [{ id: 'p1', name: 'A' }, { id: 'p2', name: 'B' }, { id: 'p3', name: 'C' }, { id: 'p4', name: 'D' }],
+      [
+        { id: 'p1', name: 'A' },
+        { id: 'p2', name: 'B' },
+        { id: 'p3', name: 'C' },
+        { id: 'p4', name: 'D' },
+      ],
       { ...DEFAULT_HOUSE_RULES, teamMode: true },
     );
     expect(state.players[0]!.teamId).toBe(0);
@@ -212,7 +334,11 @@ describe('teamMode', () => {
 
   it('does not assign teams with odd player count', () => {
     const state = initializeGame(
-      [{ id: 'p1', name: 'A' }, { id: 'p2', name: 'B' }, { id: 'p3', name: 'C' }],
+      [
+        { id: 'p1', name: 'A' },
+        { id: 'p2', name: 'B' },
+        { id: 'p3', name: 'C' },
+      ],
       { ...DEFAULT_HOUSE_RULES, teamMode: true },
     );
     expect(state.players[0]!.teamId).toBeUndefined();
@@ -220,7 +346,12 @@ describe('teamMode', () => {
 
   it('does not assign teams when teamMode is false', () => {
     const state = initializeGame(
-      [{ id: 'p1', name: 'A' }, { id: 'p2', name: 'B' }, { id: 'p3', name: 'C' }, { id: 'p4', name: 'D' }],
+      [
+        { id: 'p1', name: 'A' },
+        { id: 'p2', name: 'B' },
+        { id: 'p3', name: 'C' },
+        { id: 'p4', name: 'D' },
+      ],
       { ...DEFAULT_HOUSE_RULES, teamMode: false },
     );
     expect(state.players[0]!.teamId).toBeUndefined();
@@ -229,9 +360,10 @@ describe('teamMode', () => {
 
 describe('initializeNextRound', () => {
   it('preserves scores and increments round number', () => {
-    const state = initializeGame(
-      [{ id: 'p1', name: 'A' }, { id: 'p2', name: 'B' }],
-    );
+    const state = initializeGame([
+      { id: 'p1', name: 'A' },
+      { id: 'p2', name: 'B' },
+    ]);
     state.players[0]!.score = 50;
     state.players[1]!.score = 30;
     state.phase = 'round_end';
@@ -247,9 +379,11 @@ describe('initializeNextRound', () => {
   });
 
   it('skips eliminated players when dealing', () => {
-    const state = initializeGame(
-      [{ id: 'p1', name: 'A' }, { id: 'p2', name: 'B' }, { id: 'p3', name: 'C' }],
-    );
+    const state = initializeGame([
+      { id: 'p1', name: 'A' },
+      { id: 'p2', name: 'B' },
+      { id: 'p3', name: 'C' },
+    ]);
     state.players[1]!.eliminated = true;
     state.phase = 'round_end';
 

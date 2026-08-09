@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ServerInfo } from '@uno-online/shared';
+import { setCurrentSuspendedRoomServerId } from './suspended-room-store';
 
 export interface ServerEntry {
   id: string;
@@ -18,7 +19,7 @@ const DEFAULT_SERVER: ServerEntry = {
 function loadCustomServers(): ServerEntry[] {
   try {
     const raw = localStorage.getItem('uno-server-list');
-    return raw ? JSON.parse(raw) as ServerEntry[] : [];
+    return raw ? (JSON.parse(raw) as ServerEntry[]) : [];
   } catch {
     return [];
   }
@@ -49,7 +50,7 @@ async function fetchServerInfo(address: string): Promise<ServerInfo | null> {
   try {
     const res = await fetch(`${base}/api/server/info`, { cache: 'no-store' });
     if (!res.ok) return null;
-    return await res.json() as ServerInfo;
+    return (await res.json()) as ServerInfo;
   } catch {
     return null;
   }
@@ -122,12 +123,14 @@ export const useServerStore = create<ServerState>((set, get) => ({
     if (currentServerId === id) {
       set({ currentServerId: 'default' });
       saveCurrentServerId('default');
+      setCurrentSuspendedRoomServerId('default');
     }
   },
 
   selectServer: (id: string) => {
     set({ currentServerId: id });
     saveCurrentServerId(id);
+    setCurrentSuspendedRoomServerId(id);
   },
 
   setSocketLatency: (latency: number | null) => {

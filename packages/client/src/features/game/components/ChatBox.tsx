@@ -14,8 +14,8 @@ interface ChatBoxProps {
 }
 
 export default function ChatBox({ embedded = false }: ChatBoxProps) {
-  const messages = useChatStore((s) => s.messages);
-  const players = useGameStore((s) => s.players);
+  const messages = useChatStore(s => s.messages);
+  const players = useGameStore(s => s.players);
   const [input, setInput] = useState('');
   const [open, setOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -37,7 +37,9 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
     };
   }, []);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const send = () => {
     if (!input.trim()) return;
@@ -53,36 +55,54 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
     return (
       <div className="w-full flex flex-col flex-1 min-h-0 gap-2 select-text" data-allow-selection>
         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin text-xs">
-          {messages.map((m) => (
+          {messages.map(m => (
             <div key={m.id} className="mb-1">
-              <span className="font-bold" style={{ color: getRoleColor(m.role) || 'var(--accent)' }}>{m.nickname}{players.find(p => p.id === m.userId)?.isBot && <AiBadge className="mx-0.5" />}: </span>
+              <span className="font-bold" style={{ color: getRoleColor(m.role) || 'var(--accent)' }}>
+                {m.nickname}
+                {players.find(p => p.id === m.userId)?.isBot && <AiBadge className="mx-0.5" />}:{' '}
+              </span>
               <span>{m.text}</span>
             </div>
           ))}
           <div ref={bottomRef} />
         </div>
         <div className="flex gap-0.5 flex-wrap shrink-0">
-          {['👍', '😂', '😭', '🎉', '💪', '😱', '🤔', '❤️'].map((emoji) => (
-            <button key={emoji} onClick={() => sendPhrase(emoji)}
-              className="bg-transparent border-none text-sm cursor-pointer p-0.5">
+          {['👍', '😂', '😭', '🎉', '💪', '😱', '🤔', '❤️'].map(emoji => (
+            <button
+              key={emoji}
+              onClick={() => sendPhrase(emoji)}
+              className="bg-transparent border-none text-sm cursor-pointer p-0.5"
+            >
               {emoji}
             </button>
           ))}
         </div>
         <div className="flex gap-1 flex-wrap shrink-0">
-          {QUICK_PHRASES.map((phrase) => (
-            <button key={phrase} onClick={() => sendPhrase(phrase)}
-              className="bg-secondary rounded-lg text-2xs px-2 py-0.5 text-foreground cursor-pointer transition-colors duration-150 hover:bg-white/10">
+          {QUICK_PHRASES.map(phrase => (
+            <button
+              key={phrase}
+              onClick={() => sendPhrase(phrase)}
+              className="bg-secondary rounded-lg text-2xs px-2 py-0.5 text-foreground cursor-pointer transition-colors duration-150 hover:bg-white/10"
+            >
               {phrase}
             </button>
           ))}
         </div>
         <div className="flex gap-1 shrink-0">
-          <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()}
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && send()}
             placeholder="发送消息..."
             className="flex-1 px-2.5 py-1.5 rounded-lg border border-input bg-muted text-foreground text-xs"
           />
-          <button onClick={send} className="bg-primary text-primary-foreground px-3 py-1.5 rounded-3xl text-xs font-bold">发送</button>
+          <button
+            onClick={send}
+            className="bg-primary text-primary-foreground px-3 py-1.5 rounded-3xl text-xs font-bold"
+          >
+            发送
+          </button>
         </div>
       </div>
     );
@@ -100,44 +120,64 @@ export default function ChatBox({ embedded = false }: ChatBoxProps) {
   }
 
   return (
-    <div className="hidden md:flex fixed bottom-chat-bottom right-3 w-chat-w h-chat-h glass-panel !rounded-xl flex-col z-fab overflow-hidden select-text" data-allow-selection>
+    <div
+      className="hidden md:flex fixed bottom-chat-bottom right-3 w-chat-w h-chat-h glass-panel !rounded-xl flex-col z-fab overflow-hidden select-text"
+      data-allow-selection
+    >
       <div className="px-3 py-2 border-b border-border flex justify-between items-center">
         <span className="text-caption font-bold">聊天</span>
-        <button onClick={() => setOpen(false)} className="bg-transparent text-muted-foreground text-base cursor-pointer flex items-center border-none">
+        <button
+          onClick={() => setOpen(false)}
+          className="bg-transparent text-muted-foreground text-base cursor-pointer flex items-center border-none"
+        >
           <X size={16} />
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-2 text-xs">
-        {messages.map((m) => (
+        {messages.map(m => (
           <div key={m.id} className="mb-1">
-            <span className="text-accent font-bold">{m.nickname}{players.find(p => p.id === m.userId)?.isBot && <AiBadge className="mx-0.5" />}: </span>
+            <span className="text-accent font-bold">
+              {m.nickname}
+              {players.find(p => p.id === m.userId)?.isBot && <AiBadge className="mx-0.5" />}:{' '}
+            </span>
             <span>{m.text}</span>
           </div>
         ))}
         <div ref={bottomRef} />
       </div>
       <div className="flex gap-0.5 px-1.5 py-0.5 flex-wrap">
-        {['👍', '😂', '😭', '🎉', '💪', '😱', '🤔', '❤️'].map((emoji) => (
-          <button key={emoji} onClick={() => sendPhrase(emoji)}
-            className="bg-transparent border-none text-sm cursor-pointer p-0.5">
+        {['👍', '😂', '😭', '🎉', '💪', '😱', '🤔', '❤️'].map(emoji => (
+          <button
+            key={emoji}
+            onClick={() => sendPhrase(emoji)}
+            className="bg-transparent border-none text-sm cursor-pointer p-0.5"
+          >
             {emoji}
           </button>
         ))}
       </div>
       <div className="flex gap-1 px-1.5 py-0.5 flex-wrap">
-        {QUICK_PHRASES.map((phrase) => (
-          <button key={phrase} onClick={() => sendPhrase(phrase)}
-            className="bg-secondary rounded-lg text-2xs px-2 py-0.5 text-foreground cursor-pointer transition-colors duration-150 hover:bg-white/10">
+        {QUICK_PHRASES.map(phrase => (
+          <button
+            key={phrase}
+            onClick={() => sendPhrase(phrase)}
+            className="bg-secondary rounded-lg text-2xs px-2 py-0.5 text-foreground cursor-pointer transition-colors duration-150 hover:bg-white/10"
+          >
             {phrase}
           </button>
         ))}
       </div>
       <div className="flex p-1.5 gap-1">
-        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()}
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && send()}
           placeholder="发送消息..."
           className="flex-1 px-2.5 py-1.5 rounded-lg border border-input bg-muted text-foreground text-xs"
         />
-        <button onClick={send} className="bg-primary text-primary-foreground px-3 py-1.5 rounded-3xl text-xs font-bold">发送</button>
+        <button onClick={send} className="bg-primary text-primary-foreground px-3 py-1.5 rounded-3xl text-xs font-bold">
+          发送
+        </button>
       </div>
     </div>
   );

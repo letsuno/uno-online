@@ -29,7 +29,7 @@ export default function Confetti() {
 
   return (
     <div className="fixed inset-0 pointer-events-none z-confetti overflow-hidden">
-      {particles.map((p) => (
+      {particles.map(p => (
         <motion.div
           key={p.id}
           initial={{ y: -20, x: `${p.x}vw`, opacity: 1, rotate: 0 }}

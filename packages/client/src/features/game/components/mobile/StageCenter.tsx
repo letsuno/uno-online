@@ -17,7 +17,10 @@ const COLOR_HEX: Record<Color, string> = {
 };
 
 const COLOR_LABEL: Record<Color, string> = {
-  red: '红', blue: '蓝', green: '绿', yellow: '黄',
+  red: '红',
+  blue: '蓝',
+  green: '绿',
+  yellow: '黄',
 };
 
 interface StageCenterProps {
@@ -26,30 +29,45 @@ interface StageCenterProps {
 }
 
 function useCanDraw(side: 'left' | 'right') {
-  const deckCount = useGameStore((s) => side === 'left' ? s.deckLeftCount : s.deckRightCount);
-  const discardPileLength = useGameStore((s) => s.discardPile.length);
-  const phase = useGameStore((s) => s.phase);
-  const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
-  const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
-  const drawStack = useGameStore((s) => s.drawStack);
-  const settings = useGameStore((s) => s.settings);
+  const deckCount = useGameStore(s => (side === 'left' ? s.deckLeftCount : s.deckRightCount));
+  const discardPileLength = useGameStore(s => s.discardPile.length);
+  const phase = useGameStore(s => s.phase);
+  const hasDrawnThisTurn = useGameStore(s => s.hasDrawnThisTurn);
+  const pendingPenaltyDraws = useGameStore(s => s.pendingPenaltyDraws);
+  const drawStack = useGameStore(s => s.drawStack);
+  const settings = useGameStore(s => s.settings);
   const isMyTurn = useIsMyTurn();
   const playableIds = usePlayableCardIds();
 
   const remainingPenaltyDraws = pendingPenaltyDraws > 0 ? pendingPenaltyDraws : drawStack;
   const isPenaltyDrawing = remainingPenaltyDraws > 0;
-  const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable);
+  const mustDrawUntilPlayable = Boolean(settings?.houseRules.drawUntilPlayable);
   const canStartDrawUntilPlayable = !mustDrawUntilPlayable || playableIds.size === 0;
-  const canContinueDrawUntilPlayable = !isPenaltyDrawing && mustDrawUntilPlayable && hasDrawnThisTurn && playableIds.size === 0;
+  const canContinueDrawUntilPlayable =
+    !isPenaltyDrawing && mustDrawUntilPlayable && hasDrawnThisTurn && playableIds.size === 0;
   const hasCardsAvailable = deckCount > 0 || discardPileLength > 1;
 
-  return isMyTurn && phase === 'playing' && hasCardsAvailable
-    && (isPenaltyDrawing || (!hasDrawnThisTurn && canStartDrawUntilPlayable) || canContinueDrawUntilPlayable);
+  return (
+    isMyTurn &&
+    phase === 'playing' &&
+    hasCardsAvailable &&
+    (isPenaltyDrawing || (!hasDrawnThisTurn && canStartDrawUntilPlayable) || canContinueDrawUntilPlayable)
+  );
 }
 
 /** 牌垛：叠层边缘 + UNO 字样 + 张数，可摸时金色脉冲 */
-function DeckBack({ count, side, canDraw, onDraw, compact }: {
-  count: number; side: 'left' | 'right'; canDraw: boolean; onDraw: () => void; compact: boolean;
+function DeckBack({
+  count,
+  side,
+  canDraw,
+  onDraw,
+  compact,
+}: {
+  count: number;
+  side: 'left' | 'right';
+  canDraw: boolean;
+  onDraw: () => void;
+  compact: boolean;
 }) {
   const w = compact ? 56 : 66;
   const h = compact ? 80 : 95;
@@ -67,15 +85,20 @@ function DeckBack({ count, side, canDraw, onDraw, compact }: {
         !canDraw && count > 0 && 'opacity-60',
       )}
       style={{
-        width: w, height: h,
+        width: w,
+        height: h,
         background: 'linear-gradient(135deg, var(--color-card-back-from), var(--color-card-back-to))',
         boxShadow: canDraw
           ? undefined
           : '3px 3px 0 -1px rgba(30, 58, 95, 0.9), 6px 6px 0 -2px rgba(15, 39, 68, 0.9), 0 8px 20px rgba(0,0,0,0.35)',
       }}
     >
-      <span className={cn('font-game font-black tracking-widest text-white/55', compact ? 'text-xs' : 'text-sm')}>UNO</span>
-      <span className={cn('font-bold text-white/85 font-game tabular-nums', compact ? 'text-sm' : 'text-base')}>{count}</span>
+      <span className={cn('font-game font-black tracking-widest text-white/55', compact ? 'text-xs' : 'text-sm')}>
+        UNO
+      </span>
+      <span className={cn('font-bold text-white/85 font-game tabular-nums', compact ? 'text-sm' : 'text-base')}>
+        {count}
+      </span>
       <span className="text-[9px] text-white/40 font-game">摸牌</span>
     </button>
   );
@@ -86,27 +109,28 @@ function DeckBack({ count, side, canDraw, onDraw, compact }: {
  * 整个区域在父容器（flex-1）内垂直居中，牌槽与两侧牌垛基线对齐。
  */
 export default function StageCenter({ onDraw, compact = false }: StageCenterProps) {
-  const discardPile = useGameStore((s) => s.discardPile);
-  const currentColor = useGameStore((s) => s.currentColor);
-  const drawStack = useGameStore((s) => s.drawStack);
-  const direction = useGameStore((s) => s.direction);
-  const phase = useGameStore((s) => s.phase);
-  const endRevealing = useGameStore((s) => s.endRevealLeft > 0);
-  const players = useGameStore((s) => s.players);
-  const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
+  const discardPile = useGameStore(s => s.discardPile);
+  const currentColor = useGameStore(s => s.currentColor);
+  const drawStack = useGameStore(s => s.drawStack);
+  const direction = useGameStore(s => s.direction);
+  const phase = useGameStore(s => s.phase);
+  const endRevealing = useGameStore(s => s.endRevealLeft > 0);
+  const players = useGameStore(s => s.players);
+  const currentPlayerIndex = useGameStore(s => s.currentPlayerIndex);
   const userId = useEffectiveUserId();
 
   const canDrawLeft = useCanDraw('left');
   const canDrawRight = useCanDraw('right');
-  const deckLeftCount = useGameStore((s) => s.deckLeftCount);
-  const deckRightCount = useGameStore((s) => s.deckRightCount);
+  const deckLeftCount = useGameStore(s => s.deckLeftCount);
+  const deckRightCount = useGameStore(s => s.deckRightCount);
 
-  const hiddenDiscardCardIds = useFxStore((s) => s.hiddenDiscardCardIds);
+  const hiddenDiscardCardIds = useFxStore(s => s.hiddenDiscardCardIds);
   // 飞牌在途时仍显示上一张顶牌，落地瞬间才更新
   const topCardRaw = discardPile[discardPile.length - 1];
-  const topCard = topCardRaw && hiddenDiscardCardIds.has(topCardRaw.id) && discardPile.length > 1
-    ? discardPile[discardPile.length - 2]
-    : topCardRaw;
+  const topCard =
+    topCardRaw && hiddenDiscardCardIds.has(topCardRaw.id) && discardPile.length > 1
+      ? discardPile[discardPile.length - 2]
+      : topCardRaw;
   const currentPlayer = players[currentPlayerIndex];
   const isMyTurn = currentPlayer?.id === userId;
 
@@ -129,7 +153,13 @@ export default function StageCenter({ onDraw, compact = false }: StageCenterProp
 
       {/* 牌桌行：牌垛 | 弃牌槽 | 牌垛（基线对齐） */}
       <div className="flex items-end justify-center gap-6 pointer-events-auto">
-        <DeckBack count={deckLeftCount} side="left" canDraw={canDrawLeft} compact={compact} onDraw={() => onDraw('left')} />
+        <DeckBack
+          count={deckLeftCount}
+          side="left"
+          canDraw={canDrawLeft}
+          compact={compact}
+          onDraw={() => onDraw('left')}
+        />
 
         {/* 弃牌槽：虚线牌位 + 当前颜色辉光 */}
         <div className="relative">
@@ -139,7 +169,8 @@ export default function StageCenter({ onDraw, compact = false }: StageCenterProp
               !topCard && 'border-white/20',
             )}
             style={{
-              width: slotW + 14, height: slotH + 14,
+              width: slotW + 14,
+              height: slotH + 14,
               borderColor: colorHex ? `color-mix(in srgb, ${colorHex} 50%, transparent)` : undefined,
               boxShadow: colorHex ? `0 0 26px color-mix(in srgb, ${colorHex} 30%, transparent)` : undefined,
             }}
@@ -169,7 +200,13 @@ export default function StageCenter({ onDraw, compact = false }: StageCenterProp
           )}
         </div>
 
-        <DeckBack count={deckRightCount} side="right" canDraw={canDrawRight} compact={compact} onDraw={() => onDraw('right')} />
+        <DeckBack
+          count={deckRightCount}
+          side="right"
+          canDraw={canDrawRight}
+          compact={compact}
+          onDraw={() => onDraw('right')}
+        />
       </div>
 
       {/* 回合徽章 */}

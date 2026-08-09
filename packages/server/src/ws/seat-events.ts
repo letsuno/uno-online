@@ -1,19 +1,20 @@
-import type { Socket, Server as SocketIOServer } from 'socket.io';
+import type { UnoSocket as Socket, UnoServer as SocketIOServer } from './types.js';
 import type { KvStore } from '../kv/types.js';
 import { SEAT_COUNT, SWAP_COOLDOWN_MS, SWAP_REQUEST_TIMEOUT_MS } from '@uno-online/shared';
+import type { SocketCallbackResult } from '@uno-online/shared';
 import {
   getRoom,
   getRoomSeats,
   getRoomSpectators,
   takeSeat,
-  leaveSeat,
   swapSeats,
-  removeSpectatorFromRoom,
-  addSpectatorToRoom,
+  moveSpectatorToSeat,
+  moveSeatToSpectator,
   touchRoomActivity,
 } from '../plugins/core/room/store.js';
 import type { RoomSeatPlayer } from '../plugins/core/room/store.js';
-import type { SocketData } from './types.js';
+import { withRoomLifecycleLock } from './room-lifecycle-lock.js';
+import { hasExactKeys, isNonEmptyString } from './payload-validation.js';
 
 // ─── In-memory state ──────────────────────────────────────────────────────────
 
@@ -74,37 +75,42 @@ export function clearUserSwapRequests(roomCode: string, userId: string): void {
 }
 
 async function emitSeatUpdate(io: SocketIOServer, kv: KvStore, roomCode: string): Promise<void> {
-  const [seats, spectators] = await Promise.all([
-    getRoomSeats(kv, roomCode),
-    getRoomSpectators(kv, roomCode),
-  ]);
+  const [seats, spectators] = await Promise.all([getRoomSeats(kv, roomCode), getRoomSpectators(kv, roomCode)]);
   io.to(roomCode).emit('seat:updated', { seats, spectators });
+}
+
+export function clearAllSeatSwapState(): void {
+  for (const request of pendingSwapRequests.values()) clearTimeout(request.timer);
+  pendingSwapRequests.clear();
+  swapCooldowns.clear();
+}
+
+async function runSeatPostCommitEffects(io: SocketIOServer, kv: KvStore, roomCode: string): Promise<void> {
+  const results = await Promise.allSettled([touchRoomActivity(kv, roomCode), emitSeatUpdate(io, kv, roomCode)]);
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      console.warn(`[seat] Post-commit projection failed for ${roomCode}:`, result.reason);
+    }
+  }
 }
 
 // ─── Register seat event handlers ────────────────────────────────────────────
 
-export function registerSeatEvents(
-  socket: Socket,
-  io: SocketIOServer,
-  redis: KvStore,
-): void {
-  const data = socket.data as SocketData;
+export function registerSeatEvents(socket: Socket, io: SocketIOServer, redis: KvStore): void {
+  const data = socket.data;
 
   // ── seat:take ──────────────────────────────────────────────────────────────
-  socket.on(
-    'seat:take',
-    async (
-      seatIndex: number,
-      callback: (res: { success: boolean; error?: string }) => void,
-    ) => {
-      const roomCode = data.roomCode;
-      if (!roomCode) return callback({ success: false, error: '不在房间中' });
+  socket.on('seat:take', async (seatIndex: number, callback: (res: SocketCallbackResult) => void) => {
+    const roomCode = data.roomCode;
+    if (!roomCode) return callback({ success: false, error: '不在房间中' });
+    return withRoomLifecycleLock(roomCode, async () => {
+      if (data.roomCode !== roomCode) return callback({ success: false, error: '不在房间中' });
 
       const room = await getRoom(redis, roomCode);
       if (!room) return callback({ success: false, error: '房间不存在' });
       if (room.status !== 'waiting') return callback({ success: false, error: '游戏进行中无法换座' });
 
-      if (typeof seatIndex !== 'number' || seatIndex < 0 || seatIndex >= SEAT_COUNT) {
+      if (!Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex >= SEAT_COUNT) {
         return callback({ success: false, error: '无效座位编号' });
       }
 
@@ -146,11 +152,11 @@ export function registerSeatEvents(
         player = {
           userId: data.user.userId,
           nickname: data.user.nickname,
-          avatarUrl: spectatorData.avatarUrl ?? null,
+          avatarUrl: spectatorData.avatarUrl,
           ready: false,
           connected: true,
           role: data.user.role,
-          isBot: data.user.isBot ?? false,
+          isBot: data.user.isBot,
         };
       } else {
         // Reuse existing player data, reset ready
@@ -159,9 +165,11 @@ export function registerSeatEvents(
       }
 
       try {
-        await takeSeat(redis, roomCode, seatIndex, player);
+        if (isSpectator) await moveSpectatorToSeat(redis, roomCode, seatIndex, player);
+        else await takeSeat(redis, roomCode, seatIndex, player);
       } catch (err) {
-        return callback({ success: false, error: (err as Error).message });
+        if (!(err instanceof Error)) throw err;
+        return callback({ success: false, error: err.message });
       }
 
       // Only after the seat is safely claimed may the spectator identity be
@@ -171,24 +179,23 @@ export function registerSeatEvents(
       // rejected by the "你不在该房间中" precheck.
       if (isSpectator) {
         data.isSpectator = false;
-        await removeSpectatorFromRoom(redis, roomCode, userId);
       }
 
       setCooldown(roomCode, userId);
-      await touchRoomActivity(redis, roomCode);
-      await emitSeatUpdate(io, redis, roomCode);
+      // The atomic roster write above is the commit boundary. Activity and
+      // broadcasts are projections: a transient failure must not make the
+      // client retry an already-completed seat move.
+      await runSeatPostCommitEffects(io, redis, roomCode);
       callback({ success: true });
-    },
-  );
+    });
+  });
 
   // ── seat:leave ─────────────────────────────────────────────────────────────
-  socket.on(
-    'seat:leave',
-    async (
-      callback: (res: { success: boolean; error?: string }) => void,
-    ) => {
-      const roomCode = data.roomCode;
-      if (!roomCode) return callback({ success: false, error: '不在房间中' });
+  socket.on('seat:leave', async (callback: (res: SocketCallbackResult) => void) => {
+    const roomCode = data.roomCode;
+    if (!roomCode) return callback({ success: false, error: '不在房间中' });
+    return withRoomLifecycleLock(roomCode, async () => {
+      if (data.roomCode !== roomCode) return callback({ success: false, error: '不在房间中' });
 
       const room = await getRoom(redis, roomCode);
       if (!room) return callback({ success: false, error: '房间不存在' });
@@ -204,35 +211,32 @@ export function registerSeatEvents(
       if (currentSeat.ready) return callback({ success: false, error: '请先取消准备再离座' });
       if (room.ownerId === userId) return callback({ success: false, error: '房主需要先移交房主权才能离座' });
 
-      await leaveSeat(redis, roomCode, userId);
-      data.isSpectator = true;
-
-      await addSpectatorToRoom(redis, roomCode, {
+      await moveSeatToSpectator(redis, roomCode, userId, {
         userId: data.user.userId,
         nickname: data.user.nickname,
-        avatarUrl: data.user.avatarUrl ?? null,
+        avatarUrl: data.user.avatarUrl,
         role: data.user.role,
         connected: true,
       });
+      data.isSpectator = true;
 
       // Clear any pending swap requests where this user is the requester
       clearUserSwapRequests(roomCode, userId);
 
-      await touchRoomActivity(redis, roomCode);
-      await emitSeatUpdate(io, redis, roomCode);
+      await runSeatPostCommitEffects(io, redis, roomCode);
       callback({ success: true });
-    },
-  );
+    });
+  });
 
   // ── seat:swap_request ──────────────────────────────────────────────────────
-  socket.on(
-    'seat:swap_request',
-    async (
-      targetUserId: string,
-      callback: (res: { success: boolean; error?: string }) => void,
-    ) => {
-      const roomCode = data.roomCode;
-      if (!roomCode) return callback({ success: false, error: '不在房间中' });
+  socket.on('seat:swap_request', async (targetUserId: string, callback: (res: SocketCallbackResult) => void) => {
+    if (!isNonEmptyString(targetUserId)) {
+      return callback({ success: false, error: '目标玩家无效' });
+    }
+    const roomCode = data.roomCode;
+    if (!roomCode) return callback({ success: false, error: '不在房间中' });
+    return withRoomLifecycleLock(roomCode, async () => {
+      if (data.roomCode !== roomCode) return callback({ success: false, error: '不在房间中' });
 
       const room = await getRoom(redis, roomCode);
       if (!room) return callback({ success: false, error: '房间不存在' });
@@ -261,10 +265,11 @@ export function registerSeatEvents(
         try {
           await swapSeats(redis, roomCode, requesterId, targetUserId);
         } catch (err) {
-          return callback({ success: false, error: (err as Error).message });
+          if (!(err instanceof Error)) throw err;
+          return callback({ success: false, error: err.message });
         }
         setCooldown(roomCode, requesterId);
-        await emitSeatUpdate(io, redis, roomCode);
+        await runSeatPostCommitEffects(io, redis, roomCode);
         io.to(roomCode).emit('seat:swap_resolved', {
           accepted: true,
           requesterId,
@@ -281,6 +286,7 @@ export function registerSeatEvents(
       }
 
       const timer = setTimeout(() => {
+        if (pendingSwapRequests.get(pendingKey)?.timer !== timer) return;
         pendingSwapRequests.delete(pendingKey);
         io.to(roomCode).emit('seat:swap_resolved', {
           accepted: false,
@@ -298,91 +304,117 @@ export function registerSeatEvents(
         timer,
       });
 
-      const targetSockets = await io.in(roomCode).fetchSockets();
-      for (const s of targetSockets) {
-        if ((s.data as SocketData).user.userId === targetUserId) {
-          s.emit('seat:swap_requested', {
-            requesterId,
-            requesterName: data.user.nickname,
-            requesterSeatIndex,
-            targetSeatIndex,
-          });
+      try {
+        const targetSockets = await io.in(roomCode).fetchSockets();
+        for (const s of targetSockets) {
+          if (s.data.user.userId === targetUserId) {
+            s.emit('seat:swap_requested', {
+              requesterId,
+              requesterName: data.user.nickname,
+              requesterSeatIndex,
+              targetSeatIndex,
+            });
+          }
         }
+      } catch (error) {
+        clearTimeout(timer);
+        if (pendingSwapRequests.get(pendingKey)?.timer === timer) {
+          pendingSwapRequests.delete(pendingKey);
+        }
+        console.warn(`[seat] Failed to deliver swap request in ${roomCode}:`, error);
+        return callback({ success: false, error: '换座请求发送失败，请重试' });
       }
 
       callback({ success: true });
-    },
-  );
+    });
+  });
 
   // ── seat:swap_respond ──────────────────────────────────────────────────────
   socket.on(
     'seat:swap_respond',
-    async (
-      payload: { requesterId: string; accept: boolean },
-      callback: (res: { success: boolean; error?: string }) => void,
-    ) => {
+    async (payload: { requesterId: string; accept: boolean }, callback: (res: SocketCallbackResult) => void) => {
+      if (
+        !hasExactKeys(payload, ['requesterId', 'accept']) ||
+        !isNonEmptyString(payload['requesterId']) ||
+        typeof payload['accept'] !== 'boolean'
+      ) {
+        return callback({ success: false, error: '换座响应无效' });
+      }
       const roomCode = data.roomCode;
       if (!roomCode) return callback({ success: false, error: '不在房间中' });
+      return withRoomLifecycleLock(roomCode, async () => {
+        if (data.roomCode !== roomCode) return callback({ success: false, error: '不在房间中' });
 
-      const responderId = data.user.userId;
-      const pendingKey = `${roomCode}:${responderId}`;
-      const pending = pendingSwapRequests.get(pendingKey);
+        const responderId = data.user.userId;
+        const pendingKey = `${roomCode}:${responderId}`;
+        const pending = pendingSwapRequests.get(pendingKey);
+        const room = await getRoom(redis, roomCode);
 
-      if (!pending || pending.requesterId !== payload.requesterId) {
-        return callback({ success: false, error: '没有待处理的换座请求' });
-      }
+        if (!room || room.status !== 'waiting') {
+          if (pending) {
+            clearTimeout(pending.timer);
+            pendingSwapRequests.delete(pendingKey);
+          }
+          return callback({ success: false, error: '游戏进行中无法换座' });
+        }
 
-      clearTimeout(pending.timer);
-      pendingSwapRequests.delete(pendingKey);
+        if (!pending || pending.requesterId !== payload.requesterId) {
+          return callback({ success: false, error: '没有待处理的换座请求' });
+        }
 
-      if (!payload.accept) {
+        clearTimeout(pending.timer);
+        pendingSwapRequests.delete(pendingKey);
+
+        if (!payload.accept) {
+          io.to(roomCode).emit('seat:swap_resolved', {
+            accepted: false,
+            requesterId: pending.requesterId,
+            targetUserId: responderId,
+          });
+          callback({ success: true });
+          return;
+        }
+
+        // Accept: validate responder is unready
+        const seats = await getRoomSeats(redis, roomCode);
+        const responderSeatIndex = seats.findIndex(s => s?.userId === responderId);
+        if (responderSeatIndex === -1) {
+          io.to(roomCode).emit('seat:swap_resolved', {
+            accepted: false,
+            requesterId: pending.requesterId,
+            targetUserId: responderId,
+            reason: 'responder_left_seat',
+          });
+          return callback({ success: false, error: '你已不在座位上' });
+        }
+
+        const responderSeat = seats[responderSeatIndex]!;
+        if (responderSeat.ready) {
+          io.to(roomCode).emit('seat:swap_resolved', {
+            accepted: false,
+            requesterId: pending.requesterId,
+            targetUserId: responderId,
+            reason: 'responder_ready',
+          });
+          return callback({ success: false, error: '请先取消准备再同意换座' });
+        }
+
+        try {
+          await swapSeats(redis, roomCode, pending.requesterId, responderId);
+        } catch (err) {
+          if (!(err instanceof Error)) throw err;
+          return callback({ success: false, error: err.message });
+        }
+
+        setCooldown(roomCode, pending.requesterId);
+        await runSeatPostCommitEffects(io, redis, roomCode);
         io.to(roomCode).emit('seat:swap_resolved', {
-          accepted: false,
+          accepted: true,
           requesterId: pending.requesterId,
           targetUserId: responderId,
         });
         callback({ success: true });
-        return;
-      }
-
-      // Accept: validate responder is unready
-      const seats = await getRoomSeats(redis, roomCode);
-      const responderSeatIndex = seats.findIndex(s => s?.userId === responderId);
-      if (responderSeatIndex === -1) {
-        io.to(roomCode).emit('seat:swap_resolved', {
-          accepted: false,
-          requesterId: pending.requesterId,
-          targetUserId: responderId,
-          reason: 'responder_left_seat',
-        });
-        return callback({ success: false, error: '你已不在座位上' });
-      }
-
-      const responderSeat = seats[responderSeatIndex]!;
-      if (responderSeat.ready) {
-        io.to(roomCode).emit('seat:swap_resolved', {
-          accepted: false,
-          requesterId: pending.requesterId,
-          targetUserId: responderId,
-          reason: 'responder_ready',
-        });
-        return callback({ success: false, error: '请先取消准备再同意换座' });
-      }
-
-      try {
-        await swapSeats(redis, roomCode, pending.requesterId, responderId);
-      } catch (err) {
-        return callback({ success: false, error: (err as Error).message });
-      }
-
-      setCooldown(roomCode, pending.requesterId);
-      await emitSeatUpdate(io, redis, roomCode);
-      io.to(roomCode).emit('seat:swap_resolved', {
-        accepted: true,
-        requesterId: pending.requesterId,
-        targetUserId: responderId,
       });
-      callback({ success: true });
     },
   );
 }

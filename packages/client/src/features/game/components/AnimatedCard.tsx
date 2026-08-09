@@ -20,8 +20,8 @@ interface AnimatedCardProps {
   forceCornerLabel?: boolean;
 }
 
-const AnimatedCard = forwardRef<HTMLDivElement, AnimatedCardProps>(
-  function AnimatedCard({
+const AnimatedCard = forwardRef<HTMLDivElement, AnimatedCardProps>(function AnimatedCard(
+  {
     card,
     playable,
     clickable = playable,
@@ -35,34 +35,39 @@ const AnimatedCard = forwardRef<HTMLDivElement, AnimatedCardProps>(
     transition,
     disableHoverLift,
     forceCornerLabel,
-  }, ref) {
-    return (
-      <motion.div
-        ref={ref}
-        layoutId={layoutId}
-        data-card-id={card.id}
-        className={cn('inline-block', className)}
-        initial={{ scale: 0.8, opacity: 0, y: 20 }}
-        animate={animate ?? { scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.5, opacity: 0, y: -40, rotate: 15 }}
-        transition={transition ?? { type: 'spring', stiffness: 400, damping: 25 }}
-        whileHover={!disableHoverLift && clickable ? { y: -24, scale: 1.1, zIndex: 50, transition: { type: 'tween', duration: 0.15 } } : undefined}
-        whileTap={clickable ? { scale: 0.95 } : undefined}
-        style={style}
-      >
-        <Card
-          card={card}
-          playable={playable}
-          clickable={clickable}
-          dimmed={dimmed}
-          onClick={onClick}
-          className={cardClassName}
-          forceCornerLabel={forceCornerLabel}
-          disableHoverLift={disableHoverLift}
-        />
-      </motion.div>
-    );
   },
-);
+  ref,
+) {
+  return (
+    <motion.div
+      ref={ref}
+      layoutId={layoutId}
+      data-card-id={card.id}
+      className={cn('inline-block', className)}
+      initial={{ scale: 0.8, opacity: 0, y: 20 }}
+      animate={animate ?? { scale: 1, opacity: 1, y: 0 }}
+      exit={{ scale: 0.5, opacity: 0, y: -40, rotate: 15 }}
+      transition={transition ?? { type: 'spring', stiffness: 400, damping: 25 }}
+      whileHover={
+        !disableHoverLift && clickable
+          ? { y: -24, scale: 1.1, zIndex: 50, transition: { type: 'tween', duration: 0.15 } }
+          : undefined
+      }
+      whileTap={clickable ? { scale: 0.95 } : undefined}
+      style={style}
+    >
+      <Card
+        card={card}
+        playable={playable}
+        clickable={clickable}
+        dimmed={dimmed}
+        onClick={onClick}
+        className={cardClassName}
+        forceCornerLabel={forceCornerLabel}
+        disableHoverLift={disableHoverLift}
+      />
+    </motion.div>
+  );
+});
 
 export default AnimatedCard;

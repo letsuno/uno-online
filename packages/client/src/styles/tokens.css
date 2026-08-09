@@ -140,9 +140,10 @@
   --shadow-card-sm: 2px 3px 0px rgba(0, 0, 0, 0.3);
   --shadow-card-playable: 0 0 12px rgba(251, 191, 36, 0.5), 3px 4px 0px rgba(0, 0, 0, 0.2);
   --shadow-glow-active: 0 0 12px rgba(251, 191, 36, 0.6);
-  --shadow-draw-ready: 0 0 0 4px rgba(251, 191, 36, 0.28), 0 0 26px rgba(251, 191, 36, 0.72), 3px 4px 0px rgba(0, 0, 0, 0.2);
+  --shadow-draw-ready:
+    0 0 0 4px rgba(251, 191, 36, 0.28), 0 0 26px rgba(251, 191, 36, 0.72), 3px 4px 0px rgba(0, 0, 0, 0.2);
   --shadow-toast: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-input-focus: 0 0 0 4px rgba(246, 190, 62, 0.10);
+  --shadow-input-focus: 0 0 0 4px rgba(246, 190, 62, 0.1);
 
   /* ---- 层级（唯一合法 z-index 集合，禁止任意值） ---- */
   --z-index-card: 1;

@@ -7,7 +7,7 @@ import { useAuthStore } from '@/features/auth/stores/auth-store';
 export default function NotificationPermissionDialog() {
   const [open, setOpen] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>('default');
-  const token = useAuthStore((s) => s.token);
+  const token = useAuthStore(s => s.token);
 
   useEffect(() => {
     if (!token) return;
@@ -62,9 +62,7 @@ export default function NotificationPermissionDialog() {
       }
     >
       <div className="space-y-3">
-        <p className="text-sm text-foreground/90">
-          开启浏览器通知后，当你不在游戏页面时，我们会在以下情况提醒你：
-        </p>
+        <p className="text-sm text-foreground/90">开启浏览器通知后，当你不在游戏页面时，我们会在以下情况提醒你：</p>
         <ul className="space-y-1.5 text-sm text-muted-foreground">
           <li className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />

@@ -1,7 +1,7 @@
-import type { Card } from '@uno-online/shared';
+import type { Card, Color } from '@uno-online/shared';
 import { unzipSync } from 'fflate';
 
-const COLOR_INDEX: Record<string, number> = { yellow: 0, red: 1, green: 2, blue: 3 };
+const COLOR_INDEX: Record<Color, number> = { yellow: 0, red: 1, green: 2, blue: 3 };
 
 /**
  * Map a card to its image index (0-53) in the resource pack.
@@ -9,17 +9,17 @@ const COLOR_INDEX: Record<string, number> = { yellow: 0, red: 1, green: 2, blue:
 function cardToImageIndex(card: Card): number {
   switch (card.type) {
     case 'draw_two':
-      return COLOR_INDEX[card.color] ?? 0;
+      return COLOR_INDEX[card.color];
     case 'number':
-      return 4 + (9 - card.value) * 4 + (COLOR_INDEX[card.color] ?? 0);
+      return 4 + (9 - card.value) * 4 + COLOR_INDEX[card.color];
     case 'wild_draw_four':
       return 44;
     case 'wild':
       return 45;
     case 'skip':
-      return 46 + (COLOR_INDEX[card.color] ?? 0);
+      return 46 + COLOR_INDEX[card.color];
     case 'reverse':
-      return 50 + (COLOR_INDEX[card.color] ?? 0);
+      return 50 + COLOR_INDEX[card.color];
   }
 }
 
@@ -66,8 +66,16 @@ function loadPackFromZipBuffer(buffer: ArrayBuffer): void {
     if (index < 0 || index > 53) continue;
 
     const ext = match[2].toLowerCase();
-    const mimeMap: Record<string, string> = { webp: 'image/webp', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', svg: 'image/svg+xml' };
-    const blob = new Blob([data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer], { type: mimeMap[ext] ?? 'image/webp' });
+    const mimeMap: Record<string, string> = {
+      webp: 'image/webp',
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      svg: 'image/svg+xml',
+    };
+    const blob = new Blob([data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer], {
+      type: mimeMap[ext] ?? 'image/webp',
+    });
     imageCache.set(index, { url: URL.createObjectURL(blob), isSvg: ext === 'svg' });
   }
 

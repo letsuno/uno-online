@@ -6,8 +6,10 @@ import * as ort from 'onnxruntime-node';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AI_FEATURE_SCHEMA } from '../../src/ai/provider.js';
 import {
+  AiPluginNotFoundError,
   AiProviderRegistry,
   BUILTIN_AI_PROVIDER_ID,
+  BuiltInAiPluginMutationError,
   validateCommunityPluginManifest,
 } from '../../src/ai/model-registry.js';
 import { MAX_COMMUNITY_STRATEGY_BYTES } from '../../src/ai/community-plugin.js';
@@ -22,9 +24,7 @@ afterEach(async () => {
   else process.env['UNO_AI_PLUGINS_DIR'] = originalPluginsDir;
   if (originalSettingsFile === undefined) delete process.env['UNO_AI_PLUGIN_SETTINGS_FILE'];
   else process.env['UNO_AI_PLUGIN_SETTINGS_FILE'] = originalSettingsFile;
-  await Promise.all(temporaryDirectories.splice(0).map(directory => (
-    rm(directory, { recursive: true, force: true })
-  )));
+  await Promise.all(temporaryDirectories.splice(0).map(directory => rm(directory, { recursive: true, force: true })));
 });
 
 function hash(value: Uint8Array | string): string {
@@ -56,13 +56,12 @@ async function createPluginPackage(options?: {
   dataAccess?: string[];
   withOnnx?: boolean;
 }): Promise<{ root: string; packageDir: string }> {
-  const root = options?.root ?? await mkdtemp(join(tmpdir(), 'uno-ai-plugins-'));
+  const root = options?.root ?? (await mkdtemp(join(tmpdir(), 'uno-ai-plugins-')));
   if (!options?.root) temporaryDirectories.push(root);
   const id = options?.id ?? 'community-test-v1';
   const packageDir = join(root, id);
   await mkdir(packageDir, { recursive: true });
-  const source = options?.source
-    ?? 'export default { decide: (context: any) => context.candidates[0].id };';
+  const source = options?.source ?? 'export default { decide: (context: any) => context.candidates[0].id };';
   await writeFile(join(packageDir, 'strategy.ts'), source, 'utf8');
   const manifest = {
     ...validManifest(source),
@@ -119,40 +118,50 @@ describe('community AI plugin manifest', () => {
   });
 
   it('rejects path traversal and undeclared permission names', () => {
-    expect(() => validateCommunityPluginManifest({
-      ...validManifest(),
-      entry: '../strategy.ts',
-    })).toThrow('local .ts filename');
-    expect(() => validateCommunityPluginManifest({
-      ...validManifest(),
-      dataAccess: ['full-process-access'],
-    })).toThrow('unknown permission');
+    expect(() =>
+      validateCommunityPluginManifest({
+        ...validManifest(),
+        entry: '../strategy.ts',
+      }),
+    ).toThrow('local .ts filename');
+    expect(() =>
+      validateCommunityPluginManifest({
+        ...validManifest(),
+        dataAccess: ['full-process-access'],
+      }),
+    ).toThrow('unknown permission');
   });
 
   it('rejects ignored manifest fields instead of accepting legacy shapes', () => {
-    expect(() => validateCommunityPluginManifest({
-      ...validManifest(),
-      defaultProvider: true,
-    })).toThrow('unknown fields: defaultProvider');
+    expect(() =>
+      validateCommunityPluginManifest({
+        ...validManifest(),
+        defaultProvider: true,
+      }),
+    ).toThrow('unknown fields: defaultProvider');
   });
 
   it('rejects unknown house rules', () => {
     const manifest = validManifest();
-    expect(() => validateCommunityPluginManifest({
-      ...manifest,
-      capabilities: { ...manifest.capabilities, supportedHouseRules: ['notARealRule'] },
-    })).toThrow('unknown rule');
+    expect(() =>
+      validateCommunityPluginManifest({
+        ...manifest,
+        capabilities: { ...manifest.capabilities, supportedHouseRules: ['notARealRule'] },
+      }),
+    ).toThrow('unknown rule');
   });
 
   it('does not grant candidate feature access implicitly to ONNX plugins', () => {
-    expect(() => validateCommunityPluginManifest({
-      ...validManifest(),
-      dataAccess: [],
-      onnx: {
-        modelFile: 'model.onnx',
-        onnxSha256: 'a'.repeat(64),
-      },
-    })).not.toThrow();
+    expect(() =>
+      validateCommunityPluginManifest({
+        ...validManifest(),
+        dataAccess: [],
+        onnx: {
+          modelFile: 'model.onnx',
+          onnxSha256: 'a'.repeat(64),
+        },
+      }),
+    ).not.toThrow();
   });
 });
 
@@ -189,22 +198,24 @@ describe('community AI plugin registry', () => {
 
     const registry = new AiProviderRegistry();
     expect(await registry.get('community-test-v1')).toBeNull();
-    expect((await registry.snapshot()).loadFailures[0]?.message)
-      .toMatch(/Code generation from strings disallowed|not defined/);
+    expect((await registry.snapshot()).loadFailures[0]?.message).toMatch(
+      /Code generation from strings disallowed|not defined/,
+    );
   });
 
   it('rejects oversized TypeScript entries before compilation', async () => {
-    const source = `export default { decide: (context: any) => context.candidates[0].id };\n/*${
-      'x'.repeat(MAX_COMMUNITY_STRATEGY_BYTES)
-    }*/`;
+    const source = `export default { decide: (context: any) => context.candidates[0].id };\n/*${'x'.repeat(
+      MAX_COMMUNITY_STRATEGY_BYTES,
+    )}*/`;
     const { root } = await createPluginPackage({ source });
     process.env['UNO_AI_PLUGINS_DIR'] = root;
     process.env['UNO_AI_PLUGIN_SETTINGS_FILE'] = join(root, 'settings.json');
 
     const registry = new AiProviderRegistry();
     expect(await registry.get('community-test-v1')).toBeNull();
-    expect((await registry.snapshot()).loadFailures[0]?.message)
-      .toContain(`exceeds ${MAX_COMMUNITY_STRATEGY_BYTES} bytes`);
+    expect((await registry.snapshot()).loadFailures[0]?.message).toContain(
+      `exceeds ${MAX_COMMUNITY_STRATEGY_BYTES} bytes`,
+    );
   });
 
   it('loads TypeScript once at startup and validates the returned candidate', async () => {
@@ -253,8 +264,7 @@ describe('community AI plugin registry', () => {
     process.env['UNO_AI_PLUGIN_SETTINGS_FILE'] = join(root, 'settings.json');
 
     const provider = await new AiProviderRegistry().get('community-test-v1');
-    await expect(provider!.decide(request(), new AbortController().signal))
-      .rejects.toThrow('illegal candidate id');
+    await expect(provider!.decide(request(), new AbortController().signal)).rejects.toThrow('illegal candidate id');
   });
 
   it('lets the plugin define ONNX inputs and interpret raw outputs', async () => {
@@ -332,8 +342,9 @@ describe('community AI plugin registry', () => {
     const provider = await new AiProviderRegistry().get('community-test-v1');
     expect(provider).not.toBeNull();
     try {
-      await expect(provider!.decide(request(60), new AbortController().signal))
-        .rejects.toThrow(/timed out|deadline exhausted/);
+      await expect(provider!.decide(request(60), new AbortController().signal)).rejects.toThrow(
+        /timed out|deadline exhausted/,
+      );
     } finally {
       await provider?.dispose();
     }
@@ -363,8 +374,7 @@ describe('community AI plugin registry', () => {
     const provider = await new AiProviderRegistry().get('community-test-v1');
     const dispose = vi.spyOn(ort.Tensor.prototype, 'dispose');
     try {
-      await expect(provider!.decide(request(), new AbortController().signal))
-        .rejects.toThrow('unknown ONNX input');
+      await expect(provider!.decide(request(), new AbortController().signal)).rejects.toThrow('unknown ONNX input');
       expect(dispose).toHaveBeenCalled();
     } finally {
       dispose.mockRestore();
@@ -398,8 +408,9 @@ describe('community AI plugin registry', () => {
 
     const provider = await new AiProviderRegistry().get('community-test-v1');
     try {
-      await expect(provider!.decide(request(), new AbortController().signal))
-        .rejects.toThrow(`exceeds the ${MAX_COMMUNITY_ONNX_TENSOR_ELEMENTS} element limit`);
+      await expect(provider!.decide(request(), new AbortController().signal)).rejects.toThrow(
+        `exceeds the ${MAX_COMMUNITY_ONNX_TENSOR_ELEMENTS} element limit`,
+      );
     } finally {
       await provider?.dispose();
     }
@@ -412,8 +423,7 @@ describe('community AI plugin registry', () => {
 
     const registry = new AiProviderRegistry();
     expect(await registry.get('community-test-v1')).toBeNull();
-    expect((await registry.snapshot()).loadFailures[0]?.message)
-      .toContain('must define prepareOnnx(context)');
+    expect((await registry.snapshot()).loadFailures[0]?.message).toContain('must define prepareOnnx(context)');
   });
 
   it('persists independent enable state without an implicit default provider', async () => {
@@ -423,6 +433,12 @@ describe('community AI plugin registry', () => {
 
     const registry = new AiProviderRegistry();
     expect((await registry.get('community-test-v1'))?.metadata.id).toBe('community-test-v1');
+    await expect(registry.setCommunityPluginEnabled('missing-plugin', false)).rejects.toBeInstanceOf(
+      AiPluginNotFoundError,
+    );
+    await expect(registry.setCommunityPluginEnabled(BUILTIN_AI_PROVIDER_ID, false)).rejects.toBeInstanceOf(
+      BuiltInAiPluginMutationError,
+    );
     await registry.setCommunityPluginEnabled('community-test-v1', false);
     expect(await registry.has('community-test-v1')).toBe(false);
     expect(await registry.get('community-test-v1')).toBeNull();
@@ -437,14 +453,17 @@ describe('community AI plugin registry', () => {
   it('rejects legacy settings fields instead of silently enabling plugins', async () => {
     const { root } = await createPluginPackage();
     const settingsFile = join(root, 'settings.json');
-    await writeFile(settingsFile, JSON.stringify({
-      disabledCommunityPluginIds: [],
-      defaultProviderId: 'community-test-v1',
-    }), 'utf8');
+    await writeFile(
+      settingsFile,
+      JSON.stringify({
+        disabledCommunityPluginIds: [],
+        defaultProviderId: 'community-test-v1',
+      }),
+      'utf8',
+    );
     process.env['UNO_AI_PLUGINS_DIR'] = root;
     process.env['UNO_AI_PLUGIN_SETTINGS_FILE'] = settingsFile;
 
-    await expect(new AiProviderRegistry().initialize())
-      .rejects.toThrow('unknown fields: defaultProviderId');
+    await expect(new AiProviderRegistry().initialize()).rejects.toThrow('unknown fields: defaultProviderId');
   });
 });

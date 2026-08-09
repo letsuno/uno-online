@@ -5,7 +5,12 @@ import { PRE_CHECK_PLUGINS, POST_PROCESS_PLUGINS } from './rules/index.js';
 
 const ctx = buildRuleContext();
 
-function runPostProcess(state: GameState, next: GameState, action: GameAction, hr: GameState['settings']['houseRules']): GameState {
+function runPostProcess(
+  state: GameState,
+  next: GameState,
+  action: GameAction,
+  hr: GameState['settings']['houseRules'],
+): GameState {
   for (const plugin of POST_PROCESS_PLUGINS) {
     if (!plugin.isEnabled(hr)) continue;
     if (!plugin.postProcess) continue;
@@ -23,7 +28,7 @@ export function applyActionWithHouseRules(state: GameState, action: GameAction):
   // the affected player must finish drawing before any card can be played.
   // Keep this invariant ahead of every plugin so a pre-check cannot bypass
   // the core engine's identical guard (for example by starting a new stack).
-  if (action.type === 'PLAY_CARD' && (state.pendingPenaltyDraws ?? 0) > 0) {
+  if (action.type === 'PLAY_CARD' && state.pendingPenaltyDraws > 0) {
     return state;
   }
 
@@ -42,7 +47,7 @@ export function applyActionWithHouseRules(state: GameState, action: GameAction):
 
   if (
     action.type === 'DRAW_CARD' &&
-    (state.pendingPenaltyDraws ?? 0) === 0 &&
+    state.pendingPenaltyDraws === 0 &&
     state.lastAction?.type === 'DRAW_CARD' &&
     state.lastAction.playerId === action.playerId
   ) {

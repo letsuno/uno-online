@@ -8,10 +8,28 @@ describe('mode rules: no regression', () => {
     const card = makeCard('number', 'red', { value: 7, id: 'play1' });
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [card, makeCard('number', 'blue', { value: 1 })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [card, makeCard('number', 'blue', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'green', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
-      settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, drawUntilPlayable: true } },
+      settings: {
+        turnTimeLimit: 30,
+        targetScore: 500,
+        houseRules: { ...DEFAULT_HOUSE_RULES, drawUntilPlayable: true },
+      },
     });
     const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'play1' });
     expect(next.currentPlayerIndex).toBe(1);
@@ -21,8 +39,22 @@ describe('mode rules: no regression', () => {
     const card = makeCard('number', 'red', { value: 7, id: 'play1' });
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [card, makeCard('number', 'blue', { value: 1 })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [card, makeCard('number', 'blue', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'green', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, elimination: true } },
     });
@@ -34,8 +66,22 @@ describe('mode rules: no regression', () => {
     const card = makeCard('number', 'red', { value: 7, id: 'play1' });
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [card, makeCard('number', 'blue', { value: 1 })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [card, makeCard('number', 'blue', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'green', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, teamMode: true } },
     });
@@ -47,8 +93,22 @@ describe('mode rules: no regression', () => {
     const card = makeCard('number', 'red', { value: 7, id: 'play1' });
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [card, makeCard('number', 'blue', { value: 1 })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 1 })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [card, makeCard('number', 'blue', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'green', { value: 1 })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: { ...DEFAULT_HOUSE_RULES, revengeMode: true } },
     });
@@ -67,5 +127,4 @@ describe('mode rules: no regression', () => {
   it('bombCard flag exists and is false by default', () => {
     expect(DEFAULT_HOUSE_RULES.bombCard).toBe(false);
   });
-
 });

@@ -16,7 +16,7 @@ interface TabsProps<T extends string> {
 export function Tabs<T extends string>({ tabs, active, onChange, className }: TabsProps<T>) {
   return (
     <div className={cn('flex border-b border-border', className)} role="tablist">
-      {tabs.map((tab) => (
+      {tabs.map(tab => (
         <button
           key={tab.key}
           role="tab"

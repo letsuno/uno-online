@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { PluginContext } from '../../../plugin-context.js';
 import { authPreHandler } from '../auth/service.js';
 import type { AuthenticatedRequest } from '../auth/service.js';
-import { createApiKey, listApiKeys, deleteApiKey, verifyApiKey } from './repo.js';
+import { ApiKeyLimitReachedError, createApiKey, listApiKeys, deleteApiKey, verifyApiKey } from './repo.js';
 
 // ── Rate limiter for unauthenticated verify endpoint ──
 
@@ -42,12 +42,15 @@ export function registerApiKeyRoutes(fastify: FastifyInstance, ctx: PluginContex
     try {
       const result = await createApiKey(ctx.db, userId, name.trim());
       return reply.code(201).send(result);
-    } catch (err) {
-      return reply.code(400).send({ error: (err as Error).message });
+    } catch (error) {
+      if (error instanceof ApiKeyLimitReachedError) {
+        return reply.code(400).send({ error: error.message });
+      }
+      throw new Error('创建 API Key 失败', { cause: error });
     }
   });
 
-  fastify.get('/api-keys', { preHandler }, async (request) => {
+  fastify.get('/api-keys', { preHandler }, async request => {
     const { userId } = (request as AuthenticatedRequest).user;
     return listApiKeys(ctx.db, userId);
   });

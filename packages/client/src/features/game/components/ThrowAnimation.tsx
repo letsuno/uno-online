@@ -12,14 +12,22 @@ interface ThrowAnimationProps {
 
 function getParticleColors(item: string): string[] {
   switch (item) {
-    case '🥚': return ['#fff9c4', '#fff176', '#f9e08a'];
-    case '🍅': return ['#ef4444', '#f87171', '#dc2626'];
-    case '🌹': return ['#ec4899', '#f472b6', '#be185d'];
-    case '💩': return ['#92400e', '#a16207', '#78350f'];
-    case '🐷': return ['#f9a8d4', '#f472b6', '#fda4af'];
-    case '👍': return ['#fbbf24', '#f59e0b', '#d97706'];
-    case '💖': return ['#ec4899', '#f472b6', '#f9a8d4'];
-    default: return ['#fbbf24', '#f59e0b', '#d97706'];
+    case '🥚':
+      return ['#fff9c4', '#fff176', '#f9e08a'];
+    case '🍅':
+      return ['#ef4444', '#f87171', '#dc2626'];
+    case '🌹':
+      return ['#ec4899', '#f472b6', '#be185d'];
+    case '💩':
+      return ['#92400e', '#a16207', '#78350f'];
+    case '🐷':
+      return ['#f9a8d4', '#f472b6', '#fda4af'];
+    case '👍':
+      return ['#fbbf24', '#f59e0b', '#d97706'];
+    case '💖':
+      return ['#ec4899', '#f472b6', '#f9a8d4'];
+    default:
+      return ['#fbbf24', '#f59e0b', '#d97706'];
   }
 }
 
@@ -28,10 +36,13 @@ export default function ThrowAnimation({ from, to, item, onComplete }: ThrowAnim
   const controls = useAnimationControls();
   const shouldRotate = ROTATING_ITEMS.has(item);
 
-  const controlPoint = useMemo(() => ({
-    x: (from.x + to.x) / 2,
-    y: Math.min(from.y, to.y) - Math.abs(to.x - from.x) * 0.4,
-  }), [from, to]);
+  const controlPoint = useMemo(
+    () => ({
+      x: (from.x + to.x) / 2,
+      y: Math.min(from.y, to.y) - Math.abs(to.x - from.x) * 0.4,
+    }),
+    [from, to],
+  );
 
   // Compute Bezier keyframes
   const { xKeyframes, yKeyframes } = useMemo(() => {
@@ -114,7 +125,7 @@ export default function ThrowAnimation({ from, to, item, onComplete }: ThrowAnim
               {item}
             </motion.div>
 
-            {particles.map((p) => (
+            {particles.map(p => (
               <motion.div
                 key={p.id}
                 className="absolute rounded-full"

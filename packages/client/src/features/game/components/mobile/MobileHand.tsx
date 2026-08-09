@@ -53,19 +53,19 @@ function isColorBoundary(sorted: CardType[], index: number): boolean {
  */
 export default function MobileHand({ onPlayCard }: MobileHandProps) {
   const userId = useEffectiveUserId();
-  const players = useGameStore((s) => s.players);
-  const phase = useGameStore((s) => s.phase);
-  const settings = useGameStore((s) => s.settings);
-  const drawStack = useGameStore((s) => s.drawStack);
-  const discardPile = useGameStore((s) => s.discardPile);
+  const players = useGameStore(s => s.players);
+  const phase = useGameStore(s => s.phase);
+  const settings = useGameStore(s => s.settings);
+  const drawStack = useGameStore(s => s.drawStack);
+  const discardPile = useGameStore(s => s.discardPile);
 
-  const me = players.find((p) => p.id === userId);
+  const me = players.find(p => p.id === userId);
   const isMyTurn = useIsMyTurn();
   const playableIds = usePlayableCardIds();
-  const hintedIds = settings?.houseRules?.noHints ? new Set<string>() : playableIds;
+  const hintedIds = settings?.houseRules.noHints ? new Set<string>() : playableIds;
   const sorted = useMemo(() => sortHand(me?.hand ?? []), [me?.hand]);
 
-  const hiddenHandCardIds = useFxStore((s) => s.hiddenHandCardIds);
+  const hiddenHandCardIds = useFxStore(s => s.hiddenHandCardIds);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pendingColorCardId, setPendingColorCardId] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -121,7 +121,8 @@ export default function MobileHand({ onPlayCard }: MobileHandProps) {
     // 出牌前记录精确槽位，飞牌从这里起飞
     const el = scrollRef.current?.querySelector(`[data-card-id="${card.id}"]`);
     const rect = el?.getBoundingClientRect();
-    if (rect) useFxStore.getState().setPlayOrigin(card.id, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    if (rect)
+      useFxStore.getState().setPlayOrigin(card.id, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
     onPlayCard(card.id);
     setSelectedId(null);
     return true;
@@ -130,7 +131,7 @@ export default function MobileHand({ onPlayCard }: MobileHandProps) {
   confirmPlayRef.current = confirmPlay;
   // hold 模式 preventDefault 会抑制 click，松手时需手动走 tap 逻辑
   const tapRef = useRef<(card: CardType) => void>(() => {});
-  tapRef.current = (card) => handleTap(card);
+  tapRef.current = card => handleTap(card);
 
   // React 的 touch 监听是 passive 的，preventDefault 需要原生监听
   useEffect(() => {
@@ -148,7 +149,9 @@ export default function MobileHand({ onPlayCard }: MobileHandProps) {
     const hitCardId = (x: number, y?: number): string | null => {
       const rect = scrollRef.current?.getBoundingClientRect();
       const sampleY = rect ? rect.bottom - 16 : (y ?? 0);
-      return (document.elementFromPoint(x, sampleY)?.closest('[data-card-id]') as HTMLElement | null)?.dataset.cardId ?? null;
+      return (
+        (document.elementFromPoint(x, sampleY)?.closest('[data-card-id]') as HTMLElement | null)?.dataset.cardId ?? null
+      );
     };
     // 浏览模式下手指停在屏幕边缘时自动滚动手牌，并重新命中指下的牌
     const startEdgeScroll = () => {
@@ -169,7 +172,11 @@ export default function MobileHand({ onPlayCard }: MobileHandProps) {
     const onStart = (e: TouchEvent) => {
       // 多点触控是逐个手指 touchstart 的：第二指落下时 touches.length 才为 2
       if (e.touches.length === 2) {
-        pinchRef.current = { startDist: touchDist(e.touches), startSpread: spreadRef.current, latest: spreadRef.current };
+        pinchRef.current = {
+          startDist: touchDist(e.touches),
+          startSpread: spreadRef.current,
+          latest: spreadRef.current,
+        };
         // 双指捏合接管：取消进行中的单指手势
         if (gestureRef.current) {
           gestureRef.current = null;
@@ -183,10 +190,15 @@ export default function MobileHand({ onPlayCard }: MobileHandProps) {
       const cardId = (t.target as HTMLElement).closest('[data-card-id]')?.getAttribute('data-card-id');
       if (!cardId) return;
       gestureRef.current = {
-        touchId: t.identifier, cardId,
-        x0: t.clientX, y0: t.clientY, t0: Date.now(),
+        touchId: t.identifier,
+        cardId,
+        x0: t.clientX,
+        y0: t.clientY,
+        t0: Date.now(),
         playLineY: (scrollRef.current?.getBoundingClientRect().top ?? t.clientY) - 4,
-        mode: 'undecided', lastX: t.clientX, lastY: t.clientY,
+        mode: 'undecided',
+        lastX: t.clientX,
+        lastY: t.clientY,
       };
     };
 
@@ -201,7 +213,7 @@ export default function MobileHand({ onPlayCard }: MobileHandProps) {
       }
       const g = gestureRef.current;
       if (!g || g.mode === 'scroll') return;
-      const t = [...e.changedTouches].find((x) => x.identifier === g.touchId);
+      const t = [...e.changedTouches].find(x => x.identifier === g.touchId);
       if (!t) return;
       g.lastX = t.clientX;
       g.lastY = t.clientY;
@@ -220,8 +232,7 @@ export default function MobileHand({ onPlayCard }: MobileHandProps) {
         return false;
       };
       // 跟手拖拽状态：附带是否已过打出线（手指拖出手牌区上沿）
-      const updateDrag = (dy: number) =>
-        setDragState({ id: g.cardId, dy, canPlay: t.clientY < g.playLineY });
+      const updateDrag = (dy: number) => setDragState({ id: g.cardId, dy, canPlay: t.clientY < g.playLineY });
 
       if (g.mode === 'undecided') {
         // 首个 move 必须当场决断：一旦放过未 cancel 的 move，浏览器会锁定本次触摸
@@ -287,28 +298,32 @@ export default function MobileHand({ onPlayCard }: MobileHandProps) {
       }
       const g = gestureRef.current;
       if (!g) return;
-      const t = [...e.changedTouches].find((x) => x.identifier === g.touchId);
+      const t = [...e.changedTouches].find(x => x.identifier === g.touchId);
       if (!t) return;
       gestureRef.current = null;
       stopEdgeScroll();
 
       if (g.mode === 'hold') {
         // hold 里 preventDefault 抑制了 click，手动补一次 tap（选择/确认/取消）
-        const card = dataRef.current.sorted.find((c) => c.id === g.cardId);
+        const card = dataRef.current.sorted.find(c => c.id === g.cardId);
         if (card) tapRef.current(card);
         return;
       }
       if (g.mode === 'browse') {
         suppressClickRef.current = true;
-        setTimeout(() => { suppressClickRef.current = false; }, 300);
+        setTimeout(() => {
+          suppressClickRef.current = false;
+        }, 300);
         return; // 选中保持抬起，等下一次 tap/上滑打出
       }
       if (g.mode === 'play') {
         suppressClickRef.current = true;
-        setTimeout(() => { suppressClickRef.current = false; }, 300);
+        setTimeout(() => {
+          suppressClickRef.current = false;
+        }, 300);
         // 只有松手时手指已拖出手牌区上沿才打出，区内松手一律弹回（防误触）
         if (t.clientY < g.playLineY) {
-          const card = dataRef.current.sorted.find((c) => c.id === g.cardId);
+          const card = dataRef.current.sorted.find(c => c.id === g.cardId);
           if (card) confirmPlayRef.current(card);
         }
         setDragState(null); // 未过打出线或不可出：弹回
@@ -341,13 +356,13 @@ export default function MobileHand({ onPlayCard }: MobileHandProps) {
 
   // 手牌变化后清理失效选中
   useEffect(() => {
-    if (selectedId && !sorted.some((c) => c.id === selectedId)) setSelectedId(null);
+    if (selectedId && !sorted.some(c => c.id === selectedId)) setSelectedId(null);
   }, [sorted, selectedId]);
 
   // 轮到我时，把第一张可出的牌滚入视野
   useEffect(() => {
     if (!isMyTurn || phase !== 'playing') return;
-    const first = sorted.find((c) => playableIds.has(c.id));
+    const first = sorted.find(c => playableIds.has(c.id));
     if (!first) return;
     const el = scrollRef.current?.querySelector(`[data-card-id="${first.id}"]`);
     el?.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
@@ -363,7 +378,12 @@ export default function MobileHand({ onPlayCard }: MobileHandProps) {
     // 最后乘双指捏合的缩放系数
     return Math.max(16, Math.max(OVERLAP_STRIDE, Math.min(CARD_W + 8, spreadStride)) * spread);
   }, [count, containerWidth, spread]);
-  const baseWidth = count > 0 ? CARD_W + stride * (count - 1) + BOUNDARY_GAP * Math.max(0, count > 1 ? sorted.filter((_, i) => isColorBoundary(sorted, i)).length : 0) : 0;
+  const baseWidth =
+    count > 0
+      ? CARD_W +
+        stride * (count - 1) +
+        BOUNDARY_GAP * Math.max(0, count > 1 ? sorted.filter((_, i) => isColorBoundary(sorted, i)).length : 0)
+      : 0;
   const centered = baseWidth > 0 && baseWidth <= containerWidth - 24;
 
   const topCard = discardPile[discardPile.length - 1];
@@ -410,7 +430,7 @@ export default function MobileHand({ onPlayCard }: MobileHandProps) {
     <div className="relative z-actions shrink-0" data-player-id={me.id}>
       {pendingColorCardId && (
         <ColorPicker
-          onPick={(color) => {
+          onPick={color => {
             onPlayCard(pendingColorCardId, color);
             setPendingColorCardId(null);
             setSelectedId(null);
@@ -440,73 +460,71 @@ export default function MobileHand({ onPlayCard }: MobileHandProps) {
       </AnimatePresence>
       <div
         ref={scrollRef}
-        className={cn(
-          'overflow-x-auto scrollbar-hidden px-3 pt-10 pb-3',
-          centered && 'flex justify-center',
-        )}
+        className={cn('overflow-x-auto scrollbar-hidden px-3 pt-10 pb-3', centered && 'flex justify-center')}
         // 上滑拖拽时牌要飞出手牌区上沿，overflow-x:auto 会把 y 方向也算成 auto 裁掉；
         // 拖拽及松手回弹期间放开（回弹约 0.4s，提前恢复会把回弹中的牌裁断）
         style={{ touchAction: 'pan-x', ...(dragOverflowFree ? { overflow: 'visible' } : {}) }}
       >
         <div className="relative flex items-end" style={{ height: CARD_H + RAISE, width: baseWidth || '100%' }}>
           <AnimatePresence mode="popLayout">
-          {sorted.map((card, i) => {
-            const isPlayable = playableIds.has(card.id);
-            const isDimmed = isMyTurn && phase === 'playing' && !hintedIds.has(card.id);
-            const isSelected = selectedId === card.id;
-            const isDragging = dragState?.id === card.id;
-            const canPlayNow = isDragging && dragState!.canPlay;
-            const boundary = isColorBoundary(sorted, i);
-            return (
-              <motion.button
-                key={card.id}
-                layout
-                initial={{ opacity: 0, y: 24, scale: 0.85 }}
-                animate={{
-                  opacity: 1,
-                  y: isDragging ? -RAISE + dragState!.dy : isSelected ? -RAISE : 0,
-                  scale: isDragging ? (canPlayNow ? 1.14 : 1.1) : isSelected ? 1.06 : 1,
-                  zIndex: isDragging ? 50 : isSelected ? 40 : i,
-                }}
-                exit={{ opacity: 0, scale: 0.6 }}
-                transition={isDragging ? { duration: 0 } : { type: 'spring', stiffness: 380, damping: 30 }}
-                data-card-id={card.id}
-                onClick={() => handleTap(card)}
-                className="relative shrink-0 bg-transparent border-0 p-0 cursor-pointer"
-                style={{
-                  width: i === count - 1 ? CARD_W : stride,
-                  height: CARD_H,
-                  marginLeft: boundary ? BOUNDARY_GAP : 0,
-                }}
-              >
-                <span
-                  className={cn(
-                    'absolute left-0 bottom-0 block transition-all duration-150',
-                    isDimmed && 'brightness-[0.45] saturate-[0.7]',
-                    isPlayable && isMyTurn && !isSelected && '-translate-y-1',
-                    hiddenHandCardIds.has(card.id) && 'opacity-0',
-                  )}
+            {sorted.map((card, i) => {
+              const isPlayable = playableIds.has(card.id);
+              const isDimmed = isMyTurn && phase === 'playing' && !hintedIds.has(card.id);
+              const isSelected = selectedId === card.id;
+              const isDragging = dragState?.id === card.id;
+              const canPlayNow = isDragging && dragState!.canPlay;
+              const boundary = isColorBoundary(sorted, i);
+              return (
+                <motion.button
+                  key={card.id}
+                  layout
+                  initial={{ opacity: 0, y: 24, scale: 0.85 }}
+                  animate={{
+                    opacity: 1,
+                    y: isDragging ? -RAISE + dragState!.dy : isSelected ? -RAISE : 0,
+                    scale: isDragging ? (canPlayNow ? 1.14 : 1.1) : isSelected ? 1.06 : 1,
+                    zIndex: isDragging ? 50 : isSelected ? 40 : i,
+                  }}
+                  exit={{ opacity: 0, scale: 0.6 }}
+                  transition={isDragging ? { duration: 0 } : { type: 'spring', stiffness: 380, damping: 30 }}
+                  data-card-id={card.id}
+                  onClick={() => handleTap(card)}
+                  className="relative shrink-0 bg-transparent border-0 p-0 cursor-pointer"
                   style={{
-                    width: CARD_W, height: CARD_H,
-                    filter: canPlayNow
-                      ? 'drop-shadow(0 0 16px rgba(251,191,36,0.9))'
-                      : isPlayable && isMyTurn
-                        ? 'drop-shadow(0 0 10px rgba(251,191,36,0.45))'
-                        : undefined,
+                    width: i === count - 1 ? CARD_W : stride,
+                    height: CARD_H,
+                    marginLeft: boundary ? BOUNDARY_GAP : 0,
                   }}
                 >
-                  <Card
-                    card={card}
-                    playable={isPlayable && isMyTurn}
-                    dimmed={isDimmed}
-                    forceCornerLabel
-                    disableHoverLift
-                    style={{ width: CARD_W, height: CARD_H }}
-                  />
-                </span>
-              </motion.button>
-            );
-          })}
+                  <span
+                    className={cn(
+                      'absolute left-0 bottom-0 block transition-all duration-150',
+                      isDimmed && 'brightness-[0.45] saturate-[0.7]',
+                      isPlayable && isMyTurn && !isSelected && '-translate-y-1',
+                      hiddenHandCardIds.has(card.id) && 'opacity-0',
+                    )}
+                    style={{
+                      width: CARD_W,
+                      height: CARD_H,
+                      filter: canPlayNow
+                        ? 'drop-shadow(0 0 16px rgba(251,191,36,0.9))'
+                        : isPlayable && isMyTurn
+                          ? 'drop-shadow(0 0 10px rgba(251,191,36,0.45))'
+                          : undefined,
+                    }}
+                  >
+                    <Card
+                      card={card}
+                      playable={isPlayable && isMyTurn}
+                      dimmed={isDimmed}
+                      forceCornerLabel
+                      disableHoverLift
+                      style={{ width: CARD_W, height: CARD_H }}
+                    />
+                  </span>
+                </motion.button>
+              );
+            })}
           </AnimatePresence>
         </div>
       </div>

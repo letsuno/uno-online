@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import sharp from 'sharp';
 import { processAvatar, AvatarError } from '../../src/auth/avatar';
 
-async function makeTestImage(width: number, height: number, format: 'png' | 'jpeg' | 'webp' | 'gif' = 'png'): Promise<string> {
+async function makeTestImage(
+  width: number,
+  height: number,
+  format: 'png' | 'jpeg' | 'webp' | 'gif' = 'png',
+): Promise<string> {
   const buf = await sharp({ create: { width, height, channels: 3, background: { r: 255, g: 0, b: 0 } } })
     .toFormat(format)
     .toBuffer();
@@ -10,15 +14,21 @@ async function makeTestImage(width: number, height: number, format: 'png' | 'jpe
 }
 
 async function makeAnimatedGif(): Promise<string> {
-  const frame1 = await sharp({ create: { width: 64, height: 64, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 1 } } }).png().toBuffer();
-  const frame2 = await sharp({ create: { width: 64, height: 64, channels: 4, background: { r: 0, g: 255, b: 0, alpha: 1 } } }).png().toBuffer();
+  const frame1 = await sharp({
+    create: { width: 64, height: 64, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 1 } },
+  })
+    .png()
+    .toBuffer();
+  const frame2 = await sharp({
+    create: { width: 64, height: 64, channels: 4, background: { r: 0, g: 255, b: 0, alpha: 1 } },
+  })
+    .png()
+    .toBuffer();
   const gif = await sharp(frame1, { animated: true })
     .gif({ delay: [200, 200] })
     .composite([{ input: frame2, animated: true }])
     .toBuffer()
-    .catch(() =>
-      sharp(frame1).gif().toBuffer()
-    );
+    .catch(() => sharp(frame1).gif().toBuffer());
   return `data:image/gif;base64,${gif.toString('base64')}`;
 }
 

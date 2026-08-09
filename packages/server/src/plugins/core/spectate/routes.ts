@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import type { Server as SocketIOServer } from 'socket.io';
+import type { UnoServer as SocketIOServer } from '../../../ws/types.js';
 import type { ActiveRoomInfo } from '@uno-online/shared';
 import type { PluginContext } from '../../../plugin-context.js';
 import type { KvStore } from '../../../kv/types.js';
@@ -8,7 +8,7 @@ import { loadGameState } from '../game/state-store.js';
 
 export async function getActiveRooms(kv: KvStore, io: SocketIOServer): Promise<ActiveRoomInfo[]> {
   const allKeys = await kv.keys('room:*');
-  const roomCodes = [...new Set(allKeys.map(k => k.split(':')[1]!))].filter(Boolean);
+  const roomCodes = allKeys.filter(key => /^room:[^:]+$/u.test(key)).map(key => key.slice('room:'.length));
 
   const activeRooms: ActiveRoomInfo[] = [];
   for (const roomCode of roomCodes) {
@@ -23,15 +23,18 @@ export async function getActiveRooms(kv: KvStore, io: SocketIOServer): Promise<A
     if (players.length === 0) continue;
 
     const spectatorSockets = await io.in(roomCode).fetchSockets();
-    const spectatorCount = spectatorSockets.filter(s => (s.data as { isSpectator?: boolean }).isSpectator).length;
+    const spectatorCount = spectatorSockets.filter(s => s.data.isSpectator).length;
 
     const gameState = await loadGameState(kv, roomCode);
+    if (typeof gameState?.gameStartedAt !== 'number') {
+      throw new Error(`Playing room ${roomCode} is missing its current game snapshot`);
+    }
 
     activeRooms.push({
       roomCode,
-      players: players.map((p: { nickname: string; avatarUrl?: string | null }) => ({ nickname: p.nickname, avatarUrl: p.avatarUrl })),
+      players: players.map(p => ({ nickname: p.nickname, avatarUrl: p.avatarUrl })),
       playerCount: players.length,
-      gameStartedAt: gameState?.gameStartedAt ?? Date.now(),
+      gameStartedAt: gameState.gameStartedAt,
       spectatorCount,
       spectatorMode: settings.spectatorMode,
     });
@@ -44,12 +47,10 @@ export async function broadcastLobbyRooms(kv: KvStore, io: SocketIOServer): Prom
   const rooms = await getActiveRooms(kv, io);
   const sockets = await io.fetchSockets();
   for (const s of sockets) {
-    const data = s.data as { roomCode?: string };
-    if (!data.roomCode) {
+    if (!s.data.roomCode) {
       s.emit('lobby:rooms', rooms);
     }
   }
 }
 
-export async function registerRoutes(_fastify: FastifyInstance, _ctx: PluginContext) {
-}
+export async function registerRoutes(_fastify: FastifyInstance, _ctx: PluginContext) {}

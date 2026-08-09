@@ -9,7 +9,7 @@ export const revengeMode: HouseRulePlugin = {
     label: '复仇模式',
     description: '反击+2/+4时伤害翻倍',
   },
-  isEnabled: (hr) => hr.revengeMode,
+  isEnabled: hr => hr.revengeMode,
   postProcess: (before: GameState, after: GameState, action: GameAction, ctx: RuleContext): GameState => {
     if (action.type !== 'PLAY_CARD') return after;
     if (after === before) return after;
@@ -24,7 +24,10 @@ export const revengeMode: HouseRulePlugin = {
     if (playedCard.type === 'draw_two') {
       const victimIdx = ctx.getNextAliveIndex(before.players, before.currentPlayerIndex, before.direction);
       const victimId = before.players[victimIdx]!.id;
-      return ctx.startPenaltyDraw(after, victimId, 2, after.pendingPenaltyNextPlayerIndex ?? after.currentPlayerIndex);
+      if (after.pendingPenaltyNextPlayerIndex === null) {
+        throw new Error('Revenge draw penalty is missing its next player index');
+      }
+      return ctx.startPenaltyDraw(after, victimId, 2, after.pendingPenaltyNextPlayerIndex);
     } else {
       // WD4 does not have a final penalty target until accept/challenge (or a
       // challenge-bypass/deflection rule) resolves. Keep this conditional
@@ -32,7 +35,7 @@ export const revengeMode: HouseRulePlugin = {
       // legality.
       return {
         ...after,
-        pendingRevengeDraws: (after.pendingRevengeDraws ?? 0) + bonus,
+        pendingRevengeDraws: after.pendingRevengeDraws + bonus,
       };
     }
   },

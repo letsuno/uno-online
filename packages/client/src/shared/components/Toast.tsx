@@ -12,13 +12,13 @@ const BG_CLASS = {
 } as const;
 
 export default function ToastContainer() {
-  const toasts = useToastStore((s) => s.toasts);
-  const removeToast = useToastStore((s) => s.removeToast);
+  const toasts = useToastStore(s => s.toasts);
+  const removeToast = useToastStore(s => s.removeToast);
 
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-toast flex flex-col gap-2 items-center pointer-events-none">
       <AnimatePresence>
-        {toasts.map((t) => {
+        {toasts.map(t => {
           const Icon = ICON[t.type];
           return (
             <motion.div
@@ -29,12 +29,15 @@ export default function ToastContainer() {
               transition={{ duration: 0.2 }}
               className={cn(
                 BG_CLASS[t.type],
-                'text-white px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm font-medium shadow-toast pointer-events-auto max-w-toast-max'
+                'text-white px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm font-medium shadow-toast pointer-events-auto max-w-toast-max',
               )}
             >
               <Icon size={16} />
               <span>{t.message}</span>
-              <button onClick={() => removeToast(t.id)} className="bg-transparent border-none text-white cursor-pointer p-0 flex">
+              <button
+                onClick={() => removeToast(t.id)}
+                className="bg-transparent border-none text-white cursor-pointer p-0 flex"
+              >
                 <X size={14} />
               </button>
             </motion.div>

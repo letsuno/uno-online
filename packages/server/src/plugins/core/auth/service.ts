@@ -2,18 +2,57 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import { signToken, verifyToken } from '../../../auth/jwt.js';
 import type { TokenPayload } from '../../../auth/jwt.js';
 import type { UserRole } from '@uno-online/shared';
+import { isUserRole } from '@uno-online/shared';
 import { resolveAvatar } from '../../../db/user-repo.js';
 
 export interface AuthenticatedRequest extends FastifyRequest {
   user: TokenPayload;
 }
 
-export function userResponse(user: { id: string; username: string; nickname: string; avatarUrl: string | null; avatarData?: string | null; role?: string }) {
-  return { id: user.id, username: user.username, nickname: user.nickname, avatarUrl: resolveAvatar(user), role: user.role ?? 'normal' };
+export function currentUserRole(role: string): UserRole {
+  if (!isUserRole(role)) throw new Error(`User has invalid role: ${role}`);
+  return role;
 }
 
-export function makeToken(user: { id: string; username: string; nickname: string; avatarUrl: string | null; avatarData?: string | null; role?: string }, secret: string) {
-  return signToken({ userId: user.id, username: user.username, nickname: user.nickname, avatarUrl: resolveAvatar(user), role: (user.role ?? 'normal') as UserRole }, secret);
+export function userResponse(user: {
+  id: string;
+  username: string;
+  nickname: string;
+  avatarUrl: string | null;
+  avatarData?: string | null;
+  role: string;
+}) {
+  return {
+    id: user.id,
+    username: user.username,
+    nickname: user.nickname,
+    avatarUrl: resolveAvatar(user),
+    role: currentUserRole(user.role),
+  };
+}
+
+export function makeToken(
+  user: {
+    id: string;
+    username: string;
+    nickname: string;
+    avatarUrl: string | null;
+    avatarData?: string | null;
+    role: string;
+  },
+  secret: string,
+) {
+  return signToken(
+    {
+      userId: user.id,
+      username: user.username,
+      nickname: user.nickname,
+      avatarUrl: resolveAvatar(user),
+      role: currentUserRole(user.role),
+      isBot: false,
+    },
+    secret,
+  );
 }
 
 export const authPreHandler = (jwtSecret: string) => async (request: FastifyRequest, reply: FastifyReply) => {

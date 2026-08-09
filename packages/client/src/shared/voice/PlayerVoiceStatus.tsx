@@ -11,47 +11,27 @@ interface PlayerVoiceStatusProps {
   hideIdle?: boolean;
 }
 
-function normalizeVoiceName(name: string): string {
-  return name.trim().replace(/[^\p{L}\p{N}_ .-]/gu, '').slice(0, 32).toLocaleLowerCase();
-}
-
-export default function PlayerVoiceStatus({ playerId, playerName, isSelf = false, className, hideIdle = false }: PlayerVoiceStatusProps) {
-  const status = useGatewayStore((s) => s.status);
-  const usersById = useGatewayStore((s) => s.usersById);
-  const selfUserId = useGatewayStore((s) => s.selfUserId);
-  const micEnabled = useGatewayStore((s) => s.micEnabled);
-  const speakerMuted = useGatewayStore((s) => s.speakerMuted);
-  const playerVoicePresence = useGatewayStore((s) => s.playerVoicePresence);
-  const speakingByUserId = useGatewayStore((s) => s.speakingByUserId);
-
+export default function PlayerVoiceStatus({
+  playerId,
+  playerName,
+  className,
+  hideIdle = false,
+}: PlayerVoiceStatusProps) {
+  const playerVoicePresence = useGatewayStore(s => s.playerVoicePresence);
   const presence = playerVoicePresence[playerId];
-  const presenceAvailable = presence !== undefined;
-
-  const connected = status === 'connected';
-  const voiceUser = isSelf && selfUserId !== null
-    ? usersById[selfUserId]
-    : Object.values(usersById).find((user) => normalizeVoiceName(user.name) === normalizeVoiceName(playerName));
-
-  const inVoice = presenceAvailable ? presence.inVoice : connected && Boolean(voiceUser);
-  let micOn: boolean;
-  let speakerOn: boolean;
-  if (presenceAvailable) {
-    micOn = presence.micEnabled;
-    speakerOn = !presence.speakerMuted;
-  } else if (isSelf) {
-    micOn = inVoice && micEnabled;
-    speakerOn = inVoice && !speakerMuted;
-  } else {
-    micOn = inVoice && !voiceUser?.mute && !voiceUser?.selfMute && !voiceUser?.suppress;
-    speakerOn = inVoice && !voiceUser?.deaf && !voiceUser?.selfDeaf;
-  }
-  const speaking = presenceAvailable ? presence.speaking : Boolean(voiceUser && speakingByUserId[voiceUser.id]);
-  const forceMuted = presenceAvailable && presence.forceMuted;
+  const inVoice = presence?.inVoice === true;
+  const micOn = inVoice && presence.micEnabled;
+  const speakerOn = inVoice && !presence.speakerMuted;
+  const speaking = inVoice && presence.speaking;
+  const forceMuted = presence?.forceMuted === true;
 
   if (hideIdle && !inVoice && !forceMuted) return null;
 
   return (
-    <span className={cn('inline-flex items-center gap-0.5', className)} title={inVoice ? '语音状态' : '未加入语音'}>
+    <span
+      className={cn('inline-flex items-center gap-0.5', className)}
+      title={inVoice ? `${playerName} 的语音状态` : `${playerName} 未加入语音`}
+    >
       {forceMuted ? (
         <span title="已被房主静音">
           <MicOff size={12} className="text-destructive" />

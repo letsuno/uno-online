@@ -10,38 +10,67 @@ let engine: VoiceEngine | null = null;
 let encoder: Encoder | null = null;
 const decoders = new Map<number, Decoder>();
 
+function failVoiceRuntime(
+  runtimeEngine: VoiceEngine,
+  message: string,
+  error: unknown,
+  expectedEncoder?: Encoder,
+): void {
+  if (engine !== runtimeEngine || (expectedEncoder && encoder !== expectedEncoder)) return;
+  console.error(`[voice] ${message}`, error);
+  const store = useGatewayStore.getState();
+  releaseVoiceAudio();
+  store.disconnect();
+  store.setError('麦克风音频编码失败');
+}
+
 export function getVoiceEngine(sendMicOpus: (opus: Uint8Array) => void, sendMicEnd: () => void): VoiceEngine {
   if (engine) return engine;
 
-  engine = new VoiceEngine({
+  const runtimeEngine = new VoiceEngine({
     onMicPcm: (pcm, sampleRate) => {
-      if (!encoder) {
-        encoder = createWebCodecsOpusEncoder({
-          sampleRate,
-          channels: 1,
-          bitrate: 24000,
-          onOpus: (opus) => sendMicOpus(opus),
-        });
+      if (engine !== runtimeEngine) return;
+      try {
+        if (!encoder) {
+          let createdEncoder: Encoder | null = null;
+          createdEncoder = createWebCodecsOpusEncoder({
+            sampleRate,
+            channels: 1,
+            bitrate: 24000,
+            onOpus: opus => {
+              if (engine === runtimeEngine && encoder === createdEncoder) sendMicOpus(opus);
+            },
+            onError: error => {
+              if (createdEncoder) failVoiceRuntime(runtimeEngine, 'Opus encoder failed', error, createdEncoder);
+            },
+          });
+          encoder = createdEncoder;
+        }
+        const currentEncoder = encoder;
+        currentEncoder.encode(pcm);
+      } catch (error) {
+        failVoiceRuntime(runtimeEngine, 'Failed to encode microphone audio', error, encoder ?? undefined);
       }
-      encoder.encode(pcm);
     },
     onMicEnd: () => {
-      sendMicEnd();
+      if (engine === runtimeEngine) sendMicEnd();
     },
-    onPlaybackStats: (stats) => {
-      useGatewayStore.getState().setPlaybackStats(stats);
+    onPlaybackStats: stats => {
+      if (engine === runtimeEngine) useGatewayStore.getState().setPlaybackStats(stats);
     },
-    onCaptureStats: (stats) => {
-      useGatewayStore.getState().setCaptureStats(stats);
+    onCaptureStats: stats => {
+      if (engine === runtimeEngine) useGatewayStore.getState().setCaptureStats(stats);
     },
   });
+  engine = runtimeEngine;
 
-  return engine;
+  return runtimeEngine;
 }
 
-export function resetVoiceEncoder(): void {
-  encoder?.close();
+function resetVoiceEncoder(): void {
+  const current = encoder;
   encoder = null;
+  current?.close();
 }
 
 export function closeVoiceDecoders(): void {
@@ -51,10 +80,16 @@ export function closeVoiceDecoders(): void {
   decoders.clear();
 }
 
-export function leaveVoiceSession(): void {
-  engine?.disableMic();
+export function releaseVoiceAudio(): void {
+  const current = engine;
+  engine = null;
+  current?.dispose();
   resetVoiceEncoder();
   closeVoiceDecoders();
+}
+
+export function leaveVoiceSession(): void {
+  releaseVoiceAudio();
   const store = useGatewayStore.getState();
   store.disconnect();
   store.setMicEnabled(false);
@@ -73,7 +108,12 @@ function isMumbleUserForceMuted(mumbleUserId: number): boolean {
     .map(([id]) => id);
   if (forceMutedIds.length === 0) return false;
 
-  const normalize = (name: string) => name.trim().replace(/[^\p{L}\p{N}_ .-]/gu, '').slice(0, 32).toLocaleLowerCase();
+  const normalize = (name: string) =>
+    name
+      .trim()
+      .replace(/[^\p{L}\p{N}_ .-]/gu, '')
+      .slice(0, 32)
+      .toLocaleLowerCase();
   const mumbleName = normalize(mumbleUser.name);
   const { seats } = useRoomStore.getState();
   const seatedPlayers = seats.filter((s): s is NonNullable<typeof s> => s !== null);
@@ -98,7 +138,7 @@ export function decodeVoiceFrame(
     decoder = createWebCodecsOpusDecoder({
       sampleRate: 48000,
       channels: 1,
-      onPcm: (pcm) => {
+      onPcm: pcm => {
         runtimeEngine.pushRemotePcm({
           userId,
           channels: 1,
@@ -106,7 +146,8 @@ export function decodeVoiceFrame(
           pcm,
         });
       },
-      onError: () => {
+      onError: error => {
+        console.error(`[voice] Opus decoder failed for user ${userId}`, error);
         if (decoders.get(userId) === decoder) {
           decoders.delete(userId);
         }

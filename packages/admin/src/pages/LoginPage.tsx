@@ -6,16 +6,7 @@ import { Input } from '@/components/Input';
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const {
-    login,
-    devLogin,
-    loadConfig,
-    devMode,
-    loading,
-    error,
-    configLoading,
-    configError,
-  } = useAuthStore();
+  const { login, devLogin, loadConfig, devMode, loading, error, configLoading, configError } = useAuthStore();
 
   useEffect(() => {
     void loadConfig();
@@ -57,7 +48,7 @@ export default function LoginPage() {
                 id="username"
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={e => setUsername(e.target.value)}
                 placeholder={devMode ? '输入任意名称' : '输入用户名'}
                 required
                 autoFocus
@@ -73,25 +64,15 @@ export default function LoginPage() {
                   id="password"
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={e => setPassword(e.target.value)}
                   placeholder="输入密码"
                   required
                 />
               </div>
             )}
 
-            <Button
-              type="submit"
-              disabled={loading || configLoading || devMode === null}
-              className="w-full"
-            >
-              {configLoading
-                ? '正在读取配置...'
-                : loading
-                  ? '正在登录...'
-                  : devMode
-                    ? '进入管理后台'
-                    : '登录'}
+            <Button type="submit" disabled={loading || configLoading || devMode === null} className="w-full">
+              {configLoading ? '正在读取配置...' : loading ? '正在登录...' : devMode ? '进入管理后台' : '登录'}
             </Button>
             {configError && (
               <Button type="button" variant="secondary" className="w-full" onClick={() => void loadConfig()}>

@@ -36,12 +36,8 @@ export default function BottomSheet({ open, onClose, title, children }: BottomSh
             }}
           >
             <div className="w-10 h-1 rounded-full bg-white/30 mx-auto mt-2 mb-1" />
-            <div className="px-4 py-2 text-sm font-bold border-b border-white/5">
-              {title}
-            </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              {children}
-            </div>
+            <div className="px-4 py-2 text-sm font-bold border-b border-white/5">{title}</div>
+            <div className="flex-1 overflow-y-auto p-4">{children}</div>
           </motion.div>
         </div>
       )}

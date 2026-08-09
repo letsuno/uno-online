@@ -24,22 +24,18 @@ pnpm --filter admin dev                                         # 管理后台 :
 
 ## 开发规范
 
-项目遵循以下规范文档，**所有代码变更必须符合**：
+通用开发约束以本文件为准。新增或修改村规时还必须遵循：
 
-- **[前端开发规范](docs/frontend-development-guide.md)** — 目录结构、命名、组件、样式、状态管理、路由规范
-- **[后端开发规范](docs/backend-development-guide.md)** — 插件架构、路由、数据库、WebSocket、安全规范
-- **[插件扩展规范](docs/plugin-extension-guide.md)** — 新功能开发流程、服务端插件模板、客户端 Feature 模板、Git 提交规范
 - **[村规扩展指南](docs/house-rules-extension-guide.md)** — 村规引擎架构、HouseRules 接口、添加新村规的完整步骤
 
 ## 架构概览
 
 ### 服务端插件体系
 
-所有功能以 Fastify 插件形式组织在 `packages/server/src/plugins/` 下，通过 `PluginContext`（db, kv, io, config）注入共享依赖。
+HTTP 功能按领域组织为 `packages/server/src/plugins/core/` 下的 Fastify 插件，通过 `PluginContext` 注入共享依赖。房间、游戏和交互的 WebSocket 模块由 `socket-handler.ts` 集中注册。
 
 ```
-plugins/core/     — auth, profile, admin, room, game, server-info, interaction, spectate, api-key
-plugins/features/ — 扩展功能预留目录（当前尚无插件，新功能按插件扩展规范放这里）
+plugins/core/ — auth, profile, admin, room, game, server-info, interaction, spectate, api-key
 ```
 
 ### 客户端 Feature 模块
@@ -131,6 +127,7 @@ cd packages/mcp && npm publish --access public       # 3. 发布到 npm
 ```
 
 发布前检查：
+
 - 确认 `packages/mcp/package.json` 中的 `version` 已更新（`pnpm run version:sync` 自动同步，`McpServer` 版本号由 tsup 构建时注入 `__PKG_VERSION__`，无需手动改）
 - `npm pack --dry-run` 预览包内容（应只含 `dist/index.js` + `package.json`）
 
@@ -174,6 +171,7 @@ cd packages/mcp && npm publish --access public       # 3. 发布到 npm
 11. **创建 GitHub Release**：
     - 标题格式：`v<版本号> — <简短标题>`
     - 内容从 CHANGELOG.md 复制对应版本条目，末尾追加 MCP 安装说明
+
     ```bash
     gh release create v<版本号> --title "v<版本号> — <简短标题>" --notes "$(cat <<'EOF'
     <从 CHANGELOG 复制，按 新增/优化/修复 分类>
@@ -200,11 +198,11 @@ cd packages/mcp && npm publish --access public       # 3. 发布到 npm
 
 ### Services overview
 
-| Service | Command | Port |
-|---------|---------|------|
-| Backend | `DEV_MODE=true JWT_SECRET=dev-secret pnpm --filter server dev` | 3001 |
-| Frontend | `pnpm --filter client dev` | 5173 |
-| Admin | `pnpm --filter admin dev` | 5174 |
+| Service  | Command                                                        | Port |
+| -------- | -------------------------------------------------------------- | ---- |
+| Backend  | `DEV_MODE=true JWT_SECRET=dev-secret pnpm --filter server dev` | 3001 |
+| Frontend | `pnpm --filter client dev`                                     | 5173 |
+| Admin    | `pnpm --filter admin dev`                                      | 5174 |
 
 See `README.md` for user-facing docs. 本文件即项目的 agent 开发文档。
 
@@ -213,7 +211,7 @@ See `README.md` for user-facing docs. 本文件即项目的 agent 开发文档�
 - Repository: `https://github.com/letsuno/uno-online`
 - All API routes are registered under `/api` prefix (e.g. `/api/health`, `/api/auth/login`, `/api/server/info`).
 - `DEV_MODE=true` bypasses GitHub OAuth — login with any username. `JWT_SECRET` env var is **required**.
-- Redis is **optional**; the server falls back to an in-memory KV store. The full server test suite passes without Redis.
+- Redis is required in production so compatible restarts can restore active rooms. `DEV_MODE=true` may fall back to the in-memory KV store, and the full server test suite passes without Redis.
 - SQLite uses Node.js 22 built-in `node:sqlite` (zero native deps). Database tables are auto-created on startup.
 - The client Vite dev server proxies `/api` and `/socket.io` to `localhost:3001`; the admin dev server proxies `/api`. The `/api` proxy must **not** rewrite the path (the server expects the `/api` prefix).
 - `pnpm test` runs vitest across all packages. `pnpm --filter shared test` is the fastest validation (pure logic, no IO deps).

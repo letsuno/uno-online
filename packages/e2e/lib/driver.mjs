@@ -10,6 +10,8 @@ const CLIENT_VERSION = JSON.parse(
 ).version;
 
 const CHROME_PATH = process.env.CHROME_PATH ?? '/usr/bin/google-chrome';
+const ACK_TIMEOUT_MS = 10_000;
+const START_GAME_RESULT_KEY = 'uno-e2e:start-game-result';
 
 export async function launchBrowser() {
   return chromium.launch({
@@ -26,7 +28,7 @@ export async function newAuthedPage(browser, { username, width, height }) {
     viewport: { width, height },
     deviceScaleFactor: 1,
   });
-  await context.addInitScript((t) => {
+  await context.addInitScript(t => {
     localStorage.setItem('token', t);
     localStorage.setItem('uno-e2e', '1'); // 生产构建下也暴露 window.__uno（仅供 e2e 驱动）
     localStorage.setItem('app-last-seen-version', window.__CLIENT_VERSION__); // 屏蔽更新日志弹窗
@@ -34,17 +36,15 @@ export async function newAuthedPage(browser, { username, width, height }) {
     sessionStorage.setItem('start-screen-passed', '1'); // 跳过启动屏
     localStorage.setItem('tutorialShown', 'true'); // 跳过新手教程
   }, token);
-  await context.addInitScript((v) => localStorage.setItem('app-last-seen-version', v), CLIENT_VERSION);
+  await context.addInitScript(v => localStorage.setItem('app-last-seen-version', v), CLIENT_VERSION);
   const page = await context.newPage();
   const errors = [];
-  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
-  page.on('console', (msg) => {
+  page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
+  page.on('console', msg => {
     if (msg.type() === 'error') {
       const text = msg.text();
       // e2e 环境没有 mumble-gateway，语音 WS 连接失败属预期噪声
-      if (text.includes('64737')) return;
-      // DEV_MODE 不注册 /api/profile 路由，404 属环境噪声
-      if (text.includes('404') && (msg.location()?.url ?? '').includes('/api/profile')) return;
+      if (text.includes('WebSocket connection') && text.includes('64737')) return;
       errors.push(`console.error: ${text}`);
     }
   });
@@ -54,30 +54,107 @@ export async function newAuthedPage(browser, { username, width, height }) {
 /** 在页面上下文里 emit socket 事件并等待 callback */
 export function emit(page, event, ...args) {
   return page.evaluate(
-    ([ev, ...rest]) =>
-      new Promise((resolvePromise) => {
+    ([ev, timeoutMs, ...rest]) =>
+      new Promise((resolvePromise, rejectPromise) => {
         const socket = window.__uno?.getSocket?.();
-        if (!socket) return resolvePromise({ success: false, error: 'no __uno hook' });
-        socket.emit(ev, ...rest, (res) => resolvePromise(res ?? {}));
+        if (!socket) {
+          rejectPromise(new Error(`Socket is unavailable: ${ev}`));
+          return;
+        }
+        let emitted = false;
+        const timeout = setTimeout(() => {
+          socket.off('connect', send);
+          rejectPromise(new Error(`Socket ACK timed out after ${timeoutMs}ms: ${ev}`));
+        }, timeoutMs);
+
+        const send = () => {
+          if (emitted) return;
+          emitted = true;
+          socket.off('connect', send);
+          socket.emit(ev, ...rest, res => {
+            clearTimeout(timeout);
+            if (
+              !res ||
+              typeof res !== 'object' ||
+              Array.isArray(res) ||
+              (res.success !== true && res.success !== false) ||
+              (res.success === false && typeof res.error !== 'string')
+            ) {
+              rejectPromise(new Error(`Invalid Socket ACK: ${ev}`));
+              return;
+            }
+            resolvePromise(res);
+          });
+        };
+
+        if (socket.connected) send();
+        else {
+          socket.once('connect', send);
+          socket.connect();
+        }
       }),
-    [event, ...args],
+    [event, ACK_TIMEOUT_MS, ...args],
   );
 }
 
 export async function waitSocketConnected(page, timeoutMs = 15000) {
-  await page.waitForFunction(
-    () => window.__uno?.getSocket?.()?.connected === true,
-    null,
-    { timeout: timeoutMs },
-  );
+  await page.waitForFunction(() => window.__uno?.getSocket?.()?.connected === true, null, { timeout: timeoutMs });
 }
 
 export async function waitGamePhase(page, phase, timeoutMs = 15000) {
+  await page.waitForFunction(p => window.__uno?.useGameStore?.getState?.().phase === p, phase, { timeout: timeoutMs });
+}
+
+export async function waitRoomJoined(page, roomCode, timeoutMs = 15000) {
+  await page.waitForFunction(code => window.__uno?.useRoomStore?.getState?.().roomCode === code, roomCode, {
+    timeout: timeoutMs,
+  });
+}
+
+/** Start through the socket, then require authoritative game state. */
+export async function startGame(page, timeoutMs = 15000) {
+  await page.evaluate(resultKey => {
+    const socket = window.__uno?.getSocket?.();
+    if (!socket?.connected) throw new Error('Socket is not connected: game:start');
+    sessionStorage.removeItem(resultKey);
+    socket.emit('game:start', result => {
+      const normalized =
+        result && typeof result === 'object' && !Array.isArray(result)
+          ? result
+          : { success: false, error: 'Invalid Socket ACK: game:start' };
+      sessionStorage.setItem(resultKey, JSON.stringify(normalized));
+    });
+  }, START_GAME_RESULT_KEY);
+
   await page.waitForFunction(
-    (p) => window.__uno?.useGameStore?.getState?.().phase === p,
-    phase,
+    resultKey => {
+      if (window.__uno?.useGameStore?.getState?.().phase === 'playing') return true;
+      const raw = sessionStorage.getItem(resultKey);
+      if (!raw) return false;
+      try {
+        return JSON.parse(raw)?.success === false;
+      } catch {
+        return true;
+      }
+    },
+    START_GAME_RESULT_KEY,
     { timeout: timeoutMs },
   );
+
+  const outcome = await page.evaluate(resultKey => {
+    const phase = window.__uno?.useGameStore?.getState?.().phase ?? null;
+    const raw = sessionStorage.getItem(resultKey);
+    sessionStorage.removeItem(resultKey);
+    if (!raw) return { phase, result: null };
+    try {
+      return { phase, result: JSON.parse(raw) };
+    } catch {
+      return { phase, result: { success: false, error: 'Invalid Socket ACK: game:start' } };
+    }
+  }, START_GAME_RESULT_KEY);
+  if (outcome.phase !== 'playing') {
+    throw new Error(`game:start 失败: ${outcome.result?.error ?? '未进入 playing 状态'}`);
+  }
 }
 
 /**
@@ -91,31 +168,19 @@ export async function setupGame(page, { botCount = 2, difficulty = 'easy' } = {}
   const created = await emit(page, 'room:create', {});
   if (!created.success) throw new Error(`room:create 失败: ${created.error}`);
   const roomCode = created.roomCode;
+  if (typeof roomCode !== 'string') throw new Error('room:create 未返回房间号');
 
   await page.goto(`${CLIENT_URL}/room/${roomCode}`, { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(500);
-
-  let taken = null;
-  for (let i = 0; i < 10; i++) {
-    taken = await emit(page, 'seat:take', 0);
-    if (taken.success || String(taken.error).includes('占用')) break;
-    await page.waitForTimeout(500);
-  }
-  if (!taken.success && !String(taken.error).includes('占用')) throw new Error(`seat:take 失败: ${taken.error}`);
+  await waitRoomJoined(page, roomCode);
 
   for (let i = 0; i < botCount; i++) {
     const added = await emit(page, 'room:add_bot', { difficulty });
     if (!added.success) throw new Error(`room:add_bot 失败: ${added.error}`);
   }
 
-  await emit(page, 'room:ready', true);
-  const started = await emit(page, 'game:start').catch((e) => {
-            // 开局成功会触发客户端跳转 /game/:code，evaluate 上下文随之销毁，属正常
-            if (String(e).includes('Execution context')) return { success: true };
-            throw e;
-          });
-  if (!started.success) throw new Error(`game:start 失败: ${started.error}`);
-  await waitGamePhase(page, 'playing');
+  const ready = await emit(page, 'room:ready', true);
+  if (!ready.success) throw new Error(`room:ready 失败: ${ready.error}`);
+  await startGame(page);
   return roomCode;
 }
 
@@ -136,7 +201,10 @@ export function checkOverflow(page) {
       let scrollable = false;
       for (let p = el.parentElement; p; p = p.parentElement) {
         const ps = getComputedStyle(p);
-        if (/(scroll|auto)/.test(`${ps.overflowX}${ps.overflowY}`) && (p.scrollHeight > p.clientHeight + 2 || p.scrollWidth > p.clientWidth + 2)) {
+        if (
+          /(scroll|auto)/.test(`${ps.overflowX}${ps.overflowY}`) &&
+          (p.scrollHeight > p.clientHeight + 2 || p.scrollWidth > p.clientWidth + 2)
+        ) {
           scrollable = true; // 在真实可滚容器内，边缘裁切可通过滚动到达，不算缺陷
         }
         if (/(hidden|scroll|auto|clip)/.test(`${ps.overflow}${ps.overflowX}${ps.overflowY}`)) {
@@ -150,7 +218,8 @@ export function checkOverflow(page) {
         }
       }
       // 完全在裁剪区外 = 离屏停靠（如关闭态抽屉），不可见也不算问题
-      if (rect.right <= clip.left || rect.left >= clip.right || rect.bottom <= clip.top || rect.top >= clip.bottom) continue;
+      if (rect.right <= clip.left || rect.left >= clip.right || rect.bottom <= clip.top || rect.top >= clip.bottom)
+        continue;
       if (scrollable) continue;
       const over = {
         left: rect.left < clip.left - 2,
@@ -163,7 +232,7 @@ export function checkOverflow(page) {
         const cls = typeof el.className === 'string' ? el.className.split(' ').slice(0, 4).join('.') : '';
         bad.push({
           el: `${el.tagName.toLowerCase()}${id}${cls ? '.' + cls : ''}`,
-          sides: Object.keys(over).filter((k) => over[k]),
+          sides: Object.keys(over).filter(k => over[k]),
           rect: { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) },
           html: el.outerHTML.slice(0, 160),
         });
@@ -175,6 +244,9 @@ export function checkOverflow(page) {
 
 /** 关掉开局规则弹窗与信息抽屉，露出牌桌本体 */
 export async function dismissGameOverlays(page) {
-  await page.getByRole('button', { name: '开始游戏' }).click({ timeout: 3000 }).catch(() => {});
+  await page
+    .getByRole('button', { name: '开始游戏' })
+    .click({ timeout: 3000 })
+    .catch(() => {});
   await page.evaluate(() => window.__uno?.useGameStore?.setState?.({ infoDrawerOpen: false })).catch(() => {});
 }

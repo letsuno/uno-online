@@ -22,7 +22,7 @@ export default function SwapRequestDialog({
   useEffect(() => {
     setRemaining(totalSeconds);
     const interval = setInterval(() => {
-      setRemaining((prev) => {
+      setRemaining(prev => {
         if (prev <= 1) {
           clearInterval(interval);
           onRespond(false);
@@ -47,12 +47,7 @@ export default function SwapRequestDialog({
       }
       footer={
         <div className="flex gap-3">
-          <Button
-            variant="secondary"
-            className="flex-1"
-            onClick={() => onRespond(false)}
-            sound="click"
-          >
+          <Button variant="secondary" className="flex-1" onClick={() => onRespond(false)} sound="click">
             拒绝
           </Button>
           <Button

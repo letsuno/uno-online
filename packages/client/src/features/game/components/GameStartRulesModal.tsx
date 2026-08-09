@@ -6,7 +6,7 @@ import Modal from '@/shared/components/ui/Modal';
 
 interface GameStartRulesModalProps {
   open: boolean;
-  houseRules?: HouseRules;
+  houseRules: HouseRules;
   onClose: () => void;
 }
 
@@ -24,9 +24,7 @@ function formatRuleValue(key: keyof HouseRules, value: unknown): string | null {
 }
 
 export default function GameStartRulesModal({ open, houseRules, onClose }: GameStartRulesModalProps) {
-  const activeRules = houseRules
-    ? HOUSE_RULE_DEFINITIONS.filter((rule) => houseRules[rule.key] !== DEFAULT_HOUSE_RULES[rule.key])
-    : [];
+  const activeRules = HOUSE_RULE_DEFINITIONS.filter(rule => houseRules[rule.key] !== DEFAULT_HOUSE_RULES[rule.key]);
 
   return (
     <Modal
@@ -43,10 +41,7 @@ export default function GameStartRulesModal({ open, houseRules, onClose }: GameS
         </div>
       }
       footer={
-        <button
-          onClick={onClose}
-          className="gold-button-base w-full px-4 py-2 text-sm transition-all"
-        >
+        <button onClick={onClose} className="gold-button-base w-full px-4 py-2 text-sm transition-all">
           开始游戏
         </button>
       }
@@ -58,11 +53,9 @@ export default function GameStartRulesModal({ open, houseRules, onClose }: GameS
         </div>
       ) : (
         <div className="flex flex-col gap-2.5">
-          <div className="text-sm text-muted-foreground">
-            本局启用 {activeRules.length} 条村规：
-          </div>
+          <div className="text-sm text-muted-foreground">本局启用 {activeRules.length} 条村规：</div>
           {activeRules.map((rule, index) => {
-            const valueText = formatRuleValue(rule.key, houseRules?.[rule.key]);
+            const valueText = formatRuleValue(rule.key, houseRules[rule.key]);
             return (
               <div
                 key={rule.key}
@@ -73,10 +66,8 @@ export default function GameStartRulesModal({ open, houseRules, onClose }: GameS
               >
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-foreground">{rule.label}</span>
-                  {valueText && typeof houseRules?.[rule.key] !== 'boolean' && (
-                    <span className="rounded-full bg-primary/15 px-2 py-0.5 text-2xs text-primary">
-                      {valueText}
-                    </span>
+                  {valueText && typeof houseRules[rule.key] !== 'boolean' && (
+                    <span className="rounded-full bg-primary/15 px-2 py-0.5 text-2xs text-primary">{valueText}</span>
                   )}
                 </div>
                 <div className="mt-0.5 text-xs text-muted-foreground">{rule.description}</div>

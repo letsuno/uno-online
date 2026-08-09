@@ -80,10 +80,7 @@ describe('getPlayableCards', () => {
 
   it('returns empty when nothing is playable except wilds are always playable', () => {
     const topCard = numberCard('red', 5);
-    const hand: Card[] = [
-      numberCard('blue', 3, 'h1'),
-      numberCard('green', 8, 'h2'),
-    ];
+    const hand: Card[] = [numberCard('blue', 3, 'h1'), numberCard('green', 8, 'h2')];
     const playable = getPlayableCards(hand, topCard, 'red');
     expect(playable).toHaveLength(0);
   });
@@ -91,28 +88,17 @@ describe('getPlayableCards', () => {
 
 describe('isValidWildDrawFour', () => {
   it('is valid when player has no cards matching current color', () => {
-    const hand: Card[] = [
-      numberCard('blue', 3, 'h1'),
-      numberCard('green', 7, 'h2'),
-      wildDrawFour('h3'),
-    ];
+    const hand: Card[] = [numberCard('blue', 3, 'h1'), numberCard('green', 7, 'h2'), wildDrawFour('h3')];
     expect(isValidWildDrawFour(hand, 'red')).toBe(true);
   });
 
   it('is invalid when player has cards matching current color', () => {
-    const hand: Card[] = [
-      numberCard('red', 3, 'h1'),
-      numberCard('green', 7, 'h2'),
-      wildDrawFour('h3'),
-    ];
+    const hand: Card[] = [numberCard('red', 3, 'h1'), numberCard('green', 7, 'h2'), wildDrawFour('h3')];
     expect(isValidWildDrawFour(hand, 'red')).toBe(false);
   });
 
   it('ignores other wild cards when checking', () => {
-    const hand: Card[] = [
-      wildCard('h1'),
-      wildDrawFour('h2'),
-    ];
+    const hand: Card[] = [wildCard('h1'), wildDrawFour('h2')];
     expect(isValidWildDrawFour(hand, 'red')).toBe(true);
   });
 });

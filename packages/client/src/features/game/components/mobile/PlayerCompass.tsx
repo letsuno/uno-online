@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { RotateCw, RotateCcw } from 'lucide-react';
 import PlayerNode from '../PlayerNode';
@@ -32,45 +32,42 @@ function arcAngle(offset: number): number {
  * 修改 PC 组件时两端自动同步。交互也统一：点自己=表情、点对手=投掷（PlayerNode 内置）。
  */
 export default function PlayerCompass({ compact = false }: PlayerCompassProps) {
-  const players = useGameStore((s) => s.players);
-  const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
-  const direction = useGameStore((s) => s.direction);
-  const phase = useGameStore((s) => s.phase);
-  const endRevealing = useGameStore((s) => s.endRevealLeft > 0);
-  const turnEndTime = useGameStore((s) => s.turnEndTime);
-  const settings = useGameStore((s) => s.settings);
-  const roundNumber = useGameStore((s) => s.roundNumber);
-  const lastAction = useGameStore((s) => s.lastAction);
+  const players = useGameStore(s => s.players);
+  const currentPlayerIndex = useGameStore(s => s.currentPlayerIndex);
+  const direction = useGameStore(s => s.direction);
+  const phase = useGameStore(s => s.phase);
+  const endRevealing = useGameStore(s => s.endRevealLeft > 0);
+  const turnEndTime = useGameStore(s => s.turnEndTime);
+  const settings = useGameStore(s => s.settings);
+  const roundNumber = useGameStore(s => s.roundNumber);
+  const lastAction = useGameStore(s => s.lastAction);
   const userId = useEffectiveUserId();
-  const ownerId = useRoomStore((s) => s.room?.ownerId);
+  const ownerId = useRoomStore(s => s.room?.ownerId);
 
   // 与桌面 GameTable 相同的指示数据（罗盘层算一次，下发给各 PlayerNode）
-  const { handGainBumps } = useHandEffects(players, lastAction, settings, direction, roundNumber, () => null, phase, currentPlayerIndex);
+  const { handGainBumps } = useHandEffects(
+    players,
+    lastAction,
+    settings,
+    direction,
+    roundNumber,
+    () => null,
+    phase,
+    currentPlayerIndex,
+  );
   const { lastPlayedCards } = useLastPlayedCards();
 
-  // 语音说话状态（同 GameTable）
-  const mumbleUsersById = useGatewayStore((s) => s.usersById);
-  const mumbleSpeakingByUserId = useGatewayStore((s) => s.speakingByUserId);
-  const selfSpeaking = useGatewayStore((s) => s.selfSpeaking);
-  const voicePresence = useGatewayStore((s) => s.playerVoicePresence);
-  const mumbleSpeakingNames = useMemo(() => {
-    const names = new Set<string>();
-    for (const [uid, speaking] of Object.entries(mumbleSpeakingByUserId)) {
-      if (speaking) {
-        const user = mumbleUsersById[Number(uid)];
-        if (user) names.add(user.name);
-      }
-    }
-    return names;
-  }, [mumbleSpeakingByUserId, mumbleUsersById]);
+  // 语音状态按权威游戏用户 ID 关联（同 GameTable）
+  const selfSpeaking = useGatewayStore(s => s.selfSpeaking);
+  const voicePresence = useGatewayStore(s => s.playerVoicePresence);
 
   // 与 GameTable 相同的互动行为：点自己=表情，点对手=投掷（PlayerNode 内置选择器）
   const handleReaction = useCallback((emoji: string) => {
     getSocket().emit('chat:message', { text: emoji });
   }, []);
   const handleThrowItem = useCallback((targetPlayerId: string, item: string) => {
-    getSocket().emit('throw:item', { targetId: targetPlayerId, item }, (res: { success: boolean; error?: string }) => {
-      if (!res?.success && res?.error) {
+    getSocket().emit('throw:item', { targetId: targetPlayerId, item }, res => {
+      if (!res.success) {
         useToastStore.getState().addToast(res.error, 'error');
       }
     });
@@ -116,11 +113,18 @@ export default function PlayerCompass({ compact = false }: PlayerCompassProps) {
 
   const DirIcon = direction === 'clockwise' ? RotateCw : RotateCcw;
   const turnTimeLimit = settings
-    ? (settings.houseRules?.fastMode ? Math.floor(settings.turnTimeLimit / 2) : settings.turnTimeLimit)
+    ? settings.houseRules.fastMode
+      ? Math.floor(settings.turnTimeLimit / 2)
+      : settings.turnTimeLimit
     : undefined;
 
   return (
-    <div ref={containerRef} data-allow-overflow className="relative shrink-0 overflow-visible pointer-events-none" style={{ height }}>
+    <div
+      ref={containerRef}
+      data-allow-overflow
+      className="relative shrink-0 overflow-visible pointer-events-none"
+      style={{ height }}
+    >
       <div className="absolute inset-x-0 top-0 flex justify-center">
         {players.map((player, i) => {
           // 相对当前玩家的最短弧向偏移（处理环形回绕）
@@ -152,7 +156,7 @@ export default function PlayerCompass({ compact = false }: PlayerCompassProps) {
                 isMe={isMe}
                 isHost={player.id === ownerId}
                 isSkipped={false}
-                isSpeaking={isMe ? selfSpeaking : mumbleSpeakingNames.has(player.name)}
+                isSpeaking={isMe ? selfSpeaking : voicePresence[player.id]?.speaking === true}
                 voiceState={voicePresence[player.id]}
                 position={{ x: 0, y: 0 }}
                 turnEndTime={i === currentPlayerIndex ? turnEndTime : null}
@@ -160,7 +164,7 @@ export default function PlayerCompass({ compact = false }: PlayerCompassProps) {
                 lastPlayedCard={lastPlayedCards.get(player.id)?.card ?? null}
                 handGain={handGainBumps.get(player.id) ?? null}
                 onReaction={handleReaction}
-                onThrowItem={(item) => handleThrowItem(player.id, item)}
+                onThrowItem={item => handleThrowItem(player.id, item)}
               />
             </motion.div>
           );

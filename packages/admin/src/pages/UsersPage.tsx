@@ -5,11 +5,13 @@ import { Input } from '@/components/Input';
 import { Modal } from '@/components/Modal';
 import { Select } from '@/components/Select';
 
+type UserRole = 'normal' | 'member' | 'vip' | 'admin';
+
 interface UserRow {
   id: string;
   username: string;
   nickname: string;
-  role: string;
+  role: UserRole;
   createdAt: string;
 }
 
@@ -113,7 +115,7 @@ export default function UsersPage() {
         <Input
           type="text"
           value={search}
-          onChange={(e) => {
+          onChange={e => {
             setSearch(e.target.value);
             setPage(1);
           }}
@@ -122,11 +124,7 @@ export default function UsersPage() {
         />
       </div>
 
-      {error && (
-        <div className="bg-red-900/40 border border-red-700 text-red-300 rounded px-4 py-3 mb-4">
-          {error}
-        </div>
-      )}
+      {error && <div className="bg-red-900/40 border border-red-700 text-red-300 rounded px-4 py-3 mb-4">{error}</div>}
 
       {!data ? (
         <div className="text-slate-400">Loading...</div>
@@ -142,15 +140,15 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {data.users.map((user) => (
+              {data.users.map(user => (
                 <tr key={user.id} className="border-b border-slate-700/50 transition-colors hover:bg-slate-800/50">
                   <td className="p-2 text-white">{user.username}</td>
                   <td className="p-2 text-slate-300">{user.nickname}</td>
                   <td className="p-2">
                     <Select
                       value={user.role}
-                      options={ROLES.map((role) => ({ value: role, label: role }))}
-                      onChange={(value) => handleRoleChange(user.id, value)}
+                      options={ROLES.map(role => ({ value: role, label: role }))}
+                      onChange={value => handleRoleChange(user.id, value)}
                       disabled={updatingId === user.id}
                       className="w-[120px]"
                     />
@@ -181,7 +179,7 @@ export default function UsersPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page <= 1}
                 >
                   Prev
@@ -189,7 +187,7 @@ export default function UsersPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages}
                 >
                   Next
@@ -207,7 +205,9 @@ export default function UsersPage() {
         description="修改用户名和昵称"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setEditUser(null)}>取消</Button>
+            <Button variant="secondary" onClick={() => setEditUser(null)}>
+              取消
+            </Button>
             <Button onClick={handleEditSave} disabled={editSaving}>
               {editSaving ? '保存中...' : '保存'}
             </Button>
@@ -216,26 +216,28 @@ export default function UsersPage() {
       >
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <label htmlFor="edit-username" className="text-sm font-medium text-slate-300">用户名</label>
+            <label htmlFor="edit-username" className="text-sm font-medium text-slate-300">
+              用户名
+            </label>
             <Input
               id="edit-username"
               value={editUsername}
-              onChange={(e) => setEditUsername(e.target.value)}
+              onChange={e => setEditUsername(e.target.value)}
               maxLength={20}
             />
           </div>
           <div className="grid gap-2">
-            <label htmlFor="edit-nickname" className="text-sm font-medium text-slate-300">昵称</label>
+            <label htmlFor="edit-nickname" className="text-sm font-medium text-slate-300">
+              昵称
+            </label>
             <Input
               id="edit-nickname"
               value={editNickname}
-              onChange={(e) => setEditNickname(e.target.value)}
+              onChange={e => setEditNickname(e.target.value)}
               maxLength={20}
             />
           </div>
-          {editError && (
-            <div className="text-sm text-red-400">{editError}</div>
-          )}
+          {editError && <div className="text-sm text-red-400">{editError}</div>}
         </div>
       </Modal>
     </div>

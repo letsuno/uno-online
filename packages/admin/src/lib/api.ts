@@ -4,10 +4,7 @@ function getToken(): string | null {
   return localStorage.getItem('admin_token');
 }
 
-export async function apiFetch<T = unknown>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+export async function apiFetch<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
     ...((options.headers as Record<string, string>) ?? {}),

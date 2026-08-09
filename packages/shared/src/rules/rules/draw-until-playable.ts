@@ -11,7 +11,7 @@ export const drawUntilPlayable: HouseRulePlugin = {
     label: '摸到能出为止',
     description: '无牌可出时一直摸到能出的牌',
   },
-  isEnabled: (hr) => hr.drawUntilPlayable,
+  isEnabled: hr => hr.drawUntilPlayable,
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     if (action.type === 'DRAW_CARD') {
       if (hasPendingDrawObligation(state)) return { handled: false };

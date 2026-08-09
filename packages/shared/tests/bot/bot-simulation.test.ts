@@ -22,9 +22,15 @@ const BOTS: { id: string; config: BotConfig }[] = [
 function fingerprint(s: GameState): string {
   const handTotal = s.players.reduce((n, p) => n + p.hand.length, 0);
   return [
-    s.phase, s.currentPlayerIndex, s.currentColor, s.direction,
-    handTotal, s.discardPile.length, s.drawStack,
-    s.pendingPenaltyDraws ?? 0, s.pendingDrawPlayerId ?? '',
+    s.phase,
+    s.currentPlayerIndex,
+    s.currentColor,
+    s.direction,
+    handTotal,
+    s.discardPile.length,
+    s.drawStack,
+    s.pendingPenaltyDraws,
+    s.pendingDrawPlayerId ?? '',
     s.lastAction?.type ?? '',
   ].join('|');
 }
@@ -44,9 +50,8 @@ function simulateGame(houseRules: HouseRules, maxTurns = 8000): { state: GameSta
       continue;
     }
 
-    const actorId = state.phase === 'challenging'
-      ? state.pendingDrawPlayerId
-      : state.players[state.currentPlayerIndex]?.id;
+    const actorId =
+      state.phase === 'challenging' ? state.pendingDrawPlayerId : state.players[state.currentPlayerIndex]?.id;
     expect(actorId, `no actor in phase ${state.phase}`).toBeTruthy();
     const actor = state.players.find(p => p.id === actorId)!;
     expect(actor.eliminated, `eliminated player ${actorId} got a turn (phase ${state.phase})`).not.toBe(true);
@@ -74,34 +79,51 @@ const RULESETS: { name: string; hr: HouseRules }[] = [
     name: 'party',
     hr: {
       ...DEFAULT_HOUSE_RULES,
-      stackDrawTwo: true, stackDrawFour: true, zeroRotateHands: true,
-      sevenSwapHands: true, jumpIn: true, drawUntilPlayable: true,
+      stackDrawTwo: true,
+      stackDrawFour: true,
+      zeroRotateHands: true,
+      sevenSwapHands: true,
+      jumpIn: true,
+      drawUntilPlayable: true,
     },
   },
   {
     name: 'attack-heavy',
     hr: {
       ...DEFAULT_HOUSE_RULES,
-      stackDrawTwo: true, stackDrawFour: true, crossStack: true,
-      reverseDeflectDrawTwo: true, reverseDeflectDrawFour: true, skipDeflect: true,
-      revengeMode: true, noChallengeWildFour: true,
+      stackDrawTwo: true,
+      stackDrawFour: true,
+      crossStack: true,
+      reverseDeflectDrawTwo: true,
+      reverseDeflectDrawFour: true,
+      skipDeflect: true,
+      revengeMode: true,
+      noChallengeWildFour: true,
     },
   },
   {
     name: 'elimination-multiplay',
     hr: {
       ...DEFAULT_HOUSE_RULES,
-      elimination: true, multiplePlaySameNumber: true, bombCard: true,
-      noWildFinish: true, noFunctionCardFinish: true,
-      sevenSwapHands: true, zeroRotateHands: true,
+      elimination: true,
+      multiplePlaySameNumber: true,
+      bombCard: true,
+      noWildFinish: true,
+      noFunctionCardFinish: true,
+      sevenSwapHands: true,
+      zeroRotateHands: true,
     },
   },
   {
     name: 'team-limits',
     hr: {
       ...DEFAULT_HOUSE_RULES,
-      teamMode: true, handLimit: 15, forcedPlay: true, forcedPlayAfterDraw: true,
-      strictUnoCall: true, wildFirstTurn: true,
+      teamMode: true,
+      handLimit: 15,
+      forcedPlay: true,
+      forcedPlayAfterDraw: true,
+      strictUnoCall: true,
+      wildFirstTurn: true,
     },
   },
 ];

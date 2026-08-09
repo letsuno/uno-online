@@ -16,11 +16,7 @@ export interface DealResult {
   remainingDeck: Card[];
 }
 
-export function dealCards(
-  deck: readonly Card[],
-  playerIds: readonly string[],
-  cardsPerPlayer: number,
-): DealResult {
+export function dealCards(deck: readonly Card[], playerIds: readonly string[], cardsPerPlayer: number): DealResult {
   const remaining = [...deck];
   const hands: Record<string, Card[]> = {};
 
@@ -81,7 +77,12 @@ export function handleFirstDiscard(deck: readonly Card[], skipWild?: boolean): F
   throw new Error('Deck is empty — cannot draw first discard');
 }
 
-function splitDeck(deck: Card[]): { deckLeft: Card[]; deckRight: Card[]; deckLeftInitialCount: number; deckRightInitialCount: number } {
+function splitDeck(deck: Card[]): {
+  deckLeft: Card[];
+  deckRight: Card[];
+  deckLeftInitialCount: number;
+  deckRightInitialCount: number;
+} {
   const half = Math.ceil(deck.length / 2);
   return {
     deckLeft: deck.slice(0, half),
@@ -110,10 +111,11 @@ function applyFirstDiscardEffect(
       break;
     case 'draw_two': {
       const targetPlayer = players[currentPlayerIndex];
-      if (targetPlayer) {
-        const drawn = deckAfterDiscard.splice(0, 2);
-        targetPlayer.hand.push(...drawn);
+      if (!targetPlayer) {
+        throw new Error('Cannot apply the first-card penalty without a target player');
       }
+      const drawn = deckAfterDiscard.splice(0, 2);
+      targetPlayer.hand.push(...drawn);
       currentPlayerIndex = getNextAliveIndex(players, currentPlayerIndex, direction);
       break;
     }
@@ -126,9 +128,19 @@ function applyFirstDiscardEffect(
 }
 
 export function initializeGame(
-  playerData: readonly { id: string; name: string; avatarUrl?: string | null; role?: UserRole; isBot?: boolean | undefined; botConfig?: BotConfig }[],
+  playerData: readonly {
+    id: string;
+    name: string;
+    avatarUrl?: string | null;
+    role?: UserRole;
+    isBot?: boolean | undefined;
+    botConfig?: BotConfig;
+  }[],
   houseRules?: HouseRules,
 ): GameState {
+  if (playerData.length === 0) {
+    throw new Error('Cannot initialize a game without players');
+  }
   const deck = shuffleDeck(createDeck());
 
   const playerIds = playerData.map(p => p.id);
@@ -148,9 +160,9 @@ export function initializeGame(
     calledUno: false,
     unoCaught: false,
     eliminated: false,
-    teamId: (houseRules?.teamMode && playerData.length % 2 === 0) ? (i % 2) : undefined,
+    teamId: houseRules?.teamMode && playerData.length % 2 === 0 ? i % 2 : undefined,
     avatarUrl: p.avatarUrl ?? null,
-    role: p.role,
+    role: p.role ?? 'normal',
     isBot: p.isBot ?? false,
     botConfig: p.botConfig,
   }));
@@ -183,18 +195,21 @@ export function initializeGame(
 
 export function initializeNextRound(prevState: GameState): GameState {
   const hr = prevState.settings.houseRules;
-  const deck = shuffleDeck(createDeck());
   const playerIds = prevState.players.filter(p => !p.eliminated).map(p => p.id);
+  if (playerIds.length === 0) {
+    throw new Error('Cannot initialize the next round without active players');
+  }
+  const deck = shuffleDeck(createDeck());
   const { hands, remainingDeck: deckAfterDeal } = dealCards(deck, playerIds, INITIAL_HAND_SIZE);
   const skipWild = !hr.wildFirstTurn;
   const { topCard, remainingDeck: deckAfterDiscard, effect } = handleFirstDiscard(deckAfterDeal, skipWild);
 
   let players: Player[] = prevState.players.map(p => ({
     ...p,
-    hand: hands[p.id] ?? [],
+    hand: p.eliminated ? [] : hands[p.id]!,
     calledUno: false,
     unoCaught: false,
-    roundWins: p.roundWins ?? 0,
+    roundWins: p.roundWins,
     connected: p.connected,
     autopilot: p.autopilot,
     botConfig: p.botConfig,

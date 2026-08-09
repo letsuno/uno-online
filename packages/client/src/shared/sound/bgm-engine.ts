@@ -1,8 +1,11 @@
 import { getAudioContext } from './audio-context';
-import { PLAYLISTS, type Song } from './songs/index';
+import { PLAYLISTS, type BgmScene, type Song } from './songs/index';
 import type { ToneCh, SongMeta } from './songs/common';
 
-export interface SongInfo { name: string; meta: SongMeta }
+export interface SongInfo {
+  name: string;
+  meta: SongMeta;
+}
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -30,12 +33,18 @@ class BgmEngine {
   private step = 0;
   private nextTime = 0;
   private _playing = false;
-  private _currentScene: string | null = null;
+  private _currentScene: BgmScene | null = null;
   private _onSongChange: ((info: SongInfo) => void) | null = null;
 
-  get isPlaying() { return this._playing; }
-  get currentSong(): SongInfo | null { return this._playing && this.song ? { name: this.song.name, meta: this.song.meta } : null; }
-  set onSongChange(cb: ((info: SongInfo) => void) | null) { this._onSongChange = cb; }
+  get isPlaying() {
+    return this._playing;
+  }
+  get currentSong(): SongInfo | null {
+    return this._playing && this.song ? { name: this.song.name, meta: this.song.meta } : null;
+  }
+  set onSongChange(cb: ((info: SongInfo) => void) | null) {
+    this._onSongChange = cb;
+  }
 
   private getMaster(): GainNode {
     if (!this.master) {
@@ -75,7 +84,11 @@ class BgmEngine {
 
   private destroyVoices() {
     for (const v of this.voices) {
-      try { v.osc.stop(); } catch { /* already stopped */ }
+      try {
+        v.osc.stop();
+      } catch {
+        /* already stopped */
+      }
       v.osc.disconnect();
       v.gain.disconnect();
     }
@@ -86,11 +99,11 @@ class BgmEngine {
     this.getMaster().gain.setTargetAtTime(v, getAudioContext().currentTime, 0.05);
   }
 
-  start(scene: string) {
+  start(scene: BgmScene) {
     // 同 scene 已在播放则不重启——让 BGM 跨组件 mount/unmount 续播
     if (this._playing && this._currentScene === scene) return;
     this.stop();
-    const base = PLAYLISTS[scene] ?? PLAYLISTS.game!;
+    const base = PLAYLISTS[scene];
     this.playlist = shuffle(base);
     this.songIdx = 0;
     this.song = this.playlist[0]!;
@@ -99,9 +112,9 @@ class BgmEngine {
     this.launch();
   }
 
-  playSingle(scene: string, index: number) {
+  playSingle(scene: BgmScene, index: number) {
     this.stop();
-    const base = PLAYLISTS[scene] ?? PLAYLISTS.game!;
+    const base = PLAYLISTS[scene];
     const song = base[index];
     if (!song) return;
     this.playlist = [song];
@@ -120,9 +133,13 @@ class BgmEngine {
     if (ctx.state === 'running') {
       this.beginScheduler();
     } else {
-      ctx.addEventListener('statechange', () => {
-        if (this._playing && !this.timer) this.beginScheduler();
-      }, { once: true });
+      ctx.addEventListener(
+        'statechange',
+        () => {
+          if (this._playing && !this.timer) this.beginScheduler();
+        },
+        { once: true },
+      );
     }
   }
 
@@ -185,7 +202,7 @@ class BgmEngine {
       }
     }
 
-    if (s.kick.hits[i])  this.kick(t, s.kick.gain);
+    if (s.kick.hits[i]) this.kick(t, s.kick.gain);
     if (s.snare.hits[i]) this.snare(t, s.snare.gain);
     if (s.hihat.hits[i]) this.hihat(t, s.hihat.gain);
   }

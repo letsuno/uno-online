@@ -7,13 +7,7 @@ const DURATION = 500;
 const TICK = 35;
 const MAX_OFFSET = 80;
 
-const DISSOLVE_REASON_LABEL: Record<string, string> = {
-  host_closed: '房主解散了房间',
-  idle_timeout: '房间长时间没有活动，已自动解散',
-  empty: '所有玩家已离开，房间已解散',
-};
-
-export default function CheatOverlay({ dissolvedReason }: { dissolvedReason?: string | null }) {
+export default function CheatOverlay() {
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLDivElement>(null);
   const realRef = useRef<HTMLDivElement>(null);
@@ -76,21 +70,20 @@ export default function CheatOverlay({ dissolvedReason }: { dissolvedReason?: st
   return (
     <div className="cheat-overlay">
       <div className="cheat-real" ref={realRef}>
-        <div className="cheat-title" data-text="检测到作弊者">检测到作弊者</div>
+        <div className="cheat-title" data-text="检测到作弊者">
+          检测到作弊者
+        </div>
         <div className="cheat-subtitle">比赛终止</div>
         <div className="cheat-desc">作弊者已受到惩罚，游戏取消，所有玩家的输赢均不计入。</div>
         <div className="cheat-divider" />
         {showBtn && (
-          <button className="cheat-btn cheat-btn-visible" onClick={handleContinue}>继 续</button>
+          <button className="cheat-btn cheat-btn-visible" onClick={handleContinue}>
+            继 续
+          </button>
         )}
       </div>
       <div className="cheat-glitch-canvas" ref={canvasRef} />
       <div className="cheat-flash" />
-      {dissolvedReason && (
-        <div className="fixed bottom-6 right-8 text-xs text-white/30 select-text pointer-events-auto">
-          {DISSOLVE_REASON_LABEL[dissolvedReason] ?? dissolvedReason}
-        </div>
-      )}
     </div>
   );
 }

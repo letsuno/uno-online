@@ -61,9 +61,11 @@ export default function FitScaler({
       const byW = aw / cw;
       const byH = ah / ch;
       const next =
-        mode === 'width' ? Math.min(maxScale, byW)
-        : mode === 'height' ? Math.min(maxScale, byH)
-        : Math.min(maxScale, byW, byH);
+        mode === 'width'
+          ? Math.min(maxScale, byW)
+          : mode === 'height'
+            ? Math.min(maxScale, byH)
+            : Math.min(maxScale, byW, byH);
       setScale(next > 0 ? next : maxScale);
     };
 
@@ -76,10 +78,7 @@ export default function FitScaler({
 
   return (
     <div ref={areaRef} className={`flex ${ALIGN_CLASS[align]} ${className ?? ''}`} style={style}>
-      <div
-        ref={contentRef}
-        style={{ transform: `scale(${scale})`, transformOrigin: origin, flex: '0 0 auto' }}
-      >
+      <div ref={contentRef} style={{ transform: `scale(${scale})`, transformOrigin: origin, flex: '0 0 auto' }}>
         {children}
       </div>
     </div>

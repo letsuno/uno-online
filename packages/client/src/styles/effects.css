@@ -4,8 +4,12 @@
    ========================================================================== */
 
 @keyframes danmaku-scroll {
-  from { transform: translateX(100vw); }
-  to { transform: translateX(-100%); }
+  from {
+    transform: translateX(100vw);
+  }
+  to {
+    transform: translateX(-100%);
+  }
 }
 .danmaku-item {
   animation: danmaku-scroll 8s linear forwards;
@@ -22,8 +26,14 @@
   animation: ace-slide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @keyframes ace-slide-in {
-  from { transform: translateY(30px) translateX(20px); opacity: 0; }
-  to { transform: translateY(0) translateX(0); opacity: 1; }
+  from {
+    transform: translateY(30px) translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) translateX(0);
+    opacity: 1;
+  }
 }
 
 .ace-loading {
@@ -40,12 +50,16 @@
   inset: -50%;
   width: 200%;
   height: 200%;
-  background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
   animation: ace-shimmer 2s ease-in-out infinite;
 }
 @keyframes ace-shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .ace-header {
@@ -66,7 +80,7 @@
   font-size: 16px;
   font-weight: 900;
   color: #fff;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(4px);
   flex-shrink: 0;
 }
@@ -94,7 +108,7 @@
 
 .ace-progress {
   height: 2px;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 1px;
   margin-top: 10px;
   overflow: hidden;
@@ -125,7 +139,7 @@
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 .ace-running .ace-desc {
-  color: rgba(255,255,255,0.4);
+  color: rgba(255, 255, 255, 0.4);
   font-size: 10.5px;
   margin-top: 4px;
 }
@@ -140,10 +154,20 @@
   animation: ace-scan 3s ease-in-out infinite;
 }
 @keyframes ace-scan {
-  0% { top: 0; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
 }
 
 .ace-running-body {
@@ -187,8 +211,15 @@
   animation: ace-pulse 1.5s ease-in-out infinite;
 }
 @keyframes ace-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.7); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.7);
+  }
 }
 
 /* ---- Cheat Overlay ---- */
@@ -203,13 +234,33 @@
   animation: cheat-bg-flicker 0.35s steps(1) forwards;
 }
 @keyframes cheat-bg-flicker {
-  0%{opacity:0}14%{opacity:1}22%{opacity:0}36%{opacity:1}44%{opacity:0}52%{opacity:1}100%{opacity:1}
+  0% {
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  22% {
+    opacity: 0;
+  }
+  36% {
+    opacity: 1;
+  }
+  44% {
+    opacity: 0;
+  }
+  52% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 .cheat-overlay::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.3) 100%);
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.3) 100%);
   pointer-events: none;
   z-index: 3;
 }
@@ -217,7 +268,13 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
   pointer-events: none;
   z-index: 3;
 }
@@ -252,7 +309,7 @@
   font-weight: 900;
   letter-spacing: 8px;
   line-height: 1.15;
-  text-shadow: 0 6px 24px rgba(0,0,0,0.35);
+  text-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
   position: relative;
   animation: cheat-rgb-settle 0.5s ease-out 0.1s both;
 }
@@ -273,19 +330,86 @@
   mix-blend-mode: screen;
   animation: cheat-rgb-m 0.5s steps(1) 0.1s both;
 }
-@keyframes cheat-rgb-c{0%{transform:translateX(-8px);opacity:.85}20%{transform:translateX(5px);opacity:.6}45%{transform:translateX(-3px);opacity:.35}70%{transform:translateX(1px);opacity:.12}100%{transform:translateX(0);opacity:0}}
-@keyframes cheat-rgb-m{0%{transform:translateX(8px);opacity:.85}20%{transform:translateX(-5px);opacity:.6}45%{transform:translateX(3px);opacity:.35}70%{transform:translateX(-1px);opacity:.12}100%{transform:translateX(0);opacity:0}}
-@keyframes cheat-rgb-settle{0%{text-shadow:-5px 0 #0ff,5px 0 #f0f,0 6px 24px rgba(0,0,0,.35)}35%{text-shadow:2px 0 #0ff,-2px 0 #f0f,0 6px 24px rgba(0,0,0,.35)}70%{text-shadow:-1px 0 #0ff,1px 0 #f0f,0 6px 24px rgba(0,0,0,.35)}100%{text-shadow:0 0 transparent,0 0 transparent,0 6px 24px rgba(0,0,0,.35)}}
+@keyframes cheat-rgb-c {
+  0% {
+    transform: translateX(-8px);
+    opacity: 0.85;
+  }
+  20% {
+    transform: translateX(5px);
+    opacity: 0.6;
+  }
+  45% {
+    transform: translateX(-3px);
+    opacity: 0.35;
+  }
+  70% {
+    transform: translateX(1px);
+    opacity: 0.12;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+}
+@keyframes cheat-rgb-m {
+  0% {
+    transform: translateX(8px);
+    opacity: 0.85;
+  }
+  20% {
+    transform: translateX(-5px);
+    opacity: 0.6;
+  }
+  45% {
+    transform: translateX(3px);
+    opacity: 0.35;
+  }
+  70% {
+    transform: translateX(-1px);
+    opacity: 0.12;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+}
+@keyframes cheat-rgb-settle {
+  0% {
+    text-shadow:
+      -5px 0 #0ff,
+      5px 0 #f0f,
+      0 6px 24px rgba(0, 0, 0, 0.35);
+  }
+  35% {
+    text-shadow:
+      2px 0 #0ff,
+      -2px 0 #f0f,
+      0 6px 24px rgba(0, 0, 0, 0.35);
+  }
+  70% {
+    text-shadow:
+      -1px 0 #0ff,
+      1px 0 #f0f,
+      0 6px 24px rgba(0, 0, 0, 0.35);
+  }
+  100% {
+    text-shadow:
+      0 0 transparent,
+      0 0 transparent,
+      0 6px 24px rgba(0, 0, 0, 0.35);
+  }
+}
 .cheat-subtitle {
   font-size: clamp(18px, 3vw, 24px);
   font-weight: 700;
   margin-top: 28px;
-  color: rgba(255,255,255,0.9);
+  color: rgba(255, 255, 255, 0.9);
   letter-spacing: 6px;
 }
 .cheat-desc {
   font-size: 15px;
-  color: rgba(255,255,255,0.6);
+  color: rgba(255, 255, 255, 0.6);
   margin-top: 16px;
   line-height: 1.8;
   letter-spacing: 1px;
@@ -293,11 +417,15 @@
 .cheat-divider {
   width: 0;
   height: 1px;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   margin: 36px auto 0;
   animation: cheat-divider-in 0.6s ease-out 0.55s forwards;
 }
-@keyframes cheat-divider-in { to { width: min(70vw, 560px); } }
+@keyframes cheat-divider-in {
+  to {
+    width: min(70vw, 560px);
+  }
+}
 .cheat-btn {
   margin-top: 52px;
   padding: 16px 72px;
@@ -305,8 +433,8 @@
   font-weight: 700;
   letter-spacing: 4px;
   color: #fff;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 2px;
   cursor: pointer;
   transition: all 0.25s ease;
@@ -315,12 +443,17 @@
   transform: translateY(8px);
 }
 .cheat-btn-visible {
-  animation: cheat-btn-in 0.4s cubic-bezier(0.16,1,0.3,1) forwards;
+  animation: cheat-btn-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-@keyframes cheat-btn-in { to { opacity: 1; transform: translateY(0); } }
+@keyframes cheat-btn-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 .cheat-btn:hover {
-  background: rgba(255,255,255,0.18);
-  border-color: rgba(255,255,255,0.4);
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.4);
   letter-spacing: 6px;
   transform: translateY(-1px);
 }
@@ -331,15 +464,72 @@
   pointer-events: none;
   animation: cheat-flash 0.25s steps(1) forwards;
 }
-@keyframes cheat-flash{0%{background:#fff;opacity:1}12%{opacity:0}20%{background:#f0f;opacity:.4}28%{opacity:0}36%{background:#0ff;opacity:.3}44%{background:#fff;opacity:.7}52%{background:#f0f;opacity:.2}60%{opacity:0}100%{background:transparent;opacity:0}}
+@keyframes cheat-flash {
+  0% {
+    background: #fff;
+    opacity: 1;
+  }
+  12% {
+    opacity: 0;
+  }
+  20% {
+    background: #f0f;
+    opacity: 0.4;
+  }
+  28% {
+    opacity: 0;
+  }
+  36% {
+    background: #0ff;
+    opacity: 0.3;
+  }
+  44% {
+    background: #fff;
+    opacity: 0.7;
+  }
+  52% {
+    background: #f0f;
+    opacity: 0.2;
+  }
+  60% {
+    opacity: 0;
+  }
+  100% {
+    background: transparent;
+    opacity: 0;
+  }
+}
 
 /* Direction indicator — GPU-composited infinite rotation */
-@keyframes spin-cw { to { transform: rotate(360deg); } }
-@keyframes spin-ccw { to { transform: rotate(-360deg); } }
-@keyframes fade-in { from { opacity: 0; transform: scale(1.6); } to { opacity: 1; transform: scale(1); } }
-.animate-spin-cw { animation: spin-cw 3s linear infinite; }
-.animate-spin-ccw { animation: spin-ccw 3s linear infinite; }
-.animate-fade-in { animation: fade-in 0.3s ease-out; }
+@keyframes spin-cw {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes spin-ccw {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-spin-cw {
+  animation: spin-cw 3s linear infinite;
+}
+.animate-spin-ccw {
+  animation: spin-ccw 3s linear infinite;
+}
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
 
 /* 窄屏：反作弊 Toast 移到顶部（避免遮挡底部手牌） */
 @media (max-width: 640px) {

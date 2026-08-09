@@ -6,15 +6,24 @@ import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useRoomStore } from '@/shared/stores/room-store';
 import type { RoomSeatPlayer } from '@/shared/stores/room-store';
 import { useGameStore } from '../stores/game-store';
-import { getSocket, connectSocket, refreshVoicePresence, onConnectionStatus, getConnectionStatus, type ConnectionStatus } from '@/shared/socket';
+import {
+  getSocket,
+  connectSocket,
+  refreshVoicePresence,
+  onConnectionStatus,
+  getConnectionStatus,
+  type ConnectionStatus,
+} from '@/shared/socket';
 import { recordRoomJoin, isRoomJoinCurrent } from '@/shared/room-join-tracker';
+import { clearSuspendedRoom } from '@/shared/stores/suspended-room-store';
+import { requestAckWithRetry, ROOM_REJOIN_ACK_POLICY } from '@/shared/socket-ack';
+import { reportSocketError } from '@/shared/report-socket-error';
 import VoicePanel from '@/shared/voice/VoicePanel';
 import { useToastStore } from '@/shared/stores/toast-store';
 import { showConfirm } from '@/shared/stores/confirm-store';
 import PlayerActionMenu from '../components/PlayerActionMenu';
 import { useLeaveRoom } from '../hooks/useLeaveRoom';
-import { DEFAULT_HOUSE_RULES } from '@uno-online/shared';
-import type { HouseRules } from '@uno-online/shared';
+import type { PlayerView, RoomRejoinResult } from '@uno-online/shared';
 import { Button } from '@/shared/components/ui/Button';
 import { IconButton } from '@/shared/components/ui/IconButton';
 import FitScaler from '@/shared/components/FitScaler';
@@ -32,21 +41,22 @@ import type { RuleBotDifficulty } from '@uno-online/shared';
 
 export default function RoomPage() {
   const { roomCode } = useParams<{ roomCode: string }>();
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore(s => s.user);
   const { roomCode: storeRoomCode, seats, spectators, room, setRoom } = useRoomStore();
-  const setGameState = useGameStore((s) => s.setGameState);
+  const setGameState = useGameStore(s => s.setGameState);
   const navigate = useNavigate();
   const songName = useBgm('lobby');
   const leaveRoomHook = useLeaveRoom();
 
   const [rejoinError, setRejoinError] = useState<string | null>(null);
+  const [rejoinAttempt, setRejoinAttempt] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [swapRequest, setSwapRequest] = useState<{
     requesterId: string;
     requesterName: string;
     requesterSeatIndex: number;
+    targetSeatIndex: number;
   } | null>(null);
-  const [houseRules, setHouseRules] = useState<HouseRules>(DEFAULT_HOUSE_RULES);
   const [menuTarget, setMenuTarget] = useState<{
     player: RoomSeatPlayer;
     seatIndex: number;
@@ -63,26 +73,66 @@ export default function RoomPage() {
     connectSocket();
     const socket = getSocket();
     let cancelled = false;
+    let generation = 0;
+    let inFlightKey: string | null = null;
+    const requestController = new AbortController();
 
     const tryRejoin = (force = false) => {
       if (cancelled || !roomCode) return;
       if (!force && useRoomStore.getState().roomCode === roomCode) return;
-      socket.emit('room:rejoin', roomCode, (res: any) => {
-        if (cancelled) return;
-        if (res.success) {
-          recordRoomJoin(roomCode, socket.id);
-          if (res.seats && res.spectators && res.room) {
+      const socketId = socket.id;
+      if (!socket.connected || !socketId) return;
+      const requestKey = `${socketId}:${roomCode}`;
+      if (inFlightKey === requestKey) return;
+      inFlightKey = requestKey;
+      const requestGeneration = ++generation;
+      setRejoinError(null);
+
+      void requestAckWithRetry<RoomRejoinResult>(
+        acknowledge => {
+          if (!socket.connected || socket.id !== socketId) {
+            throw new Error('Socket generation changed during room rejoin');
+          }
+          socket.emit('room:rejoin', roomCode, acknowledge);
+        },
+        {
+          ...ROOM_REJOIN_ACK_POLICY,
+          signal: requestController.signal,
+        },
+      )
+        .then(res => {
+          if (cancelled || requestGeneration !== generation || socket.id !== socketId) return;
+          inFlightKey = null;
+          if (res.success) {
+            clearSuspendedRoom(roomCode);
+            recordRoomJoin(roomCode, socket.id);
+            setRejoinError(null);
             setRoom(roomCode, res.seats, res.spectators, res.room);
             refreshVoicePresence();
+            if (res.mode !== 'waiting') {
+              useGameStore.getState().setSpectator(res.mode === 'spectator');
+              setGameState(res.gameState);
+              navigate(`/game/${roomCode}`, { replace: true });
+            } else {
+              useGameStore.getState().clearGame();
+            }
+          } else {
+            setRejoinError(res.error);
           }
-          if (res.gameState) {
-            setGameState(res.gameState);
-            navigate(`/game/${roomCode}`);
-          }
-        } else {
-          setRejoinError(res.error || '房间不存在');
-        }
-      });
+        })
+        .catch((error: unknown) => {
+          if (
+            cancelled ||
+            requestGeneration !== generation ||
+            requestController.signal.aborted ||
+            !socket.connected ||
+            socket.id !== socketId
+          )
+            return;
+          inFlightKey = null;
+          console.warn('[room] Rejoin acknowledgement timed out', error);
+          setRejoinError('同步房间状态超时，请重试');
+        });
     };
 
     // 断线重连（含在大厅页完成的重连）后服务端是一个全新 socket（不在任何
@@ -92,7 +142,7 @@ export default function RoomPage() {
     // 关托管、撤销 round_end 投票、全房广播等副作用。以 join-tracker 记录
     // 的连接身份区分两种情况;rejoin 对"已在房间"的用户是幂等的。
     if (socket.connected) {
-      if (isRoomJoinCurrent(roomCode ?? '', socket.id)) {
+      if (roomCode && isRoomJoinCurrent(roomCode, socket.id)) {
         // 已在广播组里。若对局还在进行(从对局页返回),直接回对局。
         const phase = useGameStore.getState().phase;
         if (phase && phase !== 'game_over' && useRoomStore.getState().roomCode === roomCode) {
@@ -108,7 +158,7 @@ export default function RoomPage() {
     const onReconnect = () => tryRejoin(true);
     socket.on('connect', onReconnect);
 
-    const onState = (view: any) => {
+    const onState = (view: PlayerView) => {
       setGameState(view);
       refreshVoicePresence();
       navigate(`/game/${roomCode}`);
@@ -116,10 +166,13 @@ export default function RoomPage() {
     socket.on('game:state', onState);
     return () => {
       cancelled = true;
+      generation += 1;
+      inFlightKey = null;
+      requestController.abort();
       socket.off('connect', onReconnect);
       socket.off('game:state', onState);
     };
-  }, [roomCode, navigate, setGameState]);
+  }, [roomCode, navigate, rejoinAttempt, setGameState]);
 
   /* 连接状态:断线时给出提示与手动重连入口(等待室没有 GamePage 的遮罩) */
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(getConnectionStatus);
@@ -132,6 +185,7 @@ export default function RoomPage() {
       requesterId: string;
       requesterName: string;
       requesterSeatIndex: number;
+      targetSeatIndex: number;
     }) => setSwapRequest(data);
     const onSwapResolved = () => setSwapRequest(null);
     socket.on('seat:swap_requested', onSwapRequested);
@@ -144,42 +198,25 @@ export default function RoomPage() {
 
   /* Derived state */
   const isOwner = room?.ownerId === user?.id;
-  const myPlayer =
-    seats.find((s) => s !== null && s.userId === user?.id) ?? null;
-  const isSpectator =
-    !myPlayer && spectators.some((s) => s.userId === user?.id);
-  const seatedPlayers = seats.filter(
-    (s): s is RoomSeatPlayer => s !== null,
-  );
-  const allReady =
-    seatedPlayers.length >= 2 && seatedPlayers.every((p) => p.ready);
-
-  /* Sync houseRules from room settings */
-  useEffect(() => {
-    if (room?.settings?.houseRules) {
-      setHouseRules({
-        ...DEFAULT_HOUSE_RULES,
-        ...(room.settings.houseRules as Partial<HouseRules>),
-      });
-    }
-  }, [room?.settings?.houseRules]);
+  const myPlayer = seats.find(s => s !== null && s.userId === user?.id) ?? null;
+  const isSpectator = !myPlayer && spectators.some(s => s.userId === user?.id);
+  const seatedPlayers = seats.filter((s): s is RoomSeatPlayer => s !== null);
+  const allReady = seatedPlayers.length >= 2 && seatedPlayers.every(p => p.ready);
 
   /* ── Handlers ── */
 
   const toggleReady = () => {
-    getSocket().emit('room:ready', !myPlayer?.ready, () => {});
+    getSocket().emit('room:ready', !myPlayer?.ready, reportSocketError);
   };
 
   const startGame = () => {
-    getSocket().emit('game:start', (res: any) => {
+    getSocket().emit('game:start', res => {
       if (!res.success) {
-        useToastStore.getState().addToast(res.error ?? '开始失败', 'error');
+        useToastStore.getState().addToast(res.error, 'error');
         return;
       }
-      if (res.gameState) {
-        setGameState(res.gameState);
-        navigate(`/game/${roomCode}`);
-      }
+      setGameState(res.gameState);
+      navigate(`/game/${roomCode}`);
     });
   };
 
@@ -209,7 +246,7 @@ export default function RoomPage() {
       }))
     )
       return;
-    getSocket().emit('room:dissolve', () => {});
+    getSocket().emit('room:dissolve', reportSocketError);
   };
 
   /* Seat click handler */
@@ -220,8 +257,8 @@ export default function RoomPage() {
     if (!seat) {
       // Empty seat: if spectator, take directly; if seated/owner, show context menu
       if (isSpectator && !isOwner) {
-        getSocket().emit('seat:take', seatIndex, (res: { success?: boolean; error?: string }) => {
-          if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
+        getSocket().emit('seat:take', seatIndex, res => {
+          if (!res.success) useToastStore.getState().addToast(res.error, 'error');
         });
       } else {
         setSeatMenu({ seatIndex, player: null, position: pos });
@@ -238,43 +275,43 @@ export default function RoomPage() {
   };
 
   const handleTakeSeat = (seatIndex: number) => {
-    getSocket().emit('seat:take', seatIndex, (res: { success?: boolean; error?: string }) => {
-      if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
+    getSocket().emit('seat:take', seatIndex, res => {
+      if (!res.success) useToastStore.getState().addToast(res.error, 'error');
     });
   };
 
   const handleAddRuleBot = (difficulty: RuleBotDifficulty, seatIndex: number) => {
-    getSocket().emit('room:add_bot', { difficulty, seatIndex }, (res) => {
+    getSocket().emit('room:add_bot', { difficulty, seatIndex }, res => {
       if (!res.success && res.error) useToastStore.getState().addToast(res.error, 'error');
     });
   };
 
   const handleAddAiBot = (aiProviderId: string, seatIndex: number) => {
-    getSocket().emit('room:add_bot', { difficulty: 'rl', seatIndex, aiProviderId }, (res) => {
+    getSocket().emit('room:add_bot', { difficulty: 'rl', seatIndex, aiProviderId }, res => {
       if (!res.success && res.error) useToastStore.getState().addToast(res.error, 'error');
     });
   };
 
   const handleSwapWithBot = (targetUserId: string) => {
-    getSocket().emit('seat:swap_request', targetUserId, (res: { success?: boolean; error?: string }) => {
-      if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
+    getSocket().emit('seat:swap_request', targetUserId, res => {
+      if (!res.success) useToastStore.getState().addToast(res.error, 'error');
     });
   };
 
   const handleSetBotDifficulty = (botId: string, difficulty: RuleBotDifficulty) => {
-    getSocket().emit('room:set_bot_difficulty', { botId, difficulty }, (res) => {
+    getSocket().emit('room:set_bot_difficulty', { botId, difficulty }, res => {
       if (!res.success && res.error) useToastStore.getState().addToast(res.error, 'error');
     });
   };
 
   const handleSetBotAi = (botId: string, providerId: string) => {
-    getSocket().emit('room:set_bot_ai', { botId, providerId }, (res) => {
+    getSocket().emit('room:set_bot_ai', { botId, providerId }, res => {
       if (!res.success && res.error) useToastStore.getState().addToast(res.error, 'error');
     });
   };
 
   const handleRemoveBot = (botId: string) => {
-    getSocket().emit('room:remove_bot', { botId }, (res) => {
+    getSocket().emit('room:remove_bot', { botId }, res => {
       if (!res.success && res.error) useToastStore.getState().addToast(res.error, 'error');
     });
   };
@@ -282,14 +319,9 @@ export default function RoomPage() {
   /* Swap respond handler */
   const handleSwapRespond = (accept: boolean) => {
     if (!swapRequest) return;
-    getSocket().emit(
-      'seat:swap_respond',
-      { requesterId: swapRequest.requesterId, accept },
-      (res: { success?: boolean; error?: string }) => {
-        if (!res?.success && res?.error)
-          useToastStore.getState().addToast(res.error, 'error');
-      },
-    );
+    getSocket().emit('seat:swap_respond', { requesterId: swapRequest.requesterId, accept }, res => {
+      if (!res.success) useToastStore.getState().addToast(res.error, 'error');
+    });
     setSwapRequest(null);
   };
 
@@ -298,19 +330,31 @@ export default function RoomPage() {
       <GamePageShell>
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
           <p className="text-muted-foreground">{rejoinError}</p>
-          <Button variant="game" onClick={() => navigate('/')} sound="click">
-            返回大厅
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="game" onClick={() => setRejoinAttempt(attempt => attempt + 1)} sound="click">
+              重试
+            </Button>
+            <Button variant="secondary" onClick={() => navigate('/')} sound="click">
+              返回大厅
+            </Button>
+          </div>
         </div>
       </GamePageShell>
     );
   }
 
-  if (storeRoomCode !== roomCode) {
+  if (storeRoomCode !== roomCode || !room) {
     return (
       <GamePageShell>
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-muted-foreground">正在加入房间…</p>
+        <div className="flex-1 flex flex-col items-center justify-center gap-3">
+          <p className="text-muted-foreground">
+            {connectionStatus === 'disconnected' ? '连接已断开' : '正在加入房间…'}
+          </p>
+          {connectionStatus === 'disconnected' && (
+            <Button variant="game" onClick={() => connectSocket()} sound="click">
+              重新连接
+            </Button>
+          )}
         </div>
       </GamePageShell>
     );
@@ -334,115 +378,102 @@ export default function RoomPage() {
       )}
       <FitScaler align="center" maxScale={1} className="absolute inset-0 z-card">
         <div className="flex flex-col items-center gap-6 w-[760px] portrait:w-[440px]">
-        {/* Title */}
-        <div className="flex items-center gap-3 shrink-0">
-          <h2
-            className="text-[32px] font-black text-primary"
-            style={{ textShadow: '0 0 20px rgba(246,190,62,0.35)' }}
-          >
-            房间
-          </h2>
-          <span className="font-mono text-[26px] font-bold tracking-[0.18em] indent-[0.18em] text-[var(--gold-2)] bg-primary/8 border border-[rgba(246,190,62,0.32)] rounded-[14px] px-4 py-1.5">
-            {roomCode}
-          </span>
-          <IconButton
-            onClick={() => {
-              const url = `${window.location.origin}/room/${roomCode}`;
-              navigator.clipboard.writeText(
-                `来玩 UNO 吧！房间号：${roomCode}\n${url}`,
-              );
-              useToastStore.getState().addToast('房间链接已复制', 'success');
-            }}
-            title="复制房间链接"
-          >
-            <Copy size={16} />
-          </IconButton>
-        </div>
+          {/* Title */}
+          <div className="flex items-center gap-3 shrink-0">
+            <h2
+              className="text-[32px] font-black text-primary"
+              style={{ textShadow: '0 0 20px rgba(246,190,62,0.35)' }}
+            >
+              房间
+            </h2>
+            <span className="font-mono text-[26px] font-bold tracking-[0.18em] indent-[0.18em] text-[var(--gold-2)] bg-primary/8 border border-[rgba(246,190,62,0.32)] rounded-[14px] px-4 py-1.5">
+              {roomCode}
+            </span>
+            <IconButton
+              onClick={() => {
+                const url = `${window.location.origin}/room/${roomCode}`;
+                navigator.clipboard.writeText(`来玩 UNO 吧！房间号：${roomCode}\n${url}`);
+                useToastStore.getState().addToast('房间链接已复制', 'success');
+              }}
+              title="复制房间链接"
+            >
+              <Copy size={16} />
+            </IconButton>
+          </div>
 
-        {/* Circular table */}
-        <SeatCircle
-          seats={seats}
-          onSeatClick={handleSeatClick}
-        />
+          {/* Circular table */}
+          <SeatCircle seats={seats} onSeatClick={handleSeatClick} />
 
-        {/* Spectator bar */}
-        <SpectatorBar spectators={spectators} />
+          {/* Spectator bar */}
+          <SpectatorBar spectators={spectators} isOwner={isOwner} currentUserId={user?.id} />
 
-        {/* Action buttons */}
-        <div className="flex flex-col items-center gap-2 shrink-0">
-          {isSpectator ? (
-            <p className="text-xs text-muted-foreground">点击空座位入座</p>
-          ) : myPlayer ? (
-            <div className="flex flex-wrap justify-center gap-2.5">
-              <Button
-                variant="game"
-                onClick={toggleReady}
-                sound="ready"
-                className="text-base px-6 py-3 tracking-normal"
-              >
-                {myPlayer.ready ? '取消准备' : '准备'}
-              </Button>
-              {isOwner && (
+          {/* Action buttons */}
+          <div className="flex flex-col items-center gap-2 shrink-0">
+            {isSpectator ? (
+              <p className="text-xs text-muted-foreground">点击空座位入座</p>
+            ) : myPlayer ? (
+              <div className="flex flex-wrap justify-center gap-2.5">
                 <Button
                   variant="game"
-                  className={cn(
-                    'text-base px-6 py-3 tracking-normal',
-                    !allReady && 'opacity-50',
-                  )}
-                  onClick={startGame}
-                  disabled={!allReady}
+                  onClick={toggleReady}
                   sound="ready"
+                  className="text-base px-6 py-3 tracking-normal"
                 >
-                  开始游戏
+                  {myPlayer.ready ? '取消准备' : '准备'}
+                </Button>
+                {isOwner && (
+                  <Button
+                    variant="game"
+                    className={cn('text-base px-6 py-3 tracking-normal', !allReady && 'opacity-50')}
+                    onClick={startGame}
+                    disabled={!allReady}
+                    sound="ready"
+                  >
+                    开始游戏
+                  </Button>
+                )}
+              </div>
+            ) : null}
+            <div className="flex flex-wrap justify-center gap-2">
+              {myPlayer && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    getSocket().emit('seat:leave', res => {
+                      if (!res.success) useToastStore.getState().addToast(res.error, 'error');
+                    });
+                  }}
+                  sound="click"
+                  size="sm"
+                  className="rounded-full bg-secondary border border-border text-foreground/85 hover:bg-white/[0.08] text-xs font-bold px-4 py-2"
+                >
+                  <Eye size={12} className="inline align-middle mr-1" />
+                  观战
                 </Button>
               )}
-            </div>
-          ) : null}
-          <div className="flex flex-wrap justify-center gap-2">
-            {myPlayer && (
               <Button
                 variant="secondary"
-                onClick={() => {
-                  getSocket().emit(
-                    'seat:leave',
-                    (res: { success?: boolean; error?: string }) => {
-                      if (!res?.success && res?.error)
-                        useToastStore.getState().addToast(res.error, 'error');
-                    },
-                  );
-                }}
+                onClick={leaveRoom}
                 sound="click"
                 size="sm"
                 className="rounded-full bg-secondary border border-border text-foreground/85 hover:bg-white/[0.08] text-xs font-bold px-4 py-2"
               >
-                <Eye size={12} className="inline align-middle mr-1" />
-                观战
+                离开房间
               </Button>
-            )}
-            <Button
-              variant="secondary"
-              onClick={leaveRoom}
-              sound="click"
-              size="sm"
-              className="rounded-full bg-secondary border border-border text-foreground/85 hover:bg-white/[0.08] text-xs font-bold px-4 py-2"
-            >
-              离开房间
-            </Button>
-            {isOwner && (
-              <Button
-                variant="danger"
-                onClick={dissolveRoom}
-                sound="danger"
-                size="sm"
-                className="rounded-full bg-destructive/10 border border-destructive/35 text-destructive hover:bg-destructive/18 text-xs font-bold px-4 py-2"
-              >
-                <Trash2 size={12} className="inline align-middle mr-1" />
-                解散房间
-              </Button>
-            )}
+              {isOwner && (
+                <Button
+                  variant="danger"
+                  onClick={dissolveRoom}
+                  sound="danger"
+                  size="sm"
+                  className="rounded-full bg-destructive/10 border border-destructive/35 text-destructive hover:bg-destructive/18 text-xs font-bold px-4 py-2"
+                >
+                  <Trash2 size={12} className="inline align-middle mr-1" />
+                  解散房间
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-
         </div>
       </FitScaler>
 
@@ -455,14 +486,7 @@ export default function RoomPage() {
         <Settings size={18} />
       </IconButton>
 
-      <SettingsDrawer
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        isOwner={isOwner}
-        room={room as any}
-        houseRules={houseRules}
-        onHouseRulesChange={setHouseRules}
-      />
+      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} isOwner={isOwner} room={room} />
       {swapRequest && (
         <SwapRequestDialog
           requesterId={swapRequest.requesterId}
@@ -490,9 +514,9 @@ export default function RoomPage() {
       )}
       {menuTarget && (
         <PlayerActionMenu
-          target={menuTarget.player as any}
+          target={menuTarget.player}
           isOwner={isOwner}
-          roomStatus={room?.status ?? ''}
+          roomStatus={room.status}
           position={menuTarget.position}
           onClose={() => setMenuTarget(null)}
           onSwapRequest={handleSwapWithBot}

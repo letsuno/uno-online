@@ -10,7 +10,9 @@ const COLORS: { color: Color; bgClass: string; label: string }[] = [
   { color: 'yellow', bgClass: 'bg-uno-yellow', label: '黄' },
 ];
 
-interface ColorPickerProps { onPick: (color: Color) => void; }
+interface ColorPickerProps {
+  onPick: (color: Color) => void;
+}
 
 export default function ColorPicker({ onPick }: ColorPickerProps) {
   const [picked, setPicked] = useState<Color | null>(null);
@@ -54,7 +56,9 @@ export default function ColorPicker({ onPick }: ColorPickerProps) {
                 whileTap={{ scale: 0.9 }}
                 onClick={() => handlePick(color)}
                 className={`${bgClass} w-15 h-15 rounded-full border-3 border-white text-lg font-bold text-white cursor-pointer shadow-card font-game`}
-              >{label}</motion.button>
+              >
+                {label}
+              </motion.button>
             ))}
           </div>
         </motion.div>

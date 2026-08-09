@@ -5,7 +5,7 @@ import { cn } from '@/shared/lib/utils';
 import Modal from '@/shared/components/ui/Modal';
 import { Tabs } from '@/shared/components/ui/Tabs';
 import { bgm } from '@/shared/sound/bgm-engine';
-import { PLAYLISTS } from '@/shared/sound/songs/index';
+import { PLAYLISTS, type BgmScene } from '@/shared/sound/songs/index';
 import { useSettingsStore } from '@/shared/stores/settings-store';
 
 const TABS = [
@@ -16,7 +16,7 @@ const TABS = [
 function SoundBars({ className }: { className?: string }) {
   return (
     <span className={cn('flex items-end gap-[2px] h-3', className)}>
-      {[0, 1, 2, 3].map((j) => (
+      {[0, 1, 2, 3].map(j => (
         <motion.span
           key={j}
           className="inline-block w-[3px] bg-accent rounded-full"
@@ -31,17 +31,17 @@ function SoundBars({ className }: { className?: string }) {
 interface Props {
   open: boolean;
   onClose: () => void;
-  currentScene: string;
+  currentScene: BgmScene;
 }
 
 export default function MusicHallModal({ open, onClose, currentScene }: Props) {
   const [tab, setTab] = useState<'game' | 'lobby'>('game');
   const [playing, setPlaying] = useState<string | null>(null);
-  const bgmVolume = useSettingsStore((s) => s.bgmVolume);
-  const setBgmVolume = useSettingsStore((s) => s.setBgmVolume);
-  const bgmEnabled = useSettingsStore((s) => s.bgmEnabled);
+  const bgmVolume = useSettingsStore(s => s.bgmVolume);
+  const setBgmVolume = useSettingsStore(s => s.setBgmVolume);
+  const bgmEnabled = useSettingsStore(s => s.bgmEnabled);
 
-  const songs = PLAYLISTS[tab] ?? [];
+  const songs = PLAYLISTS[tab];
 
   // When the user previews a song with BGM off, resuming/stopping on close
   // must honor their BGM preference instead of unconditionally starting the
@@ -52,7 +52,7 @@ export default function MusicHallModal({ open, onClose, currentScene }: Props) {
     else bgm.stop();
   };
 
-  const play = (scene: string, index: number) => {
+  const play = (scene: BgmScene, index: number) => {
     const key = `${scene}:${index}`;
     if (playing === key) {
       resumeOrStop();
@@ -100,7 +100,9 @@ export default function MusicHallModal({ open, onClose, currentScene }: Props) {
             onChange={handleVolumeChange}
             className="flex-1 h-1 accent-accent bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent"
           />
-          <span className="text-2xs text-muted-foreground/60 w-8 text-right shrink-0">{Math.round(bgmVolume * 100)}%</span>
+          <span className="text-2xs text-muted-foreground/60 w-8 text-right shrink-0">
+            {Math.round(bgmVolume * 100)}%
+          </span>
         </div>
       }
     >
@@ -117,9 +119,7 @@ export default function MusicHallModal({ open, onClose, currentScene }: Props) {
               onClick={() => play(tab, i)}
               className={cn(
                 'flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all w-full group',
-                isPlaying
-                  ? 'bg-accent/10'
-                  : 'hover:bg-white/[0.04]',
+                isPlaying ? 'bg-accent/10' : 'hover:bg-white/[0.04]',
               )}
             >
               {/* Index / Play indicator */}
@@ -146,7 +146,9 @@ export default function MusicHallModal({ open, onClose, currentScene }: Props) {
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   {[`${song.bpm} BPM`, song.meta.key, song.meta.style, song.meta.wave].map((tag, ti) => (
-                    <span key={ti} className="text-2xs text-muted-foreground/50 bg-white/[0.04] rounded px-1.5 py-0.5">{tag}</span>
+                    <span key={ti} className="text-2xs text-muted-foreground/50 bg-white/[0.04] rounded px-1.5 py-0.5">
+                      {tag}
+                    </span>
                   ))}
                 </div>
               </div>

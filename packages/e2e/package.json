@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "node --test tests/harness-config.test.mjs tests/port-guard.test.mjs tests/startup-guard.test.mjs",
     "visual": "node visual.mjs",
     "smoke": "node smoke.mjs"
   },

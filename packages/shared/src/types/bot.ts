@@ -21,4 +21,31 @@ export type BotSelection = Pick<RuleBotConfig, 'difficulty'> | Pick<AiBotConfig,
 
 export const BOT_DIFFICULTIES: readonly BotDifficulty[] = ['novice', 'easy', 'normal', 'hard', 'rl'];
 export const RULE_BOT_DIFFICULTIES: readonly RuleBotDifficulty[] = ['novice', 'easy', 'normal', 'hard'];
-export const BOT_PERSONALITIES: readonly BotPersonality[] = ['aggressive', 'defensive', 'chaotic', 'strategic', 'balanced'];
+export const BOT_PERSONALITIES: readonly BotPersonality[] = [
+  'aggressive',
+  'defensive',
+  'chaotic',
+  'strategic',
+  'balanced',
+];
+
+export function isBotConfig(value: unknown): value is BotConfig {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const config = value as Record<string, unknown>;
+  if (
+    typeof config['difficulty'] !== 'string' ||
+    !BOT_DIFFICULTIES.includes(config['difficulty'] as BotDifficulty) ||
+    typeof config['personality'] !== 'string' ||
+    !BOT_PERSONALITIES.includes(config['personality'] as BotPersonality)
+  )
+    return false;
+
+  if (config['difficulty'] === 'rl') {
+    return (
+      Object.keys(config).length === 3 &&
+      typeof config['aiProviderId'] === 'string' &&
+      config['aiProviderId'].length > 0
+    );
+  }
+  return Object.keys(config).length === 2;
+}

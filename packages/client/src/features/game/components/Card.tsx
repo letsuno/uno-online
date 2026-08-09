@@ -7,12 +7,18 @@ import { cn } from '@/shared/lib/utils';
 
 function getCardLabel(card: CardType): string {
   switch (card.type) {
-    case 'number': return String(card.value);
-    case 'skip': return '⊘';
-    case 'reverse': return '转向';
-    case 'draw_two': return '+2';
-    case 'wild': return 'W';
-    case 'wild_draw_four': return '+4';
+    case 'number':
+      return String(card.value);
+    case 'skip':
+      return '⊘';
+    case 'reverse':
+      return '转向';
+    case 'draw_two':
+      return '+2';
+    case 'wild':
+      return 'W';
+    case 'wild_draw_four':
+      return '+4';
   }
 }
 
@@ -34,14 +40,14 @@ function ReverseIcon({ className }: { className?: string }) {
   );
 }
 
-const colorClasses: Record<string, string> = {
+const colorClasses: Record<NonNullable<CardType['color']>, string> = {
   red: 'bg-uno-red',
   blue: 'bg-uno-blue',
   green: 'bg-uno-green',
   yellow: 'bg-uno-yellow text-background',
 };
 
-const typeFontClasses: Record<string, string> = {
+const typeFontClasses: Record<CardType['type'], string> = {
   number: 'text-card-number md:text-card-number-md',
   skip: 'text-card-symbol md:text-card-symbol-md',
   reverse: 'text-card-symbol md:text-card-symbol-md',
@@ -63,14 +69,23 @@ interface CardProps {
   disableHoverLift?: boolean;
 }
 
-export default function Card({ card, playable = false, clickable = playable, dimmed = false, mini = false, onClick, style, className, forceCornerLabel = false, disableHoverLift = false }: CardProps) {
-  const colorBlindMode = useSettingsStore((s) => s.colorBlindMode);
-  const cardImagePack = useSettingsStore((s) => s.cardTheme !== 'default' && s.cardThemeReady);
+export default function Card({
+  card,
+  playable = false,
+  clickable = playable,
+  dimmed = false,
+  mini = false,
+  onClick,
+  style,
+  className,
+  forceCornerLabel = false,
+  disableHoverLift = false,
+}: CardProps) {
+  const colorBlindMode = useSettingsStore(s => s.colorBlindMode);
+  const cardImagePack = useSettingsStore(s => s.cardTheme !== 'default' && s.cardThemeReady);
 
   const isWild = isWildCard(card);
-  const bgClass = isWild
-    ? 'bg-wild-gradient'
-    : colorClasses[card.color!] ?? '';
+  const bgClass = isWild ? 'bg-wild-gradient' : colorClasses[card.color];
 
   const label = getCardLabel(card);
   const symbol = card.type === 'reverse' ? <ReverseIcon /> : label;
@@ -89,17 +104,19 @@ export default function Card({ card, playable = false, clickable = playable, dim
             'flex items-center justify-center',
             'select-none shrink-0 relative',
             'transition-[transform,box-shadow,opacity] duration-200',
-            playable && [
-              'cursor-pointer',
-              !disableHoverLift && 'hover:-translate-y-3 hover:scale-105',
-            ],
+            playable && ['cursor-pointer', !disableHoverLift && 'hover:-translate-y-3 hover:scale-105'],
             dimmed && 'brightness-[0.45] saturate-[0.7]',
             className,
           )}
           onClick={clickable ? onClick : undefined}
           style={style}
         >
-          <img src={image.url} alt={label} className="w-full h-full object-contain pointer-events-none" draggable={false} />
+          <img
+            src={image.url}
+            alt={label}
+            className="w-full h-full object-contain pointer-events-none"
+            draggable={false}
+          />
           {/* SVG 卡面角标已内置，叠加会出现双重角标 */}
           {forceCornerLabel && !image.isSvg && (
             <span className="absolute top-0.5 left-1 leading-none text-white text-shadow-card">
@@ -141,9 +158,7 @@ export default function Card({ card, playable = false, clickable = playable, dim
         </span>
       )}
 
-      <span className={mini ? 'text-2xs font-bold leading-none' : typeFontClasses[card.type] ?? ''}>
-        {symbol}
-      </span>
+      <span className={mini ? 'text-2xs font-bold leading-none' : typeFontClasses[card.type]}>{symbol}</span>
 
       {showCorners && (
         <span className="absolute bottom-0.5 right-1 leading-none rotate-180">

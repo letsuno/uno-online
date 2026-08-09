@@ -14,14 +14,14 @@ interface ToastState {
   removeToast: (id: string) => void;
 }
 
-export const useToastStore = create<ToastState>((set) => ({
+export const useToastStore = create<ToastState>(set => ({
   toasts: [],
   addToast: (message, type = 'info') => {
     const id = `toast_${++toastId}`;
-    set((state) => ({ toasts: [...state.toasts.slice(-2), { id, message, type }] }));
+    set(state => ({ toasts: [...state.toasts.slice(-2), { id, message, type }] }));
     setTimeout(() => {
-      set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
+      set(state => ({ toasts: state.toasts.filter(t => t.id !== id) }));
     }, 3000);
   },
-  removeToast: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
+  removeToast: id => set(state => ({ toasts: state.toasts.filter(t => t.id !== id) })),
 }));

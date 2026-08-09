@@ -7,12 +7,20 @@ import { IconButton } from '@/shared/components/ui/IconButton';
 
 function Card({ color, label }: { color: string; label: string }) {
   const bg: Record<string, string> = {
-    red: 'bg-uno-red', blue: 'bg-uno-blue', green: 'bg-uno-green',
-    yellow: 'bg-uno-yellow', wild: 'bg-wild-gradient',
+    red: 'bg-uno-red',
+    blue: 'bg-uno-blue',
+    green: 'bg-uno-green',
+    yellow: 'bg-uno-yellow',
+    wild: 'bg-wild-gradient',
     dark: 'bg-muted border border-white/25',
   };
   return (
-    <div className={cn('inline-flex items-center justify-center w-14 h-20 rounded-lg text-white text-lg font-bold shrink-0 shadow-xl', bg[color] ?? 'bg-muted')}>
+    <div
+      className={cn(
+        'inline-flex items-center justify-center w-14 h-20 rounded-lg text-white text-lg font-bold shrink-0 shadow-xl',
+        bg[color] ?? 'bg-muted',
+      )}
+    >
       {label}
     </div>
   );
@@ -20,18 +28,30 @@ function Card({ color, label }: { color: string; label: string }) {
 
 function SmallCard({ color, label }: { color: string; label: string }) {
   const bg: Record<string, string> = {
-    red: 'bg-uno-red', blue: 'bg-uno-blue', green: 'bg-uno-green',
-    yellow: 'bg-uno-yellow', wild: 'bg-wild-gradient',
+    red: 'bg-uno-red',
+    blue: 'bg-uno-blue',
+    green: 'bg-uno-green',
+    yellow: 'bg-uno-yellow',
+    wild: 'bg-wild-gradient',
     dark: 'bg-muted border border-white/25',
   };
   return (
-    <div className={cn('inline-flex items-center justify-center w-9 h-13 rounded text-white text-xs font-bold shrink-0 shadow-md', bg[color] ?? 'bg-muted')}>
+    <div
+      className={cn(
+        'inline-flex items-center justify-center w-9 h-13 rounded text-white text-xs font-bold shrink-0 shadow-md',
+        bg[color] ?? 'bg-muted',
+      )}
+    >
       {label}
     </div>
   );
 }
 
-interface PageDef { title: string; subtitle: string; body: React.ReactNode }
+interface PageDef {
+  title: string;
+  subtitle: string;
+  body: React.ReactNode;
+}
 
 const PAGES: PageDef[] = [
   {
@@ -60,12 +80,39 @@ const PAGES: PageDef[] = [
         </div>
         <div className="w-full grid gap-3 sm:grid-cols-3">
           {[
-            { n: '1', text: <>每人发 <strong className="text-foreground">7 张</strong>手牌，翻开一张作为起始</> },
-            { n: '2', text: <>出与弃牌堆顶<strong className="text-foreground">颜色</strong>或<strong className="text-foreground">数字</strong>相同的牌</> },
-            { n: '3', text: <>最先打完所有手牌的玩家<strong className="text-foreground">获胜</strong></> },
-          ].map((step) => (
-            <div key={step.n} className="flex items-start gap-3 rounded-xl bg-white/[0.04] border border-white/[0.05] p-4">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/20 text-accent text-sm font-bold shrink-0">{step.n}</span>
+            {
+              n: '1',
+              text: (
+                <>
+                  每人发 <strong className="text-foreground">7 张</strong>手牌，翻开一张作为起始
+                </>
+              ),
+            },
+            {
+              n: '2',
+              text: (
+                <>
+                  出与弃牌堆顶<strong className="text-foreground">颜色</strong>或
+                  <strong className="text-foreground">数字</strong>相同的牌
+                </>
+              ),
+            },
+            {
+              n: '3',
+              text: (
+                <>
+                  最先打完所有手牌的玩家<strong className="text-foreground">获胜</strong>
+                </>
+              ),
+            },
+          ].map(step => (
+            <div
+              key={step.n}
+              className="flex items-start gap-3 rounded-xl bg-white/[0.04] border border-white/[0.05] p-4"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/20 text-accent text-sm font-bold shrink-0">
+                {step.n}
+              </span>
               <p className="text-sm text-foreground/80 leading-relaxed">{step.text}</p>
             </div>
           ))}
@@ -86,7 +133,9 @@ const PAGES: PageDef[] = [
             <SmallCard color="yellow" label="9" />
           </div>
           <p className="text-sm font-bold text-foreground">数字牌 (0-9)</p>
-          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">四种颜色各有 0-9 数字牌，匹配颜色或数字即可打出</p>
+          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+            四种颜色各有 0-9 数字牌，匹配颜色或数字即可打出
+          </p>
         </div>
         <div className="rounded-xl bg-white/[0.04] border border-white/[0.05] p-5">
           <div className="flex items-center gap-2 mb-3">
@@ -96,9 +145,15 @@ const PAGES: PageDef[] = [
           </div>
           <p className="text-sm font-bold text-foreground">功能牌</p>
           <div className="text-xs text-muted-foreground mt-1.5 leading-relaxed space-y-1">
-            <p><strong className="text-foreground">⊘ 跳过</strong> — 下家失去出牌机会</p>
-            <p><strong className="text-foreground">⇆ 反转</strong> — 改变出牌方向</p>
-            <p><strong className="text-foreground">+2</strong> — 下家摸 2 张并跳过回合</p>
+            <p>
+              <strong className="text-foreground">⊘ 跳过</strong> — 下家失去出牌机会
+            </p>
+            <p>
+              <strong className="text-foreground">⇆ 反转</strong> — 改变出牌方向
+            </p>
+            <p>
+              <strong className="text-foreground">+2</strong> — 下家摸 2 张并跳过回合
+            </p>
           </div>
         </div>
         <div className="rounded-xl bg-white/[0.04] border border-white/[0.05] p-5 sm:col-span-2">
@@ -108,8 +163,12 @@ const PAGES: PageDef[] = [
           </div>
           <p className="text-sm font-bold text-foreground">万能牌</p>
           <div className="text-xs text-muted-foreground mt-1.5 leading-relaxed sm:flex sm:gap-6">
-            <p><strong className="text-foreground">W 变色</strong> — 任何时候打出，自由选择接下来的颜色</p>
-            <p className="mt-1 sm:mt-0"><strong className="text-foreground">+4</strong> — 选颜色 + 下家摸 4 张牌，下家可以质疑合法性</p>
+            <p>
+              <strong className="text-foreground">W 变色</strong> — 任何时候打出，自由选择接下来的颜色
+            </p>
+            <p className="mt-1 sm:mt-0">
+              <strong className="text-foreground">+4</strong> — 选颜色 + 下家摸 4 张牌，下家可以质疑合法性
+            </p>
           </div>
         </div>
       </div>
@@ -127,12 +186,20 @@ const PAGES: PageDef[] = [
           </div>
           <div className="space-y-3">
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-uno-red/20 text-uno-red text-xs font-bold shrink-0">!</span>
-              <p className="text-sm text-foreground/80">手中只剩 <strong className="text-foreground">1 张牌</strong>时必须喊「UNO」</p>
+              <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-uno-red/20 text-uno-red text-xs font-bold shrink-0">
+                !
+              </span>
+              <p className="text-sm text-foreground/80">
+                手中只剩 <strong className="text-foreground">1 张牌</strong>时必须喊「UNO」
+              </p>
             </div>
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-uno-red/20 text-uno-red text-xs font-bold shrink-0">!</span>
-              <p className="text-sm text-foreground/80">未喊被抓到 → 罚摸 <strong className="text-foreground">2 张</strong></p>
+              <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-uno-red/20 text-uno-red text-xs font-bold shrink-0">
+                !
+              </span>
+              <p className="text-sm text-foreground/80">
+                未喊被抓到 → 罚摸 <strong className="text-foreground">2 张</strong>
+              </p>
             </div>
           </div>
         </div>
@@ -170,7 +237,10 @@ export default function TutorialModal({ open, onClose }: { open: boolean; onClos
   // user sees page 0 fade out instead of whatever page they were on when they
   // closed it.
   const close = () => onClose();
-  const go = (next: number) => { setDir(next > page ? 1 : -1); setPage(next); };
+  const go = (next: number) => {
+    setDir(next > page ? 1 : -1);
+    setPage(next);
+  };
 
   const current = PAGES[page]!;
   const isLast = page === PAGES.length - 1;
@@ -194,13 +264,12 @@ export default function TutorialModal({ open, onClose }: { open: boolean; onClos
         >
           <div
             className="absolute top-[42%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] rounded-full pointer-events-none animate-[breathe_6s_ease-in-out_infinite]"
-            style={{ background: 'radial-gradient(circle, color-mix(in oklab, var(--primary) 8%, transparent) 0%, color-mix(in oklab, var(--primary) 3%, transparent) 30%, transparent 60%)' }}
+            style={{
+              background:
+                'radial-gradient(circle, color-mix(in oklab, var(--primary) 8%, transparent) 0%, color-mix(in oklab, var(--primary) 3%, transparent) 30%, transparent 60%)',
+            }}
           />
-          <IconButton
-            onClick={close}
-            className="absolute top-6 right-6 z-topbar"
-            title="关闭"
-          >
+          <IconButton onClick={close} className="absolute top-6 right-6 z-topbar" title="关闭">
             <X size={18} />
           </IconButton>
           <div className="flex flex-col flex-1 items-center justify-center px-6 py-6 overflow-hidden">
@@ -247,20 +316,18 @@ export default function TutorialModal({ open, onClose }: { open: boolean; onClos
             </div>
             <div className="flex gap-3 max-w-xs mx-auto">
               {page > 0 && (
-                <Button
-                  variant="secondary"
-                  className="flex-1 py-3"
-                  onClick={() => go(page - 1)}
-                >
+                <Button variant="secondary" className="flex-1 py-3" onClick={() => go(page - 1)}>
                   <ChevronLeft size={14} className="mr-1 inline" /> 上一页
                 </Button>
               )}
-              <Button
-                variant="primary"
-                className="flex-1 py-3"
-                onClick={isLast ? close : () => go(page + 1)}
-              >
-                {isLast ? '开始游戏' : <>下一页 <ChevronRight size={14} className="ml-1 inline" /></>}
+              <Button variant="primary" className="flex-1 py-3" onClick={isLast ? close : () => go(page + 1)}>
+                {isLast ? (
+                  '开始游戏'
+                ) : (
+                  <>
+                    下一页 <ChevronRight size={14} className="ml-1 inline" />
+                  </>
+                )}
               </Button>
             </div>
           </div>

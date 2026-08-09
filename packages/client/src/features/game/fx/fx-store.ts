@@ -27,41 +27,41 @@ export const useFxStore = create<FxState>((set, get) => ({
   hiddenHandCardIds: new Set(),
   hiddenDiscardCardIds: new Set(),
   playOrigins: new Map(),
-  hideHandCards: (ids) => {
+  hideHandCards: ids => {
     if (ids.length === 0) return;
-    set((s) => ({ hiddenHandCardIds: new Set([...s.hiddenHandCardIds, ...ids]) }));
+    set(s => ({ hiddenHandCardIds: new Set([...s.hiddenHandCardIds, ...ids]) }));
     for (const id of ids) {
       setTimeout(() => get().revealHandCard(id), SAFETY_MS);
     }
   },
-  revealHandCard: (id) =>
-    set((s) => {
+  revealHandCard: id =>
+    set(s => {
       if (!s.hiddenHandCardIds.has(id)) return {};
       const next = new Set(s.hiddenHandCardIds);
       next.delete(id);
       return { hiddenHandCardIds: next };
     }),
-  hideDiscardCard: (id) => {
-    set((s) => ({ hiddenDiscardCardIds: new Set([...s.hiddenDiscardCardIds, id]) }));
+  hideDiscardCard: id => {
+    set(s => ({ hiddenDiscardCardIds: new Set([...s.hiddenDiscardCardIds, id]) }));
     setTimeout(() => get().revealDiscardCard(id), SAFETY_MS);
   },
-  revealDiscardCard: (id) =>
-    set((s) => {
+  revealDiscardCard: id =>
+    set(s => {
       if (!s.hiddenDiscardCardIds.has(id)) return {};
       const next = new Set(s.hiddenDiscardCardIds);
       next.delete(id);
       return { hiddenDiscardCardIds: next };
     }),
   setPlayOrigin: (cardId, pt) =>
-    set((s) => {
+    set(s => {
       const next = new Map(s.playOrigins);
       next.set(cardId, pt);
       return { playOrigins: next };
     }),
-  takePlayOrigin: (cardId) => {
+  takePlayOrigin: cardId => {
     const pt = get().playOrigins.get(cardId) ?? null;
     if (pt) {
-      set((s) => {
+      set(s => {
         const next = new Map(s.playOrigins);
         next.delete(cardId);
         return { playOrigins: next };

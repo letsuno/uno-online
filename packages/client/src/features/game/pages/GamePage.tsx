@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Loader2, Eye, LogOut, UserPlus, X } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useGameStore } from '../stores/game-store';
 import { useIsMyTurn } from '../hooks/useIsMyTurn';
-import { usePlayableCardIds } from '../hooks/usePlayableCardIds';
 import { useGameSocket } from '../hooks/useGameSocket';
 import { useGameLogTracker } from '../hooks/useGameLogTracker';
-import { useAutoPlay } from '../hooks/useAutoPlay';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { useGameActions } from '../hooks/useGameActions';
 import { useGameHotkeys } from '../hooks/useGameHotkeys';
@@ -16,7 +14,7 @@ import { useBgm } from '@/shared/sound/useBgm';
 import BgmToast from '@/shared/components/BgmToast';
 import { getSocket, connectSocket, refreshVoicePresence } from '@/shared/socket';
 import { useToastStore } from '@/shared/stores/toast-store';
-import { useLeaveRoom } from '../hooks/useLeaveRoom';
+import { useSuspendGame } from '../hooks/useSuspendGame';
 import GameHUD from '../components/GameHUD';
 import GameTable from '../components/GameTable';
 import GameActions from '../components/GameActions';
@@ -31,8 +29,6 @@ import InfoDrawer from '../components/InfoDrawer';
 import PlayerListPanel from '../components/PlayerListPanel';
 import DanmakuLayer from '../components/DanmakuLayer';
 import AntiCheatToast from '../components/AntiCheatToast';
-import { useSpectatorStore } from '../stores/spectator-store';
-import { useAuthStore } from '@/features/auth/stores/auth-store';
 import GameStartRulesModal from '../components/GameStartRulesModal';
 import ColorWave from '../components/ColorWave';
 import HotkeySettingsModal from '../components/HotkeySettingsModal';
@@ -47,6 +43,9 @@ import InfoSheet from '../components/mobile/InfoSheet';
 import { useGameLayoutMode, useShortLandscape } from '../hooks/useGameLayoutMode';
 import FitScaler from '@/shared/components/FitScaler';
 import EndRevealBanner from '../components/EndRevealBanner';
+import { useRoomStore } from '@/shared/stores/room-store';
+import { showConfirm } from '@/shared/stores/confirm-store';
+import { useSpectatorQueue } from '../hooks/useSpectatorQueue';
 
 /** 终局展示窗时长：最后一张牌打出后保留牌桌的秒数（与结算板 10s 开局冷却完全重叠，不拖慢节奏） */
 const END_REVEAL_S = 10;
@@ -54,28 +53,28 @@ const END_REVEAL_S = 10;
 export default function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
-  const phase = useGameStore((s) => s.phase);
-  const roundNumber = useGameStore((s) => s.roundNumber);
-  const settings = useGameStore((s) => s.settings);
-  const toggleInfoDrawer = useGameStore((s) => s.toggleInfoDrawer);
-  const openInfoDrawer = useGameStore((s) => s.openInfoDrawer);
-  const backToLobby = useLeaveRoom();
-  const clearSpectators = useSpectatorStore((s) => s.clearSpectators);
+  const phase = useGameStore(s => s.phase);
+  const roundNumber = useGameStore(s => s.roundNumber);
+  const settings = useGameStore(s => s.settings);
+  const toggleInfoDrawer = useGameStore(s => s.toggleInfoDrawer);
+  const openInfoDrawer = useGameStore(s => s.openInfoDrawer);
+  const backToLobby = useSuspendGame();
 
-  const isSpectator = useGameStore((s) => s.isSpectator);
-  const setSpectator = useGameStore((s) => s.setSpectator);
-  const players = useGameStore((s) => s.players);
+  const isSpectator = useGameStore(s => s.isSpectator);
+  const setSpectator = useGameStore(s => s.setSpectator);
+  const players = useGameStore(s => s.players);
   const userId = useEffectiveUserId();
-  const myAutopilot = players.find((p) => p.id === userId)?.autopilot ?? false;
+  const ownerId = useRoomStore(s => s.room?.ownerId);
+  const isHost = ownerId === userId;
+  const myAutopilot = players.find(p => p.id === userId)?.autopilot ?? false;
   const isMyTurn = useIsMyTurn();
-  const playableIds = usePlayableCardIds();
   const noop = () => {};
   const needsColorPick = phase === 'choosing_color' && isMyTurn && !myAutopilot;
 
   // 终局展示窗：现场经历"对局 → 终局"切换时，先保留牌桌若干秒再进结算板；
   // 中途加入/刷新（prev 不是对局中 phase）则直接显示结算板。
-  const revealLeft = useGameStore((s) => s.endRevealLeft);
-  const setEndRevealLeft = useGameStore((s) => s.setEndRevealLeft);
+  const revealLeft = useGameStore(s => s.endRevealLeft);
+  const setEndRevealLeft = useGameStore(s => s.setEndRevealLeft);
   const prevPhaseRef = useRef<typeof phase>(null);
   const isEndPhase = phase === 'round_end' || phase === 'game_over';
 
@@ -83,7 +82,8 @@ export default function GamePage() {
     const prev = prevPhaseRef.current;
     prevPhaseRef.current = phase;
     const isEnd = phase === 'round_end' || phase === 'game_over';
-    const wasInGame = prev === 'playing' || prev === 'challenging' || prev === 'choosing_color' || prev === 'choosing_swap_target';
+    const wasInGame =
+      prev === 'playing' || prev === 'challenging' || prev === 'choosing_color' || prev === 'choosing_swap_target';
     if (isEnd && wasInGame) {
       setEndRevealLeft(END_REVEAL_S);
       const interval = window.setInterval(() => {
@@ -98,7 +98,30 @@ export default function GamePage() {
   const endRevealing = isEndPhase && revealLeft > 0;
   const showScoreBoard = isEndPhase && !endRevealing;
 
-  const connectionStatus = useGameSocket(roomCode);
+  const { connectionStatus, rejoinError, retryRejoin } = useGameSocket(roomCode);
+
+  const confirmAndLeave = async () => {
+    const confirmed = isSpectator
+      ? await showConfirm({
+          title: '退出房间',
+          message: isHost
+            ? '退出后你将离开观战席，房主权会转让；该观战席不会保留。'
+            : '退出后你将离开观战席，该观战席不会保留。',
+          confirmText: '退出',
+        })
+      : isHost
+        ? await showConfirm({
+            title: '返回大厅并托管',
+            message: '离开后将立即断开并由系统托管，房主权会转让；你可以从大厅返回。',
+            confirmText: '返回大厅',
+          })
+        : await showConfirm({
+            title: '返回大厅并托管',
+            message: '离开后将立即断开并由系统托管，你可以从大厅返回当前对局。',
+            confirmText: '返回大厅',
+          });
+    if (confirmed) backToLobby();
+  };
 
   useEffect(() => {
     const socket = getSocket();
@@ -106,7 +129,9 @@ export default function GamePage() {
       navigate(`/room/${roomCode}`);
     };
     socket.on('game:back_to_room', handleBackToRoom);
-    return () => { socket.off('game:back_to_room', handleBackToRoom); };
+    return () => {
+      socket.off('game:back_to_room', handleBackToRoom);
+    };
   }, [roomCode, navigate]);
 
   useGameLogTracker();
@@ -129,7 +154,13 @@ export default function GamePage() {
 
   useEffect(() => {
     if (!roomCode || !settings || roundNumber !== 1) return;
-    if (phase !== 'playing' && phase !== 'challenging' && phase !== 'choosing_color' && phase !== 'choosing_swap_target') return;
+    if (
+      phase !== 'playing' &&
+      phase !== 'challenging' &&
+      phase !== 'choosing_color' &&
+      phase !== 'choosing_swap_target'
+    )
+      return;
 
     const key = `${roomCode}:round-${roundNumber}`;
     if (shownStartRulesRef.current === key) return;
@@ -140,7 +171,13 @@ export default function GamePage() {
 
   useEffect(() => {
     if (!roomCode || roundNumber !== 1) return;
-    if (phase !== 'playing' && phase !== 'challenging' && phase !== 'choosing_color' && phase !== 'choosing_swap_target') return;
+    if (
+      phase !== 'playing' &&
+      phase !== 'challenging' &&
+      phase !== 'choosing_color' &&
+      phase !== 'choosing_swap_target'
+    )
+      return;
     const key = `${roomCode}:ac`;
     if (shownAntiCheatRef.current === key) return;
     shownAntiCheatRef.current = key;
@@ -162,8 +199,6 @@ export default function GamePage() {
     kickPlayer,
     leaveToSpectate,
   } = useGameActions();
-
-  useAutoPlay();
 
   const [searchParams] = useSearchParams();
 
@@ -189,8 +224,8 @@ export default function GamePage() {
 
   useGameHotkeys({
     autopilot_once: () => {
-      getSocket().emit('game:autopilot_once', (res: { success?: boolean; error?: string }) => {
-        if (!res?.success && res?.error) useToastStore.getState().addToast(res.error, 'error');
+      getSocket().emit('game:autopilot_once', res => {
+        if (!res.success) useToastStore.getState().addToast(res.error, 'error');
       });
     },
     toggle_info: () => toggleInfoDrawer(),
@@ -200,30 +235,45 @@ export default function GamePage() {
   if (!phase) {
     // 断线状态在这条早退分支同样要可见可恢复——重连耗尽时这里若只显示
     // "加载游戏中...",玩家会被无提示地永久卡住。
-    return <div className="flex flex-1 flex-col items-center justify-center gap-3">
-      <p className="text-muted-foreground">
-        {connectionStatus === 'disconnected' ? '连接已断开' : '加载游戏中...'}
-      </p>
-      {connectionStatus === 'disconnected' && (
-        <button
-          type="button"
-          onClick={() => connectSocket()}
-          className="rounded-lg bg-primary px-6 py-2 font-game text-primary-foreground hover:opacity-90"
-        >
-          重新连接
-        </button>
-      )}
-    </div>;
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3">
+        <p className="text-muted-foreground">
+          {rejoinError ?? (connectionStatus === 'disconnected' ? '连接已断开' : '加载游戏中...')}
+        </p>
+        {(connectionStatus === 'disconnected' || rejoinError) && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                connectSocket();
+                retryRejoin();
+              }}
+              className="rounded-lg bg-primary px-6 py-2 font-game text-primary-foreground hover:opacity-90"
+            >
+              重新连接
+            </button>
+            {rejoinError && (
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="rounded-lg bg-secondary px-6 py-2 font-game text-foreground hover:opacity-90"
+              >
+                返回大厅
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
   }
+
+  if (!roomCode) return <Navigate to="/" replace />;
 
   return (
     <div className="flex h-screen flex-col relative overflow-hidden">
-
       {connectionStatus !== 'connected' && (
         <div className="fixed inset-0 z-connection flex flex-col items-center justify-center gap-3 bg-black/75">
-          {connectionStatus === 'reconnecting' && (
-            <Loader2 size={36} className="animate-spin text-white" />
-          )}
+          {connectionStatus === 'reconnecting' && <Loader2 size={36} className="animate-spin text-white" />}
           <p className="font-game text-lg text-white">
             {connectionStatus === 'reconnecting' ? '重新连接中...' : '连接已断开'}
           </p>
@@ -242,10 +292,24 @@ export default function GamePage() {
         </div>
       )}
 
+      {connectionStatus === 'connected' && rejoinError && (
+        <div className="fixed left-1/2 top-3 z-connection flex -translate-x-1/2 items-center gap-3 rounded-lg bg-black/80 px-4 py-2 text-sm text-white shadow-lg">
+          <span>{rejoinError}</span>
+          <button
+            type="button"
+            onClick={retryRejoin}
+            className="rounded bg-primary px-3 py-1 font-game text-primary-foreground hover:opacity-90"
+          >
+            重试
+          </button>
+        </div>
+      )}
+
       {/* 顶栏 HUD（table / strip 两种密度） */}
       <GameHUD
-        roomCode={roomCode ?? ''}
+        roomCode={roomCode}
         mode={mode}
+        onLeave={confirmAndLeave}
         onOpenHotkeys={() => setShowHotkeys(true)}
         onOpenMenu={() => setShowMobileMenu(true)}
         onOpenInfo={() => setShowMobileInfo(true)}
@@ -258,30 +322,26 @@ export default function GamePage() {
         {/* 中央区域：table = 椭圆牌桌（逻辑画布缩放）；strip = 全新移动端布局 */}
         {mode === 'strip' ? (
           isSpectator ? (
-            <SpectatorView
-              onDraw={noop}
-              onBackToLobby={backToLobby}
-              onJoined={() => { setSpectator(false); clearSpectators(); }}
-            >
+            <SpectatorView onDraw={noop} onBackToLobby={backToLobby}>
               <DanmakuLayer />
             </SpectatorView>
           ) : (
-          <MobileGameScreen onDraw={myAutopilot ? noop : drawCard}>
-            <DanmakuLayer />
-            <AnimatePresence>
-              {showTurnBanner && isMyTurn && phase === 'playing' && (
-                <motion.div
-                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-actions pointer-events-none font-game text-4xl font-black text-white text-shadow-bold"
-                  initial={{ opacity: 0, scale: 0.92 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
-                  transition={{ duration: 0.22, ease: 'easeOut' }}
-                >
-                  轮到你了
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </MobileGameScreen>
+            <MobileGameScreen onDraw={myAutopilot ? noop : drawCard}>
+              <DanmakuLayer />
+              <AnimatePresence>
+                {showTurnBanner && isMyTurn && phase === 'playing' && (
+                  <motion.div
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-actions pointer-events-none font-game text-4xl font-black text-white text-shadow-bold"
+                    initial={{ opacity: 0, scale: 0.92 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
+                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                  >
+                    轮到你了
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </MobileGameScreen>
           )
         ) : (
           <div className="relative flex flex-col flex-1 min-h-0">
@@ -322,21 +382,22 @@ export default function GamePage() {
               )}
             </div>
           ) : (
-          <div className="relative z-actions min-h-[60px] flex items-center justify-center shrink-0 [&_button]:h-11 [&_button]:px-5 [&_button]:text-base [&_button]:rounded-full">
-            {!isSpectator && !myAutopilot && (
-              <GameActions
-                onCallUno={callUno}
-                onCatchUno={catchUno}
-                onChallenge={challenge}
-                onAccept={accept}
-                onPass={pass}
-                onSwapTarget={swapTarget}
-              />
-            )}
-          </div>
+            <div className="relative z-actions min-h-[60px] flex items-center justify-center shrink-0 [&_button]:h-11 [&_button]:px-5 [&_button]:text-base [&_button]:rounded-full">
+              {!isSpectator && !myAutopilot && (
+                <GameActions
+                  onCallUno={callUno}
+                  onCatchUno={catchUno}
+                  onChallenge={challenge}
+                  onAccept={accept}
+                  onPass={pass}
+                  onSwapTarget={swapTarget}
+                />
+              )}
+            </div>
           )
         ) : (
-          !isSpectator && !myAutopilot && (
+          !isSpectator &&
+          !myAutopilot && (
             <GameActions
               onCallUno={callUno}
               onCatchUno={catchUno}
@@ -347,33 +408,32 @@ export default function GamePage() {
             />
           )
         )}
-        {!isSpectator && (mode === 'strip'
-          ? <MobileHand onPlayCard={myAutopilot ? noop : playCard} />
-          : <PlayerHand onPlayCard={myAutopilot ? noop : playCard} />
-        )}
+        {!isSpectator &&
+          (mode === 'strip' ? (
+            <MobileHand onPlayCard={myAutopilot ? noop : playCard} />
+          ) : (
+            <PlayerHand onPlayCard={myAutopilot ? noop : playCard} />
+          ))}
       </LayoutGroup>
 
       {isSpectator && mode === 'table' && (
         <>
           <SpectatorActions onCatchUno={catchUno} />
-          {!showScoreBoard && (
-            <SpectatorBar
-              onBackToLobby={backToLobby}
-              onJoined={() => { setSpectator(false); clearSpectators(); }}
-            />
-          )}
+          {!showScoreBoard && <SpectatorBar onBackToLobby={backToLobby} />}
         </>
       )}
 
       {/* 共享覆盖层（只渲染一份） */}
       <VoicePanel />
       {mode === 'table' ? <InfoDrawer /> : <InfoSheet open={showMobileInfo} onClose={() => setShowMobileInfo(false)} />}
-      <MobileMenuSheet open={showMobileMenu} onClose={() => setShowMobileMenu(false)} />
-      <GameStartRulesModal
-        open={showStartRules}
-        houseRules={settings?.houseRules}
-        onClose={() => setShowStartRules(false)}
-      />
+      <MobileMenuSheet open={showMobileMenu} onClose={() => setShowMobileMenu(false)} onLeave={confirmAndLeave} />
+      {settings && (
+        <GameStartRulesModal
+          open={showStartRules}
+          houseRules={settings.houseRules}
+          onClose={() => setShowStartRules(false)}
+        />
+      )}
       <GameEffects />
       <ViewportFxLayer />
       <ColorWave />
@@ -396,7 +456,6 @@ export default function GamePage() {
           onBackToLobby={backToLobby}
           onKickPlayer={kickPlayer}
           onLeaveToSpectate={leaveToSpectate}
-          onJoinedFromSpectator={() => { setSpectator(false); clearSpectators(); }}
         />
       )}
       <OwnerTransferBanner />
@@ -407,44 +466,8 @@ export default function GamePage() {
 }
 
 /** PC 悬浮观战条：顶部居中胶囊（下局加入/取消 + 退出） */
-function SpectatorBar({ onBackToLobby, onJoined }: { onBackToLobby: () => void; onJoined: () => void }) {
-  const [queued, setQueued] = useState(false);
-  const pendingJoinQueue = useSpectatorStore((s) => s.pendingJoinQueue);
-
-  useEffect(() => {
-    const nickname = useAuthStore.getState().user?.nickname;
-    if (nickname && pendingJoinQueue.includes(nickname)) {
-      setQueued(true);
-    }
-  }, [pendingJoinQueue]);
-
-  useEffect(() => {
-    const socket = getSocket();
-    const handleState = () => {
-      const { isSpectator } = useGameStore.getState();
-      if (!isSpectator && queued) {
-        onJoined();
-        setQueued(false);
-      }
-    };
-    socket.on('game:state', handleState);
-    return () => { socket.off('game:state', handleState); };
-  }, [queued, onJoined]);
-
-  const toggleQueue = () => {
-    getSocket().emit('game:spectator_join', (res: { success?: boolean; error?: string; queued?: boolean; joined?: boolean }) => {
-      if (res?.success) {
-        if (res.joined) {
-          onJoined();
-          setQueued(false);
-        } else {
-          setQueued(res.queued ?? false);
-        }
-      } else {
-        useToastStore.getState().addToast(res?.error ?? '操作失败', 'error');
-      }
-    });
-  };
+function SpectatorBar({ onBackToLobby }: { onBackToLobby: () => void }) {
+  const { queued, toggle: toggleQueue } = useSpectatorQueue();
 
   return (
     <div className="fixed top-14 left-1/2 -translate-x-1/2 z-actions glass-panel !rounded-full px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">

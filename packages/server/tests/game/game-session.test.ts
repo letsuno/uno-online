@@ -1,24 +1,30 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_HOUSE_RULES } from '@uno-online/shared';
 import { GameSession } from '../../src/plugins/core/game/session';
-import { makeCard, makeGameState, makePlayer } from '../helpers/test-utils';
+import { makeCard, makeGameState, makePlayer, TEST_ROOM_SETTINGS } from '../helpers/test-utils';
 
 describe('GameSession', () => {
   it('initializes a game with players', () => {
-    const session = GameSession.create([
-      { id: 'p1', name: 'Alice' },
-      { id: 'p2', name: 'Bob' },
-    ]);
+    const session = GameSession.create(
+      [
+        { id: 'p1', name: 'Alice', avatarUrl: null, role: 'normal', isBot: false },
+        { id: 'p2', name: 'Bob', avatarUrl: null, role: 'normal', isBot: false },
+      ],
+      TEST_ROOM_SETTINGS,
+    );
     const state = session.getFullState();
     expect(state.players).toHaveLength(2);
     expect(state.players[0]!.hand.length).toBeGreaterThanOrEqual(7);
   });
 
   it('returns sanitized state for a specific player', () => {
-    const session = GameSession.create([
-      { id: 'p1', name: 'Alice' },
-      { id: 'p2', name: 'Bob' },
-    ]);
+    const session = GameSession.create(
+      [
+        { id: 'p1', name: 'Alice', avatarUrl: null, role: 'normal', isBot: false },
+        { id: 'p2', name: 'Bob', avatarUrl: null, role: 'normal', isBot: false },
+      ],
+      TEST_ROOM_SETTINGS,
+    );
     const view = session.getPlayerView('p1');
     expect(view.players[0]!.hand.length).toBeGreaterThan(0);
     expect(view.players[1]!.hand).toEqual([]);
@@ -39,11 +45,13 @@ describe('GameSession', () => {
         turnTimeLimit: 30,
         targetScore: 500,
         houseRules: { ...DEFAULT_HOUSE_RULES, handRevealThreshold: null },
+        allowSpectators: true,
+        spectatorMode: 'hidden',
       },
     });
 
     const hiddenView = GameSession.fromState(state).getPlayerView('p1');
-    expect(hiddenView.players[0]!.hand.map((c) => c.id)).toEqual(['p1c']);
+    expect(hiddenView.players[0]!.hand.map(c => c.id)).toEqual(['p1c']);
     expect(hiddenView.players[1]!.hand).toEqual([]);
     expect(hiddenView.players[1]!.handCount).toBe(2);
 
@@ -54,38 +62,82 @@ describe('GameSession', () => {
         houseRules: { ...state.settings.houseRules, handRevealThreshold: 2 },
       },
     }).getPlayerView('p1');
-    expect(revealedView.players[1]!.hand.map((c) => c.id)).toEqual(['p2c1', 'p2c2']);
+    expect(revealedView.players[1]!.hand.map(c => c.id)).toEqual(['p2c1', 'p2c2']);
   });
 
   it('applies a valid action', () => {
-    const session = GameSession.create([
-      { id: 'p1', name: 'Alice' },
-      { id: 'p2', name: 'Bob' },
-    ]);
+    const session = GameSession.create(
+      [
+        { id: 'p1', name: 'Alice', avatarUrl: null, role: 'normal', isBot: false },
+        { id: 'p2', name: 'Bob', avatarUrl: null, role: 'normal', isBot: false },
+      ],
+      TEST_ROOM_SETTINGS,
+    );
     const state = session.getFullState();
     const currentPlayer = state.players[state.currentPlayerIndex]!;
-    const result = session.applyAction({ type: 'DRAW_CARD', playerId: currentPlayer.id });
+    const result = session.applyAction({ type: 'DRAW_CARD', playerId: currentPlayer.id, side: 'left' });
     expect(result.success).toBe(true);
   });
 
   it('rejects an invalid action', () => {
-    const session = GameSession.create([
-      { id: 'p1', name: 'Alice' },
-      { id: 'p2', name: 'Bob' },
-    ]);
+    const session = GameSession.create(
+      [
+        { id: 'p1', name: 'Alice', avatarUrl: null, role: 'normal', isBot: false },
+        { id: 'p2', name: 'Bob', avatarUrl: null, role: 'normal', isBot: false },
+      ],
+      TEST_ROOM_SETTINGS,
+    );
     const state = session.getFullState();
     const notCurrentPlayer = state.players[state.currentPlayerIndex === 0 ? 1 : 0]!;
-    const result = session.applyAction({ type: 'DRAW_CARD', playerId: notCurrentPlayer.id });
+    const result = session.applyAction({ type: 'DRAW_CARD', playerId: notCurrentPlayer.id, side: 'left' });
     expect(result.success).toBe(false);
   });
 
   it('marks player disconnected', () => {
-    const session = GameSession.create([
-      { id: 'p1', name: 'Alice' },
-      { id: 'p2', name: 'Bob' },
-    ]);
+    const session = GameSession.create(
+      [
+        { id: 'p1', name: 'Alice', avatarUrl: null, role: 'normal', isBot: false },
+        { id: 'p2', name: 'Bob', avatarUrl: null, role: 'normal', isBot: false },
+      ],
+      TEST_ROOM_SETTINGS,
+    );
     session.setPlayerConnected('p1', false);
     const state = session.getFullState();
     expect(state.players[0]!.connected).toBe(false);
+  });
+
+  it('rejects identities that confuse human clients with server-controlled bots', () => {
+    expect(() =>
+      GameSession.create(
+        [
+          {
+            id: 'api-user',
+            name: 'MCP User',
+            avatarUrl: null,
+            role: 'normal',
+            isBot: true,
+          },
+          { id: 'p2', name: 'Bob', avatarUrl: null, role: 'normal', isBot: false },
+        ],
+        TEST_ROOM_SETTINGS,
+      ),
+    ).toThrow('Only server-controlled bots');
+
+    expect(() =>
+      GameSession.create(
+        [
+          {
+            id: 'api-user',
+            name: 'MCP User',
+            avatarUrl: null,
+            role: 'normal',
+            isBot: false,
+            botConfig: { difficulty: 'normal', personality: 'balanced' },
+          },
+          { id: 'p2', name: 'Bob', avatarUrl: null, role: 'normal', isBot: false },
+        ],
+        TEST_ROOM_SETTINGS,
+      ),
+    ).toThrow('Only server-controlled bots');
   });
 });

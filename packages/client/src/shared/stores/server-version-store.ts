@@ -1,27 +1,21 @@
 import { create } from 'zustand';
+import { PROTOCOL_VERSION } from '@uno-online/shared';
 
 interface ServerVersionState {
-  initialServerVersion: string | null;
   initialClientVersion: string | null;
   needsRefresh: boolean;
-  setServerVersion: (version: string) => void;
+  setServerProtocolVersion: (version: number) => void;
   setClientVersion: (version: string) => void;
-  dismiss: () => void;
+  markNeedsRefresh: () => void;
 }
 
 export const useServerVersionStore = create<ServerVersionState>((set, get) => ({
-  initialServerVersion: null,
   initialClientVersion: null,
   needsRefresh: false,
-  setServerVersion: (version) => {
-    const { initialServerVersion } = get();
-    if (!initialServerVersion) {
-      set({ initialServerVersion: version });
-    } else if (version !== initialServerVersion) {
-      set({ needsRefresh: true });
-    }
+  setServerProtocolVersion: version => {
+    if (version !== PROTOCOL_VERSION) set({ needsRefresh: true });
   },
-  setClientVersion: (version) => {
+  setClientVersion: version => {
     const { initialClientVersion } = get();
     if (!initialClientVersion) {
       set({ initialClientVersion: version });
@@ -29,5 +23,5 @@ export const useServerVersionStore = create<ServerVersionState>((set, get) => ({
       set({ needsRefresh: true });
     }
   },
-  dismiss: () => set({ needsRefresh: false }),
+  markNeedsRefresh: () => set({ needsRefresh: true }),
 }));

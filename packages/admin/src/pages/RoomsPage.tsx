@@ -9,18 +9,21 @@ interface RoomPlayer {
   nickname: string;
 }
 
+type RoomStatus = 'waiting' | 'playing' | 'finished';
+
 interface Room {
   code: string;
   ownerId: string;
-  status: string;
+  status: RoomStatus;
   playerCount: number;
   players: RoomPlayer[];
   createdAt: string;
 }
 
-const statusBadgeVariant: Record<string, 'warning' | 'success' | 'secondary'> = {
+const statusBadgeVariant: Record<RoomStatus, 'warning' | 'success' | 'secondary'> = {
   waiting: 'warning',
   playing: 'success',
+  finished: 'secondary',
 };
 
 export default function RoomsPage() {
@@ -78,11 +81,7 @@ export default function RoomsPage() {
     <div className="p-6">
       <h2 className="text-xl font-bold text-white mb-4">Active Rooms</h2>
 
-      {error && (
-        <div className="bg-red-900/40 border border-red-700 text-red-300 rounded px-4 py-3 mb-4">
-          {error}
-        </div>
-      )}
+      {error && <div className="bg-red-900/40 border border-red-700 text-red-300 rounded px-4 py-3 mb-4">{error}</div>}
 
       {loading ? (
         <div className="text-slate-400">Loading...</div>
@@ -98,18 +97,16 @@ export default function RoomsPage() {
             </tr>
           </thead>
           <tbody>
-            {rooms.map((room) => (
+            {rooms.map(room => (
               <tr key={room.code} className="border-b border-slate-700/50 transition-colors hover:bg-slate-800/50">
                 <td className="p-2 font-mono text-white">{room.code}</td>
                 <td className="p-2 text-slate-300">
-                  {room.playerCount} - {room.players.map((p) => p.nickname).join(', ')}
+                  {room.playerCount} - {room.players.map(p => p.nickname).join(', ')}
                 </td>
                 <td className="p-2">
-                  <Badge variant={statusBadgeVariant[room.status] ?? 'secondary'}>{room.status}</Badge>
+                  <Badge variant={statusBadgeVariant[room.status]}>{room.status}</Badge>
                 </td>
-                <td className="p-2 text-slate-400">
-                  {new Date(room.createdAt).toLocaleString()}
-                </td>
+                <td className="p-2 text-slate-400">{new Date(room.createdAt).toLocaleString()}</td>
                 <td className="p-2 space-x-2">
                   {room.status === 'playing' && (
                     <Button
@@ -150,8 +147,12 @@ export default function RoomsPage() {
         description={`Are you sure you want to dissolve room ${confirmCode}? This action cannot be undone.`}
         footer={
           <>
-            <Button variant="outline" onClick={() => setConfirmCode(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => confirmCode && handleDissolve(confirmCode)}>Dissolve</Button>
+            <Button variant="outline" onClick={() => setConfirmCode(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => confirmCode && handleDissolve(confirmCode)}>
+              Dissolve
+            </Button>
           </>
         }
       />
@@ -163,8 +164,12 @@ export default function RoomsPage() {
         description={`This will show a "cheater detected" screen to ALL players in room ${confirmCheatCode} and dissolve the game. Are you sure?`}
         footer={
           <>
-            <Button variant="outline" onClick={() => setConfirmCheatCode(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => confirmCheatCode && handleCheat(confirmCheatCode)}>Confirm Cheat</Button>
+            <Button variant="outline" onClick={() => setConfirmCheatCode(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => confirmCheatCode && handleCheat(confirmCheatCode)}>
+              Confirm Cheat
+            </Button>
           </>
         }
       />

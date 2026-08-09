@@ -1,87 +1,112 @@
 type VoiceEngineConfig = {
-  onMicPcm: (pcm: Float32Array, sampleRate: number) => void
-  onMicEnd: () => void
-  onPlaybackStats?: (stats: { totalQueuedMs: number; maxQueuedMs: number; streams: number }) => void
-  onCaptureStats?: (stats: { rms: number; sending: boolean }) => void
+  onMicPcm: (pcm: Float32Array, sampleRate: number) => void;
+  onMicEnd: () => void;
+  onPlaybackStats?: (stats: { totalQueuedMs: number; maxQueuedMs: number; streams: number }) => void;
+  onCaptureStats?: (stats: { rms: number; sending: boolean }) => void;
+};
+
+type VoicePcmFrame = {
+  userId: number;
+  channels: number;
+  sampleRate: number;
+  pcm: Float32Array;
+};
+
+function disconnectNode(node: AudioNode | null, label: string): void {
+  if (!node) return;
+  try {
+    node.disconnect();
+  } catch (error) {
+    console.warn(`[voice] Failed to disconnect ${label}`, error);
+  }
 }
 
-export type VoicePcmFrame = {
-  userId: number
-  channels: number
-  sampleRate: number
-  pcm: Float32Array
+function stopStream(stream: MediaStream | null): void {
+  if (!stream) return;
+  for (const track of stream.getTracks()) {
+    try {
+      track.stop();
+    } catch (error) {
+      console.warn('[voice] Failed to stop a microphone track', error);
+    }
+  }
 }
 
 export class VoiceEngine {
-  private _config: VoiceEngineConfig
+  private _config: VoiceEngineConfig;
 
-  private _audioContext: AudioContext | null = null
-  private _playbackNode: AudioWorkletNode | null = null
-  private _playbackGain: GainNode | null = null
-  private _captureNode: AudioWorkletNode | null = null
-  private _captureGain: GainNode | null = null
-  private _muted = false
-  private _userVolumes = new Map<number, number>()
+  private _audioContext: AudioContext | null = null;
+  private _playbackNode: AudioWorkletNode | null = null;
+  private _playbackGain: GainNode | null = null;
+  private _captureNode: AudioWorkletNode | null = null;
+  private _captureGain: GainNode | null = null;
+  private _muted = false;
+  private _userVolumes = new Map<number, number>();
 
-  private _micStream: MediaStream | null = null
-  private _micSource: MediaStreamAudioSourceNode | null = null
+  private _micStream: MediaStream | null = null;
+  private _micSource: MediaStreamAudioSourceNode | null = null;
 
-  private _micEnabled = false
-  private _mode: 'vad' | 'ptt' = 'vad'
-  private _pttActive = false
-  private _vadThreshold = 0.02
-  private _vadHoldTimeMs = 200
+  private _micEnabled = false;
+  private _mode: 'vad' | 'ptt' = 'vad';
+  private _pttActive = false;
+  private _vadThreshold = 0.02;
+  private _vadHoldTimeMs = 200;
+  private _disposed = false;
 
   constructor(config: VoiceEngineConfig) {
-    this._config = config
+    this._config = config;
   }
 
   get audioReady() {
-    return Boolean(this._audioContext && this._playbackNode)
+    return Boolean(this._audioContext && this._playbackNode);
   }
 
   get micEnabled() {
-    return this._micEnabled
+    return this._micEnabled;
   }
 
   get muted() {
-    return this._muted
+    return this._muted;
   }
 
   setMuted(muted: boolean) {
-    this._muted = muted
+    this._muted = muted;
     if (this._playbackGain) {
-      this._playbackGain.gain.value = muted ? 0 : 1
+      this._playbackGain.gain.value = muted ? 0 : 1;
     }
   }
 
   setUserVolume(userId: number, volume: number) {
-    const clamped = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 1))
-    this._userVolumes.set(userId, clamped)
-    this._playbackNode?.port.postMessage({ type: 'volume', userId, volume: clamped })
+    if (!Number.isFinite(volume)) throw new RangeError('Voice volume must be a finite number');
+    const clamped = Math.max(0, Math.min(1, volume));
+    this._userVolumes.set(userId, clamped);
+    this._playbackNode?.port.postMessage({ type: 'volume', userId, volume: clamped });
   }
 
   resetUserVolumes(userIds?: Iterable<number>) {
     if (!userIds) {
-      this._userVolumes.clear()
-      return
+      this._userVolumes.clear();
+      return;
     }
     for (const userId of userIds) {
-      this._userVolumes.delete(userId)
-      this._playbackNode?.port.postMessage({ type: 'volume', userId, volume: 1 })
+      this._userVolumes.delete(userId);
+      this._playbackNode?.port.postMessage({ type: 'volume', userId, volume: 1 });
     }
   }
 
   async enableAudio(): Promise<void> {
+    if (this._disposed) throw new Error('VoiceEngine has been disposed');
     if (this._audioContext && this._playbackNode) {
-      await this._audioContext.resume()
-      return
+      await this._audioContext.resume();
+      return;
     }
 
-    const ctx = new AudioContext({ sampleRate: 48000 })
-    await ctx.resume()
+    const ctx = new AudioContext({ sampleRate: 48000 });
+    const workletUrls: string[] = [];
+    try {
+      await ctx.resume();
 
-    const playbackCode = `
+      const playbackCode = `
 class MumblePlaybackProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
@@ -181,7 +206,7 @@ class MumblePlaybackProcessor extends AudioWorkletProcessor {
 registerProcessor('mumble-playback', MumblePlaybackProcessor);
 `;
 
-    const captureCode = `
+      const captureCode = `
 class MumbleCaptureProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
@@ -237,94 +262,118 @@ class MumbleCaptureProcessor extends AudioWorkletProcessor {
 registerProcessor('mumble-capture', MumbleCaptureProcessor);
 `;
 
-    function workletBlobUrl(code: string): string {
-      const blob = new Blob([code], { type: 'text/javascript' });
-      return URL.createObjectURL(blob);
+      function workletBlobUrl(code: string): string {
+        const blob = new Blob([code], { type: 'text/javascript' });
+        const url = URL.createObjectURL(blob);
+        workletUrls.push(url);
+        return url;
+      }
+
+      const playbackUrl = workletBlobUrl(playbackCode);
+      const captureUrl = workletBlobUrl(captureCode);
+      await ctx.audioWorklet.addModule(playbackUrl);
+      await ctx.audioWorklet.addModule(captureUrl);
+
+      const playback = new AudioWorkletNode(ctx, 'mumble-playback', {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [2],
+      });
+
+      const playbackGain = ctx.createGain();
+      playbackGain.gain.value = this._muted ? 0 : 1;
+      playback.connect(playbackGain).connect(ctx.destination);
+
+      playback.port.onmessage = event => {
+        const msg = event.data;
+        if (!msg || msg.type !== 'stats') return;
+        this._config.onPlaybackStats?.({
+          totalQueuedMs: typeof msg.totalQueuedMs === 'number' ? msg.totalQueuedMs : 0,
+          maxQueuedMs: typeof msg.maxQueuedMs === 'number' ? msg.maxQueuedMs : 0,
+          streams: typeof msg.streams === 'number' ? msg.streams : 0,
+        });
+      };
+
+      if (this._disposed) throw new Error('VoiceEngine was disposed during audio setup');
+      if (ctx.sampleRate !== 48000) {
+        throw new Error(`浏览器未提供 48kHz 音频上下文（实际为 ${ctx.sampleRate}Hz）`);
+      }
+
+      this._audioContext = ctx;
+      this._playbackNode = playback;
+      this._playbackGain = playbackGain;
+
+      for (const [userId, volume] of this._userVolumes) {
+        playback.port.postMessage({ type: 'volume', userId, volume });
+      }
+
+      await ctx.resume();
+    } catch (error) {
+      if (this._audioContext === ctx) {
+        disconnectNode(this._playbackNode, 'playback worklet');
+        disconnectNode(this._playbackGain, 'playback gain');
+        this._audioContext = null;
+        this._playbackNode = null;
+        this._playbackGain = null;
+      }
+      try {
+        await ctx.close();
+      } catch (closeError) {
+        console.warn('[voice] Failed to close AudioContext after setup failure', closeError);
+      }
+      throw error;
+    } finally {
+      for (const url of workletUrls) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          console.warn('[voice] Failed to revoke an AudioWorklet URL', error);
+        }
+      }
     }
-
-    const playbackUrl = workletBlobUrl(playbackCode);
-    const captureUrl = workletBlobUrl(captureCode);
-    await ctx.audioWorklet.addModule(playbackUrl);
-    await ctx.audioWorklet.addModule(captureUrl);
-
-    const playback = new AudioWorkletNode(ctx, 'mumble-playback', {
-      numberOfInputs: 0,
-      numberOfOutputs: 1,
-      outputChannelCount: [2]
-    })
-
-    const playbackGain = ctx.createGain()
-    playbackGain.gain.value = this._muted ? 0 : 1
-    playback.connect(playbackGain).connect(ctx.destination)
-
-    playback.port.onmessage = (event) => {
-      const msg = event.data
-      if (!msg || msg.type !== 'stats') return
-      this._config.onPlaybackStats?.({
-        totalQueuedMs: typeof msg.totalQueuedMs === 'number' ? msg.totalQueuedMs : 0,
-        maxQueuedMs: typeof msg.maxQueuedMs === 'number' ? msg.maxQueuedMs : 0,
-        streams: typeof msg.streams === 'number' ? msg.streams : 0
-      })
-    }
-
-    this._audioContext = ctx
-    this._playbackNode = playback
-    this._playbackGain = playbackGain
-
-    for (const [userId, volume] of this._userVolumes) {
-      playback.port.postMessage({ type: 'volume', userId, volume })
-    }
-
-    if (ctx.sampleRate !== 48000) {
-      // Keep working, but current implementation assumes 48kHz for both playback and uplink.
-      // Resampling will be added later.
-      // eslint-disable-next-line no-console
-      console.warn(`[voice] AudioContext sampleRate is ${ctx.sampleRate} (expected 48000)`)
-    }
-
-    await ctx.resume()
   }
 
   pushRemotePcm(frame: VoicePcmFrame): void {
-    const ctx = this._audioContext
-    const playback = this._playbackNode
-    if (!ctx || !playback) return
+    const ctx = this._audioContext;
+    const playback = this._playbackNode;
+    if (!ctx || !playback) return;
 
     // Current pipeline expects 48kHz PCM. Resampling can be added when needed.
-    if (frame.sampleRate !== 48000) return
+    if (frame.sampleRate !== 48000) {
+      throw new RangeError(`Unsupported voice sample rate: ${frame.sampleRate}`);
+    }
 
-    const pcmCopy = new Float32Array(frame.pcm.length)
-    pcmCopy.set(frame.pcm)
+    const pcmCopy = new Float32Array(frame.pcm.length);
+    pcmCopy.set(frame.pcm);
 
-    playback.port.postMessage(
-      { type: 'pcm', userId: frame.userId, channels: frame.channels, pcm: pcmCopy.buffer },
-      [pcmCopy.buffer]
-    )
+    playback.port.postMessage({ type: 'pcm', userId: frame.userId, channels: frame.channels, pcm: pcmCopy.buffer }, [
+      pcmCopy.buffer,
+    ]);
   }
 
   setMode(mode: 'vad' | 'ptt') {
-    this._mode = mode
-    this._postCaptureConfig()
+    this._mode = mode;
+    this._postCaptureConfig();
   }
 
   setVadThreshold(value: number) {
-    this._vadThreshold = value
-    this._postCaptureConfig()
+    this._vadThreshold = value;
+    this._postCaptureConfig();
   }
 
   setVadHoldTime(ms: number) {
-    this._vadHoldTimeMs = ms
-    this._postCaptureConfig()
+    this._vadHoldTimeMs = ms;
+    this._postCaptureConfig();
   }
 
   setPttActive(active: boolean) {
-    this._pttActive = active
-    this._postCaptureConfig()
+    this._pttActive = active;
+    this._postCaptureConfig();
   }
 
   private _postCaptureConfig() {
-    if (!this._captureNode) return
-    const hangoverFrames = Math.round(this._vadHoldTimeMs / 20)
+    if (!this._captureNode) return;
+    const hangoverFrames = Math.round(this._vadHoldTimeMs / 20);
     this._captureNode.port.postMessage({
       type: 'config',
       enabled: this._micEnabled,
@@ -332,109 +381,163 @@ registerProcessor('mumble-capture', MumbleCaptureProcessor);
       pttActive: this._pttActive,
       vadThreshold: this._vadThreshold,
       frameSize: 960,
-      hangoverFrames
-    })
+      hangoverFrames,
+    });
   }
 
-  async enableMic(options?: { echoCancellation?: boolean; noiseSuppression?: boolean; autoGainControl?: boolean; deviceId?: string }): Promise<void> {
-    if (this._micEnabled) return
-    await this.enableAudio()
+  async enableMic(options?: {
+    echoCancellation?: boolean;
+    noiseSuppression?: boolean;
+    autoGainControl?: boolean;
+    deviceId?: string;
+  }): Promise<void> {
+    if (this._disposed) throw new Error('VoiceEngine has been disposed');
+    if (this._micEnabled) return;
+    await this.enableAudio();
 
-    const ctx = this._audioContext
-    if (!ctx) return
+    const ctx = this._audioContext;
+    if (!ctx) throw new Error('AudioContext was not initialized');
 
     const audioConstraints: MediaTrackConstraints = {
       echoCancellation: options?.echoCancellation ?? true,
       noiseSuppression: options?.noiseSuppression ?? true,
       autoGainControl: options?.autoGainControl ?? true,
-      channelCount: 1
-    }
+      channelCount: 1,
+    };
     if (options?.deviceId) {
-      audioConstraints.deviceId = { exact: options.deviceId }
+      audioConstraints.deviceId = { exact: options.deviceId };
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints })
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+    let source: MediaStreamAudioSourceNode | null = null;
+    let capture: AudioWorkletNode | null = null;
+    let gain: GainNode | null = null;
 
-    const source = ctx.createMediaStreamSource(stream)
-    const capture = new AudioWorkletNode(ctx, 'mumble-capture', {
-      numberOfInputs: 1,
-      numberOfOutputs: 1,
-      outputChannelCount: [1]
-    })
+    try {
+      if (this._disposed) throw new Error('VoiceEngine was disposed during microphone setup');
+      source = ctx.createMediaStreamSource(stream);
+      capture = new AudioWorkletNode(ctx, 'mumble-capture', {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [1],
+      });
 
-    // Keep the node running while not producing audible output.
-    const gain = ctx.createGain()
-    gain.gain.value = 0
+      // Keep the node running while not producing audible output.
+      gain = ctx.createGain();
+      gain.gain.value = 0;
 
-    source.connect(capture)
-    capture.connect(gain).connect(ctx.destination)
+      source.connect(capture);
+      capture.connect(gain).connect(ctx.destination);
 
-    capture.port.onmessage = (event) => {
-      const msg = event.data
-      if (!msg || typeof msg.type !== 'string') return
-      if (msg.type === 'pcm' && msg.pcm instanceof ArrayBuffer) {
-        const pcm = new Float32Array(msg.pcm)
-        this._config.onMicPcm(pcm, ctx.sampleRate)
-      } else if (msg.type === 'end') {
-        this._config.onMicEnd()
-      } else if (msg.type === 'stats') {
-        this._config.onCaptureStats?.({
-          rms: typeof msg.rms === 'number' ? msg.rms : 0,
-          sending: Boolean(msg.sending)
-        })
+      capture.port.onmessage = event => {
+        const msg = event.data;
+        if (!msg || typeof msg.type !== 'string') return;
+        if (msg.type === 'pcm' && msg.pcm instanceof ArrayBuffer) {
+          const pcm = new Float32Array(msg.pcm);
+          this._config.onMicPcm(pcm, ctx.sampleRate);
+        } else if (msg.type === 'end') {
+          this._config.onMicEnd();
+        } else if (msg.type === 'stats') {
+          this._config.onCaptureStats?.({
+            rms: typeof msg.rms === 'number' ? msg.rms : 0,
+            sending: Boolean(msg.sending),
+          });
+        }
+      };
+
+      this._micStream = stream;
+      this._micSource = source;
+      this._captureNode = capture;
+      this._captureGain = gain;
+      this._micEnabled = true;
+      this._postCaptureConfig();
+    } catch (error) {
+      if (this._micStream === stream) {
+        this._micStream = null;
+        this._micSource = null;
+        this._captureNode = null;
+        this._captureGain = null;
+        this._micEnabled = false;
       }
+      disconnectNode(source, 'microphone source');
+      disconnectNode(capture, 'capture worklet');
+      disconnectNode(gain, 'capture gain');
+      stopStream(stream);
+      throw error;
     }
-
-    this._micStream = stream
-    this._micSource = source
-    this._captureNode = capture
-    this._captureGain = gain
-    this._micEnabled = true
-    this._postCaptureConfig()
   }
 
   disableMic(): void {
-    if (!this._micEnabled) return
-
-    this._micEnabled = false
-    this._postCaptureConfig()
-    this._config.onMicEnd()
-    this._config.onCaptureStats?.({ rms: 0, sending: false })
-
-    if (this._micSource) {
-      try {
-        this._micSource.disconnect()
-      } catch {}
-      this._micSource = null
+    const wasEnabled = this._micEnabled;
+    this._micEnabled = false;
+    try {
+      this._postCaptureConfig();
+    } catch (error) {
+      console.warn('[voice] Failed to disable the capture worklet', error);
     }
-
-    if (this._captureNode) {
+    if (wasEnabled) {
       try {
-        this._captureNode.disconnect()
-      } catch {}
-      this._captureNode = null
-    }
-
-    if (this._captureGain) {
-      try {
-        this._captureGain.disconnect()
-      } catch {}
-      this._captureGain = null
-    }
-
-    if (this._micStream) {
-      for (const t of this._micStream.getTracks()) {
-        try {
-          t.stop()
-        } catch {}
+        this._config.onMicEnd();
+      } catch (error) {
+        console.warn('[voice] Failed to publish the end-of-audio marker', error);
       }
-      this._micStream = null
+      try {
+        this._config.onCaptureStats?.({ rms: 0, sending: false });
+      } catch (error) {
+        console.warn('[voice] Failed to reset microphone statistics', error);
+      }
     }
+
+    const source = this._micSource;
+    const capture = this._captureNode;
+    const gain = this._captureGain;
+    const stream = this._micStream;
+    this._micSource = null;
+    this._captureNode = null;
+    this._captureGain = null;
+    this._micStream = null;
+
+    if (capture) capture.port.onmessage = null;
+    disconnectNode(source, 'microphone source');
+    disconnectNode(capture, 'capture worklet');
+    disconnectNode(gain, 'capture gain');
+    stopStream(stream);
   }
 
-  async switchDevice(options: { echoCancellation?: boolean; noiseSuppression?: boolean; autoGainControl?: boolean; deviceId?: string }): Promise<void> {
-    if (!this._micEnabled) return
-    this.disableMic()
-    await this.enableMic(options)
+  async switchDevice(options: {
+    echoCancellation?: boolean;
+    noiseSuppression?: boolean;
+    autoGainControl?: boolean;
+    deviceId?: string;
+  }): Promise<void> {
+    if (!this._micEnabled) return;
+    this.disableMic();
+    await this.enableMic(options);
+  }
+
+  dispose(): void {
+    this._disposed = true;
+    this.disableMic();
+
+    const playback = this._playbackNode;
+    const playbackGain = this._playbackGain;
+    const ctx = this._audioContext;
+    this._playbackNode = null;
+    this._playbackGain = null;
+    this._audioContext = null;
+    this._userVolumes.clear();
+
+    if (playback) playback.port.onmessage = null;
+    disconnectNode(playback, 'playback worklet');
+    disconnectNode(playbackGain, 'playback gain');
+    if (ctx && ctx.state !== 'closed') {
+      try {
+        void ctx.close().catch(error => {
+          console.warn('[voice] Failed to close AudioContext', error);
+        });
+      } catch (error) {
+        console.warn('[voice] Failed to close AudioContext', error);
+      }
+    }
   }
 }

@@ -2,7 +2,7 @@ import { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import type { PlayerInfo } from '../stores/game-store';
 
-export interface Position {
+interface Position {
   x: number;
   y: number;
 }
@@ -41,12 +41,12 @@ function DirectionIndicator({
 
     const fullPath = `M ${rightX} ${cy} A ${rx} ${ry} 0 1 1 ${leftX} ${cy} A ${rx} ${ry} 0 1 1 ${rightX} ${cy}`;
 
-    const myIndex = players.findIndex((p) => p.id === userId);
+    const myIndex = players.findIndex(p => p.id === userId);
     const safeMyIndex = myIndex >= 0 ? myIndex : 0;
 
     const currentOffset = currentPlayerIndex - safeMyIndex;
     const step = isClockwise ? 1 : -1;
-    const nextIdx = ((currentPlayerIndex + step) % n + n) % n;
+    const nextIdx = (((currentPlayerIndex + step) % n) + n) % n;
     const nextOffset = nextIdx - safeMyIndex;
 
     const startAngle = Math.PI / 2 + (currentOffset * 2 * Math.PI) / n;
@@ -83,11 +83,7 @@ function DirectionIndicator({
   const isClockwise = direction === 'clockwise';
 
   return (
-    <svg
-      className="absolute inset-0 pointer-events-none"
-      width={dimensions.width}
-      height={dimensions.height}
-    >
+    <svg className="absolute inset-0 pointer-events-none" width={dimensions.width} height={dimensions.height}>
       {/* 虚线行进用 CSS 动画（animate-dash-march-*），避免 framer-motion JS 逐帧写 style */}
       <path
         d={directionArc.fullPath}
@@ -114,7 +110,8 @@ function DirectionIndicator({
         const { x, y, tx, ty } = directionArc.arrowTip;
         const length = 12;
         const halfWidth = 11;
-        const nx = -ty, ny = tx;
+        const nx = -ty,
+          ny = tx;
         const p1x = x - tx * length + nx * halfWidth;
         const p1y = y - ty * length + ny * halfWidth;
         const p2x = x - tx * length - nx * halfWidth;
@@ -145,7 +142,8 @@ function DirectionIndicator({
           const len = Math.sqrt(tangentX * tangentX + tangentY * tangentY);
           const atx = (tangentX / len) * dir;
           const aty = (tangentY / len) * dir;
-          const anx = -aty, any_ = atx;
+          const anx = -aty,
+            any_ = atx;
           const length = 8;
           const halfWidth = 8;
           arrows.push(
@@ -153,7 +151,7 @@ function DirectionIndicator({
               key={`dir-arrow-${i}`}
               points={`${ax + atx * length},${ay + aty * length} ${ax - atx * length + anx * halfWidth},${ay - aty * length + any_ * halfWidth} ${ax - atx * length - anx * halfWidth},${ay - aty * length - any_ * halfWidth}`}
               fill="rgba(251, 191, 36, 0.15)"
-            />
+            />,
           );
         }
         return arrows;

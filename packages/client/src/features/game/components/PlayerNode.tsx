@@ -87,32 +87,32 @@ function PlayerNode({
     }
   }, []);
 
-  const handleReactionSelect = useCallback((emoji: string) => {
-    onReaction?.(emoji);
-    setShowReaction(false);
-  }, [onReaction]);
+  const handleReactionSelect = useCallback(
+    (emoji: string) => {
+      onReaction?.(emoji);
+      setShowReaction(false);
+    },
+    [onReaction],
+  );
 
-  const handleThrowSelect = useCallback((item: string) => {
-    onThrowItem?.(item);
-  }, [onThrowItem]);
+  const handleThrowSelect = useCallback(
+    (item: string) => {
+      onThrowItem?.(item);
+    },
+    [onThrowItem],
+  );
 
   const closeReaction = useCallback(() => setShowReaction(false), []);
   const closeThrowPicker = useCallback(() => setShowThrowPicker(false), []);
 
   const avatarSize = isMe ? 48 : 44;
-  const displayName =
-    player.name.length > 8 ? player.name.slice(0, 8) + '...' : player.name;
+  const displayName = player.name.length > 8 ? player.name.slice(0, 8) + '...' : player.name;
   const avatarInnerSize = avatarSize - 4;
-  const revealedHand =
-    player.hand.length > 0 && player.hand.length === player.handCount
-      ? player.hand
-      : [];
+  const revealedHand = player.hand.length > 0 && player.hand.length === player.handCount ? player.hand : [];
   const shouldShowRevealedHand = !isMe && revealedHand.length > 0;
   const roleColor = getRoleColor(player.role);
   const isConfiguredBot = player.isBot && !!player.botConfig;
-  const botDiffDisplay = isConfiguredBot
-    ? DIFFICULTY_DISPLAY[player.botConfig!.difficulty]
-    : undefined;
+  const botDiffDisplay = isConfiguredBot ? DIFFICULTY_DISPLAY[player.botConfig!.difficulty] : undefined;
 
   const positionTransition =
     shufflePhase === 'shuffling'
@@ -133,21 +133,29 @@ function PlayerNode({
       style={{
         transform: `translate(-50%, -${avatarSize / 2}px)`,
         zIndex: showReaction || showThrowPicker ? 100 : undefined,
-        ...(player.eliminated
-          ? { opacity: 0.35, filter: 'grayscale(0.8)' }
-          : {}),
+        ...(player.eliminated ? { opacity: 0.35, filter: 'grayscale(0.8)' } : {}),
       }}
     >
       {/* Chat bubble */}
 
       {/* Quick reaction menu */}
       {showReaction && (
-        <QuickReaction onSelect={handleReactionSelect} onClose={closeReaction} anchorX={menuAnchor.x} anchorY={menuAnchor.y} />
+        <QuickReaction
+          onSelect={handleReactionSelect}
+          onClose={closeReaction}
+          anchorX={menuAnchor.x}
+          anchorY={menuAnchor.y}
+        />
       )}
 
       {/* Throw item picker */}
       {showThrowPicker && (
-        <ThrowItemPicker onSelect={handleThrowSelect} onClose={closeThrowPicker} anchorX={menuAnchor.x} anchorY={menuAnchor.y} />
+        <ThrowItemPicker
+          onSelect={handleThrowSelect}
+          onClose={closeThrowPicker}
+          anchorX={menuAnchor.x}
+          anchorY={menuAnchor.y}
+        />
       )}
 
       {/* Avatar container（data-player-id：视口特效层的锚点） */}
@@ -181,16 +189,18 @@ function PlayerNode({
             isSpeaking && 'ring-2 ring-green-400 shadow-[0_0_10px_rgba(74,222,128,0.6)]',
           )}
           style={{
-            background: isConfiguredBot
-              ? botDiffDisplay!.avatarBg
-              : AVATAR_COLORS[index % AVATAR_COLORS.length],
+            background: isConfiguredBot ? botDiffDisplay!.avatarBg : AVATAR_COLORS[index % AVATAR_COLORS.length],
             width: avatarInnerSize,
             height: avatarInnerSize,
             margin: 2,
           }}
         >
           {isConfiguredBot ? (
-            <BotAvatarIcon difficulty={player.botConfig?.difficulty} size={avatarInnerSize * 0.55} className="text-white drop-shadow-sm" />
+            <BotAvatarIcon
+              difficulty={player.botConfig?.difficulty}
+              size={avatarInnerSize * 0.55}
+              className="text-white drop-shadow-sm"
+            />
           ) : (
             <>
               <span>{AVATAR_EMOJIS[index % AVATAR_EMOJIS.length]}</span>
@@ -200,7 +210,7 @@ function PlayerNode({
                   alt={player.name}
                   className="absolute inset-0 w-full h-full object-cover"
                   referrerPolicy="no-referrer"
-                  onError={(e) => {
+                  onError={e => {
                     e.currentTarget.style.display = 'none';
                   }}
                 />
@@ -213,7 +223,7 @@ function PlayerNode({
         <div className="absolute left-full top-1/2 -translate-y-1/2 ml-1.5 flex flex-col gap-0.5 pointer-events-none">
           <div className="h-4 min-w-10 rounded bg-black/45 border border-white/10 px-1.5 flex items-center justify-between gap-1 shadow-card-sm">
             <Trophy size={10} className="text-accent shrink-0" />
-            <span className="text-2xs leading-none tabular-nums font-bold text-foreground">{player.roundWins ?? 0}</span>
+            <span className="text-2xs leading-none tabular-nums font-bold text-foreground">{player.roundWins}</span>
           </div>
           <div className="h-4 min-w-10 rounded bg-black/45 border border-white/10 px-1.5 flex items-center justify-between gap-1 shadow-card-sm">
             <span className="text-2xs leading-none tabular-nums font-bold text-foreground">{player.score}分</span>
@@ -234,9 +244,7 @@ function PlayerNode({
         )}
 
         {/* Host crown */}
-        {isHost && (
-          <div className="absolute -top-1.5 -left-1.5 text-sm leading-none drop-shadow">👑</div>
-        )}
+        {isHost && <div className="absolute -top-1.5 -left-1.5 text-sm leading-none drop-shadow">👑</div>}
 
         {/* Skip ban overlay */}
         <AnimatePresence>
@@ -261,9 +269,11 @@ function PlayerNode({
               isSpeaking ? 'bg-green-500' : voiceState.micEnabled ? 'bg-muted-foreground/70' : 'bg-red-500/80',
             )}
           >
-            {voiceState.micEnabled
-              ? <Mic size={10} className="text-white" />
-              : <MicOff size={10} className="text-white" />}
+            {voiceState.micEnabled ? (
+              <Mic size={10} className="text-white" />
+            ) : (
+              <MicOff size={10} className="text-white" />
+            )}
           </div>
         )}
 
@@ -303,9 +313,7 @@ function PlayerNode({
           isActive && 'text-primary font-bold',
           isMe && 'text-primary',
         )}
-        style={(!isActive && !isMe && roleColor)
-          ? { color: roleColor }
-          : undefined}
+        style={!isActive && !isMe && roleColor ? { color: roleColor } : undefined}
       >
         {displayName}
         {player.isBot && <AiBadge className="ml-1" />}
@@ -314,7 +322,9 @@ function PlayerNode({
       {/* Hand count */}
       {(player.handCount > 0 || handSwap) && (
         <motion.div
-          key={handSwap ? `${player.id}-swap-${handSwap.id}-${player.handCount}` : `${player.id}-hand-${player.handCount}`}
+          key={
+            handSwap ? `${player.id}-swap-${handSwap.id}-${player.handCount}` : `${player.id}-hand-${player.handCount}`
+          }
           className="relative flex min-h-card-mini-h items-center gap-1"
           initial={handSwap ? { x: handSwap.fromX, opacity: 0.2, scale: 0.92 } : false}
           animate={{ x: 0, opacity: 1, scale: 1 }}
@@ -324,7 +334,7 @@ function PlayerNode({
             <span className="h-card-mini-h min-w-card-mini-w rounded-sm border border-dashed border-white/20 bg-black/20" />
           ) : shouldShowRevealedHand ? (
             <div className="flex -space-x-2">
-              {revealedHand.map((card) => (
+              {revealedHand.map(card => (
                 <Card
                   key={card.id}
                   card={card}

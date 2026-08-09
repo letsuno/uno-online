@@ -11,6 +11,4 @@ export const authRoutes = [
   { path: '/register', element: <RegisterPage /> },
 ];
 
-export const authProtectedRoutes = [
-  { path: '/profile/setup', element: <ProfileSetupPage /> },
-];
+export const authProtectedRoutes = [{ path: '/profile/setup', element: <ProfileSetupPage /> }];

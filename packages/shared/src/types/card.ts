@@ -53,8 +53,8 @@ export function isWildCard(card: Card): card is WildCardType {
   return card.type === 'wild' || card.type === 'wild_draw_four';
 }
 
-const COLOR_ORDER: Record<string, number> = { red: 0, yellow: 1, blue: 2, green: 3 };
-const TYPE_ORDER: Record<string, number> = {
+const COLOR_ORDER: Record<Color, number> = { red: 0, yellow: 1, blue: 2, green: 3 };
+const TYPE_ORDER: Record<CardType, number> = {
   number: 0,
   skip: 1,
   reverse: 2,
@@ -65,12 +65,12 @@ const TYPE_ORDER: Record<string, number> = {
 
 export function sortHand(hand: Card[]): Card[] {
   return [...hand].sort((a, b) => {
-    const colorA = COLOR_ORDER[a.color ?? ''] ?? 99;
-    const colorB = COLOR_ORDER[b.color ?? ''] ?? 99;
+    const colorA = a.color === null ? 4 : COLOR_ORDER[a.color];
+    const colorB = b.color === null ? 4 : COLOR_ORDER[b.color];
     if (colorA !== colorB) return colorA - colorB;
 
-    const typeA = TYPE_ORDER[a.type] ?? 99;
-    const typeB = TYPE_ORDER[b.type] ?? 99;
+    const typeA = TYPE_ORDER[a.type];
+    const typeB = TYPE_ORDER[b.type];
     if (typeA !== typeB) return typeA - typeB;
 
     const valA = a.type === 'number' ? a.value : 0;

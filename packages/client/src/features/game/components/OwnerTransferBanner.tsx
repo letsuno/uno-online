@@ -4,7 +4,7 @@ import { useGameStore } from '../stores/game-store';
 import { serverNow } from '@/shared/server-time';
 
 export default function OwnerTransferBanner() {
-  const transferAt = useGameStore((s) => s.ownerTransferAt);
+  const transferAt = useGameStore(s => s.ownerTransferAt);
   const [seconds, setSeconds] = useState<number | null>(null);
 
   useEffect(() => {

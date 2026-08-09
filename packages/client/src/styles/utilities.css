@@ -53,7 +53,9 @@
     radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.06), transparent 46%),
     linear-gradient(180deg, rgba(22, 29, 54, 0.9), rgba(10, 15, 30, 0.84));
   border: 1px solid rgba(246, 190, 62, 0.26);
-  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 26px 80px rgba(0, 0, 0, 0.48),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
   backdrop-filter: blur(18px);
   border-radius: var(--radius-panel-ui);
 }
@@ -62,7 +64,9 @@
     radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.06), transparent 46%),
     linear-gradient(180deg, rgba(22, 29, 54, 0.9), rgba(10, 15, 30, 0.84));
   border: 1px solid rgba(246, 190, 62, 0.26);
-  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 26px 80px rgba(0, 0, 0, 0.48),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
   backdrop-filter: blur(18px);
   border-radius: var(--radius-xl);
 }
@@ -88,7 +92,7 @@
   }
   &:focus {
     border-color: rgba(246, 190, 62, 0.58);
-    box-shadow: 0 0 0 4px rgba(246, 190, 62, 0.10);
+    box-shadow: 0 0 0 4px rgba(246, 190, 62, 0.1);
   }
 }
 @utility themed-input {
@@ -129,7 +133,9 @@
     linear-gradient(135deg, var(--gold-2), var(--gold) 52%, #f1a72d);
   color: var(--primary-foreground);
   font-weight: 900;
-  box-shadow: 0 0 26px rgba(246, 190, 62, 0.34), 0 10px 30px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 0 26px rgba(246, 190, 62, 0.34),
+    0 10px 30px rgba(0, 0, 0, 0.35);
   &:hover {
     filter: brightness(1.05);
   }

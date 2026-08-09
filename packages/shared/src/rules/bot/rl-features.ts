@@ -4,23 +4,8 @@ import { canPlayCard } from '../validation.js';
 import { getNextAliveIndex } from '../turn.js';
 
 const COLORS: readonly Color[] = ['red', 'blue', 'green', 'yellow'];
-const CARD_TYPES: readonly CardType[] = [
-  'number',
-  'skip',
-  'reverse',
-  'draw_two',
-  'wild',
-  'wild_draw_four',
-];
-const ACTION_KINDS = [
-  'play',
-  'draw',
-  'pass',
-  'challenge',
-  'accept',
-  'choose_color',
-  'swap',
-] as const;
+const CARD_TYPES: readonly CardType[] = ['number', 'skip', 'reverse', 'draw_two', 'wild', 'wild_draw_four'];
+const ACTION_KINDS = ['play', 'draw', 'pass', 'challenge', 'accept', 'choose_color', 'swap'] as const;
 const NUMBERS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 const LAST_ACTION_TYPES = [
   'PLAY_CARD',
@@ -47,18 +32,15 @@ const PUBLIC_CARD_COUNT_FEATURE_NAMES = [
 
 export const RL_RECENT_DISCARD_SLOTS = 16;
 export const RL_RECENT_DISCARD_TOKEN_SIZE = 24;
-const RECENT_DISCARD_SEQUENCE_FEATURE_NAMES = Array.from(
-  { length: RL_RECENT_DISCARD_SLOTS },
-  (_, index) => {
-    const slot = index + 1;
-    return [
-      ...COLORS.map(color => `recent_discard_${slot}_color_${color}`),
-      ...CARD_TYPES.map(type => `recent_discard_${slot}_type_${type}`),
-      ...NUMBERS.map(value => `recent_discard_${slot}_value_${value}`),
-      ...COLORS.map(color => `recent_discard_${slot}_chosen_${color}`),
-    ];
-  },
-).flat();
+const RECENT_DISCARD_SEQUENCE_FEATURE_NAMES = Array.from({ length: RL_RECENT_DISCARD_SLOTS }, (_, index) => {
+  const slot = index + 1;
+  return [
+    ...COLORS.map(color => `recent_discard_${slot}_color_${color}`),
+    ...CARD_TYPES.map(type => `recent_discard_${slot}_type_${type}`),
+    ...NUMBERS.map(value => `recent_discard_${slot}_value_${value}`),
+    ...COLORS.map(color => `recent_discard_${slot}_chosen_${color}`),
+  ];
+}).flat();
 
 /** Keep this list ordered to match the bundled production ONNX schema. */
 const HOUSE_RULE_FEATURE_NAMES = [
@@ -200,7 +182,7 @@ export const RL_SEQUENCE_FEATURE_OFFSET = 192;
 export const RL_TEACHER_FEATURE_INDEX = RL_FEATURE_NAMES.indexOf('teacher_preferred');
 
 interface PlanSummary {
-  kind: typeof ACTION_KINDS[number];
+  kind: (typeof ACTION_KINDS)[number];
   card: Card | undefined;
   chosenColor: Color | undefined;
   target: Player | undefined;
@@ -219,15 +201,23 @@ function ratio(value: number, denominator: number): number {
 
 function actionKind(action: GameAction): PlanSummary['kind'] {
   switch (action.type) {
-    case 'PLAY_CARD': return 'play';
-    case 'DRAW_CARD': return 'draw';
-    case 'PASS': return 'pass';
-    case 'CHALLENGE': return 'challenge';
-    case 'ACCEPT': return 'accept';
-    case 'CHOOSE_COLOR': return 'choose_color';
-    case 'CHOOSE_SWAP_TARGET': return 'swap';
+    case 'PLAY_CARD':
+      return 'play';
+    case 'DRAW_CARD':
+      return 'draw';
+    case 'PASS':
+      return 'pass';
+    case 'CHALLENGE':
+      return 'challenge';
+    case 'ACCEPT':
+      return 'accept';
+    case 'CHOOSE_COLOR':
+      return 'choose_color';
+    case 'CHOOSE_SWAP_TARGET':
+      return 'swap';
     case 'CALL_UNO':
-    case 'CATCH_UNO': return 'pass';
+    case 'CATCH_UNO':
+      return 'pass';
   }
 }
 
@@ -252,20 +242,14 @@ function summarizePlan(state: GameState, playerId: string, plan: readonly GameAc
     kind: first ? actionKind(first) : 'pass',
     card: play && player ? player.hand.find(card => card.id === play.cardId) : undefined,
     chosenColor: play?.chosenColor ?? colorAction?.color,
-    target: swapAction
-      ? state.players.find(candidate => candidate.id === swapAction.targetId)
-      : undefined,
+    target: swapAction ? state.players.find(candidate => candidate.id === swapAction.targetId) : undefined,
     cardsPlayed: playActions.length,
     drawSide: drawAction?.side,
     isJumpIn: playActions.some(action => action.isJumpIn === true),
   };
 }
 
-function turnDistance(
-  state: GameState,
-  fromIndex: number,
-  targetId: string | undefined,
-): number {
+function turnDistance(state: GameState, fromIndex: number, targetId: string | undefined): number {
   if (!targetId || fromIndex < 0) return state.players.length;
   let index = fromIndex;
   for (let distance = 0; distance < state.players.length; distance++) {
@@ -309,11 +293,7 @@ function cardValue(card: Card | undefined): number | undefined {
  * Safe production prior using only public information and the actor's hand.
  * The ONNX value head remains responsible for long-horizon value.
  */
-export function heuristicRlPlanScore(
-  state: GameState,
-  playerId: string,
-  plan: readonly GameAction[],
-): number {
+export function heuristicRlPlanScore(state: GameState, playerId: string, plan: readonly GameAction[]): number {
   const player = state.players.find(candidate => candidate.id === playerId);
   if (!player || plan.length === 0) return -1;
   const summary = summarizePlan(state, playerId, plan);
@@ -324,10 +304,13 @@ export function heuristicRlPlanScore(
     state.direction,
   );
   const nextPlayer = state.players[nextIndex];
-  const nonWildPlayable = topCard && state.currentColor
-    ? player.hand.some(card => card.type !== 'wild' && card.type !== 'wild_draw_four'
-      && canPlayCard(card, topCard, state.currentColor!))
-    : false;
+  const nonWildPlayable =
+    topCard && state.currentColor
+      ? player.hand.some(
+          card =>
+            card.type !== 'wild' && card.type !== 'wild_draw_four' && canPlayCard(card, topCard, state.currentColor!),
+        )
+      : false;
 
   let score = 0;
   switch (summary.kind) {
@@ -342,30 +325,36 @@ export function heuristicRlPlanScore(
         wild_draw_four: 0.34,
       };
       if (summary.card) score += cardValue[summary.card.type];
-      if (summary.card && (summary.card.type === 'wild' || summary.card.type === 'wild_draw_four')
-        && nonWildPlayable) score -= 0.28;
+      if (summary.card && (summary.card.type === 'wild' || summary.card.type === 'wild_draw_four') && nonWildPlayable)
+        score -= 0.28;
       if (summary.chosenColor) {
-        score += ratio(
-          player.hand.filter(card => card.color === summary.chosenColor).length,
-          player.hand.length,
-        ) * 0.55;
+        score +=
+          ratio(player.hand.filter(card => card.color === summary.chosenColor).length, player.hand.length) * 0.55;
       }
-      if (nextPlayer && nextPlayer.hand.length <= 2
-        && (summary.card?.type === 'skip' || summary.card?.type === 'draw_two'
-          || summary.card?.type === 'wild_draw_four')) score += 0.45;
+      if (
+        nextPlayer &&
+        nextPlayer.hand.length <= 2 &&
+        (summary.card?.type === 'skip' || summary.card?.type === 'draw_two' || summary.card?.type === 'wild_draw_four')
+      )
+        score += 0.45;
       if (player.hand.length - summary.cardsPlayed <= 0) score += 2;
       break;
     }
-    case 'draw': score -= 0.12; break;
-    case 'pass': score -= 0.45; break;
-    case 'challenge': score += 0.02; break;
-    case 'accept': score -= ratio(Math.max(4, state.drawStack), 20) * 0.25; break;
+    case 'draw':
+      score -= 0.12;
+      break;
+    case 'pass':
+      score -= 0.45;
+      break;
+    case 'challenge':
+      score += 0.02;
+      break;
+    case 'accept':
+      score -= ratio(Math.max(4, state.drawStack), 20) * 0.25;
+      break;
     case 'choose_color': {
       if (summary.chosenColor) {
-        score += ratio(
-          player.hand.filter(card => card.color === summary.chosenColor).length,
-          player.hand.length,
-        );
+        score += ratio(player.hand.filter(card => card.color === summary.chosenColor).length, player.hand.length);
       }
       break;
     }
@@ -429,21 +418,20 @@ export function encodeRlActionPlan(
   const totalHands = alivePlayers.reduce((sum, candidate) => sum + candidate.hand.length, 0);
   const minimumOpponent = opponentCounts.length > 0 ? Math.min(...opponentCounts) : 0;
   const maximumOpponent = opponentCounts.length > 0 ? Math.max(...opponentCounts) : 0;
-  const meanOpponent = opponentCounts.length > 0
-    ? opponentCounts.reduce((sum, count) => sum + count, 0) / opponentCounts.length
-    : 0;
+  const meanOpponent =
+    opponentCounts.length > 0 ? opponentCounts.reduce((sum, count) => sum + count, 0) / opponentCounts.length : 0;
   const nextIndex = getNextAliveIndex(state.players, playerIndex, state.direction);
   const nextPlayer = state.players[nextIndex];
   const leader = opponents.find(candidate => candidate.hand.length === minimumOpponent);
   const topCard = state.discardPile[state.discardPile.length - 1];
   const summary = summarizePlan(state, playerId, plan);
   const handDenominator = Math.max(1, player.hand.length);
-  const playable = topCard && state.currentColor
-    ? player.hand.filter(card => canPlayCard(card, topCard, state.currentColor!))
-    : [];
-  const sameTopValue = topCard?.type === 'number'
-    ? player.hand.filter(card => card.type === 'number' && card.value === topCard.value).length
-    : 0;
+  const playable =
+    topCard && state.currentColor ? player.hand.filter(card => canPlayCard(card, topCard, state.currentColor!)) : [];
+  const sameTopValue =
+    topCard?.type === 'number'
+      ? player.hand.filter(card => card.type === 'number' && card.value === topCard.value).length
+      : 0;
   const chosenColorCount = summary.chosenColor
     ? player.hand.filter(card => card.color === summary.chosenColor).length
     : 0;
@@ -458,14 +446,14 @@ export function encodeRlActionPlan(
     ratio(minimumOpponent, 30),
     ratio(maximumOpponent, 30),
     ratio(meanOpponent, 30),
-    ratio(nextPlayer?.hand.length ?? 0, 30),
+    ratio(nextPlayer!.hand.length, 30),
     clamp((player.hand.length - minimumOpponent) / 20),
     ratio(turnDistance(state, playerIndex, leader?.id), 10),
     ratio(state.deckLeft.length, 108),
     ratio(state.deckRight.length, 108),
     ratio(state.discardPile.length, 108),
     ratio(state.drawStack, 20),
-    ratio(state.pendingPenaltyDraws ?? 0, 20),
+    ratio(state.pendingPenaltyDraws, 20),
     state.direction === 'clockwise' ? 1 : 0,
     ratio(player.score, state.settings.targetScore),
     ratio(state.roundNumber, 20),
@@ -485,10 +473,7 @@ export function encodeRlActionPlan(
   for (const type of CARD_TYPES) {
     features.push(ratio(player.hand.filter(card => card.type === type).length, handDenominator));
   }
-  features.push(
-    ratio(playable.length, handDenominator),
-    ratio(sameTopValue, handDenominator),
-  );
+  features.push(ratio(playable.length, handDenominator), ratio(sameTopValue, handDenominator));
   for (const kind of ACTION_KINDS) features.push(summary.kind === kind ? 1 : 0);
   for (const type of CARD_TYPES) features.push(summary.card?.type === type ? 1 : 0);
   for (const color of COLORS) features.push(summary.card?.color === color ? 1 : 0);
@@ -565,28 +550,23 @@ export function encodeRlActionPlan(
   for (const value of NUMBERS) features.push(topValue === value ? 1 : 0);
   for (const value of NUMBERS) features.push(actionValue === value ? 1 : 0);
   for (const value of NUMBERS) {
-    features.push(ratio(
-      player.hand.filter(card => card.type === 'number' && card.value === value).length,
-      handDenominator,
-    ));
+    features.push(
+      ratio(player.hand.filter(card => card.type === 'number' && card.value === value).length, handDenominator),
+    );
   }
   for (const value of NUMBERS) {
-    features.push(ratio(
-      state.discardPile.filter(card => card.type === 'number' && card.value === value).length,
-      totalNumberCount(value),
-    ));
+    features.push(
+      ratio(
+        state.discardPile.filter(card => card.type === 'number' && card.value === value).length,
+        totalNumberCount(value),
+      ),
+    );
   }
   for (const color of COLORS) {
-    features.push(ratio(
-      state.discardPile.filter(card => card.color === color).length,
-      TOTAL_COLOR_COUNTS[color],
-    ));
+    features.push(ratio(state.discardPile.filter(card => card.color === color).length, TOTAL_COLOR_COUNTS[color]));
   }
   for (const type of CARD_TYPES) {
-    features.push(ratio(
-      state.discardPile.filter(card => card.type === type).length,
-      TOTAL_TYPE_COUNTS[type],
-    ));
+    features.push(ratio(state.discardPile.filter(card => card.type === type).length, TOTAL_TYPE_COUNTS[type]));
   }
   for (const color of COLORS) {
     const visible = ownAndDiscard.filter(card => card.color === color).length;
@@ -603,9 +583,7 @@ export function encodeRlActionPlan(
   // storing or exposing any opponent hand or draw-pile information.
   for (let offset = 0; offset < RL_RECENT_DISCARD_SLOTS; offset++) {
     const card = state.discardPile[state.discardPile.length - 1 - offset];
-    const chosenColor = card && (card.type === 'wild' || card.type === 'wild_draw_four')
-      ? card.chosenColor
-      : undefined;
+    const chosenColor = card && (card.type === 'wild' || card.type === 'wild_draw_four') ? card.chosenColor : undefined;
     for (const color of COLORS) features.push(card?.color === color ? 1 : 0);
     for (const type of CARD_TYPES) features.push(card?.type === type ? 1 : 0);
     const value = cardValue(card);

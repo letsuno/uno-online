@@ -30,11 +30,6 @@ export function getDrawPileAnchor(side: 'left' | 'right'): ViewportPoint | null 
   return centerOf(document.querySelector(`[data-draw-pile="${side}"]`));
 }
 
-/** 弃牌槽锚点：移动端 StageCenter / 桌面 DiscardPile */
-export function getDiscardSlotAnchor(): ViewportPoint | null {
-  return centerOf(document.querySelector('[data-discard-slot]'));
-}
-
 /** 弃牌槽矩形（飞牌终点尺寸用它，保证落点与牌堆视觉一致） */
 export function getDiscardSlotRect(): { x: number; y: number; w: number; h: number } | null {
   const el = document.querySelector('[data-discard-slot]');

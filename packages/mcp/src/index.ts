@@ -1,36 +1,68 @@
 import { parseArgs } from 'node:util';
+import { pathToFileURL } from 'node:url';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { McpUnoServer } from './server.js';
 import type { McpConfig } from './types.js';
 
-function parseConfig(): McpConfig {
+export function parseConfig(
+  args: string[] = process.argv.slice(2),
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): McpConfig {
   const { values } = parseArgs({
+    args,
     options: {
       'api-key': { type: 'string' },
       server: { type: 'string' },
       mode: { type: 'string', default: 'stdio' },
       port: { type: 'string', default: '3002' },
     },
-    strict: false,
+    strict: true,
+    allowPositionals: false,
   });
 
-  const apiKey = (typeof values['api-key'] === 'string' ? values['api-key'] : undefined) ?? process.env['UNO_API_KEY'];
-  const serverUrl = (typeof values.server === 'string' ? values.server : undefined) ?? process.env['UNO_SERVER_URL'];
+  const apiKey = values['api-key'] ?? env['UNO_API_KEY'];
+  const serverUrlInput = values.server ?? env['UNO_SERVER_URL'];
 
   if (!apiKey) {
-    console.error('错误: 请提供 --api-key 参数或设置 UNO_API_KEY 环境变量');
-    process.exit(1);
+    throw new Error('请提供 --api-key 参数或设置 UNO_API_KEY 环境变量');
   }
-  if (!serverUrl) {
-    console.error('错误: 请提供 --server 参数或设置 UNO_SERVER_URL 环境变量');
-    process.exit(1);
+  if (!serverUrlInput) {
+    throw new Error('请提供 --server 参数或设置 UNO_SERVER_URL 环境变量');
+  }
+
+  const mode = values.mode ?? 'stdio';
+  if (mode !== 'stdio' && mode !== 'http') {
+    throw new Error(`无效的传输模式: ${mode}（仅支持 stdio 或 http）`);
+  }
+
+  const portValue = values.port ?? '3002';
+  const portInput = portValue.trim();
+  if (!/^\d+$/.test(portInput)) {
+    throw new Error(`无效的 HTTP 端口: ${portValue}`);
+  }
+  const httpPort = Number(portInput);
+  if (!Number.isSafeInteger(httpPort) || httpPort < 1 || httpPort > 65_535) {
+    throw new Error(`HTTP 端口必须是 1 到 65535 之间的整数: ${portValue}`);
+  }
+
+  let serverUrl: URL;
+  try {
+    serverUrl = new URL(serverUrlInput);
+  } catch {
+    throw new Error(`无效的游戏服务器 URL: ${serverUrlInput}`);
+  }
+  if (serverUrl.protocol !== 'http:' && serverUrl.protocol !== 'https:') {
+    throw new Error(`游戏服务器 URL 仅支持 http 或 https: ${serverUrlInput}`);
+  }
+  if (serverUrl.username || serverUrl.password || serverUrl.search || serverUrl.hash) {
+    throw new Error('游戏服务器 URL 不能包含凭据、查询参数或片段');
   }
 
   return {
     apiKey,
-    serverUrl: serverUrl.replace(/\/$/, ''),
-    mode: (String(values.mode ?? 'stdio') as 'stdio' | 'http'),
-    httpPort: parseInt(String(values.port ?? '3002'), 10),
+    serverUrl: serverUrl.toString().replace(/\/+$/, ''),
+    mode,
+    httpPort,
   };
 }
 
@@ -67,7 +99,10 @@ async function main() {
   process.on('SIGTERM', shutdown);
 }
 
-main().catch((err) => {
-  console.error('启动失败:', err);
-  process.exit(1);
-});
+const entryPath = process.argv[1];
+if (entryPath && import.meta.url === pathToFileURL(entryPath).href) {
+  void main().catch((err: unknown) => {
+    console.error('启动失败:', err instanceof Error ? err.message : err);
+    process.exit(1);
+  });
+}

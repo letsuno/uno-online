@@ -5,23 +5,25 @@ import { AUTOPILOT_TOGGLE_COOLDOWN_MS } from '@uno-online/shared';
 import { useGameStore } from '../stores/game-store';
 import { useEffectiveUserId } from '../hooks/useEffectiveUserId';
 import { getSocket } from '@/shared/socket';
+import { reportSocketError } from '@/shared/report-socket-error';
 
 export default function AutopilotOverlay() {
-  const players = useGameStore((s) => s.players);
-  const phase = useGameStore((s) => s.phase);
+  const players = useGameStore(s => s.players);
+  const phase = useGameStore(s => s.phase);
   const userId = useEffectiveUserId();
-  const myAutopilot = players.find((p) => p.id === userId)?.autopilot ?? false;
+  const myAutopilot = players.find(p => p.id === userId)?.autopilot ?? false;
   const [cooldown, setCooldown] = useState(false);
 
   const handleTakeOver = () => {
     if (cooldown) return;
     setCooldown(true);
-    getSocket().emit('player:toggle-autopilot', () => {});
+    getSocket().emit('player:toggle-autopilot', reportSocketError);
     setTimeout(() => setCooldown(false), AUTOPILOT_TOGGLE_COOLDOWN_MS);
   };
 
-  const visible = myAutopilot
-    && (phase === 'playing' || phase === 'choosing_color' || phase === 'challenging' || phase === 'choosing_swap_target');
+  const visible =
+    myAutopilot &&
+    (phase === 'playing' || phase === 'choosing_color' || phase === 'challenging' || phase === 'choosing_swap_target');
 
   return (
     <AnimatePresence>

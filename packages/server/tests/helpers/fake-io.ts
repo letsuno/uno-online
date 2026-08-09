@@ -17,7 +17,14 @@ type Handler = (...args: never[]) => unknown;
 export class FakeSocket {
   id: string;
   data: {
-    user: { userId: string; username: string; nickname: string; avatarUrl?: string | null; role: string; isBot?: boolean };
+    user: {
+      userId: string;
+      username: string;
+      nickname: string;
+      avatarUrl: string | null;
+      role: string;
+      isBot: boolean;
+    };
     roomCode: string | null;
     isSpectator: boolean;
   };
@@ -52,11 +59,19 @@ export class FakeSocket {
 
   to(target: string) {
     const hub = this.hub;
-    return { emit(event: string, payload: unknown) { hub.push({ target, event, payload }); } };
+    return {
+      emit(event: string, payload: unknown) {
+        hub.push({ target, event, payload });
+      },
+    };
   }
 
-  join(room: string): void { this.rooms.add(room); }
-  leave(room: string): void { this.rooms.delete(room); }
+  join(room: string): void {
+    this.rooms.add(room);
+  }
+  leave(room: string): void {
+    this.rooms.delete(room);
+  }
 
   async trigger(event: string, ...args: unknown[]): Promise<void> {
     // Mirror real socket.io: by the time 'disconnect' handlers run, the
@@ -75,7 +90,9 @@ export class FakeSocket {
   /** Trigger an event whose last argument is an ack callback; resolves with the ack. */
   async call(event: string, ...args: unknown[]): Promise<any> {
     let result: unknown;
-    await this.trigger(event, ...args, (res: unknown) => { result = res; });
+    await this.trigger(event, ...args, (res: unknown) => {
+      result = res;
+    });
     return result;
   }
 
@@ -90,15 +107,22 @@ export class FakeSocket {
 export function makeFakeIo() {
   const emitted: Emitted[] = [];
   const sockets = new Set<FakeSocket>();
+  const middlewares: Array<(socket: unknown, next: (error?: Error) => void) => unknown> = [];
   let connectionHandler: ((socket: FakeSocket) => unknown) | null = null;
 
   const io = {
-    use(_mw: unknown) {},
+    use(middleware: (socket: unknown, next: (error?: Error) => void) => unknown) {
+      middlewares.push(middleware);
+    },
     on(event: string, cb: (socket: FakeSocket) => unknown) {
       if (event === 'connection') connectionHandler = cb;
     },
     to(target: string) {
-      return { emit(event: string, payload: unknown) { emitted.push({ target, event, payload }); } };
+      return {
+        emit(event: string, payload: unknown) {
+          emitted.push({ target, event, payload });
+        },
+      };
     },
     in(room: string) {
       return { fetchSockets: async () => [...sockets].filter(s => s.rooms.has(room)) };
@@ -131,5 +155,5 @@ export function makeFakeIo() {
     return list.length > 0 ? list[list.length - 1]!.payload : undefined;
   }
 
-  return { io, emitted, connect, roomEmits, lastRoomEmit };
+  return { io, emitted, middlewares, connect, roomEmits, lastRoomEmit };
 }

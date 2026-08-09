@@ -32,12 +32,12 @@ interface HouseRulesCardProps {
 }
 
 export default function HouseRulesCard({ embedded = false }: HouseRulesCardProps) {
-  const houseRules = useGameStore((s) => s.settings?.houseRules);
+  const houseRules = useGameStore(s => s.settings?.houseRules);
   const [collapsed, setCollapsed] = useState(false);
 
   if (!houseRules) return null;
 
-  const activeRules = HOUSE_RULE_DEFINITIONS.filter((rule) => {
+  const activeRules = HOUSE_RULE_DEFINITIONS.filter(rule => {
     const current = houseRules[rule.key];
     const defaultVal = DEFAULT_HOUSE_RULES[rule.key];
     return current !== defaultVal;
@@ -53,10 +53,7 @@ export default function HouseRulesCard({ embedded = false }: HouseRulesCardProps
   const content = (
     <>
       {!embedded && (
-        <div
-          className="flex items-center justify-between cursor-pointer mb-2"
-          onClick={() => setCollapsed((c) => !c)}
-        >
+        <div className="flex items-center justify-between cursor-pointer mb-2" onClick={() => setCollapsed(c => !c)}>
           <h3 className="text-sm font-game font-bold text-accent flex items-center gap-1.5">
             <ClipboardList size={14} /> 本局村规
           </h3>
@@ -73,13 +70,7 @@ export default function HouseRulesCard({ embedded = false }: HouseRulesCardProps
             const valueText = formatRuleValue(rule.key, houseRules[rule.key]);
 
             return (
-              <div
-                key={rule.key}
-                className={cn(
-                  'border-l-3 rounded-none pl-2 py-1',
-                  borderColor,
-                )}
-              >
+              <div key={rule.key} className={cn('border-l-3 rounded-none pl-2 py-1', borderColor)}>
                 <div className="flex items-center gap-1">
                   <span className="text-xs font-bold text-foreground">{rule.label}</span>
                   {valueText && typeof houseRules[rule.key] !== 'boolean' && (

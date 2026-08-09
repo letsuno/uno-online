@@ -7,14 +7,26 @@ interface GitHubUserData {
   avatarUrl: string | null;
 }
 
-export function resolveAvatar(user: { id: string; avatarData?: string | null; avatarUrl?: string | null; updatedAt?: string }): string | null {
+export function resolveAvatar(user: {
+  id: string;
+  avatarData?: string | null;
+  avatarUrl?: string | null;
+  updatedAt?: string;
+}): string | null {
   if (user.avatarData) return `/api/avatar/${user.id}?v=${encodeURIComponent(user.updatedAt ?? '')}`;
   return user.avatarUrl ?? null;
 }
 
 const userPublicFields = [
-  'id', 'username', 'nickname', 'avatarUrl', 'avatarData', 'role',
-  'createdAt', 'updatedAt', 'githubId',
+  'id',
+  'username',
+  'nickname',
+  'avatarUrl',
+  'avatarData',
+  'role',
+  'createdAt',
+  'updatedAt',
+  'githubId',
 ] as const;
 
 export async function findOrCreateUser(data: GitHubUserData) {
@@ -34,7 +46,10 @@ export async function findOrCreateUser(data: GitHubUserData) {
     return { ...existing, avatarUrl: data.avatarUrl, isNewUser: false };
   }
 
-  const userCount = await db.selectFrom('users').select(sql<number>`count(*)`.as('count')).executeTakeFirstOrThrow();
+  const userCount = await db
+    .selectFrom('users')
+    .select(sql<number>`count(*)`.as('count'))
+    .executeTakeFirstOrThrow();
   const role = userCount.count === 0 ? 'admin' : 'normal';
 
   const inserted = await db
@@ -55,26 +70,32 @@ export async function findOrCreateUser(data: GitHubUserData) {
 // passwordHash included: callers verify credentials against it
 export async function findUserByUsername(username: string) {
   const db = getDb();
-  return db
-    .selectFrom('users')
-    .select([...userPublicFields, 'passwordHash'])
-    .where('username', '=', username)
-    .executeTakeFirst() ?? null;
+  return (
+    db
+      .selectFrom('users')
+      .select([...userPublicFields, 'passwordHash'])
+      .where('username', '=', username)
+      .executeTakeFirst() ?? null
+  );
 }
 
 export async function isUsernameTaken(username: string): Promise<boolean> {
   const db = getDb();
-  const row = await db
-    .selectFrom('users')
-    .select('id')
-    .where('username', '=', username)
-    .executeTakeFirst();
+  const row = await db.selectFrom('users').select('id').where('username', '=', username).executeTakeFirst();
   return !!row;
 }
 
-export async function createLocalUser(data: { username: string; nickname: string; passwordHash: string; avatarData?: string | null }) {
+export async function createLocalUser(data: {
+  username: string;
+  nickname: string;
+  passwordHash: string;
+  avatarData?: string | null;
+}) {
   const db = getDb();
-  const userCount = await db.selectFrom('users').select(sql<number>`count(*)`.as('count')).executeTakeFirstOrThrow();
+  const userCount = await db
+    .selectFrom('users')
+    .select(sql<number>`count(*)`.as('count'))
+    .executeTakeFirstOrThrow();
   const role = userCount.count === 0 ? 'admin' : 'normal';
   return db
     .insertInto('users')
@@ -136,11 +157,11 @@ export async function updateUsername(userId: string, username: string) {
 
 export async function getUserById(id: string) {
   const db = getDb();
-  return db
-    .selectFrom('users')
-    .select([...userPublicFields])
-    .where('id', '=', id)
-    .executeTakeFirst() ?? null;
+  return (
+    db
+      .selectFrom('users')
+      .select([...userPublicFields])
+      .where('id', '=', id)
+      .executeTakeFirst() ?? null
+  );
 }
-
-

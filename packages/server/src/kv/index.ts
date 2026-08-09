@@ -1,18 +1,13 @@
-export type { KvStore } from './types.js';
-export { MemoryKvStore } from './memory.js';
-export { RedisKvStore } from './redis.js';
-
 import type { KvStore } from './types.js';
 import { MemoryKvStore } from './memory.js';
+import { NamespacedKvStore } from './namespaced.js';
 import { RedisKvStore } from './redis.js';
 
 /**
- * Create a KvStore based on config.
- * If redisUrl is provided, uses Redis; otherwise falls back to in-memory.
+ * Create a KvStore based on an already-validated config. A missing URL uses
+ * memory only for callers that explicitly allow development/test storage.
  */
-export function createKvStore(redisUrl?: string): KvStore {
-  if (redisUrl) {
-    return new RedisKvStore(redisUrl);
-  }
-  return new MemoryKvStore();
+export function createKvStore(redisUrl: string | undefined, namespace: string): KvStore {
+  const store = redisUrl ? new RedisKvStore(redisUrl) : new MemoryKvStore();
+  return new NamespacedKvStore(store, namespace);
 }

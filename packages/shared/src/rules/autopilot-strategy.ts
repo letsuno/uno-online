@@ -14,12 +14,14 @@ function bestColor(hand: Card[], excludeId?: string): Color {
 
 function playCardActions(playerId: string, card: Card, hand: Card[], chooseColorOnPlay = false): GameAction[] {
   const color = bestColor(hand, card.id);
-  const actions: GameAction[] = [{
-    type: 'PLAY_CARD',
-    playerId,
-    cardId: card.id,
-    ...(chooseColorOnPlay ? { chosenColor: color } : {}),
-  }];
+  const actions: GameAction[] = [
+    {
+      type: 'PLAY_CARD',
+      playerId,
+      cardId: card.id,
+      ...(chooseColorOnPlay ? { chosenColor: color } : {}),
+    },
+  ];
   if (card.type === 'wild' || card.type === 'wild_draw_four') {
     if (!chooseColorOnPlay) {
       actions.push({ type: 'CHOOSE_COLOR', playerId, color });
@@ -29,16 +31,12 @@ function playCardActions(playerId: string, card: Card, hand: Card[], chooseColor
 }
 
 function pickPlayableCard(playable: Card[], currentColor: Color): Card {
-  return (
-    playable.find(c => c.color === currentColor) ??
-    playable.find(c => c.color !== null) ??
-    playable[0]!
-  );
+  return playable.find(c => c.color === currentColor) ?? playable.find(c => c.color !== null) ?? playable[0]!;
 }
 
 export function canJumpIn(state: GameState, playerId: string): boolean {
   if (!state.settings.houseRules.jumpIn || state.phase !== 'playing') return false;
-  if ((state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0) return false;
+  if (state.pendingPenaltyDraws > 0 || state.drawStack > 0) return false;
   const currentPlayer = state.players[state.currentPlayerIndex];
   if (!currentPlayer || currentPlayer.id === playerId) return false;
   const player = state.players.find(p => p.id === playerId);
@@ -49,7 +47,7 @@ export function canJumpIn(state: GameState, playerId: string): boolean {
 
 function chooseJumpInActionUnchecked(state: GameState, playerId: string): GameAction[] {
   if (!state.settings.houseRules.jumpIn || state.phase !== 'playing') return [];
-  if ((state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0) return [];
+  if (state.pendingPenaltyDraws > 0 || state.drawStack > 0) return [];
   const currentPlayer = state.players[state.currentPlayerIndex];
   if (!currentPlayer || currentPlayer.id === playerId) return [];
   const player = state.players.find(p => p.id === playerId);
@@ -69,9 +67,7 @@ export function chooseJumpInAction(
   if (!cycleGuard || preferred.length === 0) return preferred;
   const player = state.players.find(candidate => candidate.id === playerId);
   const topCard = state.discardPile[state.discardPile.length - 1];
-  const card = topCard
-    ? player?.hand.find(candidate => isExactJumpInMatch(candidate, topCard))
-    : undefined;
+  const card = topCard ? player?.hand.find(candidate => isExactJumpInMatch(candidate, topCard)) : undefined;
   if (!card) return preferred;
   const legal = enumerateLegalActionPlans(state, playerId, { kind: 'jumpin', card });
   return cycleGuard.selectPlan(state, preferred, legal);
@@ -98,9 +94,10 @@ function chooseAutopilotActionUnchecked(state: GameState, playerId: string): Gam
     if (state.pendingDrawPlayerId === playerId) {
       const topCard = state.discardPile[state.discardPile.length - 1];
       if (topCard && (hr.stackDrawFour || hr.crossStack)) {
-        const stackable = player.hand.find(c =>
-          (hr.stackDrawFour && c.type === 'wild_draw_four') ||
-          (hr.crossStack && (c.type === 'draw_two' || c.type === 'wild_draw_four')),
+        const stackable = player.hand.find(
+          c =>
+            (hr.stackDrawFour && c.type === 'wild_draw_four') ||
+            (hr.crossStack && (c.type === 'draw_two' || c.type === 'wild_draw_four')),
         );
         if (stackable) {
           const chosenColor = stackable.type === 'wild_draw_four' ? bestColor(player.hand) : undefined;
@@ -133,7 +130,7 @@ function chooseAutopilotActionUnchecked(state: GameState, playerId: string): Gam
   if (state.phase === 'choosing_swap_target') {
     const targets = state.players.filter(p => p.id !== playerId && !p.eliminated);
     if (targets.length === 0) return [];
-    const target = targets.reduce((best, p) => p.hand.length < best.hand.length ? p : best, targets[0]!);
+    const target = targets.reduce((best, p) => (p.hand.length < best.hand.length ? p : best), targets[0]!);
     return [{ type: 'CHOOSE_SWAP_TARGET', playerId, targetId: target.id }];
   }
 
@@ -146,7 +143,7 @@ function chooseAutopilotActionUnchecked(state: GameState, playerId: string): Gam
   // handLimit rejects non-obligation draws at/above the limit; PASS instead.
   const atHandLimit = hr.handLimit !== null && player.hand.length >= hr.handLimit;
 
-  if ((state.pendingPenaltyDraws ?? 0) > 0) {
+  if (state.pendingPenaltyDraws > 0) {
     if (noCards) return [{ type: 'PASS', playerId }];
     return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
   }
@@ -157,9 +154,7 @@ function chooseAutopilotActionUnchecked(state: GameState, playerId: string): Gam
     return [{ type: 'DRAW_CARD', playerId, side: autopilotSide }];
   }
 
-  const hasDrawnThisTurn =
-    state.lastAction?.type === 'DRAW_CARD' &&
-    state.lastAction.playerId === playerId;
+  const hasDrawnThisTurn = state.lastAction?.type === 'DRAW_CARD' && state.lastAction.playerId === playerId;
 
   if (hasDrawnThisTurn && state.drawStack === 0) {
     const playableAfterDraw = getPlayableCards(player.hand, topCard, state.currentColor);
@@ -170,7 +165,8 @@ function chooseAutopilotActionUnchecked(state: GameState, playerId: string): Gam
       return [{ type: 'PASS', playerId }];
     }
     const pick = pickPlayableCard(playableAfterDraw, state.currentColor);
-    const needsColorOnPlay = pick.type === 'wild_draw_four' && state.drawStack > 0 && (hr.stackDrawFour || hr.crossStack);
+    const needsColorOnPlay =
+      pick.type === 'wild_draw_four' && state.drawStack > 0 && (hr.stackDrawFour || hr.crossStack);
     return playCardActions(playerId, pick, player.hand, needsColorOnPlay);
   }
 
@@ -181,7 +177,12 @@ function chooseAutopilotActionUnchecked(state: GameState, playerId: string): Gam
       const stackable = player.hand.filter(c => {
         if (hr.stackDrawTwo && c.type === 'draw_two' && topCard.type === 'draw_two') return true;
         if (hr.stackDrawFour && c.type === 'wild_draw_four' && topCard.type === 'wild_draw_four') return true;
-        if (hr.crossStack && ((c.type === 'draw_two' && topCard.type === 'wild_draw_four') || (c.type === 'wild_draw_four' && topCard.type === 'draw_two'))) return true;
+        if (
+          hr.crossStack &&
+          ((c.type === 'draw_two' && topCard.type === 'wild_draw_four') ||
+            (c.type === 'wild_draw_four' && topCard.type === 'draw_two'))
+        )
+          return true;
         return false;
       });
       if (stackable.length > 0) {

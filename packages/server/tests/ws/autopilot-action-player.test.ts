@@ -44,11 +44,15 @@ describe('getAutopilotActionPlayerId', () => {
   });
 
   it('uses the pending draw player during +4 challenge resolution', () => {
-    expect(getAutopilotActionPlayerId(makeState({
-      phase: 'challenging',
-      currentPlayerIndex: 0,
-      pendingDrawPlayerId: 'p2',
-    }))).toBe('p2');
+    expect(
+      getAutopilotActionPlayerId(
+        makeState({
+          phase: 'challenging',
+          currentPlayerIndex: 0,
+          pendingDrawPlayerId: 'p2',
+        }),
+      ),
+    ).toBe('p2');
   });
 
   it('does not choose an actor after the round has ended', () => {

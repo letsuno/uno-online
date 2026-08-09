@@ -14,20 +14,18 @@ function makeWildDrawFour(id: string): Card {
   return { id, type: 'wild_draw_four', color: null };
 }
 
-function makePlayer(
-  id: string,
-  name: string,
-  hand: Card[],
-  botConfig?: BotConfig,
-): Player {
+function makePlayer(id: string, name: string, hand: Card[], botConfig?: BotConfig): Player {
   return {
     id,
     name,
     hand,
     score: 0,
+    roundWins: 0,
     connected: true,
     autopilot: false,
     calledUno: false,
+    unoCaught: false,
+    eliminated: false,
     isBot: botConfig !== undefined,
     botConfig,
   };
@@ -41,10 +39,7 @@ const noviceBot: BotConfig = { difficulty: 'novice', personality: 'balanced' };
 
 describe('chooseBotAction — playing phase', () => {
   it('returns PLAY_CARD when bot has playable cards', () => {
-    const botHand: Card[] = [
-      makeNumberCard('r5', 'red', 5),
-      makeNumberCard('b3', 'blue', 3),
-    ];
+    const botHand: Card[] = [makeNumberCard('r5', 'red', 5), makeNumberCard('b3', 'blue', 3)];
     const state = makeState({
       phase: 'playing',
       currentPlayerIndex: 0,
@@ -62,10 +57,7 @@ describe('chooseBotAction — playing phase', () => {
   });
 
   it('returns DRAW_CARD when bot has no playable cards', () => {
-    const botHand: Card[] = [
-      makeNumberCard('b3', 'blue', 3),
-      makeNumberCard('g4', 'green', 4),
-    ];
+    const botHand: Card[] = [makeNumberCard('b3', 'blue', 3), makeNumberCard('g4', 'green', 4)];
     const state = makeState({
       phase: 'playing',
       currentPlayerIndex: 0,
@@ -84,7 +76,7 @@ describe('chooseBotAction — playing phase', () => {
     expect(actions[0]).toMatchObject({ type: 'DRAW_CARD', playerId: 'bot' });
   });
 
-  it('returns empty array if it is not the bot\'s turn', () => {
+  it("returns empty array if it is not the bot's turn", () => {
     const botHand: Card[] = [makeNumberCard('r5', 'red', 5)];
     const state = makeState({
       phase: 'playing',
@@ -268,10 +260,7 @@ describe('chooseBotJumpInAction', () => {
     const state = makeState({
       phase: 'playing',
       currentPlayerIndex: 0,
-      players: [
-        makePlayer('p2', 'Human', []),
-        makePlayer('bot', 'Bot', botHand, normalBot),
-      ],
+      players: [makePlayer('p2', 'Human', []), makePlayer('bot', 'Bot', botHand, normalBot)],
       discardPile: [makeNumberCard('top', 'red', 5)],
       currentColor: 'red',
       settings: {
@@ -287,15 +276,12 @@ describe('chooseBotJumpInAction', () => {
     expect(actions).toEqual([]);
   });
 
-  it('returns empty array when it is already the bot\'s turn', () => {
+  it("returns empty array when it is already the bot's turn", () => {
     const botHand: Card[] = [makeNumberCard('r5', 'red', 5)];
     const state = makeState({
       phase: 'playing',
       currentPlayerIndex: 1, // bot's own turn
-      players: [
-        makePlayer('p2', 'Human', []),
-        makePlayer('bot', 'Bot', botHand, normalBot),
-      ],
+      players: [makePlayer('p2', 'Human', []), makePlayer('bot', 'Bot', botHand, normalBot)],
       discardPile: [makeNumberCard('top', 'red', 5)],
       currentColor: 'red',
       settings: {
@@ -353,10 +339,7 @@ describe('chooseBotJumpInAction', () => {
     const state = makeState({
       phase: 'playing',
       currentPlayerIndex: 0,
-      players: [
-        makePlayer('p2', 'Human', []),
-        makePlayer('bot', 'Bot', botHand, noviceBot),
-      ],
+      players: [makePlayer('p2', 'Human', []), makePlayer('bot', 'Bot', botHand, noviceBot)],
       discardPile: [makeNumberCard('top', 'red', 5)],
       currentColor: 'red',
       settings: {
@@ -386,18 +369,18 @@ describe('chooseBotAction — edge cases', () => {
       name: 'Bot',
       hand: botHand,
       score: 0,
+      roundWins: 0,
       connected: true,
       autopilot: false,
       calledUno: false,
+      unoCaught: false,
+      eliminated: false,
       isBot: true,
     };
     const state = makeState({
       phase: 'playing',
       currentPlayerIndex: 0,
-      players: [
-        playerNoBotConfig,
-        makePlayer('p2', 'Human', [makeNumberCard('g1', 'green', 1)]),
-      ],
+      players: [playerNoBotConfig, makePlayer('p2', 'Human', [makeNumberCard('g1', 'green', 1)])],
       discardPile: [makeNumberCard('top', 'red', 2)],
       currentColor: 'red',
     });
@@ -437,10 +420,7 @@ describe('chooseBotAction — edge cases', () => {
       discardPile: [makeCard('reverse', 'red', { id: 'top_reverse' })],
       lastAction: { type: 'DRAW_CARD', playerId: 'bot', side: 'left' },
       players: [
-        makePlayer('bot', 'Bot', [
-          makeNumberCard('other', 'green', 2),
-          recycledReverse,
-        ], hardBot),
+        makePlayer('bot', 'Bot', [makeNumberCard('other', 'green', 2), recycledReverse], hardBot),
         makePlayer('p2', 'Human', [makeNumberCard('p2', 'yellow', 4)]),
       ],
       settings: {
@@ -454,9 +434,7 @@ describe('chooseBotAction — edge cases', () => {
       },
     });
 
-    expect(chooseBotAction(state, 'bot')).toEqual([
-      { type: 'PLAY_CARD', playerId: 'bot', cardId: 'recycled_reverse' },
-    ]);
+    expect(chooseBotAction(state, 'bot')).toEqual([{ type: 'PLAY_CARD', playerId: 'bot', cardId: 'recycled_reverse' }]);
   });
 
   it('keeps the bot draw-side preference separate from cycle protection', () => {
@@ -467,10 +445,7 @@ describe('chooseBotAction — edge cases', () => {
       deckRight: [],
       deckLeftInitialCount: 1,
       deckRightInitialCount: 1,
-      discardPile: [
-        makeNumberCard('recycled-zero', 'green', 0),
-        makeNumberCard('top-zero', 'red', 0),
-      ],
+      discardPile: [makeNumberCard('recycled-zero', 'green', 0), makeNumberCard('top-zero', 'red', 0)],
       players: [
         makePlayer('bot', 'Bot', [makeNumberCard('bot-card', 'yellow', 4)], {
           difficulty: 'novice',
@@ -491,8 +466,6 @@ describe('chooseBotAction — edge cases', () => {
       type: 'DRAW_CARD',
       playerId: 'bot',
     });
-    expect(['left', 'right']).toContain(
-      plan[0]?.type === 'DRAW_CARD' ? plan[0].side : null,
-    );
+    expect(['left', 'right']).toContain(plan[0]?.type === 'DRAW_CARD' ? plan[0].side : null);
   });
 });

@@ -9,7 +9,7 @@ export const unoPenalty: HouseRulePlugin = {
     label: 'UNO 罚摸数量',
     description: '不喊 UNO 被抓罚摸张数',
   },
-  isEnabled: (hr) => hr.unoPenaltyCount !== 2,
+  isEnabled: hr => hr.unoPenaltyCount !== 2,
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     if (action.type !== 'CATCH_UNO') return { handled: false };
     const hr = state.settings.houseRules;
@@ -17,12 +17,15 @@ export const unoPenalty: HouseRulePlugin = {
     if (targetIdx === -1) return { handled: true, state };
     const target = state.players[targetIdx]!;
     if (target.hand.length !== 1 || target.calledUno || target.unoCaught) return { handled: true, state };
-    const players = state.players.map((p, i) =>
-      i === targetIdx ? { ...p, unoCaught: true } : p,
-    );
+    const players = state.players.map((p, i) => (i === targetIdx ? { ...p, unoCaught: true } : p));
     return {
       handled: true,
-      state: ctx.startPenaltyDraw({ ...state, players, lastAction: action }, action.targetId, hr.unoPenaltyCount, state.currentPlayerIndex),
+      state: ctx.startPenaltyDraw(
+        { ...state, players, lastAction: action },
+        action.targetId,
+        hr.unoPenaltyCount,
+        state.currentPlayerIndex,
+      ),
     };
   },
 };

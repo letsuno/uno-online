@@ -14,9 +14,9 @@ const SESSION_KEY = 'start-screen-passed';
  * audio resume listener 在按键前就位，按键时同步解锁 audio。
  */
 export default function StartScreenOverlay() {
-  const token = useAuthStore((s) => s.token);
-  const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
+  const token = useAuthStore(s => s.token);
+  const user = useAuthStore(s => s.user);
+  const logout = useAuthStore(s => s.logout);
   const switchBtnRef = useRef<HTMLButtonElement>(null);
   const [visible, setVisible] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -61,10 +61,10 @@ export default function StartScreenOverlay() {
     };
   }, [visible]);
 
-  const handleSwitchAccount = () => {
+  const handleSwitchAccount = async () => {
     // 一步到位：清登录态 + 关 overlay。背后 RootSwitch 已切到登录页，
     // 用户立即看到表单，不需要再按一次任意键。
-    logout();
+    await logout();
     sessionStorage.setItem(SESSION_KEY, '1');
     setVisible(false);
   };
@@ -120,9 +120,7 @@ export default function StartScreenOverlay() {
               >
                 ♠ UNO
               </h1>
-              <p className="mt-3 text-sm tracking-[8px] text-white/40 font-medium uppercase">
-                Online Card Game
-              </p>
+              <p className="mt-3 text-sm tracking-[8px] text-white/40 font-medium uppercase">Online Card Game</p>
             </motion.div>
           )}
 

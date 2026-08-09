@@ -7,13 +7,13 @@ import { getNextPlayerIndex, getNextAliveIndex, countAlivePlayers, rotateHands }
 import { applyAction, checkRoundEnd, startPenaltyDraw, drawCards } from './game-engine.js';
 import type { RuleContext } from './house-rule-types.js';
 
-export function drawCardsFromDeck(state: GameState, playerId: string, count: number): GameState {
+function drawCardsFromDeck(state: GameState, playerId: string, count: number): GameState {
   const side = state.deckLeft.length >= state.deckRight.length ? 'left' : 'right';
   return drawCards(state, playerId, count, side);
 }
 
 export function hasPendingDrawObligation(state: GameState): boolean {
-  return (state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0;
+  return state.pendingPenaltyDraws > 0 || state.drawStack > 0;
 }
 
 export function hasPlayableCard(
@@ -26,23 +26,23 @@ export function hasPlayableCard(
   return hand.some(card => canPlay(card, topCard, currentColor));
 }
 
-export function isLastCard(state: GameState, playerId: string, cardId: string): boolean {
+function isLastCard(state: GameState, playerId: string, cardId: string): boolean {
   const player = state.players.find(p => p.id === playerId);
   if (!player) return false;
   return player.hand.length === 1 && player.hand[0]!.id === cardId;
 }
 
-export function isFunctionCard(card: Card): boolean {
+function isFunctionCard(card: Card): boolean {
   return card.type === 'draw_two' || card.type === 'wild_draw_four';
 }
 
-export function getCardDrawPenalty(card: Card): number {
+function getCardDrawPenalty(card: Card): number {
   if (card.type === 'draw_two') return 2;
   if (card.type === 'wild_draw_four') return 4;
   return 0;
 }
 
-export function canStartDrawStack(state: GameState, card: Card): boolean {
+function canStartDrawStack(state: GameState, card: Card): boolean {
   const hr = state.settings.houseRules;
   if (card.type === 'draw_two') {
     return hr.stackDrawTwo || hr.crossStack;
@@ -53,7 +53,7 @@ export function canStartDrawStack(state: GameState, card: Card): boolean {
   return false;
 }
 
-export function putAttackCardOnStack(
+function putAttackCardOnStack(
   state: GameState,
   action: Extract<GameAction, { type: 'PLAY_CARD' }>,
   card: Card,
@@ -66,27 +66,30 @@ export function putAttackCardOnStack(
   const player = state.players[state.currentPlayerIndex]!;
   const newHand = player.hand.filter(c => c.id !== action.cardId);
   const playedCard =
-    card.type === 'wild_draw_four' && action.chosenColor
-      ? { ...card, chosenColor: action.chosenColor }
-      : card;
+    card.type === 'wild_draw_four' && action.chosenColor ? { ...card, chosenColor: action.chosenColor } : card;
   const players = state.players.map((p, i) =>
-    i === state.currentPlayerIndex ? { ...p, hand: newHand, calledUno: newHand.length === 1 ? p.calledUno : false, unoCaught: false } : p,
+    i === state.currentPlayerIndex
+      ? { ...p, hand: newHand, calledUno: newHand.length === 1 ? p.calledUno : false, unoCaught: false }
+      : p,
   );
   const nextIdx = getNextAliveIndex(players, state.currentPlayerIndex, state.direction);
   const newColor = card.type === 'draw_two' ? card.color : (action.chosenColor ?? state.currentColor);
 
-  return checkRoundEnd({
-    ...state,
-    players,
-    discardPile: [...state.discardPile, playedCard],
-    currentColor: newColor,
-    drawStack: state.drawStack + stackAdd,
-    currentPlayerIndex: nextIdx,
-    lastAction: action,
-  }, action.playerId);
+  return checkRoundEnd(
+    {
+      ...state,
+      players,
+      discardPile: [...state.discardPile, playedCard],
+      currentColor: newColor,
+      drawStack: state.drawStack + stackAdd,
+      currentPlayerIndex: nextIdx,
+      lastAction: action,
+    },
+    action.playerId,
+  );
 }
 
-export function applyDoubleScore(before: GameState, after: GameState): GameState {
+function applyDoubleScore(before: GameState, after: GameState): GameState {
   if (!after.settings.houseRules.doubleScore) return after;
   if (
     (after.phase === 'round_end' || after.phase === 'game_over') &&
@@ -94,24 +97,30 @@ export function applyDoubleScore(before: GameState, after: GameState): GameState
     after.winnerId !== null
   ) {
     const winnerId = after.winnerId;
-    const beforeScore = before.players.find(p => p.id === winnerId)?.score ?? 0;
-    const afterScore = after.players.find(p => p.id === winnerId)?.score ?? 0;
+    const beforeWinner = before.players.find(p => p.id === winnerId);
+    const afterWinner = after.players.find(p => p.id === winnerId);
+    if (!beforeWinner || !afterWinner) {
+      throw new Error(`Round winner is missing from player state: ${winnerId}`);
+    }
+    const beforeScore = beforeWinner.score;
+    const afterScore = afterWinner.score;
     const earned = afterScore - beforeScore;
     if (earned > 0) {
-      const players = after.players.map(p =>
-        p.id === winnerId ? { ...p, score: beforeScore + earned * 2 } : p,
-      );
+      const players = after.players.map(p => (p.id === winnerId ? { ...p, score: beforeScore + earned * 2 } : p));
       return { ...after, players };
     }
   }
   return after;
 }
 
-export function handleDrawUntilPlayable(state: GameState, action: Extract<GameAction, { type: 'DRAW_CARD' }>): GameState {
+function handleDrawUntilPlayable(state: GameState, action: Extract<GameAction, { type: 'DRAW_CARD' }>): GameState {
   return applyAction(state, action);
 }
 
-export function handleForcedPlayAfterDraw(stateAfterDraw: GameState, originalAction: Extract<GameAction, { type: 'DRAW_CARD' }>): GameState {
+function handleForcedPlayAfterDraw(
+  stateAfterDraw: GameState,
+  originalAction: Extract<GameAction, { type: 'DRAW_CARD' }>,
+): GameState {
   const player = stateAfterDraw.players[stateAfterDraw.currentPlayerIndex]!;
   if (player.hand.length === 0) return stateAfterDraw;
 

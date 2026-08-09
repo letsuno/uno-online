@@ -78,6 +78,20 @@ export interface AiRegistrySnapshot {
   loadFailures: AiPluginLoadFailure[];
 }
 
+export class AiPluginNotFoundError extends Error {
+  constructor() {
+    super('AI 插件不存在');
+    this.name = 'AiPluginNotFoundError';
+  }
+}
+
+export class BuiltInAiPluginMutationError extends Error {
+  constructor() {
+    super('内置 AI 插件不能停用');
+    this.name = 'BuiltInAiPluginMutationError';
+  }
+}
+
 export const BUILTIN_AI_PROVIDER_ID = 'builtin-rl-v1';
 const PRODUCTION_ARCHITECTURE = 'sequence-gru-residual-safety-router';
 const PRODUCTION_ALGORITHM = 'grouped-reinforce-reference-baseline';
@@ -93,53 +107,58 @@ const HOUSE_RULE_NAMES = new Set(Object.keys(DEFAULT_HOUSE_RULES));
 const bundledModelPath = fileURLToPath(new URL('./models/uno-rl.onnx', import.meta.url));
 const bundledManifestPath = fileURLToPath(new URL('./models/uno-rl.manifest.json', import.meta.url));
 
-function assertExactKeys(
-  value: Record<string, unknown>,
-  allowedKeys: readonly string[],
-  label: string,
-): void {
+function assertExactKeys(value: Record<string, unknown>, allowedKeys: readonly string[], label: string): void {
   const allowed = new Set(allowedKeys);
   const unknown = Object.keys(value).filter(key => !allowed.has(key));
   if (unknown.length > 0) throw new Error(`${label} contains unknown fields: ${unknown.join(', ')}`);
 }
 
 export function validateManifest(manifest: RlOnnxManifest, modelBytes: Uint8Array): void {
-  if (manifest.schemaVersion !== 2
-    || manifest.architecture !== PRODUCTION_ARCHITECTURE
-    || manifest.algorithm !== PRODUCTION_ALGORITHM
-    || manifest.inputName !== 'features'
-    || manifest.outputName !== 'values'
-    || manifest.dynamicBatch !== true) {
+  if (
+    manifest.schemaVersion !== 2 ||
+    manifest.architecture !== PRODUCTION_ARCHITECTURE ||
+    manifest.algorithm !== PRODUCTION_ALGORITHM ||
+    manifest.inputName !== 'features' ||
+    manifest.outputName !== 'values' ||
+    manifest.dynamicBatch !== true
+  ) {
     throw new Error('unsupported production ONNX manifest');
   }
-  if (manifest.featureCount !== RL_FEATURE_COUNT
-    || manifest.baseFeatureCount !== RL_SEQUENCE_FEATURE_OFFSET
-    || manifest.sequenceOffset !== RL_SEQUENCE_FEATURE_OFFSET
-    || manifest.sequenceLength !== RL_RECENT_DISCARD_SLOTS
-    || manifest.tokenSize !== RL_RECENT_DISCARD_TOKEN_SIZE
-    || manifest.sequenceOffset + manifest.sequenceLength * manifest.tokenSize
-      !== RL_TEACHER_FEATURE_INDEX) {
+  if (
+    manifest.featureCount !== RL_FEATURE_COUNT ||
+    manifest.baseFeatureCount !== RL_SEQUENCE_FEATURE_OFFSET ||
+    manifest.sequenceOffset !== RL_SEQUENCE_FEATURE_OFFSET ||
+    manifest.sequenceLength !== RL_RECENT_DISCARD_SLOTS ||
+    manifest.tokenSize !== RL_RECENT_DISCARD_TOKEN_SIZE ||
+    manifest.sequenceOffset + manifest.sequenceLength * manifest.tokenSize !== RL_TEACHER_FEATURE_INDEX
+  ) {
     throw new Error('production ONNX feature contract mismatch');
   }
-  if (manifest.safetyValue !== 'teacher-preferred'
-    || manifest.safetyValueFeatureIndex !== RL_TEACHER_FEATURE_INDEX
-    || JSON.stringify(manifest.safetyFallback) !== JSON.stringify(EXPECTED_SAFETY_FALLBACK)) {
+  if (
+    manifest.safetyValue !== 'teacher-preferred' ||
+    manifest.safetyValueFeatureIndex !== RL_TEACHER_FEATURE_INDEX ||
+    JSON.stringify(manifest.safetyFallback) !== JSON.stringify(EXPECTED_SAFETY_FALLBACK)
+  ) {
     throw new Error('production ONNX safety contract mismatch');
   }
-  if (!Number.isFinite(manifest.maxAbsError)
-    || manifest.maxAbsError < 0
-    || manifest.maxAbsError > 1e-5
-    || manifest.onnxSha256 !== PRODUCTION_MODEL_SHA256
-    || sha256(modelBytes) !== PRODUCTION_MODEL_SHA256) {
+  if (
+    !Number.isFinite(manifest.maxAbsError) ||
+    manifest.maxAbsError < 0 ||
+    manifest.maxAbsError > 1e-5 ||
+    manifest.onnxSha256 !== PRODUCTION_MODEL_SHA256 ||
+    sha256(modelBytes) !== PRODUCTION_MODEL_SHA256
+  ) {
     throw new Error('production ONNX integrity check failed');
   }
 }
 
 function localFile(value: unknown, extension: string, label: string): string {
-  if (typeof value !== 'string'
-    || isAbsolute(value)
-    || basename(value) !== value
-    || !value.toLowerCase().endsWith(extension)) {
+  if (
+    typeof value !== 'string' ||
+    isAbsolute(value) ||
+    basename(value) !== value ||
+    !value.toLowerCase().endsWith(extension)
+  ) {
     throw new Error(`${label} must be a local ${extension} filename`);
   }
   return value;
@@ -150,32 +169,36 @@ function validateCapabilities(value: unknown): CommunityAiPluginManifest['capabi
     throw new Error('community plugin capabilities are required');
   }
   const capabilities = value as Record<string, unknown>;
-  assertExactKeys(
-    capabilities,
-    ['minPlayers', 'maxPlayers', 'supportedHouseRules'],
-    'community plugin capabilities',
-  );
+  assertExactKeys(capabilities, ['minPlayers', 'maxPlayers', 'supportedHouseRules'], 'community plugin capabilities');
   const minPlayers = capabilities['minPlayers'];
   const maxPlayers = capabilities['maxPlayers'];
   const supportedHouseRules = capabilities['supportedHouseRules'];
-  if (typeof minPlayers !== 'number' || typeof maxPlayers !== 'number'
-    || !Number.isInteger(minPlayers) || !Number.isInteger(maxPlayers)
-    || minPlayers < 2 || maxPlayers > 10 || minPlayers > maxPlayers) {
+  if (
+    typeof minPlayers !== 'number' ||
+    typeof maxPlayers !== 'number' ||
+    !Number.isInteger(minPlayers) ||
+    !Number.isInteger(maxPlayers) ||
+    minPlayers < 2 ||
+    maxPlayers > 10 ||
+    minPlayers > maxPlayers
+  ) {
     throw new Error('community plugin player capability range is invalid');
   }
   if (supportedHouseRules === undefined) {
     throw new Error('community plugin supportedHouseRules is required');
   }
-  if (supportedHouseRules !== 'all'
-    && (!Array.isArray(supportedHouseRules)
-      || supportedHouseRules.some(rule => typeof rule !== 'string' || !HOUSE_RULE_NAMES.has(rule))
-      || new Set(supportedHouseRules).size !== supportedHouseRules.length)) {
+  if (
+    supportedHouseRules !== 'all' &&
+    (!Array.isArray(supportedHouseRules) ||
+      supportedHouseRules.some(rule => typeof rule !== 'string' || !HOUSE_RULE_NAMES.has(rule)) ||
+      new Set(supportedHouseRules).size !== supportedHouseRules.length)
+  ) {
     throw new Error('community plugin supportedHouseRules contains an unknown rule');
   }
   return {
     minPlayers,
     maxPlayers,
-    supportedHouseRules: supportedHouseRules === 'all' ? 'all' : [...supportedHouseRules] as string[],
+    supportedHouseRules: supportedHouseRules === 'all' ? 'all' : ([...supportedHouseRules] as string[]),
   };
 }
 
@@ -301,8 +324,7 @@ export class AiProviderRegistry {
   }
 
   settingsPath(): string {
-    return resolve(process.env['UNO_AI_PLUGIN_SETTINGS_FILE']
-      ?? join(defaultAiDataRoot, 'ai-plugin-settings.json'));
+    return resolve(process.env['UNO_AI_PLUGIN_SETTINGS_FILE'] ?? join(defaultAiDataRoot, 'ai-plugin-settings.json'));
   }
 
   private async initializeBuiltin(): Promise<void> {
@@ -326,16 +348,19 @@ export class AiProviderRegistry {
         supportedHouseRules: 'all',
       },
     };
-    this.providers.set(metadata.id, await OnnxValueProvider.create({
-      modelPath: bundledModelPath,
-      inputName: manifest.inputName,
-      outputName: manifest.outputName,
-      featureCount: manifest.featureCount,
-      expectedSha256: manifest.onnxSha256,
-      rulePriorBlend: 0.35,
-      teacherPriorBonus: 0.1,
-      metadata,
-    }));
+    this.providers.set(
+      metadata.id,
+      await OnnxValueProvider.create({
+        modelPath: bundledModelPath,
+        inputName: manifest.inputName,
+        outputName: manifest.outputName,
+        featureCount: manifest.featureCount,
+        expectedSha256: manifest.onnxSha256,
+        rulePriorBlend: 0.35,
+        teacherPriorBonus: 0.1,
+        metadata,
+      }),
+    );
   }
 
   private recordLoadFailure(packageDirectory: string, error: unknown): void {
@@ -347,9 +372,7 @@ export class AiProviderRegistry {
   private async loadCommunityPackage(packageDirectory: string): Promise<void> {
     const manifestPath = join(packageDirectory, 'ai-plugin.json');
     try {
-      const manifest = validateCommunityPluginManifest(
-        JSON.parse(await readFile(manifestPath, 'utf8')),
-      );
+      const manifest = validateCommunityPluginManifest(JSON.parse(await readFile(manifestPath, 'utf8')));
       if (manifest.id === BUILTIN_AI_PROVIDER_ID || this.providers.has(manifest.id)) {
         throw new Error(`duplicate or reserved AI provider id: ${manifest.id}`);
       }
@@ -385,16 +408,14 @@ export class AiProviderRegistry {
     try {
       const value = JSON.parse(await readFile(this.settingsPath(), 'utf8')) as unknown;
       if (!value || typeof value !== 'object') throw new Error('AI plugin settings must be an object');
-      assertExactKeys(
-        value as Record<string, unknown>,
-        ['disabledCommunityPluginIds'],
-        'AI plugin settings',
-      );
+      assertExactKeys(value as Record<string, unknown>, ['disabledCommunityPluginIds'], 'AI plugin settings');
       const settings = value as Record<string, unknown>;
       const disabledIds = settings['disabledCommunityPluginIds'];
-      if (!Array.isArray(disabledIds)
-        || disabledIds.some(id => typeof id !== 'string' || !PROVIDER_ID_PATTERN.test(id))
-        || new Set(disabledIds).size !== disabledIds.length) {
+      if (
+        !Array.isArray(disabledIds) ||
+        disabledIds.some(id => typeof id !== 'string' || !PROVIDER_ID_PATTERN.test(id)) ||
+        new Set(disabledIds).size !== disabledIds.length
+      ) {
         throw new Error('disabledCommunityPluginIds must be an array of unique strings');
       }
       for (const id of disabledIds) {
@@ -473,13 +494,12 @@ export class AiProviderRegistry {
   private isEnabled(id: string): boolean {
     const provider = this.providers.get(id);
     if (!provider) return false;
-    return provider.metadata.source === 'builtin'
-      || !this.disabledCommunityPluginIds.has(id);
+    return provider.metadata.source === 'builtin' || !this.disabledCommunityPluginIds.has(id);
   }
 
   async get(providerId: string): Promise<AiProvider | null> {
     await this.initialize();
-    return this.isEnabled(providerId) ? this.providers.get(providerId) ?? null : null;
+    return this.isEnabled(providerId) ? (this.providers.get(providerId) ?? null) : null;
   }
 
   async has(providerId: string): Promise<boolean> {
@@ -499,9 +519,10 @@ export class AiProviderRegistry {
       capabilities: {
         minPlayers: provider.metadata.capabilities.minPlayers,
         maxPlayers: provider.metadata.capabilities.maxPlayers,
-        supportedHouseRules: provider.metadata.capabilities.supportedHouseRules === 'all'
-          ? 'all'
-          : [...provider.metadata.capabilities.supportedHouseRules],
+        supportedHouseRules:
+          provider.metadata.capabilities.supportedHouseRules === 'all'
+            ? 'all'
+            : [...provider.metadata.capabilities.supportedHouseRules],
       },
       enabled: this.isEnabled(provider.metadata.id),
     }));
@@ -541,8 +562,8 @@ export class AiProviderRegistry {
   async setCommunityPluginEnabled(id: string, enabled: boolean): Promise<AiRegistrySnapshot> {
     await this.initialize();
     const provider = this.providers.get(id);
-    if (!provider) throw new Error('AI plugin not found');
-    if (provider.metadata.source !== 'community') throw new Error('built-in AI cannot be disabled');
+    if (!provider) throw new AiPluginNotFoundError();
+    if (provider.metadata.source !== 'community') throw new BuiltInAiPluginMutationError();
     const operation = this.settingsMutation.then(async () => {
       const wasDisabled = this.disabledCommunityPluginIds.has(id);
       if (enabled) this.disabledCommunityPluginIds.delete(id);

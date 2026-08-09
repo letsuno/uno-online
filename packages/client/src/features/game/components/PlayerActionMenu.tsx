@@ -1,42 +1,36 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { ArrowLeftRight, Crown, UserX, MicOff, Mic, Volume2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { ArrowLeftRight, Crown, UserX, MicOff, Mic } from 'lucide-react';
 import { getSocket } from '@/shared/socket';
 import { useGatewayStore } from '@/shared/voice/gateway-store';
 import { useToastStore } from '@/shared/stores/toast-store';
 import { showConfirm } from '@/shared/stores/confirm-store';
 import { cn } from '@/shared/lib/utils';
-import type { RoomPlayer } from '@/shared/stores/room-store';
+import type { RoomSeatPlayer, RoomStatus } from '@uno-online/shared';
 import { menuItemClass, dangerItemClass } from '../constants/menu-styles';
 
 interface PlayerActionMenuProps {
-  target: RoomPlayer;
+  target: RoomSeatPlayer;
   isOwner: boolean;
-  roomStatus: string;
+  roomStatus: RoomStatus;
   position: { x: number; y: number };
   onClose: () => void;
   onSwapRequest?: (targetUserId: string) => void;
 }
 
-function normalizeVoiceName(name: string): string {
-  return name.trim().replace(/[^\p{L}\p{N}_ .-]/gu, '').slice(0, 32).toLocaleLowerCase();
-}
-
-export default function PlayerActionMenu({ target, isOwner, roomStatus, position, onClose, onSwapRequest }: PlayerActionMenuProps) {
+export default function PlayerActionMenu({
+  target,
+  isOwner,
+  roomStatus,
+  position,
+  onClose,
+  onSwapRequest,
+}: PlayerActionMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const playerVoicePresence = useGatewayStore((s) => s.playerVoicePresence);
-  const usersById = useGatewayStore((s) => s.usersById);
-  const voiceConnected = useGatewayStore((s) => s.status) === 'connected';
+  const playerVoicePresence = useGatewayStore(s => s.playerVoicePresence);
   const targetPresence = playerVoicePresence[target.userId];
   const isForceMuted = targetPresence?.forceMuted ?? false;
   const isTargetInVoice = targetPresence?.inVoice ?? false;
   const isWaiting = roomStatus === 'waiting';
-
-  const mumbleUser = Object.values(usersById).find(
-    u => normalizeVoiceName(u.name) === normalizeVoiceName(target.nickname)
-  );
-  const mumbleUserId = mumbleUser?.id ?? null;
-
-  const [peerVolume, setPeerVolume] = useState(100);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -47,46 +41,47 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
   }, [onClose]);
 
   const transferOwner = async () => {
-    if (!(await showConfirm({
-      title: '移交房主',
-      message: `确定要将房主移交给 ${target.nickname} 吗？`,
-      confirmText: '移交',
-    }))) return;
-    getSocket().emit('room:transfer_owner', { targetId: target.userId }, (res) => {
-      if (!res.success) useToastStore.getState().addToast(res.error ?? '移交失败', 'error');
+    if (
+      !(await showConfirm({
+        title: '移交房主',
+        message: `确定要将房主移交给 ${target.nickname} 吗？`,
+        confirmText: '移交',
+      }))
+    )
+      return;
+    getSocket().emit('room:transfer_owner', { targetId: target.userId }, res => {
+      if (!res.success) useToastStore.getState().addToast(res.error, 'error');
     });
     onClose();
   };
 
   const kickPlayer = async () => {
-    if (!(await showConfirm({
-      title: '踢出玩家',
-      message: `确定要将 ${target.nickname} 踢出房间吗？`,
-      confirmText: '踢出',
-      variant: 'danger',
-    }))) return;
-    getSocket().emit('room:kick', { targetId: target.userId }, (res) => {
-      if (!res.success) useToastStore.getState().addToast(res.error ?? '踢出失败', 'error');
+    if (
+      !(await showConfirm({
+        title: '踢出玩家',
+        message: `确定要将 ${target.nickname} 踢出房间吗？`,
+        confirmText: '踢出',
+        variant: 'danger',
+      }))
+    )
+      return;
+    getSocket().emit('room:kick', { targetId: target.userId }, res => {
+      if (!res.success) useToastStore.getState().addToast(res.error, 'error');
     });
     onClose();
   };
 
   const toggleForceMute = () => {
-    getSocket().emit('voice:force_mute', { targetId: target.userId, muted: !isForceMuted }, (res) => {
-      if (!res.success) useToastStore.getState().addToast(res.error ?? '操作失败', 'error');
+    getSocket().emit('voice:force_mute', { targetId: target.userId, muted: !isForceMuted }, res => {
+      if (!res.success) useToastStore.getState().addToast(res.error, 'error');
     });
     onClose();
   };
 
-  const handleVolumeChange = useCallback((value: number) => {
-    setPeerVolume(value);
-  }, []);
-
   const hasOwnerItems = isOwner && isWaiting;
   const hasForceMute = isOwner && isTargetInVoice;
-  const hasVolume = voiceConnected && isTargetInVoice;
   const hasSwapRequest = !target.isBot && onSwapRequest;
-  if (!hasOwnerItems && !hasForceMute && !hasVolume && !hasSwapRequest) return null;
+  if (!hasOwnerItems && !hasForceMute && !hasSwapRequest) return null;
 
   const clampedX = Math.min(position.x, window.innerWidth - 180);
   const clampedY = Math.min(position.y, window.innerHeight - 200);
@@ -95,10 +90,7 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
     <div
       ref={ref}
       style={{ position: 'fixed', left: clampedX, top: clampedY }}
-      className={cn(
-        'z-fab glass-panel-sm py-1 animate-in fade-in zoom-in-95 duration-100',
-        'min-w-[160px]',
-      )}
+      className={cn('z-fab glass-panel-sm py-1 animate-in fade-in zoom-in-95 duration-100', 'min-w-[160px]')}
     >
       <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-white/5 truncate">
         {target.nickname}
@@ -106,7 +98,10 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
       {hasSwapRequest && (
         <button
           className={menuItemClass}
-          onClick={() => { onSwapRequest(target.userId); onClose(); }}
+          onClick={() => {
+            onSwapRequest(target.userId);
+            onClose();
+          }}
         >
           <ArrowLeftRight size={14} /> 请求换座
         </button>
@@ -128,20 +123,6 @@ export default function PlayerActionMenu({ target, isOwner, roomStatus, position
           {isForceMuted ? <Mic size={14} /> : <MicOff size={14} />}
           {isForceMuted ? '解除静音' : '强制静音'}
         </button>
-      )}
-      {hasVolume && (
-        <div className="px-3 py-2 flex items-center gap-2">
-          <Volume2 size={14} className="text-muted-foreground shrink-0" />
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={peerVolume}
-            onChange={(e) => handleVolumeChange(Number(e.target.value))}
-            className="flex-1 h-1 accent-primary"
-          />
-          <span className="text-2xs text-muted-foreground w-6 text-right">{peerVolume}</span>
-        </div>
       )}
     </div>
   );

@@ -19,8 +19,8 @@ function RoundSeparator({ roundNumber }: { roundNumber: number }) {
 }
 
 export default function GameLog({ embedded = false }: GameLogProps) {
-  const entries = useGameLogStore((s) => s.entries);
-  const roundNumber = useGameStore((s) => s.roundNumber);
+  const entries = useGameLogStore(s => s.entries);
+  const roundNumber = useGameStore(s => s.roundNumber);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -35,12 +35,12 @@ export default function GameLog({ embedded = false }: GameLogProps) {
 
   const renderEntries = (list: typeof entries) => (
     <div className="flex flex-col gap-0.5">
-      {list.map((entry) =>
+      {list.map(entry =>
         entry.type === 'round_separator' ? (
           <RoundSeparator key={entry.id} roundNumber={entry.roundNumber ?? 0} />
         ) : (
           <GameLogEntry key={entry.id} entry={entry} />
-        )
+        ),
       )}
     </div>
   );
@@ -58,15 +58,23 @@ export default function GameLog({ embedded = false }: GameLogProps) {
   }
 
   return (
-    <div className="hidden md:block fixed right-4 bottom-24 w-chat-w z-fab bg-card/80 backdrop-blur-sm rounded-xl border border-border" ref={scrollRef}>
+    <div
+      className="hidden md:block fixed right-4 bottom-24 w-chat-w z-fab bg-card/80 backdrop-blur-sm rounded-xl border border-border"
+      ref={scrollRef}
+    >
       <button
-        onClick={() => setCollapsed((c) => !c)}
+        onClick={() => setCollapsed(c => !c)}
         className="flex items-center justify-between w-full px-3 py-2 cursor-pointer text-left"
       >
         <h3 className="text-sm font-game font-bold text-accent m-0 flex items-center gap-1.5">
-          <BookOpen size={14} /> 游戏日记 {roundNumber > 0 && <span className="text-2xs text-muted-foreground font-normal">第{roundNumber}回合</span>}
+          <BookOpen size={14} /> 游戏日记{' '}
+          {roundNumber > 0 && <span className="text-2xs text-muted-foreground font-normal">第{roundNumber}回合</span>}
         </h3>
-        {collapsed ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+        {collapsed ? (
+          <ChevronUp size={14} className="text-muted-foreground" />
+        ) : (
+          <ChevronDown size={14} className="text-muted-foreground" />
+        )}
       </button>
       {!collapsed && (
         <div className="px-3 pb-3 max-h-[50vh] overflow-y-auto scrollbar-thin">

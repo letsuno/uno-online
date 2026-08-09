@@ -9,15 +9,22 @@ const STORAGE_KEY = 'app-last-seen-version';
 const VISIBLE_COUNT = 3;
 
 let externalOpen: (() => void) | null = null;
-export function openChangelog() { externalOpen?.(); }
+export function openChangelog() {
+  externalOpen?.();
+}
 
 export default function ChangelogModal() {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const token = useAuthStore((s) => s.token);
+  const token = useAuthStore(s => s.token);
 
   const show = useCallback(() => setOpen(true), []);
-  useEffect(() => { externalOpen = show; return () => { externalOpen = null; }; }, [show]);
+  useEffect(() => {
+    externalOpen = show;
+    return () => {
+      externalOpen = null;
+    };
+  }, [show]);
 
   useEffect(() => {
     if (!token) return;
@@ -52,7 +59,7 @@ export default function ChangelogModal() {
         </Button>
       }
     >
-      {visibleEntries.map((entry) => (
+      {visibleEntries.map(entry => (
         <div key={entry.version} className="mb-5 last:mb-0">
           <div className="mb-2 flex items-baseline gap-2">
             <span className="text-base font-bold text-accent">v{entry.version}</span>

@@ -28,7 +28,7 @@
 - **前端**：React 19、TypeScript、Vite 8、Tailwind CSS v4、Zustand
 - **后端**：Fastify、Socket.IO、TypeScript
 - **共享逻辑**：`packages/shared` 内的纯 TypeScript 规则引擎
-- **存储**：SQLite + Kysely；Redis 可选，未配置时使用内存回退
+- **存储**：SQLite + Kysely；生产使用持久化 Redis，开发模式可使用内存 KV
 - **语音**：Mumble + mumble-web-gateway
 - **部署**：Docker + Caddy
 - **仓库结构**：pnpm workspaces
@@ -85,15 +85,11 @@ pnpm --filter client exec tsc --noEmit
 
 ## 更多文档
 
-- [后端开发规范](docs/backend-development-guide.md)
-- [前端开发规范](docs/frontend-development-guide.md)
-- [插件扩展规范](docs/plugin-extension-guide.md)
 - [村规扩展指南](docs/house-rules-extension-guide.md)
 - [通信协议文档](docs/protocol.md)
 - [部署与镜像](docs/deployment.md)
 - [MCP 使用指南](docs/mcp.md)
 - [社区 AI 插件接口](docs/ai-model-provider.md)
-- [UI/UX 规范](UIUX-GUIDELINES.md)
 
 环境变量以 `.env.example` 为准。HTTP API 统一挂载在 `/api` 下；路由和 Socket.IO 事件见通信协议文档。
 
