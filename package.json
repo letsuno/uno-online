@@ -20,11 +20,13 @@
     ]
   },
   "scripts": {
-    "test": "pnpm format:check && pnpm -r test",
+    "test": "pnpm format:check && node --test scripts/release/release-scripts.test.mjs && pnpm -r test",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "format": "prettier --write . --ignore-unknown",
     "format:check": "prettier --check . --ignore-unknown",
+    "release:check": "node scripts/release/check-release.mjs",
+    "release:notes": "node scripts/release/release-notes.mjs",
     "version:sync": "node -e \"const v=require('./package.json').version;require('child_process').execSync('pnpm -r exec npm pkg set version='+v,{stdio:'inherit'})\""
   },
   "devDependencies": {

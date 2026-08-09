@@ -19,6 +19,7 @@ pnpm monorepo，共六个包：
 
 - **[协议文档](docs/protocol.md)** — HTTP、Socket.IO、MCP 与部署兼容性；代码中的共享类型和 `PROTOCOL_VERSION` 才是最终事实来源
 - **[部署文档](docs/deployment.md)** — Docker Compose、环境变量、Redis 与运行时状态发布策略
+- **[CI 与自动发版](docs/ci-release.md)** — GitHub Actions、仓库配置、Tag 发版与故障恢复
 - **[MCP 使用指南](docs/mcp.md)** — MCP 配置、工具和调用方式
 - **[AI 模型提供者](docs/ai-model-provider.md)** — 内置/社区 AI provider 与 ONNX 插件
 - **[村规扩展指南](docs/house-rules-extension-guide.md)** — `HouseRules`、规则注册表和新增村规步骤
@@ -190,7 +191,9 @@ cd packages/mcp && npm publish --access public
 
 ## Docker 与部署
 
-当前仓库没有 GitHub Actions CI 或自动发布工作流；构建、推送、部署、npm 发布和 GitHub Release 均为手工流程。
+`.github/workflows/ci.yml` 会在 PR 与 main push 上执行完整验证和两个 Docker target 构建。
+`.github/workflows/release.yml` 只在推送合法 `vX.Y.Z` Tag 后发布 Docker、MCP npm 包和 GitHub Release。
+生产服务器部署仍是显式运维步骤，不由 GitHub 自动 SSH 或重启。
 
 `Dockerfile` 有两个发布目标：
 
@@ -244,7 +247,7 @@ docker compose up -d --no-deps caddy
 
 ## 版本号与完整发版流程
 
-自动化尚未实现；以下步骤均需显式执行并核对结果。
+GitHub 自动发布只负责验证和发布制品；版本判断、兼容性判断、PR、Tag 与生产部署仍需显式执行。
 
 1. **确定 SemVer**：根据变更范围决定 patch/minor/major。
 2. **检查版本范围**：`git log --oneline v<上个版本号>..HEAD`，收集完整变更。
@@ -273,32 +276,13 @@ docker compose up -d --no-deps caddy
    git push origin v<版本号>
    ```
 
-9. **构建并推送 Docker 镜像**：同时保留不可变版本 tag 和 `latest`：
+9. **等待自动发版**：Tag push 触发 `Release` workflow。它会再次校验 Tag/main/版本/changelog，执行
+   build/test/MCP pack，推送 `server` 与 `caddy` 的 `v<版本号>` 镜像、稳定版 `latest`，通过 npm OIDC
+   发布 MCP，最后从 CHANGELOG 创建 GitHub Release。任一步失败都不能视为发版完成。
+10. **按兼容性策略部署**：自动发版不连接生产服务器。确认 workflow 全绿后，保留 Redis/JWT，或在
+    破坏性发布维护窗口切换 schema/protocol，再更新 Compose 应用容器。
+11. **发布后验证**：检查 `/api/health`、`/api/server/info`、浏览器登录/重连以及版本化 Docker/MCP 制品。
 
-   ```bash
-   docker build --target server -t djkcyl/uno-online-server:v<版本号> -t djkcyl/uno-online-server:latest .
-   docker build --target caddy -t djkcyl/uno-online-caddy:v<版本号> -t djkcyl/uno-online-caddy:latest .
-   docker push djkcyl/uno-online-server:v<版本号>
-   docker push djkcyl/uno-online-server:latest
-   docker push djkcyl/uno-online-caddy:v<版本号>
-   docker push djkcyl/uno-online-caddy:latest
-   ```
-
-   仅在语音网关有改动时构建并推送 `djkcyl/uno-online-mumble-gateway`；它不随每个应用版本强制重发。
-
-10. **按兼容性策略部署**：保留 Redis/JWT，或在破坏性发布的维护窗口切换 schema/protocol。
-11. **发布 MCP npm 包**：构建、pack 预检后运行 `npm publish --access public`。
-12. **创建 GitHub Release**：标题使用 `v<版本号> — <简短标题>`，正文取对应 CHANGELOG，并附：
-
-    ```markdown
-    ### Docker
-
-    `docker pull djkcyl/uno-online-server:v<版本号>`
-    `docker pull djkcyl/uno-online-caddy:v<版本号>`
-
-    ### MCP
-
-    `npx @uno-online/mcp@<版本号>`
-    ```
-
-    使用 `gh release create v<版本号> --title "..." --notes-file <文件>` 创建，避免在命令行重复维护长正文。
+预发布 Tag（如 `v1.2.0-rc.1`）会生成 prerelease，只推版本镜像，不更新 Docker `latest`。语音网关镜像
+不在自动发版范围内。仓库 Secrets、npm Trusted Publisher 和 GitHub Environment 的一次性配置见
+`docs/ci-release.md`。

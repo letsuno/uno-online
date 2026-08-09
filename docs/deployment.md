@@ -1,5 +1,8 @@
 # UNO Online — 部署与镜像
 
+server/caddy 镜像、MCP npm 包与 GitHub Release 由版本 Tag 自动发布；生产 Compose 更新仍需人工确认兼容性后
+执行。工作流与一次性仓库配置见 [CI 与自动发版](ci-release.md)。
+
 ## Docker Compose
 
 ```bash
