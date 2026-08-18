@@ -39,6 +39,12 @@
 `latest`。
 工作流不发布 `mumble-gateway`，也不连接或重启生产服务器。
 
+生产 Komodo 每天 03:00 检查当前选择的镜像通道，并自动更新 UNO 的 `server` 与 `caddy`。因此“GitHub
+workflow 不直接部署”不等于“生产永远需要手工部署”：兼容版本会在制品发布后由 Komodo 的下一次检查接管；
+需要立即上线时可在 Komodo 中手动 Check/Deploy。Beta 制品只有在 Stack 已切到 `beta` 时才会自动上线。
+破坏性发布必须在推送会移动当前镜像通道的版本 Tag 之前关闭 Stack Auto Update，具体操作见
+[部署文档](deployment.md)。
+
 ## 一次性配置
 
 ### Docker Hub
@@ -89,8 +95,8 @@ git tag -a v<版本号> -m "release: v<版本号>"
 git push origin v<版本号>
 ```
 
-Tag push 后在 GitHub Actions 等待 `Release / Publish release` 全部完成，再按
-[部署文档](deployment.md) 更新生产环境。
+Tag push 后在 GitHub Actions 等待 `Release / Publish release` 全部完成。状态兼容发布可等待 Komodo 下次自动
+更新，或在面板中立即部署；破坏性发布按[部署文档](deployment.md)中的维护窗口流程手动执行。
 
 ## 失败与重试
 

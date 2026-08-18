@@ -1,9 +1,14 @@
 # UNO Online — 部署与镜像
 
-server/caddy 镜像、MCP npm 包与 GitHub Release 由版本 Tag 自动发布；生产 Compose 更新仍需人工确认兼容性后
-执行。工作流与一次性仓库配置见 [CI 与自动发版](ci-release.md)。
+server/caddy 镜像、MCP npm 包与 GitHub Release 由版本 Tag 自动发布。当前生产环境由 Komodo 管理：状态兼容
+版本会自动更新当前选择的 `latest` 或 `beta` 通道；破坏性版本仍须先人工完成兼容性判断和维护窗口安排。
+工作流与一次性仓库配置见 [CI 与自动发版](ci-release.md)。
 
-## Docker Compose
+## 独立 Docker Compose 部署（非当前生产环境）
+
+以下步骤用于尚未接入 Komodo 的新主机或独立环境。当前生产服务器不要按本节从 `.env.example` 重新生成配置，
+应使用下文的 Komodo 流程；必须脱离面板操作时，使用[手动回退到 Compose](#手动回退到-compose)中的双 env
+文件命令。
 
 ```bash
 cp .env.example .env
@@ -34,7 +39,7 @@ curl http://localhost/api/health
 curl http://localhost/api/server/info
 ```
 
-状态兼容版本发布成功后，只更新应用容器，不重建 Redis、SQLite 或语音服务：
+独立 Compose 环境收到状态兼容版本后，只更新应用容器，不重建 Redis、SQLite 或语音服务：
 
 ```bash
 docker compose pull server caddy
@@ -47,22 +52,72 @@ schema 或 Socket 协议破坏性发布不能直接执行这组命令，必须�
 
 ## Komodo 管理与自动更新
 
-[Komodo](https://komo.do/docs/deploy/compose) 可以直接接管现有 Compose 项目，不要求迁移数据目录或配置
-GitHub OAuth：
+生产环境由 [Komodo](https://komo.do/docs/deploy/compose) 管理，当前布局如下：
 
-1. Stack 使用 `Files on host`，`run_directory` 指向当前 Compose 所在目录。
-2. `project_name` 必须与服务器上 `docker compose ls` 显示的现有项目名相同。
-3. 初次接管保持当前 `.env`、相对挂载路径和 `./data` 目录不变。
-4. 在 Stack 环境变量中设置 `UNO_IMAGE_TAG=latest` 或 `UNO_IMAGE_TAG=beta`，修改后 Deploy 即可切换通道。
-5. 开启 `poll_for_updates` 可显示当前通道的新镜像；开启 `auto_update` 后会自动 pull 并重新部署当前通道。
+- Komodo Core、MongoDB 与 Periphery 位于 `/etc/komodo/compose`。
+- UNO Stack 名为 `uno-online`，Compose 项目名同为 `uno-online`，工作目录是
+  `/etc/komodo/stacks/uno-online`，使用服务器上的 `docker-compose.yml`。
+- 面板管理的 `.env` 只保存 `UNO_IMAGE_TAG` 和 `RUNTIME_SCHEMA_VERSION`。
+- `.env.secrets` 保存其余生产变量，权限为 `0600`；它作为不跟踪的 Additional Env File 传给 Compose，不能在
+  面板中显示、提交到 Git 或再次定义镜像通道/schema。
+- SQLite、Caddy 和语音数据仍使用工作目录下的 `./data` 挂载。Redis 也是独立挂载；兼容发布保留它，明确的
+  破坏性发布才按维护计划重建或切换 namespace。
 
-正式版与 Beta 共用 SQLite、Redis 和 JWT 时，自动更新仍受本页兼容性规则约束。若新版本改变运行时结构或
-Socket 协议，应先关闭 `auto_update`、排空房间并完成 schema/protocol 切换；若 Beta 修改了持久用户数据库
-schema，切回旧版本前必须确认迁移可回退。需要稳定回滚点时，把 `UNO_IMAGE_TAG` 改成上一个精确版本，而不是
-继续跟随可移动的 `latest`/`beta`。
+Komodo 只监听服务器的 `127.0.0.1:9120`，新用户注册已关闭。通过 SSH 隧道访问：
 
-管理面板拥有 Docker 主机控制权限，不应直接暴露到公网。单人运维可只绑定到 `127.0.0.1`，通过 SSH 端口转发
-访问。
+```bash
+ssh -N -L 9120:127.0.0.1:9120 root@<server>
+```
+
+随后打开 `http://127.0.0.1:9120`。不要把管理端口或 Periphery 直接暴露到公网；它们拥有 Docker 主机控制
+权限。
+
+### 切换正式版、Beta 与精确版本
+
+Actions 中有两条已验证的切换动作：
+
+- `Switch UNO to Beta`：把 `UNO_IMAGE_TAG` 改为 `beta` 并部署 Stack。
+- `Switch UNO to Stable`：把 `UNO_IMAGE_TAG` 改为 `latest` 并部署 Stack。
+
+在对应 Action 页面选择 **Run Action** 并完成名称确认即可切换。切换后在 Stack 页面确认状态为 `running`，并
+检查 `/api/server/info` 的版本。若要固定回滚点，在 Stack 的 Environment 中把 `UNO_IMAGE_TAG` 改为精确
+版本（如 `v1.2.3`），保存后手动 Deploy；不要用会继续移动的 `latest`/`beta` 代替固定回滚版本。
+
+### 自动更新与备份
+
+Komodo 的 `Global Auto Update` 每天 03:00（`Asia/Shanghai`）运行。UNO Stack 已启用：
+
+- Poll for Updates、Auto Update、Full Stack Auto Update；
+- Pre Pull Images；
+- Destroy Before Deploy 关闭；
+- 自动更新检查忽略 `redis`、`mumble` 和 `mumble-gateway`，只有 `server` 与 `caddy` 跟随当前通道。
+
+Full Stack Auto Update 会运行一次完整的 Compose 部署，但 Compose 不会重建配置和镜像均未变化的服务。自动
+更新不会在 `latest` 与 `beta` 之间自动切换，只会更新当前选择的通道。
+
+`Backup Core Database` 每天 01:00 运行，备份写入 `/etc/komodo/backups`；Komodo 默认保留最近 14 份。该
+过程已手动执行验证。初次迁移前的应用配置和数据另存于 `/root/uno-online-backups/pre-komodo-20260818`。
+
+正式版与 Beta 共用 SQLite、Redis 和 JWT，因此自动更新仍受本页兼容性规则约束：
+
+- 状态兼容发布可以保持自动更新开启，Komodo 会在下次检查时部署当前通道的新镜像。
+- 运行时 schema、Socket 协议或不可回退的 SQLite schema 发生破坏性变化时，必须在推送会移动当前通道的 Tag
+  **之前**关闭 Stack Auto Update，排空房间并完成 schema/protocol/数据库迁移安排；维护窗口部署和验证完成后
+  再恢复自动更新。
+- Beta 修改了持久用户数据库 schema 时，切回稳定版之前必须确认数据库迁移可回退。
+
+### 手动回退到 Compose
+
+Komodo 不可用时仍可直接操作同一 Compose 项目。两个 env 文件都必须显式传入：
+
+```bash
+cd /etc/komodo/stacks/uno-online
+docker compose --env-file .env --env-file .env.secrets pull server caddy
+docker compose --env-file .env --env-file .env.secrets up -d --no-deps --wait server
+docker compose --env-file .env --env-file .env.secrets up -d --no-deps --wait caddy
+```
+
+不要从 `.env.example` 覆盖生产 `.env.secrets`，也不要另起 Compose 项目名，否则会创建一套重复容器和网络。
 
 ## 关键配置
 

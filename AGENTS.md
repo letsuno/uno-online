@@ -195,7 +195,8 @@ pnpm --dir packages/mcp exec npm pack --dry-run
 `.github/workflows/ci.yml` 会在 PR 与 main push 上执行完整验证和两个 Docker target 构建。
 `.github/workflows/release.yml` 通常由合法 SemVer Tag push 触发；已有 Tag 的发布故障也可从 `main` 通过
 `workflow_dispatch` 指定原 Tag 恢复。两种入口都只检出现有 Tag，并执行相同的 Tag/main/版本校验。
-生产服务器部署仍是显式运维步骤，不由 GitHub 自动 SSH 或重启。
+GitHub Actions 不会 SSH 或直接重启生产服务器。生产 Komodo 会按计划轮询当前镜像通道并更新兼容版本；
+破坏性发布仍是显式运维步骤。
 
 `Dockerfile` 有两个发布目标：
 
@@ -222,6 +223,21 @@ docker build -f mumble.Dockerfile -t djkcyl/uno-online-mumble-gateway:latest .
 - Compose 的 `UNO_IMAGE_TAG` 选择 `latest`、`beta` 或精确版本；`server` 与 `caddy` 必须始终使用同一 Tag
 - `server` 与 `caddy` 都有容器健康检查；部署工具应等待健康状态后再报告成功
 
+### 生产 Komodo
+
+- 面板只通过 SSH 隧道访问服务器 `127.0.0.1:9120`，不要公开管理端口；新用户注册保持关闭
+- UNO Stack 工作目录是 `/etc/komodo/stacks/uno-online`，Stack/Compose 项目名均为 `uno-online`
+- 面板管理的 `.env` 只包含 `UNO_IMAGE_TAG` 与 `RUNTIME_SCHEMA_VERSION`；其余生产变量位于权限为 `0600` 的
+  `.env.secrets`，作为 Track Disabled 的 Additional Env File 使用
+- `Switch UNO to Beta` 与 `Switch UNO to Stable` Actions 负责切换通道并部署；精确回滚版本仍在 Stack
+  Environment 中手工设置
+- 每天 03:00 的 Global Auto Update 只检查 `server` 与 `caddy`；`redis`、`mumble` 和
+  `mumble-gateway` 必须留在自动更新忽略列表
+- Stack 启用 Pre Pull Images，关闭 Destroy Before Deploy；不要让自动部署先执行 `compose down`
+- 每天 01:00 备份 Komodo 数据库到 `/etc/komodo/backups`；默认保留最近 14 份
+- 手动执行 Compose 时必须同时传入 `--env-file .env --env-file .env.secrets`，且保持项目名为
+  `uno-online`
+
 ### 发布兼容性判定
 
 应用 SemVer、运行时 schema 与网络协议是三个独立版本维度。每次发版必须分别判断：
@@ -240,14 +256,15 @@ docker build -f mumble.Dockerfile -t djkcyl/uno-online-mumble-gateway:latest .
 兼容更新已运行的 Compose 环境时，仅拉取并重建应用容器：
 
 ```bash
-docker compose pull server caddy
-docker compose up -d --no-deps --wait server
-docker compose up -d --no-deps --wait caddy
+docker compose --env-file .env --env-file .env.secrets pull server caddy
+docker compose --env-file .env --env-file .env.secrets up -d --no-deps --wait server
+docker compose --env-file .env --env-file .env.secrets up -d --no-deps --wait caddy
 ```
 
-首次部署使用 `docker compose up -d`。破坏性发布应安排维护窗口：先停止接纳新房间，在旧 server 仍运行时
-等待或终止活跃房间，再停止旧 server，最后更新 schema/protocol 并部署匹配的 server 与 caddy。具体变量和
-运维说明见 `docs/deployment.md`。
+当前生产不使用省略 env 文件的裸 `docker compose up -d`。首次创建或完整恢复生产 Stack 由 Komodo 部署；
+必须脱离面板操作时，也要显式传入 `.env` 与 `.env.secrets` 并保持 Compose 项目名为 `uno-online`。破坏性发布
+应安排维护窗口：先停止接纳新房间，在旧 server 仍运行时等待或终止活跃房间，再停止旧 server，最后更新
+schema/protocol 并部署匹配的 server 与 caddy。具体变量和运维说明见 `docs/deployment.md`。
 
 ## 版本号与完整发版流程
 
@@ -283,8 +300,9 @@ GitHub 自动发布只负责验证和发布制品；版本判断、兼容性判�
 9. **等待自动发版**：Tag push 触发 `Release` workflow。它会再次校验 Tag/main/版本/changelog，执行
    build/test/MCP pack，推送 `server` 与 `caddy` 的 `v<版本号>` 镜像、稳定版 `latest`，通过 npm OIDC
    发布 MCP，最后从 CHANGELOG 创建 GitHub Release。任一步失败都不能视为发版完成。
-10. **按兼容性策略部署**：自动发版不连接生产服务器。确认 workflow 全绿后，保留 Redis/JWT，或在
-    破坏性发布维护窗口切换 schema/protocol，再更新 Compose 应用容器。
+10. **按兼容性策略部署**：自动发版不连接生产服务器。兼容发布由生产 Komodo 在下次 Global Auto Update
+    更新当前通道，也可在面板中立即部署；破坏性发布必须在推送会移动当前镜像通道的版本 Tag 前关闭 Stack
+    Auto Update，并在维护窗口排空房间、切换 schema/protocol、部署和验证后再恢复自动更新。
 11. **发布后验证**：检查 `/api/health`、`/api/server/info`、浏览器登录/重连以及版本化 Docker/MCP 制品。
 
 预发布 Tag（如 `v1.2.0-beta.0`）会生成 prerelease，推送精确版本镜像并更新 Docker `beta`，但不更新 Docker
