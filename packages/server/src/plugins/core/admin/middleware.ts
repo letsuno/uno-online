@@ -7,7 +7,7 @@ export function adminOnly(jwtSecret: string) {
     await auth(request, reply);
     if (reply.sent) return;
     if ((request as AuthenticatedRequest).user.role !== 'admin') {
-      return reply.code(403).send({ error: 'Admin access required' });
+      return reply.code(403).send({ error: '需要管理员权限' });
     }
   };
 }

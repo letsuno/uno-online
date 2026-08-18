@@ -9,6 +9,7 @@ import {
   setPassword,
   bindGithub,
   getUserById,
+  markUserLogin,
 } from '../../../db/user-repo.js';
 import { hashPassword, verifyPassword } from '../../../auth/password.js';
 import { validateUsername, validatePassword, validateNickname } from '../../../auth/validation.js';
@@ -117,6 +118,7 @@ function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) 
 
     const passwordHash = await hashPassword(password);
     const user = await createLocalUser({ username, nickname: nickname.trim(), passwordHash, avatarData });
+    await markUserLogin(user.id);
     const token = makeToken(user, config.jwtSecret);
     return { token, user: userResponse(user) };
   });
@@ -142,6 +144,7 @@ function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) 
         return reply.code(401).send({ error: '用户名或密码错误' });
       }
 
+      await markUserLogin(user.id);
       const token = makeToken(user, config.jwtSecret);
       return { token, user: userResponse(user) };
     },
@@ -192,6 +195,7 @@ function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) 
         username: githubUser.login,
         avatarUrl: githubUser.avatar_url,
       });
+      await markUserLogin(user.id);
       const token = makeToken(user, config.jwtSecret);
       return { token, user: userResponse(user), isNewUser: user.isNewUser };
     } catch (err) {
@@ -222,6 +226,7 @@ function registerProductionRoutes(fastify: FastifyInstance, ctx: PluginContext) 
       await bindGithub(user.id, githubId, githubAvatarUrl ?? null);
       const updated = await getUserById(user.id);
       if (!updated) return reply.code(500).send({ error: 'Bind failed' });
+      await markUserLogin(updated.id);
       const token = makeToken(updated, config.jwtSecret);
       return { token, user: userResponse(updated) };
     },

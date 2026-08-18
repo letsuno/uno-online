@@ -1,6 +1,6 @@
 {
   "name": "uno-online",
-  "version": "0.15.0-beta.0",
+  "version": "0.15.0-beta.1",
   "private": true,
   "repository": {
     "type": "git",
@@ -26,6 +26,7 @@
     "format": "prettier --write . --ignore-unknown",
     "format:check": "prettier --check . --ignore-unknown",
     "release:check": "node scripts/release/check-release.mjs",
+    "release:stable-diff": "node scripts/release/stable-diff.mjs",
     "release:notes": "node scripts/release/release-notes.mjs",
     "version:sync": "node -e \"const v=require('./package.json').version;require('child_process').execSync('pnpm -r exec npm pkg set version='+v,{stdio:'inherit'})\""
   },

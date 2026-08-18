@@ -1,9 +1,9 @@
 const variantStyles = {
-  default: 'bg-blue-600 text-white',
-  secondary: 'bg-slate-700 text-slate-300',
-  success: 'bg-green-700/40 text-green-300',
-  warning: 'bg-yellow-700/40 text-yellow-300',
-  danger: 'bg-red-700/40 text-red-300',
+  default: 'border-blue-400/20 bg-blue-400/10 text-blue-200',
+  secondary: 'border-white/8 bg-white/5 text-slate-300',
+  success: 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300',
+  warning: 'border-amber-400/20 bg-amber-400/10 text-amber-300',
+  danger: 'border-rose-400/20 bg-rose-400/10 text-rose-300',
 };
 
 interface BadgeProps {
@@ -14,7 +14,7 @@ interface BadgeProps {
 export function Badge({ variant = 'default', children }: BadgeProps) {
   return (
     <span
-      className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold ${variantStyles[variant]}`}
+      className={`inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-medium leading-none ${variantStyles[variant]}`}
     >
       {children}
     </span>

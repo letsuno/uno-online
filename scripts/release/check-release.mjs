@@ -73,6 +73,18 @@ const clientVersion = new RegExp('version:\\s*[\'"]' + escapeRegExp(version) + '
 if (!clientVersion.test(clientChangelog)) {
   errors.push('客户端 changelog 缺少版本 ' + version);
 }
+const clientVersions = Array.from(clientChangelog.matchAll(/version:\s*['"]([^'"]+)['"]/gu), match => match[1]);
+if (clientVersions[0] !== version) {
+  errors.push('客户端 changelog 的首个版本必须是当前版本 ' + version);
+}
+if (!version.includes('-')) {
+  const retainedPrereleases = clientVersions.filter(candidate => candidate.startsWith(version + '-'));
+  if (retainedPrereleases.length > 0) {
+    errors.push(
+      '正式版客户端 changelog 不能保留同版本预发布条目: ' + retainedPrereleases.join(', ') + '；请用正式版条目替换',
+    );
+  }
+}
 
 if (errors.length > 0) {
   console.error('发布元数据校验失败:\n' + errors.map(error => '  - ' + error).join('\n'));

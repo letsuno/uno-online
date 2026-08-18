@@ -6,6 +6,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.15.0-beta.1',
+    date: '2026-08-18',
+    changes: [
+      '管理后台改为紧凑的信息界面，统一中文并删除多余的宣传文案和装饰设计',
+      '管理后台新增服务器、账号凭据、房间座位与规则、对局阶段和 AI 引擎运行信息',
+      '用户管理新增在线状态、连接数量、当前房间、最近登录和 API 密钥最近使用时间',
+      '测试版与正式版支持独立更新通道，测试版发布不会影响正式版 latest',
+    ],
+  },
+  {
     version: '0.15.0-beta.0',
     date: '2026-08-18',
     changes: [

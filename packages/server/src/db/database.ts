@@ -15,6 +15,7 @@ interface UserTable {
   role: Generated<string>;
   createdAt: Generated<string>;
   updatedAt: Generated<string>;
+  lastLoginAt: Generated<string | null>;
 }
 
 interface ApiKeyTable {
@@ -120,6 +121,7 @@ export async function migrateDb(): Promise<void> {
     .addColumn('role', 'text', c => c.defaultTo('normal').notNull())
     .addColumn('created_at', 'text', c => c.defaultTo(sql`(datetime('now'))`).notNull())
     .addColumn('updated_at', 'text', c => c.defaultTo(sql`(datetime('now'))`).notNull())
+    .addColumn('last_login_at', 'text')
     .execute();
 
   try {
@@ -127,6 +129,15 @@ export async function migrateDb(): Promise<void> {
       .alterTable('users')
       .addColumn('role', 'text', c => c.defaultTo('normal').notNull())
       .execute();
+  } catch (err) {
+    const msg = (err as Error).message ?? '';
+    if (!msg.includes('duplicate column name')) {
+      throw err;
+    }
+  }
+
+  try {
+    await k.schema.alterTable('users').addColumn('last_login_at', 'text').execute();
   } catch (err) {
     const msg = (err as Error).message ?? '';
     if (!msg.includes('duplicate column name')) {

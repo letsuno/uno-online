@@ -1,7 +1,6 @@
 import { create } from 'zustand';
+import { USER_ROLES, type UserRole } from '@uno-online/shared';
 import { apiFetch } from '@/lib/api';
-
-type UserRole = 'normal' | 'member' | 'vip' | 'admin';
 
 interface User {
   id: string;
@@ -18,14 +17,14 @@ interface JwtPayload {
   exp: number;
 }
 
-const USER_ROLES = new Set<UserRole>(['normal', 'member', 'vip', 'admin']);
+const USER_ROLE_SET = new Set<UserRole>(USER_ROLES);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function isUserRole(value: unknown): value is UserRole {
-  return typeof value === 'string' && USER_ROLES.has(value as UserRole);
+  return typeof value === 'string' && USER_ROLE_SET.has(value as UserRole);
 }
 
 function decodeJwt(token: string): JwtPayload | null {
@@ -33,7 +32,12 @@ function decodeJwt(token: string): JwtPayload | null {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
     const payload = parts[1]!;
-    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    const base64 = payload
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(Math.ceil(payload.length / 4) * 4, '=');
+    const bytes = Uint8Array.from(atob(base64), character => character.charCodeAt(0));
+    const decoded = new TextDecoder().decode(bytes);
     const value: unknown = JSON.parse(decoded);
     if (
       !isRecord(value) ||
@@ -133,7 +137,7 @@ export const useAuthStore = create<AuthState>(set => ({
 
       const payload = decodeJwt(data.token);
       if (!payload || payload.role !== 'admin') {
-        set({ loading: false, error: 'This account does not have admin access' });
+        set({ loading: false, error: '该账号没有管理员权限' });
         return false;
       }
 
@@ -152,7 +156,7 @@ export const useAuthStore = create<AuthState>(set => ({
     } catch (err) {
       set({
         loading: false,
-        error: err instanceof Error ? err.message : 'Login failed',
+        error: err instanceof Error ? err.message : '登录失败',
       });
       return false;
     }

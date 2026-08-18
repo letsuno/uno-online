@@ -1,9 +1,9 @@
 const variantStyles = {
-  primary: 'bg-blue-600 text-white shadow hover:bg-blue-700',
-  destructive: 'bg-red-700 text-white shadow-sm hover:bg-red-600',
-  secondary: 'bg-slate-700 text-white shadow-sm hover:bg-slate-600',
-  outline: 'border border-slate-600 text-slate-300 shadow-sm hover:bg-slate-700 hover:text-white',
-  ghost: 'text-slate-300 hover:bg-slate-700 hover:text-white',
+  primary: 'bg-blue-600 text-white hover:bg-blue-500',
+  destructive: 'bg-rose-700 text-white hover:bg-rose-600',
+  secondary: 'border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700',
+  outline: 'border border-slate-700 text-slate-300 hover:bg-slate-800',
+  ghost: 'text-slate-400 hover:bg-slate-800 hover:text-white',
 };
 
 const sizeStyles = {
@@ -19,7 +19,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 export function Button({ variant = 'primary', size = 'default', className = '', ...props }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 disabled:pointer-events-none disabled:opacity-50 ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
       {...props}
     />
   );
