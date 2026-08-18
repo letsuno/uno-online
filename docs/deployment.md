@@ -20,14 +20,16 @@ docker compose up -d
 
 Compose 使用已经发布到镜像仓库的镜像，没有本地 `build:` 配置，因此部署时不要使用无效的 `--build` 参数。
 
-`UNO_IMAGE_TAG` 同时控制 server 与 caddy 的镜像版本：
+`docker-compose.yml` 明确使用 `latest`，默认跟随正式版。测试版使用额外的覆盖文件：
 
-| 值              | 用途                       |
-| --------------- | -------------------------- |
-| `latest`        | 跟随最新正式版             |
-| `beta`          | 跟随最新 `*-beta.N` 测试版 |
-| `v1.2.3`        | 锁定或回滚到精确正式版本   |
-| `v1.2.3-beta.0` | 锁定或回滚到精确测试版本   |
+```bash
+docker compose -f docker-compose.yml -f docker-compose.beta.yml pull
+docker compose -f docker-compose.yml -f docker-compose.beta.yml up -d
+```
+
+镜像名必须保留明确的 Tag，不能改为 `image: ...:${UNO_IMAGE_TAG}`。Komodo 2.2.0 虽然能把该变量传给
+Docker Compose，但 Global Auto Update 不能可靠地用这种写法判断运行镜像与远端镜像是否一致；上游跟踪见
+[moghtech/komodo#921](https://github.com/moghtech/komodo/issues/921)。
 
 Release workflow 只在所有构建、测试和打包预检通过后推送镜像。正式 Tag 更新 `latest`，Beta Tag 更新 `beta`；
 精确版本 Tag 永远保留，可用于回滚。
@@ -57,43 +59,57 @@ docker compose up -d --no-deps --wait caddy
 - Komodo Core、MongoDB 与 Periphery 位于 `/etc/komodo/compose`。
 - UNO Stack 名为 `uno-online`，Compose 项目名同为 `uno-online`，工作目录是
   `/etc/komodo/stacks/uno-online`，使用服务器上的 `docker-compose.yml`。
-- 面板管理的 `.env` 只保存 `UNO_IMAGE_TAG`。
-- `.env.secrets` 保存其余生产变量，权限为 `0600`；它作为不跟踪的 Additional Env File 传给 Compose，不能在
-  面板中显示、提交到 Git 或再次定义镜像通道。
+- Stack Environment 不保存镜像通道；Komodo 仍会创建 `.env`，当前该文件为空。
+- `.env.secrets` 保存生产变量，权限为 `0600`；它作为不跟踪的 Additional Env File 传给 Compose，不能在
+  面板中显示或提交到 Git。
 - SQLite、Caddy 和语音数据仍使用工作目录下的 `./data` 挂载。Redis 也是独立挂载；兼容发布保留它，明确的
   破坏性发布会由新 server 按代码代次自动清空 UNO 运行时状态。
 
-Komodo 只监听服务器的 `127.0.0.1:9120`，新用户注册已关闭。通过 SSH 隧道访问：
+Komodo 当前映射到服务器的 `0.0.0.0:9120`，可通过 `http://111.229.152.99:9120` 访问，新用户注册已关闭。
+该入口目前没有 TLS，登录凭证和管理操作不应长期通过明文 HTTP 传输；后续应配置 HTTPS，或者把端口重新限制为
+`127.0.0.1:9120` 并使用 SSH 隧道：
 
 ```bash
 ssh -N -L 9120:127.0.0.1:9120 root@<server>
 ```
 
-随后打开 `http://127.0.0.1:9120`。不要把管理端口或 Periphery 直接暴露到公网；它们拥有 Docker 主机控制
-权限。
+随后打开 `http://127.0.0.1:9120`。Periphery 没有映射公网端口。
 
 ### 切换正式版、Beta 与精确版本
 
 Actions 中有两条已验证的切换动作：
 
-- `Switch UNO to Beta`：把 `UNO_IMAGE_TAG` 改为 `beta` 并部署 Stack。
-- `Switch UNO to Stable`：把 `UNO_IMAGE_TAG` 改为 `latest` 并部署 Stack。
+- `Switch UNO to Beta`：使用 `docker-compose.yml` 和 `docker-compose.beta.yml` 后部署 Stack。
+- `Switch UNO to Stable`：只使用 `docker-compose.yml` 后部署 Stack。
 
 在对应 Action 页面选择 **Run Action** 并完成名称确认即可切换。切换后在 Stack 页面确认状态为 `running`，并
-检查 `/api/server/info` 的版本。若要固定回滚点，在 Stack 的 Environment 中把 `UNO_IMAGE_TAG` 改为精确
-版本（如 `v1.2.3`），保存后手动 Deploy；不要用会继续移动的 `latest`/`beta` 代替固定回滚版本。
+检查 `/api/server/info` 的版本。若要固定回滚点，创建一个临时 Compose override，用同一个精确 Tag（如
+`v1.2.3`）覆盖 server 和 caddy，再把该文件加入 Stack File Paths 并部署；不要用会继续移动的
+`latest`/`beta` 代替固定回滚版本。
 
 ### 自动更新与备份
 
 Komodo 的 `Global Auto Update` 每天 03:00（`Asia/Shanghai`）运行。UNO Stack 已启用：
 
-- Poll for Updates、Auto Update、Full Stack Auto Update；
+- Poll for Updates、Auto Update；
 - Pre Pull Images；
-- Destroy Before Deploy 关闭；
+- Full Stack Auto Update、Destroy Before Deploy 关闭；
 - 自动更新检查忽略 `redis`、`mumble` 和 `mumble-gateway`，只有 `server` 与 `caddy` 跟随当前通道。
 
-Full Stack Auto Update 会运行一次完整的 Compose 部署，但 Compose 不会重建配置和镜像均未变化的服务。自动
-更新不会在 `latest` 与 `beta` 之间自动切换，只会更新当前选择的通道。
+Global Auto Update 根据 Compose 中明确的镜像 Tag 拉取并比较镜像摘要；发现新镜像后只重建发生变化的
+server/caddy。它不会在 `latest` 与 `beta` 之间自动切换，只会更新当前 Stack File Paths 选择的通道。
+
+镜像更新检查由 Komodo Periphery 自己请求 Docker Registry manifest，不经过 Docker daemon。当前服务器无法
+直连 Docker Hub，因此 `/etc/komodo/compose/compose.env` 同时给 Core 和 Periphery 配置：
+
+```dotenv
+HTTP_PROXY=http://<proxy-host>:<proxy-port>
+HTTPS_PROXY=http://<proxy-host>:<proxy-port>
+NO_PROXY=localhost,127.0.0.1,core,mongo,periphery,111.229.152.99
+```
+
+只给 Docker systemd 服务配置代理不足以支持 Global Auto Update。修改这些值后，用 Komodo Compose 项目重建
+core/periphery，并确认 Periphery 容器中存在相同环境变量。
 
 `Backup Core Database` 每天 01:00 运行，备份写入 `/etc/komodo/backups`；Komodo 默认保留最近 14 份。该
 过程已手动执行验证。初次迁移前的应用配置和数据另存于 `/root/uno-online-backups/pre-komodo-20260818`。
@@ -108,14 +124,17 @@ Full Stack Auto Update 会运行一次完整的 Compose 部署，但 Compose 不
 
 ### 手动回退到 Compose
 
-Komodo 不可用时仍可直接操作同一 Compose 项目。两个 env 文件都必须显式传入：
+Komodo 不可用时仍可直接操作同一 Compose 项目。生产变量文件必须显式传入：
 
 ```bash
 cd /etc/komodo/stacks/uno-online
-docker compose --env-file .env --env-file .env.secrets pull server caddy
-docker compose --env-file .env --env-file .env.secrets up -d --no-deps --wait server
-docker compose --env-file .env --env-file .env.secrets up -d --no-deps --wait caddy
+docker compose --env-file .env.secrets pull server caddy
+docker compose --env-file .env.secrets up -d --no-deps --wait server
+docker compose --env-file .env.secrets up -d --no-deps --wait caddy
 ```
+
+以上命令用于正式通道。当前若在 Beta 通道，每条命令都要在 `--env-file` 前添加
+`-f docker-compose.yml -f docker-compose.beta.yml`，避免手动操作意外切回 `latest`。
 
 不要从 `.env.example` 覆盖生产 `.env.secrets`，也不要另起 Compose 项目名，否则会创建一套重复容器和网络。
 
@@ -126,7 +145,6 @@ docker compose --env-file .env --env-file .env.secrets up -d --no-deps --wait ca
 - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`：生产登录需要 GitHub OAuth。
 - `DATABASE_PATH`：SQLite 数据库路径，Docker 默认是 `/data/uno.db`。
 - `REDIS_URL`：生产环境必填；开发模式未设置时使用内存 KV。若设置 `REDIS_PASSWORD`，连接 URL 也必须包含同一密码。
-- `UNO_IMAGE_TAG`：server/caddy 共用的镜像通道或精确版本，默认 `latest`。
 - `CADDY_SITE_ADDRESS`：Caddy 站点地址，可用域名或 `:80`。
 - `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`：可选；Cloudflare Turnstile 人机验证，两者同时配置后注册/登录页启用 CAPTCHA。
 - `WEBAUTHN_RP_NAME`：可选；WebAuthn 依赖方名称，默认 `UNO Online`。
