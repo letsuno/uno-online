@@ -261,9 +261,10 @@ docker compose --env-file .env --env-file .env.secrets up -d --no-deps --wait se
 docker compose --env-file .env --env-file .env.secrets up -d --no-deps --wait caddy
 ```
 
-首次部署使用 `docker compose up -d`。破坏性发布应安排维护窗口：先停止接纳新房间，在旧 server 仍运行时
-等待或终止活跃房间，再停止旧 server，最后更新 schema/protocol 并部署匹配的 server 与 caddy。具体变量和
-运维说明见 `docs/deployment.md`。
+当前生产不使用省略 env 文件的裸 `docker compose up -d`。首次创建或完整恢复生产 Stack 由 Komodo 部署；
+必须脱离面板操作时，也要显式传入 `.env` 与 `.env.secrets` 并保持 Compose 项目名为 `uno-online`。破坏性发布
+应安排维护窗口：先停止接纳新房间，在旧 server 仍运行时等待或终止活跃房间，再停止旧 server，最后更新
+schema/protocol 并部署匹配的 server 与 caddy。具体变量和运维说明见 `docs/deployment.md`。
 
 ## 版本号与完整发版流程
 

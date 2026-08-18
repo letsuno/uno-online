@@ -1,9 +1,14 @@
 # UNO Online — 部署与镜像
 
-server/caddy 镜像、MCP npm 包与 GitHub Release 由版本 Tag 自动发布；生产 Compose 更新仍需人工确认兼容性后
-执行。工作流与一次性仓库配置见 [CI 与自动发版](ci-release.md)。
+server/caddy 镜像、MCP npm 包与 GitHub Release 由版本 Tag 自动发布。当前生产环境由 Komodo 管理：状态兼容
+版本会自动更新当前选择的 `latest` 或 `beta` 通道；破坏性版本仍须先人工完成兼容性判断和维护窗口安排。
+工作流与一次性仓库配置见 [CI 与自动发版](ci-release.md)。
 
-## Docker Compose
+## 独立 Docker Compose 部署（非当前生产环境）
+
+以下步骤用于尚未接入 Komodo 的新主机或独立环境。当前生产服务器不要按本节从 `.env.example` 重新生成配置，
+应使用下文的 Komodo 流程；必须脱离面板操作时，使用[手动回退到 Compose](#手动回退到-compose)中的双 env
+文件命令。
 
 ```bash
 cp .env.example .env
@@ -34,7 +39,7 @@ curl http://localhost/api/health
 curl http://localhost/api/server/info
 ```
 
-状态兼容版本发布成功后，只更新应用容器，不重建 Redis、SQLite 或语音服务：
+独立 Compose 环境收到状态兼容版本后，只更新应用容器，不重建 Redis、SQLite 或语音服务：
 
 ```bash
 docker compose pull server caddy
