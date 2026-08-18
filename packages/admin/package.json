@@ -1,6 +1,6 @@
 {
   "name": "@uno-online/admin",
-  "version": "0.15.0-beta.0",
+  "version": "0.15.0-beta.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@uno-online/shared": "workspace:*",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.15.0",

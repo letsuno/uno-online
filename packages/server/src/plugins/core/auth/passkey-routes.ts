@@ -15,7 +15,7 @@ import {
   updatePasskeyCounter,
   deletePasskey,
 } from '../../../db/passkey-repo.js';
-import { getUserById } from '../../../db/user-repo.js';
+import { getUserById, markUserLogin } from '../../../db/user-repo.js';
 import { authPreHandler, makeToken, userResponse } from './service.js';
 import type { AuthenticatedRequest } from './service.js';
 import { createRateLimiter } from '../../../auth/rate-limiter.js';
@@ -193,6 +193,7 @@ export function registerPasskeyRoutes(fastify: FastifyInstance, ctx: PluginConte
         return reply.code(401).send({ error: '用户不存在' });
       }
 
+      await markUserLogin(user.id);
       const token = makeToken(user, config.jwtSecret);
       return { token, user: userResponse(user) };
     },

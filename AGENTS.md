@@ -271,7 +271,11 @@ schema/protocol 并部署匹配的 server 与 caddy。具体变量和运维说�
 GitHub 自动发布只负责验证和发布制品；版本判断、兼容性判断、PR、Tag 与生产部署仍需显式执行。
 
 1. **确定 SemVer**：根据变更范围决定 patch/minor/major。
-2. **检查版本范围**：`git log --oneline v<上个版本号>..HEAD`，收集完整变更。
+2. **检查版本范围**：
+   - Beta 迭代比较上一个 Beta Tag 到 `HEAD`，用于编写本次测试版的增量说明。
+   - Beta 转正式版必须先执行 `git fetch --tags --prune` 和 `pnpm release:stable-diff`。该命令会自动选择
+     `HEAD` 可达的上一个正式 `vX.Y.Z` Tag，并输出该 Tag 到 `HEAD` 的提交、`git diff --stat` 和文件清单；
+     正式版说明以这个完整范围为准，不能只比较最后一个 Beta。
 3. **判定发布兼容性**：按上一节决定是否排空房间、调整 `RUNTIME_SCHEMA_VERSION` 或递增
    `PROTOCOL_VERSION`。不要把应用 SemVer 直接当作 runtime/protocol 版本。
 4. **同步包版本**：只修改根 `package.json#version`，然后执行：
@@ -283,8 +287,12 @@ GitHub 自动发布只负责验证和发布制品；版本判断、兼容性判�
    所有 workspace `package.json` 会同步。MCP 由 tsup 注入版本；client Vite 从自身 `package.json` 注入
    `BUILD_VERSION`，`build-info.ts` 仅保留开发 fallback。
 
-5. **更新发布说明**：在 `CHANGELOG.md` 顶部新增版本，并在
-   `packages/client/src/shared/data/changelog.ts` 数组顶部添加精选用户可感知内容。
+5. **更新发布说明**：
+   - Beta：在 `CHANGELOG.md` 和客户端 changelog 顶部添加当前 Beta 的增量说明。
+   - 正式版：根据第 2 步的完整正式版范围，在 `CHANGELOG.md` 顶部新增正式版说明；客户端 changelog 删除
+     同一正式版本的所有 `-beta.N` 条目，并在顶部只保留一个正式版条目。正式 `CHANGELOG.md` 不删除已经发布的
+     Beta 历史段落。
+   - `pnpm release:check` 会校验客户端首条记录必须等于当前版本，并阻止正式版客户端保留同版本预发布条目。
 6. **验证版本与代码**：确认所有 workspace 包版本一致，然后执行完整验证、`pnpm build` 和 MCP pack 预检。
 7. **通过 PR 合并**：版本、changelog 和必要的 protocol 变更必须先进入 PR；禁止直接推 main。
 8. **同步 main 并打 tag**：PR squash 合并后：

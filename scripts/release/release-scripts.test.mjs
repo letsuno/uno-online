@@ -9,6 +9,8 @@ const releaseDirectory = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(releaseDirectory, '../..');
 const checkScript = join(releaseDirectory, 'check-release.mjs');
 const notesScript = join(releaseDirectory, 'release-notes.mjs');
+const checkScriptSource = readFileSync(checkScript, 'utf8');
+const stableDiffScript = readFileSync(join(releaseDirectory, 'stable-diff.mjs'), 'utf8');
 const releaseWorkflow = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
 const composeDefinition = readFileSync(join(repoRoot, 'docker-compose.yml'), 'utf8');
 const currentVersion = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')).version;
@@ -52,6 +54,18 @@ test('release notes contain versioned Docker and MCP install commands', () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, new RegExp('uno-online-server:v' + currentVersion.replaceAll('.', '\\.'), 'u'));
   assert.match(result.stdout, new RegExp('@uno-online/mcp@' + currentVersion.replaceAll('.', '\\.'), 'u'));
+});
+
+test('stable release preparation compares against a stable tag with git diff', () => {
+  assert.match(stableDiffScript, /stableTagPattern/u);
+  assert.ok(stableDiffScript.includes("git(['diff', '--stat', range])"));
+  assert.ok(stableDiffScript.includes("git(['diff', '--name-status', range])"));
+});
+
+test('stable client changelog replaces prerelease entries instead of retaining them', () => {
+  assert.ok(checkScriptSource.includes('clientVersions[0] !== version'));
+  assert.ok(checkScriptSource.includes("candidate.startsWith(version + '-')"));
+  assert.match(checkScriptSource, /正式版客户端 changelog 不能保留同版本预发布条目/u);
 });
 
 test('release workflow can recover an existing tag from the default branch', () => {

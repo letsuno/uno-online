@@ -87,6 +87,32 @@ Actions secrets。
 
 版本号、CHANGELOG、客户端 changelog 和兼容性判断应先通过 PR 合并。合并后同步 main：
 
+### Beta 迭代
+
+Beta 版本使用 `X.Y.Z-beta.N`。每次发布前比较上一个 Beta Tag 到当前分支，只为本次 Beta 增量编写
+`CHANGELOG.md` 和客户端 changelog。客户端可以在测试期间显示 Beta 条目；Beta Tag 会更新 Docker 与 npm 的
+`beta` 通道，不更新 `latest`。
+
+### Beta 转正式版
+
+正式版说明不能只汇总“最后一个 Beta 之后”的提交。准备 `X.Y.Z` 时先执行：
+
+```bash
+git fetch --tags --prune
+pnpm release:stable-diff
+```
+
+命令自动找到 `HEAD` 可达的上一个正式 `vX.Y.Z` Tag，并输出该 Tag 到 `HEAD` 的提交记录、
+`git diff --stat` 和文件变更清单。根据这个完整范围编写正式版 `CHANGELOG.md`。
+
+客户端 changelog 的处理不同：删除同一版本的全部 `X.Y.Z-beta.N` 条目，再在数组顶部添加唯一的 `X.Y.Z`
+正式版条目。因此 Beta 日志只在 Beta 测试期间展示，正式发布后前端只显示汇总后的正式版日志。正式
+`CHANGELOG.md` 保留历史 Beta 段落，因为它们已经用于对应的 GitHub prerelease。
+
+`pnpm release:check` 会强制客户端首条 changelog 等于当前包版本，并在正式版中拒绝同版本的预发布条目。
+
+### 合并与 Tag
+
 ```bash
 git fetch --prune origin
 git switch main

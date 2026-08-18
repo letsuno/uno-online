@@ -119,6 +119,15 @@ export async function setPassword(userId: string, passwordHash: string) {
     .execute();
 }
 
+export async function markUserLogin(userId: string): Promise<void> {
+  const db = getDb();
+  await db
+    .updateTable('users')
+    .set({ lastLoginAt: sql`datetime('now')` })
+    .where('id', '=', userId)
+    .execute();
+}
+
 export async function updateNickname(userId: string, nickname: string) {
   const db = getDb();
   await db
