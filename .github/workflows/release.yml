@@ -50,7 +50,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Verify release metadata
-        run: pnpm release:check -- "$GITHUB_REF_NAME"
+        run: pnpm release:check "$GITHUB_REF_NAME"
 
       - name: Build all packages
         run: pnpm build
@@ -130,7 +130,7 @@ jobs:
           fi
 
       - name: Generate release notes
-        run: pnpm release:notes -- "$GITHUB_REF_NAME" > "$RUNNER_TEMP/release-notes.md"
+        run: pnpm release:notes "$GITHUB_REF_NAME" > "$RUNNER_TEMP/release-notes.md"
 
       - name: Create or update GitHub Release
         env:
