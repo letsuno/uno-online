@@ -65,7 +65,8 @@ export interface ActiveRoomInfo {
   spectatorMode: 'full' | 'hidden';
 }
 
-export type RoomMembershipEndReason = 'kicked' | 'host_closed' | 'idle_timeout' | 'empty';
+export type RoomMembershipEndReason = 'kicked' | 'host_closed' | 'idle_timeout' | 'empty' | 'cheat_detected';
+export type RoomDissolveReason = Exclude<RoomMembershipEndReason, 'kicked'>;
 
 export interface VoicePresence {
   inVoice: boolean;
@@ -134,7 +135,6 @@ export interface ServerToClientEvents {
     reason?: 'timeout' | 'responder_left_seat' | 'responder_ready';
   }) => void;
   'game:spectator_queue': (data: { queue: SpectatorQueueEntry[] }) => void;
-  'game:cheat_detected': () => void;
   'voice:presence': (presence: Record<string, VoicePresence>) => void;
   'server:version': (data: { protocolVersion: number; serverTime: number }) => void;
 }

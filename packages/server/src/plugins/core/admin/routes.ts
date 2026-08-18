@@ -145,7 +145,6 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
         motd: config.serverMotd,
         version: pkg.version,
         protocolVersion: PROTOCOL_VERSION,
-        runtimeSchemaVersion: config.runtimeSchemaVersion,
         environment: config.devMode ? 'development' : 'production',
         onlineConnections: io.engine.clientsCount,
         uptimeSeconds: Math.floor(process.uptime()),
@@ -385,6 +384,15 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
     if (!room) return reply.code(404).send({ error: '房间不存在' });
     if (!ctx.dissolveRoom) return reply.code(503).send({ error: '房间生命周期服务尚未就绪' });
     await ctx.dissolveRoom(code, 'host_closed');
+    return { success: true };
+  });
+
+  fastify.post<{ Params: { code: string } }>('/admin/rooms/:code/cheat', { preHandler }, async (request, reply) => {
+    const { code } = request.params;
+    const room = await getRoom(kv, code);
+    if (!room) return reply.code(404).send({ error: '房间不存在' });
+    if (!ctx.dissolveRoom) return reply.code(503).send({ error: '房间生命周期服务尚未就绪' });
+    await ctx.dissolveRoom(code, 'cheat_detected');
     return { success: true };
   });
 

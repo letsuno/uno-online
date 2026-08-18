@@ -1,3 +1,4 @@
+import type { RoomDissolveReason } from '@uno-online/shared';
 import type { UnoServer as SocketIOServer } from './types.js';
 import type { KvStore } from '../kv/types.js';
 import type { GameSession } from '../plugins/core/game/session.js';
@@ -22,7 +23,7 @@ export async function dissolveRoom(
   sessions: Map<string, GameSession>,
   turnTimer: TurnTimer,
   persister: GameStatePersister,
-  reason: 'host_closed' | 'idle_timeout' | 'empty',
+  reason: RoomDissolveReason,
   voiceChannels: Pick<VoiceChannelManager, 'deleteRoomChannel'>,
   runtimeCleanup: (roomCode: string) => void,
 ): Promise<void> {
@@ -39,7 +40,7 @@ export async function dissolveRoomUnlocked(
   sessions: Map<string, GameSession>,
   turnTimer: TurnTimer,
   persister: GameStatePersister,
-  reason: 'host_closed' | 'idle_timeout' | 'empty',
+  reason: RoomDissolveReason,
   voiceChannels: Pick<VoiceChannelManager, 'deleteRoomChannel'>,
   runtimeCleanup: (roomCode: string) => void,
 ): Promise<void> {

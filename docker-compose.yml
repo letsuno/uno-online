@@ -29,7 +29,6 @@ services:
     environment:
       DATABASE_PATH: ${DATABASE_PATH:-/data/uno.db}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      RUNTIME_SCHEMA_VERSION: ${RUNTIME_SCHEMA_VERSION:-1}
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set to a unique random value}

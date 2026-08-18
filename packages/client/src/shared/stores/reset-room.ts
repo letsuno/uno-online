@@ -10,7 +10,8 @@ import { clearSuspendedRoom } from './suspended-room-store';
 /**
  * Reset all client-side room/game/voice state. Use this on the boundary where
  * the user is no longer in any room — voluntary leave, kicked, room dissolved,
- * cheat detected, auth failure. Pure side effects, no navigation.
+ * or auth failure. Pure side effects, no navigation. Global notices are not
+ * room state and must be dismissed by their own UI.
  */
 export function resetClientRoomState(options?: { preserveSuspendedRoom?: boolean }): void {
   useRoomStore.getState().clearRoom();

@@ -37,9 +37,11 @@ vi.mock('../src/shared/voice/voice-runtime', () => ({
 }));
 
 import { resetClientRoomState } from '../src/shared/stores/reset-room';
+import { useCheatNoticeStore } from '../src/features/game/stores/cheat-notice-store';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  useCheatNoticeStore.getState().dismiss();
 });
 
 describe('resetClientRoomState', () => {
@@ -55,5 +57,15 @@ describe('resetClientRoomState', () => {
     expect(mocks.clearSuspendedRoom).not.toHaveBeenCalled();
     expect(mocks.clearRoom).toHaveBeenCalledOnce();
     expect(mocks.clearGame).toHaveBeenCalledOnce();
+  });
+
+  it('does not dismiss a cheat notice while clearing room state', () => {
+    useCheatNoticeStore.getState().show();
+
+    resetClientRoomState();
+
+    expect(useCheatNoticeStore.getState().visible).toBe(true);
+    useCheatNoticeStore.getState().dismiss();
+    expect(useCheatNoticeStore.getState().visible).toBe(false);
   });
 });

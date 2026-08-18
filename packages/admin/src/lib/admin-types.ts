@@ -76,7 +76,6 @@ export interface DashboardData {
     motd: string;
     version: string;
     protocolVersion: number;
-    runtimeSchemaVersion: string;
     environment: 'development' | 'production';
     onlineConnections: number;
     uptimeSeconds: number;

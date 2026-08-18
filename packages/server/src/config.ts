@@ -43,21 +43,12 @@ export interface Config {
   serverName: string;
   serverMotd: string;
   roomIdleTimeoutMs: number;
-  runtimeSchemaVersion: string;
   turnstileSiteKey?: string;
   turnstileSecretKey?: string;
   webauthnRpName?: string;
   webauthnRpId?: string;
   webauthnOrigin?: string;
   mumbleIce: MumbleIceConfig;
-}
-
-function runtimeSchemaVersion(): string {
-  const value = process.env['RUNTIME_SCHEMA_VERSION'] ?? '1';
-  if (!/^[A-Za-z0-9._-]+$/u.test(value)) {
-    throw new Error('RUNTIME_SCHEMA_VERSION may contain only letters, numbers, dot, underscore, and hyphen');
-  }
-  return value;
 }
 
 interface IntegerEnvironmentOptions {
@@ -125,7 +116,6 @@ export function loadConfig(): Config {
     serverName: process.env['SERVER_NAME'] ?? 'UNO Online',
     serverMotd: process.env['SERVER_MOTD'] ?? '欢迎来到 UNO Online！',
     roomIdleTimeoutMs: integerEnvironment('ROOM_IDLE_TIMEOUT_MS', 7_200_000, { min: 1, max: 2_147_483_647 }),
-    runtimeSchemaVersion: runtimeSchemaVersion(),
     turnstileSiteKey: process.env['TURNSTILE_SITE_KEY'] || undefined,
     turnstileSecretKey: process.env['TURNSTILE_SECRET_KEY'] || undefined,
     webauthnRpName: process.env['WEBAUTHN_RP_NAME'] || undefined,

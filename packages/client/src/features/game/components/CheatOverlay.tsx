@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { resetClientRoomState } from '@/shared/stores/reset-room';
+import { useCheatNoticeStore } from '../stores/cheat-notice-store';
 
 const SLICE_COUNT = 5;
 const DURATION = 500;
@@ -63,7 +63,7 @@ export default function CheatOverlay() {
   }, []);
 
   const handleContinue = () => {
-    resetClientRoomState();
+    useCheatNoticeStore.getState().dismiss();
     navigate('/');
   };
 

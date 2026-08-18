@@ -48,7 +48,7 @@ docker compose up -d --no-deps --wait caddy
 ```
 
 执行 server 更新时，Compose 会先向旧容器发送 `SIGTERM` 并等待其在停机宽限内退出，再启动新容器。运行时
-schema 或 Socket 协议破坏性发布不能直接执行这组命令，必须先按下文策略排空活跃房间。
+结构或 Socket 协议破坏性发布不能直接执行这组命令，必须先按下文策略排空活跃房间。
 
 ## Komodo 管理与自动更新
 
@@ -57,11 +57,11 @@ schema 或 Socket 协议破坏性发布不能直接执行这组命令，必须�
 - Komodo Core、MongoDB 与 Periphery 位于 `/etc/komodo/compose`。
 - UNO Stack 名为 `uno-online`，Compose 项目名同为 `uno-online`，工作目录是
   `/etc/komodo/stacks/uno-online`，使用服务器上的 `docker-compose.yml`。
-- 面板管理的 `.env` 只保存 `UNO_IMAGE_TAG` 和 `RUNTIME_SCHEMA_VERSION`。
+- 面板管理的 `.env` 只保存 `UNO_IMAGE_TAG`。
 - `.env.secrets` 保存其余生产变量，权限为 `0600`；它作为不跟踪的 Additional Env File 传给 Compose，不能在
-  面板中显示、提交到 Git 或再次定义镜像通道/schema。
+  面板中显示、提交到 Git 或再次定义镜像通道。
 - SQLite、Caddy 和语音数据仍使用工作目录下的 `./data` 挂载。Redis 也是独立挂载；兼容发布保留它，明确的
-  破坏性发布才按维护计划重建或切换 namespace。
+  破坏性发布会由新 server 按代码代次自动清空 UNO 运行时状态。
 
 Komodo 只监听服务器的 `127.0.0.1:9120`，新用户注册已关闭。通过 SSH 隧道访问：
 
@@ -101,8 +101,8 @@ Full Stack Auto Update 会运行一次完整的 Compose 部署，但 Compose 不
 正式版与 Beta 共用 SQLite、Redis 和 JWT，因此自动更新仍受本页兼容性规则约束：
 
 - 状态兼容发布可以保持自动更新开启，Komodo 会在下次检查时部署当前通道的新镜像。
-- 运行时 schema、Socket 协议或不可回退的 SQLite schema 发生破坏性变化时，必须在推送会移动当前通道的 Tag
-  **之前**关闭 Stack Auto Update，排空房间并完成 schema/protocol/数据库迁移安排；维护窗口部署和验证完成后
+- 运行时结构、Socket 协议或不可回退的 SQLite schema 发生破坏性变化时，必须在推送会移动当前通道的 Tag
+  **之前**关闭 Stack Auto Update，排空房间并完成运行时/protocol/数据库安排；维护窗口部署和验证完成后
   再恢复自动更新。
 - Beta 修改了持久用户数据库 schema 时，切回稳定版之前必须确认数据库迁移可回退。
 
@@ -126,7 +126,6 @@ docker compose --env-file .env --env-file .env.secrets up -d --no-deps --wait ca
 - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`：生产登录需要 GitHub OAuth。
 - `DATABASE_PATH`：SQLite 数据库路径，Docker 默认是 `/data/uno.db`。
 - `REDIS_URL`：生产环境必填；开发模式未设置时使用内存 KV。若设置 `REDIS_PASSWORD`，连接 URL 也必须包含同一密码。
-- `RUNTIME_SCHEMA_VERSION`：临时房间/游戏状态的 schema 代号，默认 `1`。状态兼容发布保持不变；破坏性发布先排空旧房间，再递增该值以隔离旧 namespace。服务端不会读取或迁移旧 namespace。
 - `UNO_IMAGE_TAG`：server/caddy 共用的镜像通道或精确版本，默认 `latest`。
 - `CADDY_SITE_ADDRESS`：Caddy 站点地址，可用域名或 `:80`。
 - `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`：可选；Cloudflare Turnstile 人机验证，两者同时配置后注册/登录页启用 CAPTCHA。
@@ -139,13 +138,13 @@ docker compose --env-file .env --env-file .env.secrets up -d --no-deps --wait ca
 
 ## 运行时状态发布策略
 
-房间、座位、观战者、游戏快照和用户当前房间映射都位于
-`uno:runtime:v<RUNTIME_SCHEMA_VERSION>:` namespace 中：
+房间、座位、观战者、游戏快照和用户当前房间映射都位于固定的 `uno:runtime:` namespace 中：
 
-- 状态兼容发布保持 `RUNTIME_SCHEMA_VERSION` 不变。Redis 中的当前格式快照会在服务端重启后恢复，玩家刷新即可继续对局。
-- 状态破坏发布先停止创建新房间并等待现有房间结束，再递增 `RUNTIME_SCHEMA_VERSION`。新服务不会猜测、补齐或迁移旧结构。
+- 状态兼容发布保持代码内 `RUNTIME_STATE_GENERATION` 不变。Redis 快照会在服务端重启后恢复，玩家刷新即可继续对局。
+- 状态破坏发布先停止创建新房间并等待现有房间结束，再递增代码内代次。旧 server 退出后，新 server 会在启动期间用一个 Redis 事务删除 namespace 内全部旧状态并写入新代次；清理失败则拒绝启动。
+- 首次启用该机制时 Redis 中还没有代次标记，同样会自动清空现有 UNO 运行时状态；这次上线必须按破坏性发布安排。
 - Socket 事件或 ACK 结构发生破坏性变更时同时递增共享的 `PROTOCOL_VERSION`；不匹配的前端会停止通信并提示刷新，不保留旧前端协议分支。
-- 确认旧 namespace 已无活跃房间后，可由运维流程删除；不要对可能共享的 Redis 实例直接执行无范围的 `FLUSHDB`。
+- 部署人员不需要删除 Redis 目录、执行 `FLUSHDB` 或填写任何运行时版本变量。
 - 当前游戏服务是单实例架构：Session、生命周期锁和 Socket.IO 房间适配器仍在进程内。兼容发布必须先让旧 server 收到 `SIGTERM` 并完整退出，再启动新 server；不要让新旧两个 game server 滚动重叠运行。
 - 发布期间保持 `JWT_SECRET` 不变，否则浏览器中的现有登录凭证会失效，玩家刷新后无法直接恢复身份。
 

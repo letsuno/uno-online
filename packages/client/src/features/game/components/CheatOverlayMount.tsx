@@ -1,8 +1,8 @@
-import { useGameStore } from '../stores/game-store';
+import { useCheatNoticeStore } from '../stores/cheat-notice-store';
 import CheatOverlay from './CheatOverlay';
 
 export default function CheatOverlayMount() {
-  const cheatDetected = useGameStore(s => s.cheatDetected);
-  if (!cheatDetected) return null;
+  const visible = useCheatNoticeStore(s => s.visible);
+  if (!visible) return null;
   return <CheatOverlay />;
 }

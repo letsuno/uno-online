@@ -19,6 +19,7 @@ export type {
   RoomJoinResult,
   RoomRejoinResult,
   RoomMembershipEndReason,
+  RoomDissolveReason,
   ActiveRoomInfo,
   AiProviderInfo,
   AiProviderListResult,

@@ -44,19 +44,6 @@ describe('server security configuration', () => {
     expect(() => loadConfig()).toThrow('REDIS_URL');
   });
 
-  it('defaults to runtime schema generation 1', () => {
-    vi.stubEnv('DEV_MODE', 'true');
-    vi.stubEnv('JWT_SECRET', 'dev-secret');
-    expect(loadConfig()).toMatchObject({ runtimeSchemaVersion: '1' });
-  });
-
-  it('rejects runtime schema versions containing key-pattern characters', () => {
-    vi.stubEnv('DEV_MODE', 'true');
-    vi.stubEnv('JWT_SECRET', 'dev-secret');
-    vi.stubEnv('RUNTIME_SCHEMA_VERSION', '2:*');
-    expect(() => loadConfig()).toThrow('RUNTIME_SCHEMA_VERSION');
-  });
-
   it.each([
     ['PORT', '3001oops'],
     ['ROOM_IDLE_TIMEOUT_MS', 'not-a-duration'],

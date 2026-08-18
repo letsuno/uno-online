@@ -30,7 +30,7 @@ class PersistentMemoryBackend extends MemoryKvStore {
 }
 
 function createSocketRuntime(backend: PersistentMemoryBackend) {
-  const kv = new NamespacedKvStore(backend, 'uno:runtime:vcontinuity-test');
+  const kv = new NamespacedKvStore(backend, 'uno:runtime');
   const fake = makeFakeIo();
   const handlers = setupSocketHandlers(fake.io, kv, 'restart-continuity-secret', 60_000, MUMBLE_DISABLED);
   const sockets: FakeSocket[] = [];
@@ -90,7 +90,7 @@ function continuationIdentity(view: PlayerView) {
 }
 
 describe('compatible runtime restart continuity', () => {
-  it('rebuilds app/session state from the same namespaced persistent KV', async () => {
+  it('rebuilds app/session state from the same persistent runtime KV', async () => {
     const backend = new PersistentMemoryBackend();
     let firstRuntime: SocketRuntime | null = createSocketRuntime(backend);
     let secondRuntime: SocketRuntime | null = null;
@@ -119,7 +119,7 @@ describe('compatible runtime restart continuity', () => {
       firstClosed = true;
 
       // A new wrapper and a new handler graph model a new backend process;
-      // only the namespaced persistent backend is shared between lifetimes.
+      // only the persistent runtime backend is shared between lifetimes.
       secondRuntime = createSocketRuntime(backend);
       expect(secondRuntime.handlers.sessions.size).toBe(0);
 
