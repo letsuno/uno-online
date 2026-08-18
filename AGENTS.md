@@ -283,6 +283,6 @@ GitHub 自动发布只负责验证和发布制品；版本判断、兼容性判�
     破坏性发布维护窗口切换 schema/protocol，再更新 Compose 应用容器。
 11. **发布后验证**：检查 `/api/health`、`/api/server/info`、浏览器登录/重连以及版本化 Docker/MCP 制品。
 
-预发布 Tag（如 `v1.2.0-rc.1`）会生成 prerelease，只推版本镜像，不更新 Docker `latest`。语音网关镜像
+预发布 Tag（如 `v1.2.0-beta.0`）会生成 prerelease，只推版本镜像，不更新 Docker `latest`。语音网关镜像
 不在自动发版范围内。仓库 Secrets、npm Trusted Publisher 和 GitHub Environment 的一次性配置见
 `docs/ci-release.md`。
