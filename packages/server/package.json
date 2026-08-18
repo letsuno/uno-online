@@ -1,6 +1,6 @@
 {
   "name": "@uno-online/server",
-  "version": "0.15.0-beta.2",
+  "version": "0.15.0-beta.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,26 +16,28 @@
     "db:migrate": "echo 'Tables auto-created on startup'"
   },
   "dependencies": {
-    "@fastify/cors": "^11.0.0",
-    "@simplewebauthn/server": "^13.3.0",
+    "@fastify/cors": "^11.3.0",
+    "@simplewebauthn/server": "^13.3.2",
     "@uno-online/shared": "workspace:*",
-    "@zeroc/ice": "^3.8.1",
+    "@zeroc/ice": "^3.8.2",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
-    "fastify": "^5.3.0",
-    "ioredis": "^5.6.0",
-    "jsonwebtoken": "^9.0.2",
-    "kysely": "^0.29.0",
+    "esbuild": "^0.28.2",
+    "fastify": "^5.12.0",
+    "ioredis": "^6.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "kysely": "^0.29.5",
     "onnxruntime-node": "1.27.0",
-    "sharp": "^0.34.5",
-    "socket.io": "^4.8.0",
-    "typescript": "^6.0.0",
-    "undici": "^8.3.0"
+    "sharp": "^0.35.3",
+    "socket.io": "^4.8.3",
+    "undici": "^8.10.0"
   },
   "devDependencies": {
-    "@types/jsonwebtoken": "^9.0.9",
-    "socket.io-client": "^4.8.0",
-    "tsx": "^4.22.0",
-    "vitest": "^4.1.0"
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.20.1",
+    "socket.io-client": "^4.8.3",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
   }
 }

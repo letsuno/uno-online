@@ -37,11 +37,7 @@ export function dealCards(deck: readonly Card[], playerIds: readonly string[], c
 }
 
 export type FirstCardEffect =
-  | { type: 'skip' }
-  | { type: 'reverse' }
-  | { type: 'draw_two' }
-  | { type: 'choose_color' }
-  | null;
+  { type: 'skip' } | { type: 'reverse' } | { type: 'draw_two' } | { type: 'choose_color' } | null;
 
 export interface FirstDiscardResult {
   topCard: Card;

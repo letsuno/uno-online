@@ -1,6 +1,6 @@
 {
   "name": "uno-online",
-  "version": "0.15.0-beta.2",
+  "version": "0.15.0-beta.3",
   "private": true,
   "repository": {
     "type": "git",
@@ -31,6 +31,6 @@
     "version:sync": "node -e \"const v=require('./package.json').version;require('child_process').execSync('pnpm -r exec npm pkg set version='+v,{stdio:'inherit'})\""
   },
   "devDependencies": {
-    "prettier": "3.6.2"
+    "prettier": "3.9.6"
   }
 }

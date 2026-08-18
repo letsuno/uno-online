@@ -6,8 +6,7 @@ import type { BotSelection, RuleBotDifficulty } from './bot.js';
 import type { RoomData, RoomSeats, RoomSpectator } from './room.js';
 
 export type SocketResult<T extends object = Record<never, never>> =
-  | ({ success: true } & T)
-  | { success: false; error: string };
+  ({ success: true } & T) | { success: false; error: string };
 
 export type SocketCallbackResult = SocketResult;
 

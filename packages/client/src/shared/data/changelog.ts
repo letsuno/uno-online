@@ -6,6 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.15.0-beta.3',
+    date: '2026-08-19',
+    changes: [
+      '升级前后端、实时通信和浏览器运行依赖，并完成新版本所需的构建配置迁移',
+      '升级后的多人对局、刷新重连、离线恢复和管理功能已通过完整自动化回归',
+      '本次更新不清空房间与对局数据，服务重启后玩家仍可刷新并继续游戏',
+    ],
+  },
+  {
     version: '0.15.0-beta.2',
     date: '2026-08-19',
     changes: [

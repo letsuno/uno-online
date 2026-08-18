@@ -4,6 +4,26 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)。
 
+## [0.15.0-beta.3] - 2026-08-19
+
+这是 0.15 系列的第四个测试版，集中升级全仓依赖并完成对应的构建配置迁移。
+
+### 升级
+
+- 将所有 workspace 的直接依赖升级至当前 Node 22 运行时约束内的最新版，包括 React 19.2、Vite 8.2、TypeScript 7、Vitest 4.1、Fastify 5.12、ioredis 6、Socket.IO 4.8、MCP SDK 1.30 和 Playwright 1.62；Node 类型保持最新的 22.x，与 CI 和生产一致。
+- 全仓统一使用 TypeScript 7 构建；社区 AI 插件在服务启动时改由 `esbuild` 转译，不再同时安装两代 TypeScript。
+- Vite 配置改用 `import.meta.dirname`，消除 Vite 8 原生配置加载器对 `__dirname` 的兼容警告。
+
+### 验证
+
+- 全仓格式、类型检查、849 项包级测试、生产构建和 MCP 打包预检通过。
+- 真实浏览器冒烟、14 项房间生命周期回归及 8 种分辨率的 32 个视觉场景通过，无页面溢出或控制台错误。
+
+### 部署注意
+
+- 本版本不修改 Redis 运行时代际或 Socket 协议，可从 `v0.15.0-beta.2` 兼容更新并保留活跃房间与现有 `JWT_SECRET`。
+- 本测试版不会更新 Docker `latest`；测试通道使用 `beta` 或精确的 `v0.15.0-beta.3` 镜像。
+
 ## [0.15.0-beta.2] - 2026-08-19
 
 这是 0.15 系列的第三个测试版，修复作弊终止提示提前消失的问题，并把 Redis 运行时结构切换改为由代码自动管理。
