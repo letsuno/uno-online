@@ -1,9 +1,5 @@
 import { createHash } from 'node:crypto';
-import {
-  AutomationCycleGuard,
-  initializeGame,
-  applyActionWithHouseRules,
-} from '@uno-online/shared';
+import { AutomationCycleGuard, initializeGame, applyActionWithHouseRules, isBotConfig } from '@uno-online/shared';
 import { initializeNextRound, serializeDecks } from '@uno-online/shared';
 import type { GameState, GameAction, RoomSettings, UserRole, BotConfig } from '@uno-online/shared';
 import type { Card } from '@uno-online/shared';
@@ -12,14 +8,25 @@ import type { ChatMessage, PlayerView } from '@uno-online/shared';
 
 export type { PlayerView };
 
-interface ActionResult {
-  success: boolean;
-  error?: string;
-  drawnCard?: Card;
+interface GameSessionPlayerData {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  role: UserRole;
+  isBot: boolean;
+  botConfig?: BotConfig;
 }
 
+type ActionResult = { success: true; drawnCard?: Card } | { success: false; error: string };
+
+export type LiveGameState = GameState & {
+  gameStartedAt: number;
+  turnStartedAt: number;
+  chatHistory: ChatMessage[];
+};
+
 export class GameSession {
-  private state: GameState;
+  private state: LiveGameState;
   private initialDeckSerialized: string = '';
   private _spectatorMode: 'full' | 'hidden' = 'hidden';
   private readonly automationCycleGuard = new AutomationCycleGuard();
@@ -28,7 +35,7 @@ export class GameSession {
     return this._spectatorMode;
   }
 
-  private constructor(state: GameState) {
+  private constructor(state: LiveGameState) {
     this.state = state;
   }
 
@@ -37,8 +44,15 @@ export class GameSession {
     return createHash('sha256').update(serialized).digest('hex');
   }
 
-  static create(players: { id: string; name: string; avatarUrl?: string | null; role?: UserRole; isBot?: boolean; botConfig?: BotConfig }[], settings?: RoomSettings): GameSession {
-    const state = initializeGame(players, settings?.houseRules);
+  private static requireCurrentPlayerData(data: GameSessionPlayerData): void {
+    if (data.isBot ? !isBotConfig(data.botConfig) : data.botConfig !== undefined) {
+      throw new TypeError('Only server-controlled bots may carry a valid botConfig');
+    }
+  }
+
+  static create(players: GameSessionPlayerData[], settings: RoomSettings): GameSession {
+    for (const player of players) GameSession.requireCurrentPlayerData(player);
+    const state = initializeGame(players, settings.houseRules);
     const deckHash = GameSession.computeDeckHash(state);
     const now = Date.now();
     const stateWithExtras = {
@@ -46,21 +60,36 @@ export class GameSession {
       deckHash,
       gameStartedAt: now,
       turnStartedAt: now,
-      ...(settings ? { settings } : {}),
+      chatHistory: [],
+      settings,
     };
     const session = new GameSession(stateWithExtras);
-    session._spectatorMode = settings?.spectatorMode ?? 'hidden';
+    session._spectatorMode = settings.spectatorMode;
     session.initialDeckSerialized = serializeDecks(state.deckLeft, state.deckRight);
     return session;
   }
 
   static fromState(state: GameState): GameSession {
-    const session = new GameSession({ ...state, chatHistory: state.chatHistory ?? [] });
-    session._spectatorMode = state.settings?.spectatorMode ?? 'hidden';
+    if (
+      typeof state.gameStartedAt !== 'number' ||
+      !Number.isFinite(state.gameStartedAt) ||
+      typeof state.turnStartedAt !== 'number' ||
+      !Number.isFinite(state.turnStartedAt) ||
+      !Array.isArray(state.chatHistory)
+    ) {
+      throw new TypeError('Game state is missing current session metadata');
+    }
+    const session = new GameSession({
+      ...state,
+      gameStartedAt: state.gameStartedAt,
+      turnStartedAt: state.turnStartedAt,
+      chatHistory: state.chatHistory,
+    });
+    session._spectatorMode = state.settings.spectatorMode;
     return session;
   }
 
-  getFullState(): GameState {
+  getFullState(): LiveGameState {
     return this.state;
   }
 
@@ -68,10 +97,7 @@ export class GameSession {
     return this.automationCycleGuard;
   }
 
-  recordAutomatedTransition(
-    before: GameState,
-    plan: readonly GameAction[],
-  ): void {
+  recordAutomatedTransition(before: GameState, plan: readonly GameAction[]): void {
     this.automationCycleGuard.recordTransition(before, plan, this.state);
   }
 
@@ -84,17 +110,15 @@ export class GameSession {
     return {
       viewerId,
       phase: this.state.phase,
-      players: this.state.players.map((p) => {
-        const reveal =
-          shouldReveal(p.id) ||
-          (threshold !== null && p.hand.length > 0 && p.hand.length <= threshold);
+      players: this.state.players.map(p => {
+        const reveal = shouldReveal(p.id) || (threshold !== null && p.hand.length > 0 && p.hand.length <= threshold);
         return {
           id: p.id,
           name: p.name,
           hand: reveal ? p.hand : [],
           handCount: p.hand.length,
           score: p.score,
-          roundWins: p.roundWins ?? 0,
+          roundWins: p.roundWins,
           connected: p.connected,
           autopilot: p.autopilot,
           calledUno: p.calledUno,
@@ -112,7 +136,7 @@ export class GameSession {
       discardPile: truncated ? fullPile.slice(-GameSession.DISCARD_TRUNCATE) : fullPile,
       currentColor: this.state.currentColor,
       drawStack: this.state.drawStack,
-      pendingPenaltyDraws: this.state.pendingPenaltyDraws ?? 0,
+      pendingPenaltyDraws: this.state.pendingPenaltyDraws,
       deckLeftCount: this.state.deckLeft.length,
       deckRightCount: this.state.deckRight.length,
       roundNumber: this.state.roundNumber,
@@ -120,7 +144,8 @@ export class GameSession {
       settings: this.state.settings,
       pendingDrawPlayerId: this.state.pendingDrawPlayerId,
       lastAction: this.state.lastAction,
-      ...(truncated ? { discardPileCount: fullPile.length } : {}),
+      deckHash: this.state.deckHash,
+      discardPileCount: fullPile.length,
       gameStartedAt: this.state.gameStartedAt,
       turnStartedAt: this.state.turnStartedAt,
     };
@@ -149,48 +174,47 @@ export class GameSession {
 
     let drawnCard: Card | undefined;
     if (action.type === 'DRAW_CARD') {
-      const prevPlayer = prevState.players.find((p) => p.id === action.playerId);
-      const newPlayer = newState.players.find((p) => p.id === action.playerId);
+      const prevPlayer = prevState.players.find(p => p.id === action.playerId);
+      const newPlayer = newState.players.find(p => p.id === action.playerId);
       if (prevPlayer && newPlayer && newPlayer.hand.length > prevPlayer.hand.length) {
         drawnCard = newPlayer.hand[newPlayer.hand.length - 1];
       }
     }
 
-    this.state = newState.currentPlayerIndex !== prevState.currentPlayerIndex
-      ? { ...newState, turnStartedAt: Date.now() }
-      : newState;
+    this.state = {
+      ...newState,
+      gameStartedAt: prevState.gameStartedAt,
+      turnStartedAt:
+        newState.currentPlayerIndex !== prevState.currentPlayerIndex ? Date.now() : prevState.turnStartedAt,
+      chatHistory: prevState.chatHistory,
+    };
     return { success: true, drawnCard };
   }
 
   setPlayerConnected(playerId: string, connected: boolean): void {
     this.state = {
       ...this.state,
-      players: this.state.players.map((p) =>
-        p.id === playerId ? { ...p, connected } : p,
-      ),
+      players: this.state.players.map(p => (p.id === playerId ? { ...p, connected } : p)),
     };
   }
 
   setPlayerAutopilot(playerId: string, autopilot: boolean): void {
     this.state = {
       ...this.state,
-      players: this.state.players.map((p) =>
-        p.id === playerId ? { ...p, autopilot } : p,
-      ),
+      players: this.state.players.map(p => (p.id === playerId ? { ...p, autopilot } : p)),
     };
   }
 
   setPlayerBotConfig(playerId: string, botConfig: BotConfig): void {
     this.state = {
       ...this.state,
-      players: this.state.players.map((p) =>
-        p.id === playerId ? { ...p, botConfig } : p,
-      ),
+      players: this.state.players.map(p => (p.id === playerId ? { ...p, botConfig } : p)),
     };
   }
 
-  addPlayer(data: { id: string; name: string; avatarUrl?: string | null; role?: UserRole; isBot?: boolean; botConfig?: BotConfig }, dealCards = false): void {
-    if (this.state.players.some((p) => p.id === data.id)) return;
+  addPlayer(data: GameSessionPlayerData, dealCards = false): void {
+    if (this.state.players.some(p => p.id === data.id)) return;
+    GameSession.requireCurrentPlayerData(data);
 
     let hand: Card[] = [];
     let deckLeft = this.state.deckLeft;
@@ -221,9 +245,9 @@ export class GameSession {
           calledUno: false,
           unoCaught: false,
           eliminated: false,
-          avatarUrl: data.avatarUrl ?? null,
+          avatarUrl: data.avatarUrl,
           role: data.role,
-          isBot: data.isBot ?? false,
+          isBot: data.isBot,
           botConfig: data.botConfig,
         },
       ],
@@ -234,7 +258,7 @@ export class GameSession {
     const removedIndex = this.state.players.findIndex(p => p.id === playerId);
     if (removedIndex === -1) return;
 
-    const newPlayers = this.state.players.filter((p) => p.id !== playerId);
+    const newPlayers = this.state.players.filter(p => p.id !== playerId);
     let newIndex = this.state.currentPlayerIndex;
 
     if (newPlayers.length === 0) {
@@ -251,7 +275,8 @@ export class GameSession {
       newIndex = newPlayers.length > 0 ? newPlayers.length - 1 : 0;
     }
 
-    const updates: Partial<GameState> = {
+    const updates: Pick<GameState, 'players' | 'currentPlayerIndex'> &
+      Partial<Pick<GameState, 'pendingDrawPlayerId' | 'phase'>> = {
       players: newPlayers,
       currentPlayerIndex: newIndex,
     };
@@ -261,13 +286,14 @@ export class GameSession {
       updates.phase = 'playing';
     }
 
-    if (this.state.phase === 'choosing_swap_target' &&
-        this.state.players[this.state.currentPlayerIndex]?.id === playerId) {
+    if (
+      this.state.phase === 'choosing_swap_target' &&
+      this.state.players[this.state.currentPlayerIndex]?.id === playerId
+    ) {
       updates.phase = 'playing';
     }
 
-    if (this.state.phase === 'choosing_color' &&
-        this.state.players[this.state.currentPlayerIndex]?.id === playerId) {
+    if (this.state.phase === 'choosing_color' && this.state.players[this.state.currentPlayerIndex]?.id === playerId) {
       updates.phase = 'playing';
     }
 
@@ -300,14 +326,27 @@ export class GameSession {
 
   startNextRound(): void {
     const gameStartedAt = this.state.gameStartedAt;
-    this.state = initializeNextRound(this.state);
-    this.state = { ...this.state, deckHash: GameSession.computeDeckHash(this.state), gameStartedAt, turnStartedAt: Date.now() };
+    const nextState = initializeNextRound(this.state);
+    this.state = {
+      ...nextState,
+      deckHash: GameSession.computeDeckHash(nextState),
+      gameStartedAt,
+      turnStartedAt: Date.now(),
+      chatHistory: this.state.chatHistory,
+    };
     this.initialDeckSerialized = serializeDecks(this.state.deckLeft, this.state.deckRight);
     this.automationCycleGuard.reset();
   }
 
   resetForRematch(): void {
-    const players = this.state.players.map(p => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl, role: p.role, isBot: p.isBot, botConfig: p.botConfig }));
+    const players = this.state.players.map(p => ({
+      id: p.id,
+      name: p.name,
+      avatarUrl: p.avatarUrl,
+      role: p.role,
+      isBot: p.isBot,
+      botConfig: p.botConfig,
+    }));
     const settings = this.state.settings;
     const fresh = initializeGame(players, settings.houseRules);
     const deckHash = GameSession.computeDeckHash(fresh);
@@ -318,11 +357,11 @@ export class GameSession {
   }
 
   addChatMessage(message: ChatMessage): void {
-    this.state = { ...this.state, chatHistory: [...(this.state.chatHistory ?? []), message].slice(-200) };
+    this.state = { ...this.state, chatHistory: [...this.state.chatHistory, message].slice(-200) };
   }
 
   getChatHistory(): ChatMessage[] {
-    return this.state.chatHistory ?? [];
+    return this.state.chatHistory;
   }
 
   clearChatHistory(): void {

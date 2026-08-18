@@ -1,5 +1,6 @@
 import { io, type Socket as SocketType } from 'socket.io-client';
 import { getApiUrl } from './env';
+import { PROTOCOL_VERSION } from '@uno-online/shared';
 import type { ServerToClientEvents, ClientToServerEvents, PlayerView } from '@uno-online/shared';
 import { useGameStore } from '@/features/game/stores/game-store';
 import { useRoomStore } from './stores/room-store';
@@ -17,6 +18,13 @@ import { globalNavigate } from './utils/global-navigate';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { clearStoredAuthToken } from './api';
 import { markSessionTakenOver, isSessionTakenOver } from './session-takeover';
+import {
+  clearSuspendedRoom,
+  getSuspendedRoom,
+  markRoomSuspended,
+  setCurrentSuspendedRoomToken,
+} from './stores/suspended-room-store';
+import { leaveRoomBeforeDisconnect, registerLogoutPreparation } from './auth-logout';
 
 type TypedSocket = SocketType<ServerToClientEvents, ClientToServerEvents>;
 
@@ -42,11 +50,14 @@ function emitConnectionStatus(status: ConnectionStatus): void {
 }
 
 function currentToken(): string | null {
-  return useAuthStore.getState().token ?? localStorage.getItem('token');
+  return useAuthStore.getState().token;
 }
 
-function clearAuthSession(): void {
-  clearStoredAuthToken();
+function clearAuthSession(attemptedToken: string | null): void {
+  if (attemptedToken && localStorage.getItem('token') === attemptedToken) {
+    clearStoredAuthToken();
+  }
+  setCurrentSuspendedRoomToken(null);
   useAuthStore.setState({ user: null, token: null, loading: false, initialized: true });
 }
 
@@ -66,7 +77,7 @@ export function getSocket(): TypedSocket {
   if (!socket) {
     const token = currentToken();
     socket = io(getApiUrl(), {
-      auth: { token },
+      auth: { token, protocolVersion: PROTOCOL_VERSION },
       transports: ['websocket'],
       autoConnect: false,
       reconnection: true,
@@ -75,40 +86,54 @@ export function getSocket(): TypedSocket {
       reconnectionDelayMax: 10000,
     });
 
-    socket.on('room:updated', (data: Record<string, unknown>) => {
-      if (data.room) {
-        useRoomStore.getState().updateRoom({ room: data.room as any });
-      }
+    const hasSuspendedRoomWithoutActiveView = () =>
+      useRoomStore.getState().roomCode === null && getSuspendedRoom() !== null;
+
+    socket.on('room:updated', data => {
+      if (hasSuspendedRoomWithoutActiveView()) return;
+      useRoomStore.getState().updateRoom(data);
       if (useGameStore.getState().ownerTransferAt !== null) {
         useGameStore.getState().setOwnerTransferAt(null);
       }
     });
 
-    socket.on('seat:updated', (data: { seats: unknown[]; spectators: unknown[] }) => {
-      useRoomStore.getState().updateSeats(data as any);
+    socket.on('seat:updated', data => {
+      if (hasSuspendedRoomWithoutActiveView()) return;
+      useRoomStore.getState().updateSeats(data);
     });
 
-    socket.on('room:ready_changed', (data) => {
+    socket.on('room:ready_changed', data => {
       const selfId = useAuthStore.getState().user?.id ?? useGameStore.getState().viewerId;
       if (data.ready && data.playerId !== selfId) playSound('ready');
     });
 
-    socket.on('voice:presence', (presence) => {
-      const newPresence = (presence ?? {}) as Record<string, PlayerVoicePresence>;
+    socket.on('voice:presence', presence => {
+      const newPresence: Record<string, PlayerVoicePresence> = presence;
       const oldPresence = useGatewayStore.getState().playerVoicePresence;
 
       const selfId = useGameStore.getState().viewerId;
       let changed = false;
       for (const [uid, p] of Object.entries(newPresence)) {
         const old = oldPresence[uid];
-        if (!old || old.inVoice !== p.inVoice || old.micEnabled !== p.micEnabled || old.forceMuted !== p.forceMuted) { changed = true; }
+        if (
+          !old ||
+          old.inVoice !== p.inVoice ||
+          old.micEnabled !== p.micEnabled ||
+          old.speakerMuted !== p.speakerMuted ||
+          old.speaking !== p.speaking ||
+          old.forceMuted !== p.forceMuted
+        ) {
+          changed = true;
+        }
         if (uid === selfId) continue;
         const wasInVoice = old?.inVoice;
         if (p.inVoice && !wasInVoice) playSound('voice_join');
         else if (!p.inVoice && wasInVoice) playSound('voice_leave');
       }
       for (const [uid, p] of Object.entries(oldPresence)) {
-        if (!newPresence[uid]) { changed = true; }
+        if (!newPresence[uid]) {
+          changed = true;
+        }
         if (uid === selfId) continue;
         if (p.inVoice && !newPresence[uid]) playSound('voice_leave');
       }
@@ -116,20 +141,13 @@ export function getSocket(): TypedSocket {
     });
 
     const handleGameView = (view: PlayerView) => {
+      if (hasSuspendedRoomWithoutActiveView()) return;
       const prevPhase = useGameStore.getState().phase;
       const prevCurrentIndex = useGameStore.getState().currentPlayerIndex;
 
-      const settings = view.settings;
-      let turnEndTime: number | null = null;
-      if (settings && view.phase !== 'round_end' && view.phase !== 'game_over') {
-        const timeLimit = settings.houseRules?.fastMode
-          ? Math.floor(settings.turnTimeLimit / 2)
-          : settings.turnTimeLimit;
-        turnEndTime = Date.now() + timeLimit * 1000;
-      }
-      useGameStore.getState().setGameState(view, turnEndTime);
+      useGameStore.getState().setGameState(view);
 
-      const viewerId = view.viewerId ?? useGameStore.getState().viewerId;
+      const viewerId = view.viewerId;
       const currentPlayerId = view.players[view.currentPlayerIndex]?.id;
 
       if (prevPhase !== 'playing' && view.phase === 'playing' && view.roundNumber === 1) {
@@ -149,7 +167,7 @@ export function getSocket(): TypedSocket {
       }
     };
 
-    socket.on('game:state', (view) => {
+    socket.on('game:state', view => {
       handleGameView(view);
       const deckHash = view.deckHash;
       if (deckHash) {
@@ -158,103 +176,91 @@ export function getSocket(): TypedSocket {
     });
     socket.on('game:update', handleGameView);
 
-    socket.on('game:next_round_vote', (vote) => {
-      useGameStore.getState().setNextRoundVote(vote.votes > 0 ? vote : null);
+    socket.on('game:next_round_vote', vote => {
+      useGameStore.getState().setNextRoundVote(vote);
     });
 
-    socket.on('game:round_end', (data) => {
-      if (data?.roundEndAt) {
-        useGameStore.getState().setRoundEndAt(data.roundEndAt);
-      }
+    socket.on('game:round_end', data => {
+      useGameStore.getState().setRoundEndAt(data.roundEndAt);
     });
 
-    socket.on('game:over', (data) => {
-      if (data?.gameOverAt) {
-        useGameStore.getState().setGameOverAt(data.gameOverAt);
-      }
+    socket.on('game:over', data => {
+      useGameStore.getState().setGameOverAt(data.gameOverAt);
     });
 
-    socket.on('game:back_to_room', (data: { seats?: unknown[]; spectators?: unknown[]; room?: unknown }) => {
+    socket.on('game:back_to_room', data => {
       const roomCode = useRoomStore.getState().roomCode;
-      if (data.seats && data.spectators && data.room && roomCode) {
-        useRoomStore.getState().setRoom(roomCode, data.seats as any, data.spectators as any, data.room as any);
-      }
+      if (roomCode) useRoomStore.getState().setRoom(roomCode, data.seats, data.spectators, data.room);
       useGameStore.getState().clearGame();
       // 离开对局语境：游戏内观战席快照与"下局加入"队列都随对局失效，
       // 等待室 UI 只读 room-store，新对局开始时服务端会重发权威快照。
       useSpectatorStore.getState().clearSpectators();
     });
 
-    socket.on('game:card_drawn', (data) => {
+    socket.on('game:card_drawn', data => {
       useGameStore.getState().setDrawnCard(data.card);
     });
 
-    socket.on('game:action_rejected', (data) => {
-      useToastStore.getState().addToast(data.reason || '操作无效', 'error');
-      playSound('error');
-    });
-
-    socket.on('player:timeout', (_data) => {
-      // noop
-    });
-
-    socket.on('player:disconnected', (data) => {
+    socket.on('player:disconnected', data => {
       const player = useGameStore.getState().players.find(p => p.id === data.playerId);
       if (player) useToastStore.getState().addToast(`${player.name}${player.isBot ? ' (AI)' : ''} 掉线了`, 'info');
       playSound('player_leave');
     });
 
-    socket.on('player:reconnected', (data) => {
+    socket.on('player:reconnected', data => {
       const player = useGameStore.getState().players.find(p => p.id === data.playerId);
       if (player) useToastStore.getState().addToast(`${player.name}${player.isBot ? ' (AI)' : ''} 重新连接`, 'success');
       playSound('player_join');
     });
 
-    socket.on('player:autopilot', (data) => {
+    socket.on('player:autopilot', data => {
       const player = useGameStore.getState().players.find(p => p.id === data.playerId);
       if (player) {
-        useToastStore.getState().addToast(
-          data.enabled ? `${player.name}${player.isBot ? ' (AI)' : ''} 进入托管模式` : `${player.name}${player.isBot ? ' (AI)' : ''} 退出托管模式`,
-          'info',
-        );
+        useToastStore
+          .getState()
+          .addToast(
+            data.enabled
+              ? `${player.name}${player.isBot ? ' (AI)' : ''} 进入托管模式`
+              : `${player.name}${player.isBot ? ' (AI)' : ''} 退出托管模式`,
+            'info',
+          );
       }
     });
 
     // The three spectator events all carry the full authoritative
     // `spectators` array per socket-events.ts; trust the contract — local
     // fallbacks would just paper over future server-side regressions.
-    socket.on('room:spectator_list', (data) => {
-      const store = useSpectatorStore.getState();
-      store.setSpectators(data.spectators);
-      const nicknameSet = new Set(data.spectators.map((s) => s.nickname));
-      if (store.pendingJoinQueue.some((n) => !nicknameSet.has(n))) {
-        store.setPendingJoinQueue(store.pendingJoinQueue.filter((n) => nicknameSet.has(n)));
-      }
+    socket.on('room:spectator_list', data => {
+      useSpectatorStore.getState().setSpectators(data.spectators);
     });
 
-    socket.on('room:spectator_joined', (data) => {
+    socket.on('room:spectator_joined', data => {
       useToastStore.getState().addToast(`${data.nickname} 开始观战`, 'info');
       useSpectatorStore.getState().setSpectators(data.spectators);
     });
 
-    socket.on('room:spectator_left', (data) => {
+    socket.on('room:spectator_left', data => {
       useToastStore.getState().addToast(`${data.nickname} 离开观战`, 'info');
       useSpectatorStore.getState().setSpectators(data.spectators);
     });
 
-    socket.on('room:owner_transfer_pending', (data) => {
+    socket.on('room:owner_transfer_pending', data => {
       useGameStore.getState().setOwnerTransferAt(data.transferAt);
     });
     socket.on('room:owner_transfer_cancelled', () => {
       useGameStore.getState().setOwnerTransferAt(null);
     });
 
-    socket.on('server:version', (data) => {
-      useServerVersionStore.getState().setServerVersion(data.version);
-      if (data.serverTime) setServerTimeOffset(data.serverTime);
+    socket.on('server:version', data => {
+      useServerVersionStore.getState().setServerProtocolVersion(data.protocolVersion);
+      if (data.protocolVersion !== PROTOCOL_VERSION) {
+        socket?.disconnect();
+        return;
+      }
+      setServerTimeOffset(data.serverTime);
     });
 
-    socket.on('lobby:rooms', (rooms) => {
+    socket.on('lobby:rooms', rooms => {
       useLobbyStore.getState().setActiveRooms(rooms);
     });
 
@@ -276,7 +282,10 @@ export function getSocket(): TypedSocket {
     socket.on('disconnect', () => {
       emitConnectionStatus('disconnected');
       useServerStore.getState().setSocketLatency(null);
-      if (latencyInterval) { clearInterval(latencyInterval); latencyInterval = null; }
+      if (latencyInterval) {
+        clearInterval(latencyInterval);
+        latencyInterval = null;
+      }
     });
 
     socket.io.on('reconnect_attempt', () => {
@@ -287,14 +296,19 @@ export function getSocket(): TypedSocket {
       emitConnectionStatus('disconnected');
     });
 
-    socket.on('connect_error', (err) => {
+    socket.on('connect_error', err => {
+      if (err.message === 'Protocol mismatch') {
+        useServerVersionStore.getState().markNeedsRefresh();
+        socket?.disconnect();
+        return;
+      }
       if (err.message === 'Authentication failed') {
-        resetClientRoomState();
+        resetClientRoomState({ preserveSuspendedRoom: true });
         // 只在共享 token 正是刚刚鉴权失败的这一枚时才清除——另一标签页
         // 可能已写入新 token，误清会 401 掉对方的活跃会话。
         const attempted = (socket?.auth as { token?: string | null } | undefined)?.token ?? null;
         if (!attempted || localStorage.getItem('token') === attempted) {
-          clearAuthSession();
+          clearAuthSession(attempted);
           socket?.disconnect();
           socket = null;
           window.location.href = '/?session_expired=1';
@@ -303,6 +317,7 @@ export function getSocket(): TypedSocket {
           // 不整页刷新（刷新会用对方的共享 token 复活并反踢对方），
           // 只让本页退场，等用户显式登录。
           markSessionTakenOver();
+          setCurrentSuspendedRoomToken(null);
           useAuthStore.setState({ user: null, token: null, loading: false, initialized: true });
           socket?.disconnect();
           socket = null;
@@ -311,26 +326,53 @@ export function getSocket(): TypedSocket {
       }
     });
 
-    socket.on('auth:kicked', (_data) => {
-      resetClientRoomState();
+    socket.on('auth:kicked', _data => {
+      // This is a per-tab takeover. localStorage is shared, so the old tab
+      // must not erase the new tab's suspended-room marker.
+      resetClientRoomState({ preserveSuspendedRoom: true });
       // 只让本页退场：不清 localStorage 的共享 token——那是接管方标签页
       // 正在使用的凭证，清掉会让对方所有 REST 请求 401、刷新即掉登录。
       markSessionTakenOver();
+      setCurrentSuspendedRoomToken(null);
       useAuthStore.setState({ user: null, token: null, loading: false, initialized: true });
       socket?.disconnect();
       globalNavigate('/');
     });
 
-    socket.on('game:kicked', (data) => {
-      if (data.toSpectator) {
-        useGameStore.getState().setSpectator(true);
-        useToastStore.getState().addToast(data.reason || '你已被移至观战席', 'info');
-        return;
-      }
-      resetClientRoomState();
-      sendNotification('kicked', data.reason || '你已被移出房间');
-      useToastStore.getState().addToast(data.reason || '你已被移出游戏', 'error');
-      if (window.location.pathname !== '/') {
+    socket.on('room:moved_to_spectator', data => {
+      const currentRoomCode = useRoomStore.getState().roomCode;
+      if (data.roomCode !== currentRoomCode && data.roomCode !== getSuspendedRoom()) return;
+      useGameStore.getState().setSpectator(true);
+      useToastStore.getState().addToast(data.reason, 'info');
+    });
+
+    socket.on('room:membership_ended', data => {
+      // This directed event is the durable membership boundary. It is also
+      // the fallback when adapter enumeration/broadcast failed, so consume it
+      // for either the suspended membership or this tab's active room.
+      const clearedSuspension = clearSuspendedRoom(data.roomCode);
+      const isCurrentRoom = useRoomStore.getState().roomCode === data.roomCode;
+      if (!clearedSuspension && !isCurrentRoom) return;
+
+      const message =
+        data.reason === 'kicked'
+          ? '你已被房主移出房间'
+          : data.reason === 'idle_timeout'
+            ? '房间因长时间无活动已关闭'
+            : data.reason === 'host_closed'
+              ? '房主已解散房间'
+              : '房间已关闭';
+      if (data.reason === 'kicked') sendNotification('kicked', message);
+      useToastStore.getState().addToast(message, data.reason === 'kicked' ? 'error' : 'info');
+      // This event is the authoritative end of the suspended membership.
+      // Clear stale player/spectator state even while the user is already in
+      // the lobby; otherwise a prior "moved to spectator" notification can
+      // leak that role into the next room they create or join.
+      // clearSuspendedRoom already performed a compare-and-clear. Preserve a
+      // newer scoped marker that may have appeared while this event travelled.
+      resetClientRoomState({ preserveSuspendedRoom: true });
+      const roomPath = new RegExp(`^/(?:room|game)/${data.roomCode}$`, 'iu');
+      if (roomPath.test(window.location.pathname)) {
         globalNavigate('/');
       }
     });
@@ -338,30 +380,35 @@ export function getSocket(): TypedSocket {
     socket.on('game:cheat_detected', () => {
       useGameStore.getState().setCheatDetected(true);
     });
-
-    socket.on('room:dissolved', (data) => {
-      if (useGameStore.getState().cheatDetected) return;
-      useGameStore.getState().setDissolvedReason(data?.reason ?? 'host_closed');
-    });
   }
   return socket;
 }
 
 export function refreshVoicePresence(): void {
   const s = getSocket();
-  s.emit('voice:presence:get', (presence) => {
-    useGatewayStore.getState().setPlayerVoicePresence(presence as Record<string, PlayerVoicePresence>);
+  const socketId = s.id;
+  const roomCode = useRoomStore.getState().roomCode;
+  s.emit('voice:presence:get', presence => {
+    if (!isCurrentSocket(s) || s.id !== socketId || useRoomStore.getState().roomCode !== roomCode) return;
+    useGatewayStore.getState().setPlayerVoicePresence(presence);
   });
+}
+
+/** Read-only identity check for async operations that must not act on a
+ * replacement transport created after an auth/server/room transition. */
+export function isCurrentSocket(candidate: unknown): boolean {
+  return socket === candidate;
 }
 
 export function connectSocket(): void {
   // 被接管的标签页禁止自动重连；标志只由显式登录（auth-store 各 login
   // 成功路径）或整页刷新解除——loadUser 的静默恢复不算数。
   if (isSessionTakenOver()) return;
+  if (useServerVersionStore.getState().needsRefresh) return;
   const s = getSocket();
   const token = currentToken();
   const oldToken = (s.auth as { token?: string | null } | undefined)?.token ?? null;
-  s.auth = { token };
+  s.auth = { token, protocolVersion: PROTOCOL_VERSION };
   if (s.connected && oldToken !== token) {
     s.disconnect();
     s.connect();
@@ -378,6 +425,19 @@ export function disconnectSocket(): void {
     socket = null;
   }
 }
+
+registerLogoutPreparation(async () => {
+  const currentSocket = socket;
+  if (!currentSocket) return;
+
+  const roomCode = useRoomStore.getState().roomCode;
+  const result = await leaveRoomBeforeDisconnect(currentSocket, roomCode !== null);
+  if (roomCode && result) {
+    if (result.success && result.outcome === 'suspended') markRoomSuspended(roomCode);
+    else if (result.success) clearSuspendedRoom(roomCode);
+  }
+  if (socket === currentSocket) socket = null;
+});
 
 // 网络恢复自动重连：reconnectionAttempts 耗尽（约 30s 断网）后 socket.io
 // 永不再自行重试，且对局页不会重新挂载来触发 connectSocket——没有这个

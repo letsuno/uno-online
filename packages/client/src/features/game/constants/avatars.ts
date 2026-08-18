@@ -10,14 +10,4 @@ export const AVATAR_COLORS = [
   '#6366f1',
 ];
 
-export const AVATAR_EMOJIS = [
-  '😎',
-  '🤠',
-  '😺',
-  '🐸',
-  '🦊',
-  '🐱',
-  '🐶',
-  '🦁',
-  '🐼',
-];
+export const AVATAR_EMOJIS = ['😎', '🤠', '😺', '🐸', '🦊', '🐱', '🐶', '🦁', '🐼'];

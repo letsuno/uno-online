@@ -14,31 +14,33 @@ interface DrawPileProps {
 }
 
 function DrawPile({ side, isPortrait, onDraw, drawUntilCount = 0 }: DrawPileProps) {
-  const deckCount = useGameStore((s) => side === 'left' ? s.deckLeftCount : s.deckRightCount);
-  const discardPileLength = useGameStore((s) => s.discardPile.length);
-  const phase = useGameStore((s) => s.phase);
-  const hasDrawnThisTurn = useGameStore((s) => s.hasDrawnThisTurn);
-  const pendingPenaltyDraws = useGameStore((s) => s.pendingPenaltyDraws);
-  const drawStack = useGameStore((s) => s.drawStack);
-  const settings = useGameStore((s) => s.settings);
+  const deckCount = useGameStore(s => (side === 'left' ? s.deckLeftCount : s.deckRightCount));
+  const discardPileLength = useGameStore(s => s.discardPile.length);
+  const phase = useGameStore(s => s.phase);
+  const hasDrawnThisTurn = useGameStore(s => s.hasDrawnThisTurn);
+  const pendingPenaltyDraws = useGameStore(s => s.pendingPenaltyDraws);
+  const drawStack = useGameStore(s => s.drawStack);
+  const settings = useGameStore(s => s.settings);
 
   const isMyTurn = useIsMyTurn();
   const remainingPenaltyDraws = pendingPenaltyDraws > 0 ? pendingPenaltyDraws : drawStack;
   const isPenaltyDrawing = remainingPenaltyDraws > 0;
   const playableIds = usePlayableCardIds();
-  const mustDrawUntilPlayable = Boolean(settings?.houseRules?.drawUntilPlayable);
+  const mustDrawUntilPlayable = Boolean(settings?.houseRules.drawUntilPlayable);
   const isDrawUntilTurn = mustDrawUntilPlayable && !isPenaltyDrawing;
   const canStartDrawUntilPlayable = !mustDrawUntilPlayable || playableIds.size === 0;
-  const canContinueDrawUntilPlayable = !isPenaltyDrawing && mustDrawUntilPlayable && hasDrawnThisTurn && playableIds.size === 0;
+  const canContinueDrawUntilPlayable =
+    !isPenaltyDrawing && mustDrawUntilPlayable && hasDrawnThisTurn && playableIds.size === 0;
   const hasCardsAvailable = deckCount > 0 || discardPileLength > 1;
-  const canDraw = isMyTurn && phase === 'playing' && hasCardsAvailable && (isPenaltyDrawing || (!hasDrawnThisTurn && canStartDrawUntilPlayable) || canContinueDrawUntilPlayable);
+  const canDraw =
+    isMyTurn &&
+    phase === 'playing' &&
+    hasCardsAvailable &&
+    (isPenaltyDrawing || (!hasDrawnThisTurn && canStartDrawUntilPlayable) || canContinueDrawUntilPlayable);
 
-  const showNoPlayableHint = canDraw && !isDrawUntilTurn && !isPenaltyDrawing && drawStack === 0 && playableIds.size === 0 && !settings?.houseRules?.noHints;
-  const emphasizeDraw = canDraw && !settings?.houseRules?.noHints;
+  const emphasizeDraw = canDraw && !settings?.houseRules.noHints;
 
-  const label = isPortrait
-    ? (side === 'left' ? '上牌堆' : '下牌堆')
-    : (side === 'left' ? '左牌堆' : '右牌堆');
+  const label = isPortrait ? (side === 'left' ? '上牌堆' : '下牌堆') : side === 'left' ? '左牌堆' : '右牌堆';
 
   const handleClick = () => onDraw(side);
 

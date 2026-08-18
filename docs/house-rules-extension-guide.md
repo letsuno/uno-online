@@ -61,9 +61,7 @@ export interface RuleMetadata {
   description: string;
 }
 
-export type PreCheckResult =
-  | { handled: false }
-  | { handled: true; state: GameState };
+export type PreCheckResult = { handled: false } | { handled: true; state: GameState };
 
 export interface RuleContext {
   applyAction: (state: GameState, action: GameAction) => GameState;
@@ -136,13 +134,13 @@ applyActionWithHouseRules(state, action)
 
 当前 `HouseRules` 共 34 个字段：
 
-| 分类 | 字段 |
-|------|------|
-| 叠加/转移 | `stackDrawTwo`, `stackDrawFour`, `crossStack`, `reverseDeflectDrawTwo`, `reverseDeflectDrawFour`, `skipDeflect` |
-| 出牌/摸牌 | `jumpIn`, `multiplePlaySameNumber`, `wildFirstTurn`, `drawUntilPlayable`, `forcedPlayAfterDraw`, `forcedPlay`, `deathDraw`, `blindDraw`, `bombCard` |
-| 手牌/UNO | `zeroRotateHands`, `sevenSwapHands`, `handLimit`, `handRevealThreshold`, `unoPenaltyCount`, `strictUnoCall`, `silentUno`, `misplayPenalty` |
-| 终局/积分 | `noFunctionCardFinish`, `noWildFinish`, `doubleScore` |
-| 模式 | `elimination`, `blitzTimeLimit`, `revengeMode`, `teamMode`, `shuffleSeats`, `fastMode`, `noHints`, `noChallengeWildFour` |
+| 分类      | 字段                                                                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 叠加/转移 | `stackDrawTwo`, `stackDrawFour`, `crossStack`, `reverseDeflectDrawTwo`, `reverseDeflectDrawFour`, `skipDeflect`                            |
+| 出牌/摸牌 | `jumpIn`, `multiplePlaySameNumber`, `wildFirstTurn`, `drawUntilPlayable`, `forcedPlayAfterDraw`, `forcedPlay`, `blindDraw`, `bombCard`     |
+| 手牌/UNO  | `zeroRotateHands`, `sevenSwapHands`, `handLimit`, `handRevealThreshold`, `unoPenaltyCount`, `strictUnoCall`, `silentUno`, `misplayPenalty` |
+| 终局/积分 | `noFunctionCardFinish`, `noWildFinish`, `doubleScore`                                                                                      |
+| 模式      | `elimination`, `blitzTimeLimit`, `revengeMode`, `teamMode`, `shuffleSeats`, `fastMode`, `noHints`, `noChallengeWildFour`                   |
 
 ## 添加新村规
 
@@ -181,8 +179,7 @@ export const HOUSE_RULE_DEFINITIONS: HouseRuleDefinition[] = [
 
 房间页和村规面板会读取这张表。布尔规则默认自动渲染开关；如果是 `number | null` 或枚举值，需要在客户端的 `RULE_EXTRAS` 中补充 select 配置，目前相关位置包括：
 
-- `packages/client/src/features/game/pages/RoomPage.tsx`
-- `packages/client/src/features/game/components/HouseRulesPanel.tsx`
+- `packages/client/src/features/game/components/SettingsDrawer.tsx`
 
 ### 第 3 步：实现规则插件
 
@@ -200,7 +197,7 @@ export const myNewRule: HouseRulePlugin = {
     description: '这条规则的开发侧说明',
   },
 
-  isEnabled: (hr) => hr.myNewRule,
+  isEnabled: hr => hr.myNewRule,
 
   preCheck: (state, action, ctx) => {
     if (action.type !== 'PLAY_CARD') return { handled: false };
@@ -241,12 +238,12 @@ export const POST_PROCESS_PLUGINS: HouseRulePlugin[] = [
 
 顺序建议：
 
-| 顺序 | 适合规则 |
-|------|----------|
-| 前置靠前 | 终局限制、禁止行为、必须行为 |
-| 前置中段 | 罚摸、叠加、转移、摸到能出为止 |
-| 前置靠后 | 抢出、交换目标选择等特殊动作 |
-| 后置靠前 | 0/7 换手牌、复仇、连出 |
+| 顺序     | 适合规则                            |
+| -------- | ----------------------------------- |
+| 前置靠前 | 终局限制、禁止行为、必须行为        |
+| 前置中段 | 罚摸、叠加、转移、摸到能出为止      |
+| 前置靠后 | 抢出、交换目标选择等特殊动作        |
+| 后置靠前 | 0/7 换手牌、复仇、连出              |
 | 后置靠后 | 强制摸后出、积分翻倍、团队/淘汰结算 |
 
 ## UI 展示与教学
@@ -260,9 +257,8 @@ packages/client/src/features/game/components/RuleTeaching.tsx
 启用规则展示由这些组件读取 `HOUSE_RULE_DEFINITIONS` 和 `DEFAULT_HOUSE_RULES`：
 
 - `HouseRulesCard`
-- `HouseRulesPanel`
 - `GameStartRulesModal`
-- `RoomPage` 内联村规面板
+- `SettingsDrawer`
 
 ## 测试
 
@@ -282,7 +278,9 @@ describe('myNewRule', () => {
         targetScore: 1000,
         allowSpectators: true,
         spectatorMode: 'hidden',
-        houseRules: { /* DEFAULT_HOUSE_RULES + myNewRule */ } as any,
+        houseRules: {
+          /* DEFAULT_HOUSE_RULES + myNewRule */
+        } as any,
       },
     });
 

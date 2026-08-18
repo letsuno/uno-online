@@ -29,8 +29,14 @@ export default function ThrowItemPicker({ onSelect, onClose, anchorX, anchorY }:
   const maxTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const stopRepeat = useCallback(() => {
-    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = undefined; }
-    if (maxTimerRef.current) { clearTimeout(maxTimerRef.current); maxTimerRef.current = undefined; }
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = undefined;
+    }
+    if (maxTimerRef.current) {
+      clearTimeout(maxTimerRef.current);
+      maxTimerRef.current = undefined;
+    }
   }, []);
 
   useEffect(() => {
@@ -53,19 +59,25 @@ export default function ThrowItemPicker({ onSelect, onClose, anchorX, anchorY }:
 
   const lastSendRef = useRef(0);
 
-  const throttledSelect = useCallback((item: string) => {
-    const now = Date.now();
-    if (now - lastSendRef.current < REPEAT_INTERVAL_MS) return;
-    lastSendRef.current = now;
-    onSelect(item);
-  }, [onSelect]);
+  const throttledSelect = useCallback(
+    (item: string) => {
+      const now = Date.now();
+      if (now - lastSendRef.current < REPEAT_INTERVAL_MS) return;
+      lastSendRef.current = now;
+      onSelect(item);
+    },
+    [onSelect],
+  );
 
-  const startRepeat = useCallback((item: string) => {
-    stopRepeat();
-    throttledSelect(item);
-    intervalRef.current = setInterval(() => throttledSelect(item), REPEAT_INTERVAL_MS);
-    maxTimerRef.current = setTimeout(stopRepeat, MAX_HOLD_MS);
-  }, [throttledSelect, stopRepeat]);
+  const startRepeat = useCallback(
+    (item: string) => {
+      stopRepeat();
+      throttledSelect(item);
+      intervalRef.current = setInterval(() => throttledSelect(item), REPEAT_INTERVAL_MS);
+      maxTimerRef.current = setTimeout(stopRepeat, MAX_HOLD_MS);
+    },
+    [throttledSelect, stopRepeat],
+  );
 
   useEffect(() => {
     const handleUp = () => stopRepeat();
@@ -100,7 +112,10 @@ export default function ThrowItemPicker({ onSelect, onClose, anchorX, anchorY }:
           {ITEMS.map(({ emoji, label }) => (
             <button
               key={emoji}
-              onPointerDown={(e) => { e.preventDefault(); startRepeat(emoji); }}
+              onPointerDown={e => {
+                e.preventDefault();
+                startRepeat(emoji);
+              }}
               className="flex flex-col items-center gap-0.5 bg-transparent cursor-pointer transition-transform duration-150 hover:scale-125 select-none touch-none"
             >
               <span className="text-2xl">{emoji}</span>

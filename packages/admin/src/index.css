@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 *,
 *::before,
@@ -8,7 +8,10 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
   background-color: #0f172a;
   color: #e2e8f0;
   -webkit-font-smoothing: antialiased;

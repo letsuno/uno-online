@@ -4,7 +4,7 @@ import { useProfileModalStore } from '@/shared/stores/profile-modal-store';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const open = useProfileModalStore((s) => s.open);
+  const open = useProfileModalStore(s => s.open);
 
   useEffect(() => {
     navigate('/', { replace: true });

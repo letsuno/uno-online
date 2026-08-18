@@ -59,24 +59,23 @@ function createDb(dbPath: string): Kysely<Database> {
         prepare(sqlStr: string) {
           const raw = sqlite.prepare(sqlStr);
           const rawSql = raw.sourceSQL.toLowerCase().trimStart();
-          const toParams = (params: readonly unknown[]) =>
-            params.map(p => (typeof p === 'boolean' ? (p ? 1 : 0) : p));
+          const toParams = (params: readonly unknown[]) => params.map(p => (typeof p === 'boolean' ? (p ? 1 : 0) : p));
           return {
             all(parameters: readonly unknown[]) {
-              return raw.all(...toParams(parameters) as SQLInputValue[]);
+              return raw.all(...(toParams(parameters) as SQLInputValue[]));
             },
             run(parameters: readonly unknown[]) {
-              return raw.run(...toParams(parameters) as SQLInputValue[]);
+              return raw.run(...(toParams(parameters) as SQLInputValue[]));
             },
             iterate(parameters: readonly unknown[]) {
-              return raw.iterate(...toParams(parameters) as SQLInputValue[]);
+              return raw.iterate(...(toParams(parameters) as SQLInputValue[]));
             },
             reader:
-              rawSql.startsWith('select')
-              || rawSql.startsWith('pragma')
-              || rawSql.startsWith('with')
-              || rawSql.startsWith('values')
-              || rawSql.includes(' returning '),
+              rawSql.startsWith('select') ||
+              rawSql.startsWith('pragma') ||
+              rawSql.startsWith('with') ||
+              rawSql.startsWith('values') ||
+              rawSql.includes(' returning '),
           };
         },
         close() {
@@ -111,22 +110,22 @@ export async function migrateDb(): Promise<void> {
   await k.schema
     .createTable('users')
     .ifNotExists()
-    .addColumn('id', 'text', (c) => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
-    .addColumn('github_id', 'text', (c) => c.unique())
-    .addColumn('username', 'text', (c) => c.unique().notNull())
-    .addColumn('nickname', 'text', (c) => c.notNull())
+    .addColumn('id', 'text', c => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
+    .addColumn('github_id', 'text', c => c.unique())
+    .addColumn('username', 'text', c => c.unique().notNull())
+    .addColumn('nickname', 'text', c => c.notNull())
     .addColumn('password_hash', 'text')
     .addColumn('avatar_url', 'text')
     .addColumn('avatar_data', 'text')
-    .addColumn('role', 'text', (c) => c.defaultTo('normal').notNull())
-    .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
-    .addColumn('updated_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
+    .addColumn('role', 'text', c => c.defaultTo('normal').notNull())
+    .addColumn('created_at', 'text', c => c.defaultTo(sql`(datetime('now'))`).notNull())
+    .addColumn('updated_at', 'text', c => c.defaultTo(sql`(datetime('now'))`).notNull())
     .execute();
 
   try {
     await k.schema
       .alterTable('users')
-      .addColumn('role', 'text', (c) => c.defaultTo('normal').notNull())
+      .addColumn('role', 'text', c => c.defaultTo('normal').notNull())
       .execute();
   } catch (err) {
     const msg = (err as Error).message ?? '';
@@ -138,40 +137,30 @@ export async function migrateDb(): Promise<void> {
   await k.schema
     .createTable('api_keys')
     .ifNotExists()
-    .addColumn('id', 'text', (c) => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
-    .addColumn('user_id', 'text', (c) => c.references('users.id').onDelete('cascade').notNull())
-    .addColumn('key', 'text', (c) => c.unique().notNull())
-    .addColumn('key_preview', 'text', (c) => c.notNull().defaultTo(''))
-    .addColumn('name', 'text', (c) => c.notNull())
-    .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
+    .addColumn('id', 'text', c => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
+    .addColumn('user_id', 'text', c => c.references('users.id').onDelete('cascade').notNull())
+    .addColumn('key', 'text', c => c.unique().notNull())
+    .addColumn('key_preview', 'text', c => c.notNull().defaultTo(''))
+    .addColumn('name', 'text', c => c.notNull())
+    .addColumn('created_at', 'text', c => c.defaultTo(sql`(datetime('now'))`).notNull())
     .addColumn('last_used_at', 'text')
     .execute();
 
-  await k.schema
-    .createIndex('idx_api_keys_user_id')
-    .ifNotExists()
-    .on('api_keys')
-    .column('user_id')
-    .execute();
+  await k.schema.createIndex('idx_api_keys_user_id').ifNotExists().on('api_keys').column('user_id').execute();
 
   await k.schema
     .createTable('passkeys')
     .ifNotExists()
-    .addColumn('id', 'text', (c) => c.primaryKey())
-    .addColumn('user_id', 'text', (c) => c.references('users.id').onDelete('cascade').notNull())
-    .addColumn('public_key', 'text', (c) => c.notNull())
-    .addColumn('counter', 'integer', (c) => c.notNull().defaultTo(0))
-    .addColumn('device_type', 'text', (c) => c.notNull())
-    .addColumn('backed_up', 'integer', (c) => c.notNull().defaultTo(0))
+    .addColumn('id', 'text', c => c.primaryKey())
+    .addColumn('user_id', 'text', c => c.references('users.id').onDelete('cascade').notNull())
+    .addColumn('public_key', 'text', c => c.notNull())
+    .addColumn('counter', 'integer', c => c.notNull().defaultTo(0))
+    .addColumn('device_type', 'text', c => c.notNull())
+    .addColumn('backed_up', 'integer', c => c.notNull().defaultTo(0))
     .addColumn('transports', 'text')
-    .addColumn('name', 'text', (c) => c.notNull())
-    .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
+    .addColumn('name', 'text', c => c.notNull())
+    .addColumn('created_at', 'text', c => c.defaultTo(sql`(datetime('now'))`).notNull())
     .execute();
 
-  await k.schema
-    .createIndex('idx_passkeys_user_id')
-    .ifNotExists()
-    .on('passkeys')
-    .column('user_id')
-    .execute();
+  await k.schema.createIndex('idx_passkeys_user_id').ifNotExists().on('passkeys').column('user_id').execute();
 }

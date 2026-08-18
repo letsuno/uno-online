@@ -4,7 +4,16 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startServices, CLIENT_URL } from './lib/harness.mjs';
-import { launchBrowser, newAuthedPage, setupGame, checkOverflow, waitSocketConnected, emit, dismissGameOverlays } from './lib/driver.mjs';
+import {
+  launchBrowser,
+  newAuthedPage,
+  checkOverflow,
+  waitSocketConnected,
+  waitRoomJoined,
+  emit,
+  startGame,
+  dismissGameOverlays,
+} from './lib/driver.mjs';
 
 const outDir = resolve(dirname(fileURLToPath(import.meta.url)), 'output');
 
@@ -27,7 +36,9 @@ function arg(name, fallback) {
 const TAG = arg('tag', 'run');
 const STAGES = arg('stages', 'login,lobby,room,game').split(',');
 const RES = arg('res', null)
-  ? arg('res').split(',').map((s) => s.split('x').map(Number))
+  ? arg('res')
+      .split(',')
+      .map(s => s.split('x').map(Number))
   : DEFAULT_RES;
 
 const report = { tag: TAG, stages: {}, errors: [] };
@@ -64,12 +75,16 @@ async function run() {
           await page.waitForTimeout(1200);
           await shot(page, 'login', w, h, errors);
           // 恢复登录态
-          const { token } = await (await fetch(`${CLIENT_URL}/api/auth/dev-login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username }),
-          })).json().then((d) => ({ token: d.token }));
-          await page.evaluate((t) => localStorage.setItem('token', t), token);
+          const { token } = await (
+            await fetch(`${CLIENT_URL}/api/auth/dev-login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username }),
+            })
+          )
+            .json()
+            .then(d => ({ token: d.token }));
+          await page.evaluate(t => localStorage.setItem('token', t), token);
         }
 
         if (STAGES.includes('lobby')) {
@@ -80,7 +95,7 @@ async function run() {
         }
 
         let roomCode = null;
-        if (STAGES.some((s) => ['room', 'game', 'settings', 'scoreboard'].includes(s))) {
+        if (STAGES.some(s => ['room', 'game', 'settings', 'scoreboard'].includes(s))) {
           // 前面的阶段可能没跑（如 --stages game），确保已在站内
           await page.goto(`${CLIENT_URL}/`, { waitUntil: 'domcontentloaded' });
           await waitSocketConnected(page);
@@ -88,6 +103,7 @@ async function run() {
           if (!created.success) throw new Error(`room:create 失败: ${created.error}`);
           roomCode = created.roomCode;
           await page.goto(`${CLIENT_URL}/room/${roomCode}`, { waitUntil: 'domcontentloaded' });
+          await waitRoomJoined(page, roomCode);
           await page.waitForTimeout(1200);
         }
 
@@ -118,30 +134,13 @@ async function run() {
         }
 
         if (STAGES.includes('game')) {
-          // 进房后 socket rejoin 有延迟，重试入座（房主可能已自动入座）
-          let taken = null;
-          for (let i = 0; i < 10; i++) {
-            taken = await emit(page, 'seat:take', 0);
-            if (taken.success || String(taken.error).includes('占用')) break;
-            await page.waitForTimeout(500);
-          }
-          if (!taken.success && !String(taken.error).includes('占用')) throw new Error(`seat:take 失败: ${taken.error}`);
           for (let i = 0; i < 2; i++) {
             const added = await emit(page, 'room:add_bot', { difficulty: 'easy' });
             if (!added.success) throw new Error(`room:add_bot 失败: ${added.error}`);
           }
-          await emit(page, 'room:ready', true);
-          const started = await emit(page, 'game:start').catch((e) => {
-            // 开局成功会触发客户端跳转 /game/:code，evaluate 上下文随之销毁，属正常
-            if (String(e).includes('Execution context')) return { success: true };
-            throw e;
-          });
-          if (!started.success) throw new Error(`game:start 失败: ${started.error}`);
-          await page.waitForFunction(
-            () => window.__uno?.useGameStore?.getState?.().phase === 'playing',
-            null,
-            { timeout: 15000 },
-          );
+          const ready = await emit(page, 'room:ready', true);
+          if (!ready.success) throw new Error(`room:ready 失败: ${ready.error}`);
+          await startGame(page);
           await page.waitForTimeout(1000);
           await dismissGameOverlays(page);
           await page.waitForTimeout(800);
@@ -152,11 +151,13 @@ async function run() {
           // 合成 round_end 状态，验证记分板布局
           await page.evaluate(() => {
             const store = window.__uno?.useGameStore;
-            if (!store) return;
+            if (!store) throw new Error('E2E game store hook is unavailable');
             const s = store.getState();
+            const winner = s.players[0];
+            if (!winner) throw new Error('记分板场景缺少玩家');
             store.setState({
               phase: 'round_end',
-              winnerId: s.players[0]?.id ?? null,
+              winnerId: winner.id,
               players: s.players.map((p, i) => ({ ...p, score: (i + 1) * 37, roundWins: i })),
             });
           });
@@ -166,7 +167,11 @@ async function run() {
       } catch (err) {
         report.errors.push({ res: `${w}x${h}`, error: String(err) });
         console.log(`  ✗ ${w}x${h}: ${err.message ?? err}`);
-        try { await page.screenshot({ path: resolve(outDir, `${TAG}-ERROR-${w}x${h}.png`) }); } catch { /* ignore */ }
+        try {
+          await page.screenshot({ path: resolve(outDir, `${TAG}-ERROR-${w}x${h}.png`) });
+        } catch {
+          /* ignore */
+        }
       } finally {
         await context.close();
       }
@@ -177,13 +182,15 @@ async function run() {
     await services.stop();
   }
 
-  const overflowTotal = Object.values(report.stages).filter((s) => s.overflow.count > 0).length;
-  const consoleErrTotal = Object.values(report.stages).filter((s) => s.consoleErrors.length > 0).length;
-  console.log(`\n完成: ${Object.keys(report.stages).length} 张截图, ${overflowTotal} 个场景有溢出, ${consoleErrTotal} 个场景有 console 错误, ${report.errors.length} 个场景失败`);
+  const overflowTotal = Object.values(report.stages).filter(s => s.overflow.count > 0).length;
+  const consoleErrTotal = Object.values(report.stages).filter(s => s.consoleErrors.length > 0).length;
+  console.log(
+    `\n完成: ${Object.keys(report.stages).length} 张截图, ${overflowTotal} 个场景有溢出, ${consoleErrTotal} 个场景有 console 错误, ${report.errors.length} 个场景失败`,
+  );
   console.log(`报告: ${resolve(outDir, `${TAG}-report.json`)}`);
 }
 
-run().catch((e) => {
+run().catch(e => {
   console.error(e);
   process.exit(1);
 });

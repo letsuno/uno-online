@@ -54,11 +54,7 @@ function abortError(): Error {
   return error;
 }
 
-function assertExactKeys(
-  value: Record<string, unknown>,
-  allowedKeys: readonly string[],
-  label: string,
-): void {
+function assertExactKeys(value: Record<string, unknown>, allowedKeys: readonly string[], label: string): void {
   const allowed = new Set(allowedKeys);
   const unknown = Object.keys(value).filter(key => !allowed.has(key));
   if (unknown.length > 0) throw new Error(`${label} contains unknown fields: ${unknown.join(', ')}`);
@@ -152,9 +148,8 @@ function parseTensor(value: unknown, label: string): ParsedTensor {
   const dims = tensor['dims'] as number[];
   const data = tensor['data'];
   const elementCount = tensorElementCount(dims, label);
-  const expectedDataLength = tensorType === 'uint4' || tensorType === 'int4'
-    ? Math.ceil(elementCount / 2)
-    : elementCount;
+  const expectedDataLength =
+    tensorType === 'uint4' || tensorType === 'int4' ? Math.ceil(elementCount / 2) : elementCount;
   if (data.length !== expectedDataLength) {
     throw new Error(`${label}.data length does not match ${label}.dims`);
   }
@@ -178,24 +173,24 @@ function numericData(
     if (options?.integer && !Number.isInteger(value)) {
       throw new Error(`${label}.data[${index}] must be an integer`);
     }
-    if ((options?.minimum !== undefined && value < options.minimum)
-      || (options?.maximum !== undefined && value > options.maximum)) {
+    if (
+      (options?.minimum !== undefined && value < options.minimum) ||
+      (options?.maximum !== undefined && value > options.maximum)
+    ) {
       throw new Error(`${label}.data[${index}] is outside the ${label}.type range`);
     }
     return value;
   });
 }
 
-function int64Data(
-  data: readonly unknown[],
-  label: string,
-  unsigned: boolean,
-): bigint[] {
+function int64Data(data: readonly unknown[], label: string, unsigned: boolean): bigint[] {
   const minimum = unsigned ? 0n : -(2n ** 63n);
   const maximum = unsigned ? 2n ** 64n - 1n : 2n ** 63n - 1n;
   return data.map((value, index) => {
-    if ((typeof value !== 'string' || !/^-?\d+$/.test(value))
-      && (typeof value !== 'number' || !Number.isSafeInteger(value))) {
+    if (
+      (typeof value !== 'string' || !/^-?\d+$/.test(value)) &&
+      (typeof value !== 'number' || !Number.isSafeInteger(value))
+    ) {
       throw new Error(`${label}.data[${index}] must be a decimal string or safe integer`);
     }
     const converted = BigInt(value);
@@ -225,69 +220,99 @@ function createTensor({ type, dims, data }: ParsedTensor, label: string): ort.Te
     case 'float16':
       return new ort.Tensor(
         'float16',
-        new Uint16Array(numericData(data, label, {
-          integer: true,
-          minimum: 0,
-          maximum: 65_535,
-        })),
+        new Uint16Array(
+          numericData(data, label, {
+            integer: true,
+            minimum: 0,
+            maximum: 65_535,
+          }),
+        ),
         dims,
       );
     case 'uint4':
       return new ort.Tensor(
         'uint4',
-        new Uint8Array(numericData(data, label, {
-          integer: true,
-          minimum: 0,
-          maximum: 255,
-        })),
+        new Uint8Array(
+          numericData(data, label, {
+            integer: true,
+            minimum: 0,
+            maximum: 255,
+          }),
+        ),
         dims,
       );
     case 'int4':
       return new ort.Tensor(
         'int4',
-        new Int8Array(numericData(data, label, {
-          integer: true,
-          minimum: -128,
-          maximum: 127,
-        })),
+        new Int8Array(
+          numericData(data, label, {
+            integer: true,
+            minimum: -128,
+            maximum: 127,
+          }),
+        ),
         dims,
       );
     case 'uint8':
-      return new ort.Tensor('uint8', numericData(data, label, {
-        integer: true,
-        minimum: 0,
-        maximum: 255,
-      }), dims);
+      return new ort.Tensor(
+        'uint8',
+        numericData(data, label, {
+          integer: true,
+          minimum: 0,
+          maximum: 255,
+        }),
+        dims,
+      );
     case 'int8':
-      return new ort.Tensor('int8', numericData(data, label, {
-        integer: true,
-        minimum: -128,
-        maximum: 127,
-      }), dims);
+      return new ort.Tensor(
+        'int8',
+        numericData(data, label, {
+          integer: true,
+          minimum: -128,
+          maximum: 127,
+        }),
+        dims,
+      );
     case 'uint16':
-      return new ort.Tensor('uint16', numericData(data, label, {
-        integer: true,
-        minimum: 0,
-        maximum: 65_535,
-      }), dims);
+      return new ort.Tensor(
+        'uint16',
+        numericData(data, label, {
+          integer: true,
+          minimum: 0,
+          maximum: 65_535,
+        }),
+        dims,
+      );
     case 'int16':
-      return new ort.Tensor('int16', numericData(data, label, {
-        integer: true,
-        minimum: -32_768,
-        maximum: 32_767,
-      }), dims);
+      return new ort.Tensor(
+        'int16',
+        numericData(data, label, {
+          integer: true,
+          minimum: -32_768,
+          maximum: 32_767,
+        }),
+        dims,
+      );
     case 'uint32':
-      return new ort.Tensor('uint32', numericData(data, label, {
-        integer: true,
-        minimum: 0,
-        maximum: 4_294_967_295,
-      }), dims);
+      return new ort.Tensor(
+        'uint32',
+        numericData(data, label, {
+          integer: true,
+          minimum: 0,
+          maximum: 4_294_967_295,
+        }),
+        dims,
+      );
     case 'int32':
-      return new ort.Tensor('int32', numericData(data, label, {
-        integer: true,
-        minimum: -2_147_483_648,
-        maximum: 2_147_483_647,
-      }), dims);
+      return new ort.Tensor(
+        'int32',
+        numericData(data, label, {
+          integer: true,
+          minimum: -2_147_483_648,
+          maximum: 2_147_483_647,
+        }),
+        dims,
+      );
     case 'float32':
       return new ort.Tensor('float32', numericData(data, label), dims);
     case 'float64':
@@ -376,9 +401,7 @@ export class CommunityOnnxRuntime {
         const parsed = parseTensor(tensor, label);
         totalInputBytes += parsed.byteLength;
         if (totalInputBytes > MAX_COMMUNITY_ONNX_TOTAL_INPUT_BYTES) {
-          throw new Error(
-            `ONNX inputs exceed the ${MAX_COMMUNITY_ONNX_TOTAL_INPUT_BYTES} total byte limit`,
-          );
+          throw new Error(`ONNX inputs exceed the ${MAX_COMMUNITY_ONNX_TOTAL_INPUT_BYTES} total byte limit`);
         }
         feeds[name] = createTensor(parsed, label);
       }
@@ -389,9 +412,12 @@ export class CommunityOnnxRuntime {
 
       let outputNames: string[] | undefined;
       if (request['outputNames'] !== undefined) {
-        if (!Array.isArray(request['outputNames']) || request['outputNames'].length === 0
-          || request['outputNames'].some(name => typeof name !== 'string')
-          || new Set(request['outputNames']).size !== request['outputNames'].length) {
+        if (
+          !Array.isArray(request['outputNames']) ||
+          request['outputNames'].length === 0 ||
+          request['outputNames'].some(name => typeof name !== 'string') ||
+          new Set(request['outputNames']).size !== request['outputNames'].length
+        ) {
           throw new Error('prepareOnnx result.outputNames must be unique ONNX output names');
         }
         outputNames = request['outputNames'] as string[];
@@ -402,18 +428,14 @@ export class CommunityOnnxRuntime {
       }
 
       if (signal.aborted) throw abortError();
-      outputs = outputNames
-        ? await this.session.run(feeds, outputNames)
-        : await this.session.run(feeds);
+      outputs = outputNames ? await this.session.run(feeds, outputNames) : await this.session.run(feeds);
       if (signal.aborted) throw abortError();
       let totalOutputBytes = 0;
       const serializedOutputs: Record<string, CommunityOnnxTensor> = Object.create(null);
       for (const [name, tensor] of Object.entries(outputs)) {
         totalOutputBytes += outputTensorByteLength(tensor, name);
         if (totalOutputBytes > MAX_COMMUNITY_ONNX_TOTAL_OUTPUT_BYTES) {
-          throw new Error(
-            `ONNX outputs exceed the ${MAX_COMMUNITY_ONNX_TOTAL_OUTPUT_BYTES} total byte limit`,
-          );
+          throw new Error(`ONNX outputs exceed the ${MAX_COMMUNITY_ONNX_TOTAL_OUTPUT_BYTES} total byte limit`);
         }
         serializedOutputs[name] = serializeTensor(tensor, name);
       }

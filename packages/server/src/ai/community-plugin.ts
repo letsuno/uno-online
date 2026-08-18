@@ -90,11 +90,7 @@ function compileStrategy(source: string, entry: string): string {
   return result.outputText;
 }
 
-function createStrategyContext(
-  compiledSource: string,
-  pluginId: string,
-  usesOnnx: boolean,
-): Context {
+function createStrategyContext(compiledSource: string, pluginId: string, usesOnnx: boolean): Context {
   const context = createContext(
     {},
     {
@@ -103,12 +99,14 @@ function createStrategyContext(
       microtaskMode: 'afterEvaluate',
     },
   );
-  new Script(`
+  new Script(
+    `
     globalThis.module = { exports: Object.create(null) };
     globalThis.exports = globalThis.module.exports;
-  `, { filename: `${pluginId}/module-bootstrap.js` }).runInContext(context, { timeout: 100 });
-  new Script(compiledSource, { filename: `${pluginId}/strategy.js` })
-    .runInContext(context, { timeout: 250 });
+  `,
+    { filename: `${pluginId}/module-bootstrap.js` },
+  ).runInContext(context, { timeout: 100 });
+  new Script(compiledSource, { filename: `${pluginId}/strategy.js` }).runInContext(context, { timeout: 250 });
   const onnxContract = usesOnnx
     ? `
       if (typeof globalThis.__strategy.prepareOnnx !== 'function') {
@@ -120,7 +118,8 @@ function createStrategyContext(
         throw new Error('prepareOnnx(context) requires an ONNX model');
       }
     `;
-  new Script(`
+  new Script(
+    `
     globalThis.__strategy = module.exports.default;
     if (!globalThis.__strategy || typeof globalThis.__strategy.decide !== 'function') {
       throw new Error('strategy.ts must default-export an object with decide(context)');
@@ -135,7 +134,9 @@ function createStrategyContext(
     };
     delete globalThis.module;
     delete globalThis.exports;
-  `, { filename: `${pluginId}/bootstrap.js` }).runInContext(context, { timeout: 100 });
+  `,
+    { filename: `${pluginId}/bootstrap.js` },
+  ).runInContext(context, { timeout: 100 });
   return context;
 }
 
@@ -152,24 +153,28 @@ export class CommunityAiPlugin implements AiProvider {
   private readonly prepareOnnxScript: Script | null;
   private readonly decideScript: Script;
 
-  private constructor(
-    metadata: AiProviderMetadata,
-    context: Context,
-    onnx: CommunityOnnxRuntime | null,
-  ) {
+  private constructor(metadata: AiProviderMetadata, context: Context, onnx: CommunityOnnxRuntime | null) {
     this.metadata = metadata;
     this.context = context;
     this.onnx = onnx;
-    this.prepareOnnxScript = onnx ? new Script(`
+    this.prepareOnnxScript = onnx
+      ? new Script(
+          `
       JSON.stringify(globalThis.__strategy.prepareOnnx(
         globalThis.__deepFreeze(JSON.parse(globalThis.__requestJson))
       ))
-    `, { filename: `${metadata.id}/prepare-onnx.js` }) : null;
-    this.decideScript = new Script(`
+    `,
+          { filename: `${metadata.id}/prepare-onnx.js` },
+        )
+      : null;
+    this.decideScript = new Script(
+      `
       JSON.stringify(globalThis.__strategy.decide(
         globalThis.__deepFreeze(JSON.parse(globalThis.__requestJson))
       ))
-    `, { filename: `${metadata.id}/decide.js` });
+    `,
+      { filename: `${metadata.id}/decide.js` },
+    );
   }
 
   static async create(options: {
@@ -182,15 +187,11 @@ export class CommunityAiPlugin implements AiProvider {
     const entryStats = await stat(entryPath);
     if (!entryStats.isFile()) throw new Error(`TypeScript entry is not a file for plugin ${manifest.id}`);
     if (entryStats.size > MAX_COMMUNITY_STRATEGY_BYTES) {
-      throw new Error(
-        `TypeScript entry exceeds ${MAX_COMMUNITY_STRATEGY_BYTES} bytes for plugin ${manifest.id}`,
-      );
+      throw new Error(`TypeScript entry exceeds ${MAX_COMMUNITY_STRATEGY_BYTES} bytes for plugin ${manifest.id}`);
     }
     const entryBytes = await readFile(entryPath);
     if (entryBytes.byteLength > MAX_COMMUNITY_STRATEGY_BYTES) {
-      throw new Error(
-        `TypeScript entry exceeds ${MAX_COMMUNITY_STRATEGY_BYTES} bytes for plugin ${manifest.id}`,
-      );
+      throw new Error(`TypeScript entry exceeds ${MAX_COMMUNITY_STRATEGY_BYTES} bytes for plugin ${manifest.id}`);
     }
     if (sha256(entryBytes) !== manifest.entrySha256) {
       throw new Error(`TypeScript entry hash mismatch for plugin ${manifest.id}`);
@@ -251,9 +252,7 @@ export class CommunityAiPlugin implements AiProvider {
       featureSchema: request.featureSchema,
       candidates: request.candidates.map(candidate => ({
         id: candidate.id,
-        ...(this.metadata.dataAccess.includes('candidate-features')
-          ? { features: [...candidate.features] }
-          : {}),
+        ...(this.metadata.dataAccess.includes('candidate-features') ? { features: [...candidate.features] } : {}),
         heuristicScore: candidate.heuristicScore,
         teacherPreferred: candidate.teacherPreferred,
       })),
@@ -262,12 +261,7 @@ export class CommunityAiPlugin implements AiProvider {
       deadlineMs: remainingDeadlineMs(),
     };
     if (this.onnx && this.prepareOnnxScript) {
-      const prepared = this.invoke(
-        this.prepareOnnxScript,
-        pluginRequest,
-        deadlineAt,
-        'ONNX inputs',
-      );
+      const prepared = this.invoke(this.prepareOnnxScript, pluginRequest, deadlineAt, 'ONNX inputs');
       const result = await this.onnx.run(prepared, signal);
       pluginRequest.onnx = {
         model: this.onnx.metadata,
@@ -276,14 +270,8 @@ export class CommunityAiPlugin implements AiProvider {
     }
     if (signal.aborted) throw new Error('AI decision aborted');
     pluginRequest.deadlineMs = remainingDeadlineMs();
-    const candidateId = this.invoke(
-      this.decideScript,
-      pluginRequest,
-      deadlineAt,
-      'decision',
-    );
-    if (typeof candidateId !== 'string'
-      || !request.candidates.some(candidate => candidate.id === candidateId)) {
+    const candidateId = this.invoke(this.decideScript, pluginRequest, deadlineAt, 'decision');
+    if (typeof candidateId !== 'string' || !request.candidates.some(candidate => candidate.id === candidateId)) {
       throw new Error(`plugin ${this.metadata.id} returned an illegal candidate id`);
     }
     return { kind: 'candidate', candidateId };

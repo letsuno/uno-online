@@ -19,9 +19,12 @@ function botPlayer(hand: Card[]): Player {
     name: 'RL Bot',
     hand,
     score: 0,
+    roundWins: 0,
     connected: true,
     autopilot: false,
     calledUno: false,
+    unoCaught: false,
+    eliminated: false,
     isBot: true,
     botConfig: { difficulty: 'rl', personality: 'strategic', aiProviderId: 'test-provider' },
   };
@@ -33,9 +36,12 @@ function opponent(hand: Card[]): Player {
     name: 'Opponent',
     hand,
     score: 0,
+    roundWins: 0,
     connected: true,
     autopilot: false,
     calledUno: false,
+    unoCaught: false,
+    eliminated: false,
     isBot: false,
   };
 }
@@ -51,26 +57,18 @@ describe('production RL inference features', () => {
   it('does not encode hidden opponent card identities', () => {
     const ownHand = [numberCard('red', 5, 'own-red'), wildCard('own-wild')];
     const base = makeState({
-      players: [
-        botPlayer(ownHand),
-        opponent([numberCard('blue', 1, 'hidden-a'), skipCard('green', 'hidden-b')]),
-      ],
+      players: [botPlayer(ownHand), opponent([numberCard('blue', 1, 'hidden-a'), skipCard('green', 'hidden-b')])],
       currentPlayerIndex: 0,
       discardPile: [numberCard('red', 2, 'top')],
       currentColor: 'red',
     });
     const changedHiddenCards = {
       ...base,
-      players: [
-        botPlayer(ownHand),
-        opponent([wildCard('different-a'), numberCard('yellow', 9, 'different-b')]),
-      ],
+      players: [botPlayer(ownHand), opponent([wildCard('different-a'), numberCard('yellow', 9, 'different-b')])],
     };
     const plan: GameAction[] = [{ type: 'PLAY_CARD', playerId: 'bot', cardId: 'own-red' }];
 
-    expect(encodeRlActionPlan(base, 'bot', plan)).toEqual(
-      encodeRlActionPlan(changedHiddenCards, 'bot', plan),
-    );
+    expect(encodeRlActionPlan(base, 'bot', plan)).toEqual(encodeRlActionPlan(changedHiddenCards, 'bot', plan));
   });
 
   it('emits finite normalized features for every legal action', () => {
@@ -96,10 +94,7 @@ describe('production RL inference features', () => {
 
   it('keeps the teacher marker at the production index', () => {
     const state = makeState({
-      players: [
-        botPlayer([numberCard('red', 5, 'own-red')]),
-        opponent([numberCard('blue', 1, 'hidden')]),
-      ],
+      players: [botPlayer([numberCard('red', 5, 'own-red')]), opponent([numberCard('blue', 1, 'hidden')])],
       currentPlayerIndex: 0,
       discardPile: [numberCard('red', 2, 'top')],
       currentColor: 'red',
@@ -110,14 +105,13 @@ describe('production RL inference features', () => {
 
     expect(ordinary[RL_TEACHER_FEATURE_INDEX]).toBe(0);
     expect(preferred[RL_TEACHER_FEATURE_INDEX]).toBe(1);
-    expect(preferred.slice(0, RL_TEACHER_FEATURE_INDEX))
-      .toEqual(ordinary.slice(0, RL_TEACHER_FEATURE_INDEX));
+    expect(preferred.slice(0, RL_TEACHER_FEATURE_INDEX)).toEqual(ordinary.slice(0, RL_TEACHER_FEATURE_INDEX));
   });
 
   it('encodes every supported house-rule field', () => {
-    const expectedNames = Object.keys(DEFAULT_HOUSE_RULES).map(key => (
-      `house_${key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)}`
-    ));
+    const expectedNames = Object.keys(DEFAULT_HOUSE_RULES).map(
+      key => `house_${key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)}`,
+    );
     expect(RL_FEATURE_NAMES).toEqual(expect.arrayContaining(expectedNames));
   });
 

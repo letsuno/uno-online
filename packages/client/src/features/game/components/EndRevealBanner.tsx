@@ -16,11 +16,11 @@ interface EndRevealBannerProps {
  * 期间牌桌保持可交互（可继续扔表情），横幅展示赢家与最后一张牌。
  */
 export default function EndRevealBanner({ secondsLeft, onSkip, placement = 'top' }: EndRevealBannerProps) {
-  const players = useGameStore((s) => s.players);
-  const winnerId = useGameStore((s) => s.winnerId);
-  const phase = useGameStore((s) => s.phase);
-  const topCard = useGameStore((s) => s.discardPile?.[s.discardPile.length - 1]);
-  const winner = players.find((p) => p.id === winnerId);
+  const players = useGameStore(s => s.players);
+  const winnerId = useGameStore(s => s.winnerId);
+  const phase = useGameStore(s => s.phase);
+  const topCard = useGameStore(s => s.discardPile?.[s.discardPile.length - 1]);
+  const winner = players.find(p => p.id === winnerId);
 
   return (
     <div

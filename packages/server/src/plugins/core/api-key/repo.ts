@@ -5,6 +5,13 @@ import type { Database } from '../../../db/database.js';
 
 const MAX_KEYS_PER_USER = 10;
 
+export class ApiKeyLimitReachedError extends Error {
+  constructor() {
+    super(`最多创建 ${MAX_KEYS_PER_USER} 个 API Key`);
+    this.name = 'ApiKeyLimitReachedError';
+  }
+}
+
 function generateApiKey(): string {
   return `uno_ak_${randomBytes(24).toString('base64url')}`;
 }
@@ -24,7 +31,7 @@ export async function createApiKey(
     .where('userId', '=', userId)
     .executeTakeFirstOrThrow();
   if (Number(count.count) >= MAX_KEYS_PER_USER) {
-    throw new Error(`最多创建 ${MAX_KEYS_PER_USER} 个 API Key`);
+    throw new ApiKeyLimitReachedError();
   }
   const raw = generateApiKey();
   const keyHash = hashKey(raw);
@@ -49,16 +56,8 @@ export async function listApiKeys(
     .execute();
 }
 
-export async function deleteApiKey(
-  db: Kysely<Database>,
-  id: string,
-  userId: string,
-): Promise<boolean> {
-  const result = await db
-    .deleteFrom('apiKeys')
-    .where('id', '=', id)
-    .where('userId', '=', userId)
-    .executeTakeFirst();
+export async function deleteApiKey(db: Kysely<Database>, id: string, userId: string): Promise<boolean> {
+  const result = await db.deleteFrom('apiKeys').where('id', '=', id).where('userId', '=', userId).executeTakeFirst();
   return (result.numDeletedRows ?? 0n) > 0n;
 }
 

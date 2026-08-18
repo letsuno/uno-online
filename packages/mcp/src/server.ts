@@ -4,7 +4,7 @@ import { UnoSocketClient } from './socket-client.js';
 import { registerRoomTools } from './tools/room.js';
 import { registerGameTools } from './tools/game.js';
 import { registerQueryTools } from './tools/query.js';
-import { setupNotifications } from './notifications.js';
+import { setupNotifications, type NotificationController } from './notifications.js';
 import type { McpConfig } from './types.js';
 
 async function fetchUserId(serverUrl: string, apiKey: string): Promise<string> {
@@ -14,10 +14,10 @@ async function fetchUserId(serverUrl: string, apiKey: string): Promise<string> {
     body: JSON.stringify({ key: apiKey }),
   });
   if (!res.ok) {
-    const data = await res.json().catch(() => ({})) as Record<string, string>;
-    throw new Error(data.error ?? `API Key 验证失败: ${res.status}`);
+    const data = (await res.json()) as { error: string };
+    throw new Error(data.error);
   }
-  const user = await res.json() as { userId: string };
+  const user = (await res.json()) as { userId: string };
   return user.userId;
 }
 
@@ -26,13 +26,16 @@ export class McpUnoServer {
   private socketClient: UnoSocketClient | null = null;
   private config: McpConfig;
   private userId: string | null = null;
+  private notificationController: NotificationController | null = null;
+  private mcpTransportInitialized = false;
 
   constructor(config: McpConfig) {
     this.config = config;
-    this.mcp = new McpServer(
-      { name: 'UNO Online', version: __PKG_VERSION__ },
-      { capabilities: { logging: {} } },
-    );
+    this.mcp = new McpServer({ name: 'UNO Online', version: __PKG_VERSION__ }, { capabilities: { logging: {} } });
+    this.mcp.server.oninitialized = () => {
+      this.mcpTransportInitialized = true;
+      void this.notificationController?.activate();
+    };
     this.registerTools();
   }
 
@@ -41,16 +44,24 @@ export class McpUnoServer {
   }
 
   getClient(): UnoSocketClient {
-    if (!this.socketClient?.connected) {
+    if (!this.socketClient || (!this.socketClient.connected && !this.socketClient.hasPendingMembership)) {
       throw new Error('未连接到游戏服务器');
     }
+    this.socketClient.retryPendingMembershipReconciliation();
     return this.socketClient;
   }
 
   async initialize(): Promise<void> {
     this.userId = await fetchUserId(this.config.serverUrl, this.config.apiKey);
     this.socketClient = new UnoSocketClient(this.config.serverUrl, this.config.apiKey);
-    setupNotifications(this.socketClient, this.mcp.server, this.userId);
+    // Discovery may complete before the MCP transport is attached. Buffer
+    // initial lifecycle notifications until the transport is ready.
+    this.notificationController = setupNotifications(this.socketClient, this.mcp.server, this.userId, {
+      active: false,
+    });
+    if (this.mcpTransportInitialized) {
+      await this.notificationController.activate();
+    }
     await this.socketClient.connect();
     console.error(`UNO MCP Server 已连接，用户: ${this.userId}`);
   }

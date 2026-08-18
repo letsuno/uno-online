@@ -25,7 +25,9 @@ function loadOverrides(): Record<string, HotkeyOverride> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw) as Record<string, HotkeyOverride>;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return {};
 }
 
@@ -40,16 +42,16 @@ interface HotkeyState {
   resetAll: () => void;
 }
 
-export const useHotkeyStore = create<HotkeyState>((set) => ({
+export const useHotkeyStore = create<HotkeyState>(set => ({
   overrides: loadOverrides(),
   setHotkey: (actionId, override) =>
-    set((s) => {
+    set(s => {
       const next = { ...s.overrides, [actionId]: override };
       saveOverrides(next);
       return { overrides: next };
     }),
-  resetHotkey: (actionId) =>
-    set((s) => {
+  resetHotkey: actionId =>
+    set(s => {
       const { [actionId]: _, ...rest } = s.overrides;
       saveOverrides(rest);
       return { overrides: rest };
@@ -60,7 +62,10 @@ export const useHotkeyStore = create<HotkeyState>((set) => ({
   },
 }));
 
-export function getBinding(action: HotkeyAction, overrides: Record<string, HotkeyOverride>): { key?: string; code?: string; repeat?: boolean } {
+export function getBinding(
+  action: HotkeyAction,
+  overrides: Record<string, HotkeyOverride>,
+): { key?: string; code?: string; repeat?: boolean } {
   const override = overrides[action.id];
   if (override) return { ...override, repeat: action.repeat };
   return { key: action.defaultKey, code: action.defaultCode, repeat: action.repeat };

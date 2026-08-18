@@ -23,15 +23,15 @@ export interface Player {
   name: string;
   hand: Card[];
   score: number;
-  roundWins?: number;
+  roundWins: number;
   connected: boolean;
   autopilot: boolean;
   calledUno: boolean;
-  unoCaught?: boolean;
-  eliminated?: boolean;
+  unoCaught: boolean;
+  eliminated: boolean;
   teamId?: number;
-  avatarUrl?: string | null;
-  role?: UserRole;
+  avatarUrl: string | null;
+  role: UserRole;
   isBot: boolean;
   botConfig?: BotConfig;
 }
@@ -43,6 +43,10 @@ export interface RoomSettings {
   allowSpectators: boolean;
   spectatorMode: 'full' | 'hidden';
 }
+
+export type RoomSettingsPatch = Partial<Omit<RoomSettings, 'houseRules'>> & {
+  houseRules?: Partial<HouseRules>;
+};
 
 export interface GameState {
   phase: GamePhase;
@@ -57,18 +61,18 @@ export interface GameState {
   currentColor: Color | null;
   drawStack: number;
   pendingDrawPlayerId: string | null;
-  pendingPenaltyDraws?: number;
-  pendingPenaltyNextPlayerIndex?: number | null;
-  pendingPenaltySourcePlayerId?: string | null;
-  pendingPenaltyQueue?: PendingPenaltyDraw[];
+  pendingPenaltyDraws: number;
+  pendingPenaltyNextPlayerIndex: number | null;
+  pendingPenaltySourcePlayerId: string | null;
+  pendingPenaltyQueue: PendingPenaltyDraw[];
   /**
    * Extra Wild Draw Four damage produced by revengeMode while the challenge
    * flow is unresolved. This must not share drawStack: drawStack participates
    * in stacking/deflection legality, whereas this value is only consumed when
    * the WD4 penalty target is known.
    */
-  pendingRevengeDraws?: number;
-  lastAction: GameAction | null;
+  pendingRevengeDraws: number;
+  lastAction: CommittedGameAction | null;
   roundNumber: number;
   winnerId: string | null;
   deckHash: string;
@@ -82,7 +86,7 @@ export interface PendingPenaltyDraw {
   playerId: string;
   count: number;
   nextPlayerIndex: number;
-  sourcePlayerId?: string | null;
+  sourcePlayerId: string | null;
 }
 
 export interface RoundResult {
@@ -95,8 +99,29 @@ export type GameAction =
   | { type: 'DRAW_CARD'; playerId: string; side: DrawSide }
   | { type: 'PASS'; playerId: string }
   | { type: 'CALL_UNO'; playerId: string }
-  | { type: 'CATCH_UNO'; catcherId: string; targetId: string; catcherName?: string }
-  | { type: 'CHALLENGE'; playerId: string; succeeded?: boolean; penaltyPlayerId?: string; penaltyCount?: number }
+  | { type: 'CATCH_UNO'; catcherId: string; targetId: string; catcherName: string }
+  | { type: 'CHALLENGE'; playerId: string }
   | { type: 'ACCEPT'; playerId: string }
   | { type: 'CHOOSE_COLOR'; playerId: string; color: Color }
   | { type: 'CHOOSE_SWAP_TARGET'; playerId: string; targetId: string };
+
+/**
+ * An action after the reducer has committed it to game state. Actions whose
+ * result is only known during reduction carry that result here, so projections
+ * never need to infer outcome metadata from the phase or rule defaults.
+ */
+export type CommittedGameAction =
+  | Exclude<GameAction, { type: 'CHALLENGE' | 'ACCEPT' }>
+  | {
+      type: 'CHALLENGE';
+      playerId: string;
+      succeeded: boolean;
+      penaltyPlayerId: string;
+      penaltyCount: number;
+    }
+  | {
+      type: 'ACCEPT';
+      playerId: string;
+      penaltyPlayerId: string;
+      penaltyCount: number;
+    };

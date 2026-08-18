@@ -1,10 +1,25 @@
-import type { HouseRules } from '@uno-online/shared';
+import type { Card as CardData, Color, HouseRules } from '@uno-online/shared';
 import Card from './Card';
 
-interface TeachingStep {
-  type: 'card' | 'arrow' | 'text';
-  card?: { type: string; color: string | null; value?: number };
-  text?: string;
+type TeachingCard =
+  | { type: 'number'; color: Color; value: number }
+  | { type: 'skip' | 'reverse' | 'draw_two'; color: Color }
+  | { type: 'wild' | 'wild_draw_four'; color: null };
+
+type TeachingStep = { type: 'card'; card: TeachingCard } | { type: 'arrow' | 'text'; text: string };
+
+function teachingCardWithId(card: TeachingCard, id: string): CardData {
+  switch (card.type) {
+    case 'number':
+      return { id, type: card.type, color: card.color, value: card.value };
+    case 'skip':
+    case 'reverse':
+    case 'draw_two':
+      return { id, type: card.type, color: card.color };
+    case 'wild':
+    case 'wild_draw_four':
+      return { id, type: card.type, color: null };
+  }
 }
 
 const TEACHINGS: Partial<Record<keyof HouseRules, TeachingStep[]>> = {
@@ -60,18 +75,10 @@ const TEACHINGS: Partial<Record<keyof HouseRules, TeachingStep[]>> = {
     { type: 'arrow', text: '⇄' },
     { type: 'text', text: '交换手牌' },
   ],
-  jumpIn: [
-    { type: 'text', text: '相同牌 → 直接抢出' },
-  ],
-  drawUntilPlayable: [
-    { type: 'text', text: '摸到能出为止' },
-  ],
-  forcedPlay: [
-    { type: 'text', text: '有牌必出' },
-  ],
-  elimination: [
-    { type: 'text', text: '每轮淘汰手牌最多者' },
-  ],
+  jumpIn: [{ type: 'text', text: '相同牌 → 直接抢出' }],
+  drawUntilPlayable: [{ type: 'text', text: '摸到能出为止' }],
+  forcedPlay: [{ type: 'text', text: '有牌必出' }],
+  elimination: [{ type: 'text', text: '每轮淘汰手牌最多者' }],
 };
 
 interface RuleTeachingProps {
@@ -85,13 +92,8 @@ export default function RuleTeaching({ ruleKey }: RuleTeachingProps) {
   return (
     <div className="flex flex-row gap-1 items-center bg-black/20 rounded-lg px-2 py-1">
       {steps.map((step, i) => {
-        if (step.type === 'card' && step.card) {
-          const cardData = {
-            id: `teaching_${ruleKey}_${i}`,
-            type: step.card.type,
-            color: step.card.color,
-            value: step.card.value,
-          } as any;
+        if (step.type === 'card') {
+          const cardData = teachingCardWithId(step.card, `teaching_${ruleKey}_${i}`);
           return (
             <Card
               key={i}

@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { isWildCard } from '@uno-online/shared';
+import type { Color } from '@uno-online/shared';
 import Card from './Card';
 import { useGameStore } from '../stores/game-store';
 import { useFxStore } from '../fx/fx-store';
@@ -16,36 +17,39 @@ function hashCardId(id: string): number {
 }
 
 function DiscardPile() {
-  const discardPile = useGameStore((s) => s.discardPile);
-  const discardPileCount = useGameStore((s) => s.discardPileCount);
-  const drawStack = useGameStore((s) => s.drawStack);
-  const phase = useGameStore((s) => s.phase);
-  const currentColor = useGameStore((s) => s.currentColor);
-  const hiddenDiscardCardIds = useFxStore((s) => s.hiddenDiscardCardIds);
+  const discardPile = useGameStore(s => s.discardPile);
+  const discardPileCount = useGameStore(s => s.discardPileCount);
+  const drawStack = useGameStore(s => s.drawStack);
+  const phase = useGameStore(s => s.phase);
+  const hiddenDiscardCardIds = useFxStore(s => s.hiddenDiscardCardIds);
   // 飞牌在途时仍显示上一张顶牌，落地瞬间才更新
   const topCardRaw = discardPile[discardPile.length - 1];
-  const topCard = topCardRaw && hiddenDiscardCardIds.has(topCardRaw.id) && discardPile.length > 1
-    ? discardPile[discardPile.length - 2]
-    : topCardRaw;
+  const topCard =
+    topCardRaw && hiddenDiscardCardIds.has(topCardRaw.id) && discardPile.length > 1
+      ? discardPile[discardPile.length - 2]
+      : topCardRaw;
   if (!topCard) return null;
   const visibleStack = discardPile.slice(-VISIBLE_DISCARD_STACK);
 
   const wild = isWildCard(topCard);
   const isWaitingForColor = wild && !topCard.chosenColor && phase === 'choosing_color';
-  const chosenColor = wild && !isWaitingForColor ? (topCard.chosenColor ?? currentColor ?? null) : null;
-  const colorGlowMap: Record<string, string> = {
+  if (wild && !isWaitingForColor && !topCard.chosenColor) {
+    throw new Error(`Resolved wild card ${topCard.id} is missing chosenColor`);
+  }
+  const chosenColor = wild && !isWaitingForColor ? topCard.chosenColor : null;
+  const colorGlowMap: Record<Color, string> = {
     red: 'rgba(255, 51, 102, 0.6)',
     blue: 'rgba(68, 136, 255, 0.6)',
     green: 'rgba(51, 204, 102, 0.6)',
     yellow: 'rgba(251, 191, 36, 0.6)',
   };
-  const colorBorderMap: Record<string, string> = {
+  const colorBorderMap: Record<Color, string> = {
     red: '#ff3366',
     blue: '#4488ff',
     green: '#33cc66',
     yellow: '#fbbf24',
   };
-  const colorLabelMap: Record<string, string> = {
+  const colorLabelMap: Record<Color, string> = {
     red: '红',
     blue: '蓝',
     green: '绿',
@@ -80,39 +84,41 @@ function DiscardPile() {
           data-discard-slot
           key={topCard.id}
           style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              zIndex: visibleStack.length,
-              borderRadius: '18px',
-              transform: 'translate(-50%, -50%) rotate(3deg)',
-              ...(chosenColor ? {
-                boxShadow: `0 0 18px 4px ${colorGlowMap[chosenColor] ?? 'transparent'}`,
-                outline: `2.5px solid ${colorBorderMap[chosenColor] ?? 'transparent'}`,
-                outlineOffset: '1px',
-              } : isWaitingForColor ? {
-                boxShadow: '0 0 16px 3px rgba(255, 255, 255, 0.22)',
-                outline: '2.5px dashed rgba(255, 255, 255, 0.55)',
-                outlineOffset: '1px',
-              } : {}),
-            }}
-          >
-            <Card card={topCard} />
-            {chosenColor && (
-              <span
-                className="absolute -bottom-1 -right-1 text-xs font-game font-black px-1 py-0.5 rounded bg-black/60 leading-none whitespace-nowrap"
-                style={{ color: colorBorderMap[chosenColor] }}
-              >
-                打{colorLabelMap[chosenColor]}！
-              </span>
-            )}
-            {isWaitingForColor && (
-              <span
-                className="absolute -bottom-1 -right-1 text-xs font-game font-black px-1 py-0.5 rounded bg-black/65 leading-none whitespace-nowrap text-white animate-pending-pulse"
-              >
-                待选色
-              </span>
-            )}
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            zIndex: visibleStack.length,
+            borderRadius: '18px',
+            transform: 'translate(-50%, -50%) rotate(3deg)',
+            ...(chosenColor
+              ? {
+                  boxShadow: `0 0 18px 4px ${colorGlowMap[chosenColor]}`,
+                  outline: `2.5px solid ${colorBorderMap[chosenColor]}`,
+                  outlineOffset: '1px',
+                }
+              : isWaitingForColor
+                ? {
+                    boxShadow: '0 0 16px 3px rgba(255, 255, 255, 0.22)',
+                    outline: '2.5px dashed rgba(255, 255, 255, 0.55)',
+                    outlineOffset: '1px',
+                  }
+                : {}),
+          }}
+        >
+          <Card card={topCard} />
+          {chosenColor && (
+            <span
+              className="absolute -bottom-1 -right-1 text-xs font-game font-black px-1 py-0.5 rounded bg-black/60 leading-none whitespace-nowrap"
+              style={{ color: colorBorderMap[chosenColor] }}
+            >
+              打{colorLabelMap[chosenColor]}！
+            </span>
+          )}
+          {isWaitingForColor && (
+            <span className="absolute -bottom-1 -right-1 text-xs font-game font-black px-1 py-0.5 rounded bg-black/65 leading-none whitespace-nowrap text-white animate-pending-pulse">
+              待选色
+            </span>
+          )}
         </div>
       </div>
       {drawStack > 0 && (
@@ -126,7 +132,7 @@ function DiscardPile() {
           +{drawStack}
         </motion.div>
       )}
-      <span className="text-xs text-muted-foreground">弃牌堆 ({discardPileCount || discardPile.length})</span>
+      <span className="text-xs text-muted-foreground">弃牌堆 ({discardPileCount})</span>
     </div>
   );
 }

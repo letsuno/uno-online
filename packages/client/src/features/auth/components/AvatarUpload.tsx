@@ -6,6 +6,7 @@ import { loadImage, cropAndCompress, revokeImageSrc } from '@/shared/utils/image
 import { Button } from '@/shared/components/ui/Button';
 import { IconButton } from '@/shared/components/ui/IconButton';
 import Modal from '@/shared/components/ui/Modal';
+import { useToastStore } from '@/shared/stores/toast-store';
 
 interface Props {
   avatarUrl: string | null;
@@ -38,8 +39,8 @@ export default function AvatarUpload({ avatarUrl, size = 96, onUpload }: Props) 
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setRotation(0);
-    } catch {
-      // ignore
+    } catch (error) {
+      useToastStore.getState().addToast(error instanceof Error ? error.message : '图片读取失败', 'error');
     }
   };
 
@@ -55,6 +56,8 @@ export default function AvatarUpload({ avatarUrl, size = 96, onUpload }: Props) 
     try {
       const dataUrl = cropAndCompress(imageEl, croppedArea, rotation);
       onUpload(dataUrl);
+    } catch (error) {
+      useToastStore.getState().addToast(error instanceof Error ? error.message : '头像处理失败', 'error');
     } finally {
       setUploading(false);
       cleanup();
@@ -121,7 +124,7 @@ export default function AvatarUpload({ avatarUrl, size = 96, onUpload }: Props) 
               max={3}
               step={0.1}
               value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
+              onChange={e => setZoom(Number(e.target.value))}
               className="flex-1 accent-primary"
             />
           </div>
@@ -132,16 +135,11 @@ export default function AvatarUpload({ avatarUrl, size = 96, onUpload }: Props) 
               max={360}
               step={1}
               value={rotation}
-              onChange={(e) => setRotation(Number(e.target.value))}
+              onChange={e => setRotation(Number(e.target.value))}
               className="flex-1 accent-primary"
             />
             <span className="shrink-0 w-9 text-right text-xs tabular-nums text-muted-foreground">{rotation}°</span>
-            <IconButton
-              type="button"
-              size="sm"
-              onClick={() => setRotation((r) => (r + 90) % 360)}
-              title="旋转 90°"
-            >
+            <IconButton type="button" size="sm" onClick={() => setRotation(r => (r + 90) % 360)} title="旋转 90°">
               <RotateCw size={16} />
             </IconButton>
           </div>

@@ -22,7 +22,7 @@ export function usePlayerLayout(
     const n = players.length;
 
     // Find my index
-    const myIndex = players.findIndex((p) => p.id === userId);
+    const myIndex = players.findIndex(p => p.id === userId);
     const safeMyIndex = myIndex >= 0 ? myIndex : 0;
 
     const positions: Position[] = [];
@@ -41,11 +41,14 @@ export function usePlayerLayout(
     return positions;
   }, [dimensions, players, userId]);
 
-  const getPlayerPosition = useCallback((playerId: string): Position | null => {
-    const idx = players.findIndex((p) => p.id === playerId);
-    if (idx < 0 || idx >= playerPositions.length) return null;
-    return playerPositions[idx];
-  }, [players, playerPositions]);
+  const getPlayerPosition = useCallback(
+    (playerId: string): Position | null => {
+      const idx = players.findIndex(p => p.id === playerId);
+      if (idx < 0 || idx >= playerPositions.length) return null;
+      return playerPositions[idx];
+    },
+    [players, playerPositions],
+  );
 
   return { playerPositions, getPlayerPosition };
 }

@@ -1,12 +1,14 @@
 import type { KvStore } from '../../../kv/types.js';
-import type { RoomSettings } from '@uno-online/shared';
-import { SEAT_COUNT, ROOM_CODE_LENGTH, ROOM_CODE_CHARS, DEFAULT_HOUSE_RULES } from '@uno-online/shared';
+import type { RoomSettings, UserRole } from '@uno-online/shared';
+import { ROOM_CODE_LENGTH, ROOM_CODE_CHARS } from '@uno-online/shared';
 import {
-  createRoom, getRoom, deleteRoom,
-  getRoomSeats, takeSeat, clearSeatByUserId, setSeatPlayerReady,
-  resetAllSeatsReady, setRoomOwner, getSeatedPlayers, getFirstEmptySeatIndex,
-  getRoomSpectators, addSpectatorToRoom, removeSpectatorFromRoom,
-  pickNextOwner,
+  createRoom,
+  deleteRoom,
+  getRoom,
+  getRoomSeats,
+  takeSeat,
+  setSeatPlayerReady,
+  getSeatedPlayers,
 } from './store.js';
 import type { RoomSeatPlayer } from './store.js';
 
@@ -22,9 +24,11 @@ export class RoomManager {
   constructor(private redis: KvStore) {}
 
   async createRoom(
-    ownerId: string, ownerNickname: string,
-    settings: RoomSettings = { turnTimeLimit: 30, targetScore: 1000, houseRules: DEFAULT_HOUSE_RULES, allowSpectators: true, spectatorMode: 'hidden' },
-    avatarUrl?: string | null, role?: string, _isBot?: boolean,
+    ownerId: string,
+    ownerNickname: string,
+    settings: RoomSettings,
+    avatarUrl: string | null,
+    role: UserRole,
   ): Promise<string> {
     let code = generateRoomCode();
     let existing = await getRoom(this.redis, code);
@@ -34,51 +38,23 @@ export class RoomManager {
     }
     await createRoom(this.redis, code, ownerId, settings);
     const player: RoomSeatPlayer = {
-      userId: ownerId, nickname: ownerNickname,
-      avatarUrl: avatarUrl ?? null, ready: false, connected: true,
-      role: role ?? 'normal', isBot: false,
+      userId: ownerId,
+      nickname: ownerNickname,
+      avatarUrl,
+      ready: false,
+      connected: true,
+      role,
+      isBot: false,
     };
-    await takeSeat(this.redis, code, 0, player);
+    try {
+      await takeSeat(this.redis, code, 0, player);
+    } catch (error) {
+      // The room hash is only a reservation until its owner seat exists.
+      // Never leave a discoverable room that has no authoritative member.
+      await deleteRoom(this.redis, code);
+      throw error;
+    }
     return code;
-  }
-
-  async joinRoom(
-    roomCode: string, userId: string, nickname: string,
-    avatarUrl?: string | null, role?: string, _isBot?: boolean,
-  ): Promise<void> {
-    const room = await getRoom(this.redis, roomCode);
-    if (!room) throw new Error('Room not found');
-    if (room.status !== 'waiting') throw new Error('Game already in progress');
-    const seats = await getRoomSeats(this.redis, roomCode);
-    const spectators = await getRoomSpectators(this.redis, roomCode);
-    const alreadySeated = seats.some(s => s !== null && s.userId === userId);
-    const alreadySpectating = spectators.some(s => s.userId === userId);
-    if (alreadySeated || alreadySpectating) throw new Error('Already in room');
-    await addSpectatorToRoom(this.redis, roomCode, {
-      userId, nickname, avatarUrl: avatarUrl ?? null, role: role ?? 'normal', connected: true,
-    });
-  }
-
-  async leaveRoom(roomCode: string, userId: string): Promise<{ deleted: boolean }> {
-    await clearSeatByUserId(this.redis, roomCode, userId);
-    await removeSpectatorFromRoom(this.redis, roomCode, userId);
-    const seats = await getRoomSeats(this.redis, roomCode);
-    const spectators = await getRoomSpectators(this.redis, roomCode);
-    const seatedPlayers = getSeatedPlayers(seats);
-    const hasHumanPlayers = seatedPlayers.some(p => !p.isBot);
-    const hasHumanSpectators = spectators.some(sp => sp.connected);
-    if ((seatedPlayers.length === 0 || !hasHumanPlayers) && !hasHumanSpectators) {
-      await deleteRoom(this.redis, roomCode);
-      return { deleted: true };
-    }
-    const room = await getRoom(this.redis, roomCode);
-    if (room && room.ownerId === userId) {
-      const nextOwnerId = pickNextOwner(seats, spectators);
-      if (nextOwnerId) {
-        await setRoomOwner(this.redis, roomCode, nextOwnerId);
-      }
-    }
-    return { deleted: false };
   }
 
   async setReady(roomCode: string, userId: string, ready: boolean): Promise<void> {
@@ -90,9 +66,5 @@ export class RoomManager {
     const seated = getSeatedPlayers(seats);
     if (seated.length < 2) return false;
     return seated.every(p => p.ready);
-  }
-
-  async resetReady(roomCode: string): Promise<void> {
-    await resetAllSeatsReady(this.redis, roomCode);
   }
 }

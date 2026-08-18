@@ -7,7 +7,7 @@ import { useCountdown } from '../hooks/useCountdown';
  * strip 模式由 TableCenter 放在牌堆上方——不写死视口坐标。
  */
 export default function CriticalCountdown() {
-  const turnEndTime = useGameStore((s) => s.turnEndTime);
+  const turnEndTime = useGameStore(s => s.turnEndTime);
   const secondsLeft = useCountdown(turnEndTime);
 
   if (secondsLeft === null || secondsLeft > 5 || secondsLeft <= 0) return null;

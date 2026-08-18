@@ -58,8 +58,13 @@ export function bestColorsForHand(hand: Card[], excludeId?: string): Color[] {
   return (Object.keys(counts) as Color[]).filter(color => counts[color] === max);
 }
 
-
-function scoreColorMatch(card: Card, hand: Card[], currentColor: Color | null, params: DifficultyParams, ctx: EvalContext): number {
+function scoreColorMatch(
+  card: Card,
+  hand: Card[],
+  currentColor: Color | null,
+  params: DifficultyParams,
+  ctx: EvalContext,
+): number {
   if (!currentColor || isWildCard(card)) return 0;
   if (!isColoredCard(card)) return 0;
   let score: number;
@@ -80,17 +85,30 @@ function scoreColorMatch(card: Card, hand: Card[], currentColor: Color | null, p
 
 function scoreActionValue(card: Card): number {
   switch (card.type) {
-    case 'wild_draw_four': return 10;
-    case 'draw_two': return 8;
-    case 'skip': return 6;
-    case 'reverse': return 5;
-    case 'wild': return 4;
-    case 'number': return 1;
-    default: return 0;
+    case 'wild_draw_four':
+      return 10;
+    case 'draw_two':
+      return 8;
+    case 'skip':
+      return 6;
+    case 'reverse':
+      return 5;
+    case 'wild':
+      return 4;
+    case 'number':
+      return 1;
+    default:
+      return 0;
   }
 }
 
-function scoreHandReduction(card: Card, hand: Card[], state: GameState, params: DifficultyParams, ctx: EvalContext): number {
+function scoreHandReduction(
+  card: Card,
+  hand: Card[],
+  state: GameState,
+  params: DifficultyParams,
+  ctx: EvalContext,
+): number {
   const remaining = hand.filter(c => c.id !== card.id);
   if (remaining.length === 0) return 20;
   let colorAfter: Color;
@@ -143,8 +161,10 @@ function scoreHandReduction(card: Card, hand: Card[], state: GameState, params: 
 }
 
 function isCardFinishBlocked(c: Card, hr: GameState['settings']['houseRules']): boolean {
-  return (hr.noWildFinish && isWildCard(c)) ||
-    (hr.noFunctionCardFinish && (c.type === 'draw_two' || c.type === 'wild_draw_four'));
+  return (
+    (hr.noWildFinish && isWildCard(c)) ||
+    (hr.noFunctionCardFinish && (c.type === 'draw_two' || c.type === 'wild_draw_four'))
+  );
 }
 
 function scoreFinishSafety(card: Card, hand: Card[], state: GameState, params: DifficultyParams): number {
@@ -155,8 +175,9 @@ function scoreFinishSafety(card: Card, hand: Card[], state: GameState, params: D
   // Multi-card play: playing a number card may also remove all same-value cards
   if (hr.multiplePlaySameNumber && card.type === 'number' && params.specialCardAwareness > 0) {
     const pickValue = (card as { value: number }).value;
-    const afterChain = hand.filter(c =>
-      c.id !== card.id && !(c.type === 'number' && (c as { value: number }).value === pickValue));
+    const afterChain = hand.filter(
+      c => c.id !== card.id && !(c.type === 'number' && (c as { value: number }).value === pickValue),
+    );
     if (afterChain.length === 1 && isCardFinishBlocked(afterChain[0]!, hr)) {
       return -15;
     }
@@ -176,7 +197,9 @@ export function evaluateHandQuality(hand: Card[], state: GameState): number {
   quality -= hand.length * 2;
   quality += hand.filter(c => isWildCard(c)).length * 4;
   const colorSet = new Set<string>();
-  for (const c of hand) { if (isColoredCard(c)) colorSet.add(c.color); }
+  for (const c of hand) {
+    if (isColoredCard(c)) colorSet.add(c.color);
+  }
   quality += colorSet.size * 1.5;
   quality += hand.filter(c => c.type === 'draw_two' || c.type === 'skip' || c.type === 'reverse').length * 1;
   const topCard = state.discardPile[state.discardPile.length - 1];
@@ -238,7 +261,13 @@ function scoreWildFourRisk(card: Card, hand: Card[], state: GameState, params: D
   return -20;
 }
 
-function scoreCardConservation(card: Card, hand: Card[], playable: Card[], params: DifficultyParams, state: GameState): number {
+function scoreCardConservation(
+  card: Card,
+  hand: Card[],
+  playable: Card[],
+  params: DifficultyParams,
+  state: GameState,
+): number {
   if (!params.conserveSpecialCards) return 0;
   if (!isWildCard(card)) return 0;
 
@@ -256,21 +285,32 @@ function scoreCardConservation(card: Card, hand: Card[], playable: Card[], param
  * Number of turns until `toIndex` gets to act, counting only alive seats
  * (eliminated seats are skipped by the engine and cost no turn).
  */
-function turnsUntilPlayer(players: readonly Player[], fromIndex: number, toIndex: number, direction: GameState['direction']): number {
+function turnsUntilPlayer(
+  players: readonly Player[],
+  fromIndex: number,
+  toIndex: number,
+  direction: GameState['direction'],
+): number {
   if (fromIndex === toIndex) return 0;
   const count = players.length;
   const step = direction === 'clockwise' ? 1 : -1;
   let turns = 0;
   let idx = fromIndex;
   for (let s = 0; s < count; s++) {
-    idx = ((idx + step) % count + count) % count;
+    idx = (((idx + step) % count) + count) % count;
     if (!players[idx]!.eliminated) turns++;
     if (idx === toIndex) return turns;
   }
   return count;
 }
 
-function scoreGlobalThreat(card: Card, state: GameState, botId: string, params: DifficultyParams, ctx: EvalContext): number {
+function scoreGlobalThreat(
+  card: Card,
+  state: GameState,
+  botId: string,
+  params: DifficultyParams,
+  ctx: EvalContext,
+): number {
   if (!params.globalThreatAwareness) return 0;
 
   const { botIndex, isAlly, leadBot } = ctx;
@@ -278,8 +318,7 @@ function scoreGlobalThreat(card: Card, state: GameState, botId: string, params: 
 
   const threats = state.players
     .map((p, i) => ({ player: p, index: i }))
-    .filter(({ player }) => !player.eliminated && player.id !== botId && player.hand.length <= 3
-      && !isAlly(player));
+    .filter(({ player }) => !player.eliminated && player.id !== botId && player.hand.length <= 3 && !isAlly(player));
 
   if (threats.length === 0) return 0;
 
@@ -331,7 +370,13 @@ function scoreGlobalThreat(card: Card, state: GameState, botId: string, params: 
   return score;
 }
 
-function scoreSpecialTiming(card: Card, hand: Card[], state: GameState, botId: string, params: DifficultyParams): number {
+function scoreSpecialTiming(
+  card: Card,
+  hand: Card[],
+  state: GameState,
+  botId: string,
+  params: DifficultyParams,
+): number {
   if (params.specialCardAwareness === 0) return 0;
   const hr = state.settings.houseRules;
   let score = 0;
@@ -380,13 +425,18 @@ function scoreSpecialTiming(card: Card, hand: Card[], state: GameState, botId: s
       }
     } else {
       const myHandSize = hand.length;
-      const minOpponent = Math.min(...state.players.filter(p => p.id !== botId && !p.eliminated).map(p => p.hand.length));
+      const minOpponent = Math.min(
+        ...state.players.filter(p => p.id !== botId && !p.eliminated).map(p => p.hand.length),
+      );
       score += myHandSize > minOpponent + 2 ? 8 : myHandSize <= 2 ? -5 : 3;
     }
   }
 
   if (card.type === 'number' && hr.multiplePlaySameNumber) {
-    const sameValue = hand.filter(c => c.type === 'number' && c.id !== card.id && (c as { value: number }).value === (card as { value: number }).value);
+    const sameValue = hand.filter(
+      c =>
+        c.type === 'number' && c.id !== card.id && (c as { value: number }).value === (card as { value: number }).value,
+    );
     if (sameValue.length > 0) {
       score += sameValue.length * 3;
       if (hr.bombCard && sameValue.length >= 2) {
@@ -397,7 +447,9 @@ function scoreSpecialTiming(card: Card, hand: Card[], state: GameState, botId: s
 
   if (hr.bombCard && card.type === 'number') {
     const topCards = state.discardPile.slice(-2);
-    const consecutiveSame = topCards.filter(tc => tc.type === 'number' && (tc as { value: number }).value === (card as { value: number }).value).length;
+    const consecutiveSame = topCards.filter(
+      tc => tc.type === 'number' && (tc as { value: number }).value === (card as { value: number }).value,
+    ).length;
     if (consecutiveSame >= 2) {
       score += 15;
     }
@@ -406,7 +458,14 @@ function scoreSpecialTiming(card: Card, hand: Card[], state: GameState, botId: s
   return score * params.specialCardAwareness;
 }
 
-function scoreCoalitionTactics(card: Card, _hand: Card[], state: GameState, botId: string, params: DifficultyParams, ctx: EvalContext): number {
+function scoreCoalitionTactics(
+  card: Card,
+  _hand: Card[],
+  state: GameState,
+  botId: string,
+  params: DifficultyParams,
+  ctx: EvalContext,
+): number {
   if (!params.botCoalition) return 0;
   const { botIndex, nextPlayer, isAlly, leadBot } = ctx;
   const hr = state.settings.houseRules;
@@ -436,31 +495,45 @@ function scoreCoalitionTactics(card: Card, _hand: Card[], state: GameState, botI
   const isDrawCard = card.type === 'draw_two' || card.type === 'wild_draw_four';
   const stackingEnabled = hr.stackDrawTwo || hr.stackDrawFour || hr.crossStack;
 
-  if (isDrawCard && stackingEnabled && state.drawStack > 0 && nextPlayer && !nextPlayer.eliminated && isAlly(nextPlayer)) {
+  if (
+    isDrawCard &&
+    stackingEnabled &&
+    state.drawStack > 0 &&
+    nextPlayer &&
+    !nextPlayer.eliminated &&
+    isAlly(nextPlayer)
+  ) {
     let searchIdx = state.players.findIndex(p => p.id === nextPlayer.id);
     let chainLength = 0;
     for (let step = 0; step < state.players.length - 1; step++) {
       const p = state.players[searchIdx]!;
-      if (p.eliminated) { searchIdx = getNextPlayerIndex(searchIdx, state.players.length, state.direction); continue; }
+      if (p.eliminated) {
+        searchIdx = getNextPlayerIndex(searchIdx, state.players.length, state.direction);
+        continue;
+      }
       if (!isAlly(p)) {
         const cardPenalty = card.type === 'wild_draw_four' ? 4 : 2;
         let relayScore = (state.drawStack + cardPenalty + chainLength * 2) * 1.5;
         // Hard bot: check if human can deflect the stack back to an ally
         if (params.infoAccess.canSeeOpponentHands) {
-          const canDeflect = p.hand.some(c =>
-            (c.type === 'reverse' && (hr.reverseDeflectDrawTwo || hr.reverseDeflectDrawFour)) ||
-            (c.type === 'skip' && hr.skipDeflect) ||
-            (c.type === 'draw_two' && (hr.stackDrawTwo || hr.crossStack)) ||
-            (c.type === 'wild_draw_four' && (hr.stackDrawFour || hr.crossStack)));
+          const canDeflect = p.hand.some(
+            c =>
+              (c.type === 'reverse' && (hr.reverseDeflectDrawTwo || hr.reverseDeflectDrawFour)) ||
+              (c.type === 'skip' && hr.skipDeflect) ||
+              (c.type === 'draw_two' && (hr.stackDrawTwo || hr.crossStack)) ||
+              (c.type === 'wild_draw_four' && (hr.stackDrawFour || hr.crossStack)),
+          );
           if (canDeflect) relayScore *= 0.4;
         }
         score += relayScore;
         break;
       }
       if (params.infoAccess.canSeeOpponentHands) {
-        const canChain = p.hand.some(c =>
-          (c.type === 'draw_two' && (hr.stackDrawTwo || hr.crossStack)) ||
-          (c.type === 'wild_draw_four' && (hr.stackDrawFour || hr.crossStack)));
+        const canChain = p.hand.some(
+          c =>
+            (c.type === 'draw_two' && (hr.stackDrawTwo || hr.crossStack)) ||
+            (c.type === 'wild_draw_four' && (hr.stackDrawFour || hr.crossStack)),
+        );
         if (canChain) chainLength++;
         else break;
       } else {
@@ -472,20 +545,32 @@ function scoreCoalitionTactics(card: Card, _hand: Card[], state: GameState, botI
   }
 
   // --- 3. Start a draw chain through allies toward humans ---
-  if (isDrawCard && stackingEnabled && state.drawStack === 0 && nextPlayer && !nextPlayer.eliminated && isAlly(nextPlayer)) {
+  if (
+    isDrawCard &&
+    stackingEnabled &&
+    state.drawStack === 0 &&
+    nextPlayer &&
+    !nextPlayer.eliminated &&
+    isAlly(nextPlayer)
+  ) {
     let idx = state.players.findIndex(p => p.id === nextPlayer.id);
     let chainHops = 0;
     for (let step = 0; step < state.players.length - 1; step++) {
       const p = state.players[idx]!;
-      if (p.eliminated) { idx = getNextPlayerIndex(idx, state.players.length, state.direction); continue; }
+      if (p.eliminated) {
+        idx = getNextPlayerIndex(idx, state.players.length, state.direction);
+        continue;
+      }
       if (!isAlly(p)) {
         let startScore = 8;
         if (params.infoAccess.canSeeOpponentHands) {
-          const canDeflect = p.hand.some(c =>
-            (c.type === 'reverse' && (hr.reverseDeflectDrawTwo || hr.reverseDeflectDrawFour)) ||
-            (c.type === 'skip' && hr.skipDeflect) ||
-            (c.type === 'draw_two' && (hr.stackDrawTwo || hr.crossStack)) ||
-            (c.type === 'wild_draw_four' && (hr.stackDrawFour || hr.crossStack)));
+          const canDeflect = p.hand.some(
+            c =>
+              (c.type === 'reverse' && (hr.reverseDeflectDrawTwo || hr.reverseDeflectDrawFour)) ||
+              (c.type === 'skip' && hr.skipDeflect) ||
+              (c.type === 'draw_two' && (hr.stackDrawTwo || hr.crossStack)) ||
+              (c.type === 'wild_draw_four' && (hr.stackDrawFour || hr.crossStack)),
+          );
           if (canDeflect) startScore *= 0.4;
         }
         // Discount by unverified chain hops
@@ -521,10 +606,11 @@ function scoreCoalitionTactics(card: Card, _hand: Card[], state: GameState, botI
     const afterSkipIdx = getNextAliveIndex(
       state.players,
       state.players.findIndex(p => p.id === nextPlayer.id),
-      state.direction);
+      state.direction,
+    );
     const afterSkipPlayer = state.players[afterSkipIdx];
     if (afterSkipPlayer && !afterSkipPlayer.eliminated && isAlly(afterSkipPlayer)) {
-      score += (leadBot && afterSkipPlayer.id === leadBot.id) ? 10 : 5;
+      score += leadBot && afterSkipPlayer.id === leadBot.id ? 10 : 5;
     }
   }
 
@@ -535,7 +621,7 @@ function scoreCoalitionTactics(card: Card, _hand: Card[], state: GameState, botI
     const afterReversePlayer = state.players[afterReverseIdx];
     if (afterReversePlayer && !afterReversePlayer.eliminated && !isAlly(afterReversePlayer)) {
       if (nextPlayer && isAlly(nextPlayer)) {
-        score += (leadBot && nextPlayer.id === leadBot.id) ? 3 : 5;
+        score += leadBot && nextPlayer.id === leadBot.id ? 3 : 5;
       }
     }
     // Reverse puts lead bot as next player (even if current next is human)
@@ -636,13 +722,19 @@ export function evaluateCards(
 
   const alivePlayers = state.players.filter(p => !p.eliminated && p.id !== botId);
   const maxOpponentHand = alivePlayers.length > 0 ? Math.max(...alivePlayers.map(p => p.hand.length)) : 0;
-  const avgHandSize = alivePlayers.length > 0 ? alivePlayers.reduce((sum, p) => sum + p.hand.length, 0) / alivePlayers.length : 0;
+  const avgHandSize =
+    alivePlayers.length > 0 ? alivePlayers.reduce((sum, p) => sum + p.hand.length, 0) / alivePlayers.length : 0;
 
   const isAlly = (player: Player): boolean => {
     if (player.eliminated) return false;
     if (params.botCoalition && player.isBot) return true;
-    if (params.considerTeamStrategy && state.settings.houseRules.teamMode
-      && bot?.teamId !== undefined && player.teamId === bot.teamId) return true;
+    if (
+      params.considerTeamStrategy &&
+      state.settings.houseRules.teamMode &&
+      bot?.teamId !== undefined &&
+      player.teamId === bot.teamId
+    )
+      return true;
     return false;
   };
 

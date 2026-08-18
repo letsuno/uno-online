@@ -16,7 +16,6 @@
     "db:migrate": "echo 'Tables auto-created on startup'"
   },
   "dependencies": {
-    "@fastify/cookie": "^11.0.0",
     "@fastify/cors": "^11.0.0",
     "@simplewebauthn/server": "^13.3.0",
     "@uno-online/shared": "workspace:*",
@@ -27,7 +26,6 @@
     "ioredis": "^5.6.0",
     "jsonwebtoken": "^9.0.2",
     "kysely": "^0.29.0",
-    "nanoid": "^5.1.0",
     "onnxruntime-node": "1.27.0",
     "sharp": "^0.34.5",
     "socket.io": "^4.8.0",
@@ -36,6 +34,7 @@
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.9",
+    "socket.io-client": "^4.8.0",
     "tsx": "^4.22.0",
     "vitest": "^4.1.0"
   }

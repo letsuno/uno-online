@@ -11,5 +11,5 @@ export default defineConfig({
   banner: { js: '#!/usr/bin/env node' },
   noExternal: ['@uno-online/shared'],
   external: ['@modelcontextprotocol/sdk', 'socket.io-client', 'zod'],
-  define: { '__PKG_VERSION__': JSON.stringify(pkg.version) },
+  define: { __PKG_VERSION__: JSON.stringify(pkg.version) },
 });

@@ -20,9 +20,7 @@ import {
   type AiProvider,
   type AiProviderDecision,
 } from './provider.js';
-import {
-  aiProviderRegistry,
-} from './model-registry.js';
+import { aiProviderRegistry } from './model-registry.js';
 
 interface AiTurnDecision {
   actions: GameAction[];
@@ -137,10 +135,7 @@ function fallbackDecision(
   return { actions, stateFingerprint };
 }
 
-async function predictWithDeadline(
-  provider: AiProvider,
-  request: AiDecisionRequest,
-): Promise<AiProviderDecision> {
+async function predictWithDeadline(provider: AiProvider, request: AiDecisionRequest): Promise<AiProviderDecision> {
   if ((overdueProviderDecisions.get(provider)?.size ?? 0) > 0) {
     throw new Error('a timed-out AI decision is still running');
   }
@@ -172,10 +167,7 @@ async function predictWithDeadline(
     timeout.unref?.();
   });
   try {
-    return await Promise.race([
-      decision,
-      timeoutPromise,
-    ]);
+    return await Promise.race([decision, timeoutPromise]);
   } finally {
     if (timeout) clearTimeout(timeout);
   }
@@ -194,9 +186,7 @@ export async function chooseBotActionWithAi(
     return { actions, stateFingerprint };
   }
 
-  const legal = canonicalizeRlPlans(
-    enumerateLegalActionPlans(state, playerId, { kind: 'turn' }).plans,
-  );
+  const legal = canonicalizeRlPlans(enumerateLegalActionPlans(state, playerId, { kind: 'turn' }).plans);
   if (legal.length === 0) {
     return { actions: [], stateFingerprint };
   }
@@ -215,13 +205,7 @@ export async function chooseBotActionWithAi(
 
   const provider = await aiProviderRegistry.get(player.botConfig.aiProviderId);
   if (!provider) {
-    return fallbackDecision(
-      state,
-      playerId,
-      legal,
-      stateFingerprint,
-      cycleGuard,
-    );
+    return fallbackDecision(state, playerId, legal, stateFingerprint, cycleGuard);
   }
 
   const request: AiDecisionRequest = {
@@ -237,44 +221,25 @@ export async function chooseBotActionWithAi(
     deadlineMs: AI_DECISION_TIMEOUT_MS,
   };
   if (!providerSupportsContext(provider.metadata, request.playerCount, request.enabledHouseRules)) {
-    return fallbackDecision(
-      state,
-      playerId,
-      legal,
-      stateFingerprint,
-      cycleGuard,
-    );
+    return fallbackDecision(state, playerId, legal, stateFingerprint, cycleGuard);
   }
 
   let providerDecision: AiProviderDecision;
   try {
     providerDecision = await predictWithDeadline(provider, request);
-    if (providerDecision.kind === 'values'
-      && providerDecision.values.length !== candidates.length) {
+    if (providerDecision.kind === 'values' && providerDecision.values.length !== candidates.length) {
       throw new Error('provider returned wrong value count');
     }
   } catch (error) {
     warnOnce(provider.metadata.id, error);
-    return fallbackDecision(
-      state,
-      playerId,
-      legal,
-      stateFingerprint,
-      cycleGuard,
-    );
+    return fallbackDecision(state, playerId, legal, stateFingerprint, cycleGuard);
   }
 
   let selectedIndex: number;
   if (providerDecision.kind === 'candidate') {
     selectedIndex = candidates.findIndex(candidate => candidate.id === providerDecision.candidateId);
     if (selectedIndex < 0) {
-      return fallbackDecision(
-        state,
-        playerId,
-        legal,
-        stateFingerprint,
-        cycleGuard,
-      );
+      return fallbackDecision(state, playerId, legal, stateFingerprint, cycleGuard);
     }
   } else {
     const values = providerDecision.values;
@@ -293,9 +258,7 @@ export async function isAiProviderCompatible(
   houseRules: GameState['settings']['houseRules'],
 ): Promise<boolean> {
   const provider = await aiProviderRegistry.get(providerId);
-  return provider !== null && providerSupportsContext(
-    provider.metadata,
-    playerCount,
-    enabledHouseRuleNames(houseRules),
+  return (
+    provider !== null && providerSupportsContext(provider.metadata, playerCount, enabledHouseRuleNames(houseRules))
   );
 }

@@ -12,9 +12,9 @@ interface WaveState {
 }
 
 export default function ColorWave() {
-  const currentColor = useGameStore((s) => s.currentColor);
-  const phase = useGameStore((s) => s.phase);
-  const lastAction = useGameStore((s) => s.lastAction);
+  const currentColor = useGameStore(s => s.currentColor);
+  const phase = useGameStore(s => s.phase);
+  const lastAction = useGameStore(s => s.lastAction);
   const [wave, setWave] = useState<WaveState | null>(null);
   const prevColorRef = useRef<Color | null>(null);
   const waveIdRef = useRef(0);
@@ -54,7 +54,8 @@ export default function ColorWave() {
               反复以更高分辨率重新栅格化这个巨型图层（实测占整个渲染进程 CPU 的 ~40%）。
               按终态尺寸布局后只栅格化一次，之后纯合成器缩放。 */}
           <motion.div
-            className="absolute rounded-full will-change-transform" data-allow-overflow
+            className="absolute rounded-full will-change-transform"
+            data-allow-overflow
             style={{
               left: '50%',
               top: '50%',
@@ -69,7 +70,8 @@ export default function ColorWave() {
             transition={{ duration: 1, ease: 'easeOut' }}
           />
           <motion.div
-            className="absolute rounded-full will-change-transform" data-allow-overflow
+            className="absolute rounded-full will-change-transform"
+            data-allow-overflow
             style={{
               left: '50%',
               top: '50%',

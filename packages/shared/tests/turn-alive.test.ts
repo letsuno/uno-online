@@ -16,8 +16,7 @@ describe('getNextAliveIndex', () => {
     for (let from = 0; from < 4; from++) {
       for (const dir of ['clockwise', 'counter_clockwise'] as const) {
         for (const skip of [0, 1]) {
-          expect(getNextAliveIndex(alive, from, dir, skip))
-            .toBe(getNextPlayerIndex(from, 4, dir, skip));
+          expect(getNextAliveIndex(alive, from, dir, skip)).toBe(getNextPlayerIndex(from, 4, dir, skip));
         }
       }
     }
@@ -43,6 +42,16 @@ describe('getNextAliveIndex', () => {
   it('countAlivePlayers counts non-eliminated seats', () => {
     expect(countAlivePlayers([seat(false), seat(true), seat(false)])).toBe(2);
   });
+
+  it('rejects an empty turn order', () => {
+    expect(() => getNextAliveIndex([], 0, 'clockwise')).toThrow('Cannot advance turn without players');
+  });
+
+  it('rejects a turn order with no active player', () => {
+    expect(() => getNextAliveIndex([seat(true), seat(true)], 0, 'clockwise')).toThrow(
+      'Cannot advance turn without active players',
+    );
+  });
 });
 
 describe('rotateHands', () => {
@@ -60,6 +69,26 @@ describe('rotateHands', () => {
     expect(rotated[2]!.hand).toEqual(['a']);
     expect(rotated[3]!.hand).toEqual(['c']);
   });
+
+  it('rejects rotation when nobody is active', () => {
+    expect(() => rotateHands([{ eliminated: true, hand: [] }], 'clockwise')).toThrow(
+      'Cannot rotate hands without active players',
+    );
+  });
+});
+
+describe('round initialization invariants', () => {
+  it('rejects a game without players', () => {
+    expect(() => initializeGame([])).toThrow('Cannot initialize a game without players');
+  });
+
+  it('rejects a next round without active players', () => {
+    const state = makeState({
+      players: elimPlayers([null, null]),
+      phase: 'round_end',
+    });
+    expect(() => initializeNextRound(state)).toThrow('Cannot initialize the next round without active players');
+  });
 });
 
 // ─── Engine integration: eliminated seats never act ───────────────────────────
@@ -70,15 +99,22 @@ function elimPlayers(hands: (Card[] | null)[]): Player[] {
     name: `P${i + 1}`,
     hand: hand ?? [],
     score: 0,
+    roundWins: 0,
     connected: true,
     autopilot: false,
     calledUno: false,
+    unoCaught: false,
     eliminated: hand === null,
+    isBot: false,
   }));
 }
 
-const n = (id: string, color: 'red' | 'blue' | 'green' | 'yellow', value: number): Card =>
-  ({ id, type: 'number', color, value });
+const n = (id: string, color: 'red' | 'blue' | 'green' | 'yellow', value: number): Card => ({
+  id,
+  type: 'number',
+  color,
+  value,
+});
 
 function elimState(overrides: Partial<GameState>): GameState {
   return makeState({
@@ -146,7 +182,11 @@ describe('engine skips eliminated seats', () => {
 
   it('next round never starts on an eliminated seat', () => {
     const state = initializeGame(
-      [{ id: 'p1', name: 'A' }, { id: 'p2', name: 'B' }, { id: 'p3', name: 'C' }],
+      [
+        { id: 'p1', name: 'A' },
+        { id: 'p2', name: 'B' },
+        { id: 'p3', name: 'C' },
+      ],
       { ...DEFAULT_HOUSE_RULES, elimination: true },
     );
     state.players[1]!.eliminated = true;
@@ -159,7 +199,11 @@ describe('engine skips eliminated seats', () => {
 
   it('full flow: elimination at round end, then round 2 turns skip the zombie seat', () => {
     let state = initializeGame(
-      [{ id: 'p1', name: 'A' }, { id: 'p2', name: 'B' }, { id: 'p3', name: 'C' }],
+      [
+        { id: 'p1', name: 'A' },
+        { id: 'p2', name: 'B' },
+        { id: 'p3', name: 'C' },
+      ],
       { ...DEFAULT_HOUSE_RULES, elimination: true },
     );
     state.players[0]!.hand = [n('a1', 'red', 5)];

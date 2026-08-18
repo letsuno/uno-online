@@ -10,7 +10,7 @@ export const handLimit: HouseRulePlugin = {
     label: '手牌上限',
     description: '超过数量时不能摸牌',
   },
-  isEnabled: (hr) => hr.handLimit !== null,
+  isEnabled: hr => hr.handLimit !== null,
   preCheck: (state: GameState, action: GameAction): PreCheckResult => {
     if (action.type !== 'DRAW_CARD') return { handled: false };
     if (hasPendingDrawObligation(state)) return { handled: false };

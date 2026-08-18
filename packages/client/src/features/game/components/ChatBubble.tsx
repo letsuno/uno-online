@@ -23,11 +23,7 @@ export default function ChatBubble({ message, visible }: ChatBubbleProps) {
         >
           <div className="relative bg-white/15 backdrop-blur-sm rounded-xl px-3 py-1.5 w-max max-w-56">
             <span
-              className={
-                isEmojiOnly
-                  ? 'text-xl leading-tight'
-                  : 'text-xs leading-tight line-clamp-2 text-foreground'
-              }
+              className={isEmojiOnly ? 'text-xl leading-tight' : 'text-xs leading-tight line-clamp-2 text-foreground'}
             >
               {message}
             </span>

@@ -1,11 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import type { PluginContext } from '../../../plugin-context.js';
 import type { UserRole } from '@uno-online/shared';
+import { isUserRole } from '@uno-online/shared';
 import type { AuthenticatedRequest } from '../auth/service.js';
 import { adminOnly } from './middleware.js';
-import { getRoom, getRoomSeats, getSeatedPlayers, deleteRoom } from '../room/store.js';
+import { getRoom, getRoomSeats, getSeatedPlayers } from '../room/store.js';
 import { sql } from 'kysely';
-import { aiProviderRegistry } from '../../../ai/model-registry.js';
+import { AiPluginNotFoundError, BuiltInAiPluginMutationError, aiProviderRegistry } from '../../../ai/model-registry.js';
 
 export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext) {
   const { config, kv, db } = ctx;
@@ -15,17 +16,11 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
   fastify.get('/admin/dashboard', { preHandler }, async () => {
     const userStats = await db
       .selectFrom('users')
-      .select([
-        sql<number>`count(*)`.as('totalUsers'),
-      ])
+      .select([sql<number>`count(*)`.as('totalUsers')])
       .executeTakeFirstOrThrow();
 
     const roomKeys = await kv.keys('room:*');
-    // Filter to only room keys (not room:CODE:players etc.)
-    const roomCodes = [...new Set(roomKeys.map(k => {
-      const parts = k.split(':');
-      return parts[1]!;
-    }))];
+    const roomCodes = roomKeys.filter(key => /^room:[^:]+$/u.test(key)).map(key => key.slice('room:'.length));
 
     return {
       totalUsers: Number(userStats.totalUsers),
@@ -36,32 +31,20 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
   // Paginated user list
   fastify.get<{
     Querystring: { search?: string; page?: string; limit?: string };
-  }>('/admin/users', { preHandler }, async (request) => {
+  }>('/admin/users', { preHandler }, async request => {
     const search = request.query.search?.trim() ?? '';
     const page = Math.max(1, parseInt(request.query.page ?? '1', 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(request.query.limit ?? '20', 10) || 20));
     const offset = (page - 1) * limit;
 
-    let query = db.selectFrom('users').select([
-      'id', 'username', 'nickname', 'role', 'createdAt',
-    ]);
+    let query = db.selectFrom('users').select(['id', 'username', 'nickname', 'role', 'createdAt']);
 
     let countQuery = db.selectFrom('users').select(sql<number>`count(*)`.as('count'));
 
     if (search) {
       const pattern = `%${search}%`;
-      query = query.where((eb) =>
-        eb.or([
-          eb('username', 'like', pattern),
-          eb('nickname', 'like', pattern),
-        ])
-      );
-      countQuery = countQuery.where((eb) =>
-        eb.or([
-          eb('username', 'like', pattern),
-          eb('nickname', 'like', pattern),
-        ])
-      );
+      query = query.where(eb => eb.or([eb('username', 'like', pattern), eb('nickname', 'like', pattern)]));
+      countQuery = countQuery.where(eb => eb.or([eb('username', 'like', pattern), eb('nickname', 'like', pattern)]));
     }
 
     const [users, countResult] = await Promise.all([
@@ -84,9 +67,7 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
   }>('/admin/users/:id/role', { preHandler }, async (request, reply) => {
     const { id } = request.params;
     const { role } = request.body;
-    const validRoles: UserRole[] = ['normal', 'member', 'vip', 'admin'];
-
-    if (!validRoles.includes(role)) {
+    if (!isUserRole(role)) {
       return reply.code(400).send({ error: 'Invalid role' });
     }
 
@@ -122,7 +103,12 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
       if (trimmed.length < 2 || trimmed.length > 20) {
         return reply.code(400).send({ error: 'Username must be 2-20 characters' });
       }
-      const existing = await db.selectFrom('users').select('id').where('username', '=', trimmed).where('id', '!=', id).executeTakeFirst();
+      const existing = await db
+        .selectFrom('users')
+        .select('id')
+        .where('username', '=', trimmed)
+        .where('id', '!=', id)
+        .executeTakeFirst();
       if (existing) {
         return reply.code(409).send({ error: 'Username already taken' });
       }
@@ -149,11 +135,10 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
   // Active rooms list
   fastify.get('/admin/rooms', { preHandler }, async () => {
     const roomKeys = await kv.keys('room:*');
-    // Extract unique room codes (keys are like room:CODE, room:CODE:players)
-    const roomCodes = [...new Set(roomKeys.map(k => k.split(':')[1]!))];
+    const roomCodes = roomKeys.filter(key => /^room:[^:]+$/u.test(key)).map(key => key.slice('room:'.length));
 
     const rooms = await Promise.all(
-      roomCodes.map(async (code) => {
+      roomCodes.map(async code => {
         const room = await getRoom(kv, code);
         if (!room) return null;
         const seats = await getRoomSeats(kv, code);
@@ -163,10 +148,13 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
           ownerId: room.ownerId,
           status: room.status,
           playerCount: players.length,
-          players: players.map((p: { userId: string; nickname: string }) => ({ userId: p.userId, nickname: p.nickname })),
+          players: players.map((p: { userId: string; nickname: string }) => ({
+            userId: p.userId,
+            nickname: p.nickname,
+          })),
           createdAt: room.createdAt,
         };
-      })
+      }),
     );
 
     return { rooms: rooms.filter(Boolean) };
@@ -180,13 +168,14 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
       return reply.code(404).send({ error: 'Room not found' });
     }
 
-    await deleteRoom(kv, code);
+    if (!ctx.dissolveRoom) {
+      return reply.code(503).send({ error: 'Room lifecycle is not ready' });
+    }
+    await ctx.dissolveRoom(code, 'host_closed');
     return { success: true };
   });
 
-  fastify.get('/admin/ai-plugins', { preHandler }, async () => (
-    aiProviderRegistry.snapshot()
-  ));
+  fastify.get('/admin/ai-plugins', { preHandler }, async () => aiProviderRegistry.snapshot());
 
   fastify.patch<{
     Params: { id: string };
@@ -196,15 +185,15 @@ export function registerAdminRoutes(fastify: FastifyInstance, ctx: PluginContext
       return reply.code(400).send({ error: 'enabled 必须是布尔值' });
     }
     try {
-      return await aiProviderRegistry.setCommunityPluginEnabled(
-        request.params.id,
-        request.body.enabled,
-      );
+      return await aiProviderRegistry.setCommunityPluginEnabled(request.params.id, request.body.enabled);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const status = message === 'AI plugin not found' ? 404 : 400;
-      return reply.code(status).send({ error: message });
+      if (error instanceof AiPluginNotFoundError) {
+        return reply.code(404).send({ error: error.message });
+      }
+      if (error instanceof BuiltInAiPluginMutationError) {
+        return reply.code(400).send({ error: error.message });
+      }
+      throw new Error('保存 AI 插件设置失败', { cause: error });
     }
   });
-
 }

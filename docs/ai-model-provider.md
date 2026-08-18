@@ -44,11 +44,7 @@ data/ai-plugins/
   "entry": "strategy.ts",
   "entrySha256": "strategy.ts 的小写 SHA-256",
   "featureSchema": "uno.rl.action-value.577.v1",
-  "dataAccess": [
-    "candidate-features",
-    "public-state",
-    "own-hand"
-  ],
+  "dataAccess": ["candidate-features", "public-state", "own-hand"],
   "onnx": {
     "modelFile": "model.onnx",
     "onnxSha256": "model.onnx 的小写 SHA-256"
@@ -69,14 +65,14 @@ data/ai-plugins/
 
 插件必须在 `dataAccess` 中声明 TypeScript 策略需要读取的数据：
 
-| 权限 | 提供内容 | 分级 |
-|---|---|---|
-| `candidate-features` | 每个合法候选的 577 维特征 | 公平 |
-| `public-state` | 阶段、轮次、完整弃牌堆历史、玩家手牌数、规则、罚牌状态等公开信息 | 公平 |
-| `own-hand` | 当前插件 Bot 的完整手牌 | 公平 |
-| `opponent-hands` | 所有对手的完整手牌 | 作弊 |
-| `draw-piles` | 左右摸牌堆的完整顺序 | 作弊 |
-| `chat-history` | 当前牌局聊天记录 | 信息增强 |
+| 权限                 | 提供内容                                                         | 分级     |
+| -------------------- | ---------------------------------------------------------------- | -------- |
+| `candidate-features` | 每个合法候选的 577 维特征                                        | 公平     |
+| `public-state`       | 阶段、轮次、完整弃牌堆历史、玩家手牌数、规则、罚牌状态等公开信息 | 公平     |
+| `own-hand`           | 当前插件 Bot 的完整手牌                                          | 公平     |
+| `opponent-hands`     | 所有对手的完整手牌                                               | 作弊     |
+| `draw-piles`         | 左右摸牌堆的完整顺序                                             | 作弊     |
+| `chat-history`       | 当前牌局聊天记录                                                 | 信息增强 |
 
 候选 ID、规则先验分数和教师标记属于决策接口的基础数据。未声明 `candidate-features` 时，候选特征不会暴露给插件，ONNX 也没有绕过权限读取特征的内部通道。`prepareOnnx` 只能使用当前插件已经获准看到的上下文来构造张量。
 
@@ -132,7 +128,7 @@ interface CommunityAiContext {
     id: string;
     heuristicScore: number;
     teacherPreferred: boolean;
-    features?: number[];  // 需要 candidate-features
+    features?: number[]; // 需要 candidate-features
   }>;
   arena?: {
     publicState?: object;
@@ -164,10 +160,21 @@ interface OnnxTensor {
 }
 
 type OnnxTensorType =
-  | 'float32' | 'float64' | 'float16'
-  | 'int8' | 'int16' | 'int32' | 'int64' | 'int4'
-  | 'uint8' | 'uint16' | 'uint32' | 'uint64' | 'uint4'
-  | 'bool' | 'string';
+  | 'float32'
+  | 'float64'
+  | 'float16'
+  | 'int8'
+  | 'int16'
+  | 'int32'
+  | 'int64'
+  | 'int4'
+  | 'uint8'
+  | 'uint16'
+  | 'uint32'
+  | 'uint64'
+  | 'uint4'
+  | 'bool'
+  | 'string';
 ```
 
 ## ONNX 协议
@@ -205,11 +212,11 @@ interface PrepareOnnxResult {
 
 ## 配置项
 
-| 环境变量 | 默认值 | 说明 |
-|---|---:|---|
-| `UNO_AI_PLUGINS_DIR` | `data/ai-plugins` | 社区插件根目录 |
-| `UNO_AI_PLUGIN_SETTINGS_FILE` | `data/ai-plugin-settings.json` | 管理状态持久化文件 |
-| `UNO_AI_DECISION_TIMEOUT_MS` | `1500` | 单次完整插件决策上限（毫秒） |
-| `UNO_RL_ONNX_EP` | `cpu` | `cpu`、`cuda` 或 `dml` |
-| `UNO_AI_PLUGINS_HOST_DIR` | `./data/ai-plugins` | Docker Compose 的宿主机插件目录 |
-| `UNO_AI_PLUGIN_STATE_HOST_DIR` | `./data/ai-plugin-state` | Docker Compose 的宿主机管理状态目录 |
+| 环境变量                       |                         默认值 | 说明                                |
+| ------------------------------ | -----------------------------: | ----------------------------------- |
+| `UNO_AI_PLUGINS_DIR`           |              `data/ai-plugins` | 社区插件根目录                      |
+| `UNO_AI_PLUGIN_SETTINGS_FILE`  | `data/ai-plugin-settings.json` | 管理状态持久化文件                  |
+| `UNO_AI_DECISION_TIMEOUT_MS`   |                         `1500` | 单次完整插件决策上限（毫秒）        |
+| `UNO_RL_ONNX_EP`               |                          `cpu` | `cpu`、`cuda` 或 `dml`              |
+| `UNO_AI_PLUGINS_HOST_DIR`      |            `./data/ai-plugins` | Docker Compose 的宿主机插件目录     |
+| `UNO_AI_PLUGIN_STATE_HOST_DIR` |       `./data/ai-plugin-state` | Docker Compose 的宿主机管理状态目录 |

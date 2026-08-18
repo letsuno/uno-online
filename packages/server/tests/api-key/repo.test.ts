@@ -2,7 +2,13 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { CamelCasePlugin, Kysely, sql, SqliteDialect } from 'kysely';
 import { DatabaseSync } from 'node:sqlite';
 import type { Database } from '../../src/db/database';
-import { createApiKey, listApiKeys, deleteApiKey, verifyApiKey } from '../../src/plugins/core/api-key/repo';
+import {
+  ApiKeyLimitReachedError,
+  createApiKey,
+  listApiKeys,
+  deleteApiKey,
+  verifyApiKey,
+} from '../../src/plugins/core/api-key/repo';
 
 let db: Kysely<Database>;
 
@@ -15,13 +21,25 @@ beforeAll(async () => {
           const raw = sqlite.prepare(sqlStr);
           const rawSql = raw.sourceSQL.toLowerCase().trimStart();
           return {
-            all(parameters: readonly unknown[]) { return raw.all(...parameters as never[]); },
-            run(parameters: readonly unknown[]) { return raw.run(...parameters as never[]); },
-            iterate(parameters: readonly unknown[]) { return raw.iterate(...parameters as never[]); },
-            reader: rawSql.startsWith('select') || rawSql.startsWith('pragma') || rawSql.startsWith('with') || rawSql.includes(' returning '),
+            all(parameters: readonly unknown[]) {
+              return raw.all(...(parameters as never[]));
+            },
+            run(parameters: readonly unknown[]) {
+              return raw.run(...(parameters as never[]));
+            },
+            iterate(parameters: readonly unknown[]) {
+              return raw.iterate(...(parameters as never[]));
+            },
+            reader:
+              rawSql.startsWith('select') ||
+              rawSql.startsWith('pragma') ||
+              rawSql.startsWith('with') ||
+              rawSql.includes(' returning '),
           };
         },
-        close() { sqlite.close(); },
+        close() {
+          sqlite.close();
+        },
       },
     }),
     plugins: [new CamelCasePlugin()],
@@ -30,21 +48,21 @@ beforeAll(async () => {
   // Create tables
   await db.schema
     .createTable('users')
-    .addColumn('id', 'text', (c) => c.primaryKey())
-    .addColumn('username', 'text', (c) => c.unique().notNull())
-    .addColumn('nickname', 'text', (c) => c.notNull())
+    .addColumn('id', 'text', c => c.primaryKey())
+    .addColumn('username', 'text', c => c.unique().notNull())
+    .addColumn('nickname', 'text', c => c.notNull())
     .addColumn('avatar_url', 'text')
-    .addColumn('role', 'text', (c) => c.defaultTo('normal').notNull())
+    .addColumn('role', 'text', c => c.defaultTo('normal').notNull())
     .execute();
 
   await db.schema
     .createTable('api_keys')
-    .addColumn('id', 'text', (c) => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
-    .addColumn('user_id', 'text', (c) => c.notNull())
-    .addColumn('key', 'text', (c) => c.unique().notNull())
-    .addColumn('key_preview', 'text', (c) => c.notNull().defaultTo(''))
-    .addColumn('name', 'text', (c) => c.notNull())
-    .addColumn('created_at', 'text', (c) => c.defaultTo(sql`(datetime('now'))`).notNull())
+    .addColumn('id', 'text', c => c.primaryKey().defaultTo(sql`(lower(hex(randomblob(16))))`))
+    .addColumn('user_id', 'text', c => c.notNull())
+    .addColumn('key', 'text', c => c.unique().notNull())
+    .addColumn('key_preview', 'text', c => c.notNull().defaultTo(''))
+    .addColumn('name', 'text', c => c.notNull())
+    .addColumn('created_at', 'text', c => c.defaultTo(sql`(datetime('now'))`).notNull())
     .addColumn('last_used_at', 'text')
     .execute();
 
@@ -112,6 +130,6 @@ describe('ApiKey repo', () => {
     for (let i = 0; i < 10; i++) {
       await createApiKey(db, 'user-max', `key-${i}`);
     }
-    await expect(createApiKey(db, 'user-max', 'overflow')).rejects.toThrow('最多创建');
+    await expect(createApiKey(db, 'user-max', 'overflow')).rejects.toBeInstanceOf(ApiKeyLimitReachedError);
   });
 });

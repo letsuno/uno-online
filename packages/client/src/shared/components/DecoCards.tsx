@@ -4,7 +4,14 @@ const CARDS = [
   { value: '↔', color: '#4d7eff', borderColor: 'rgba(77, 126, 255, 0.28)', top: '44%', left: '4%', rotate: '9deg' },
   { value: '0', color: '#ff5c63', borderColor: 'rgba(255, 92, 99, 0.28)', top: '58%', right: '7%', rotate: '-14deg' },
   { value: '5', color: '#50e16b', borderColor: 'rgba(80, 225, 107, 0.26)', bottom: '16%', left: '8%', rotate: '13deg' },
-  { value: '9', color: 'var(--gold)', borderColor: 'rgba(246, 190, 62, 0.28)', bottom: '13%', right: '12%', rotate: '-11deg' },
+  {
+    value: '9',
+    color: 'var(--gold)',
+    borderColor: 'rgba(246, 190, 62, 0.28)',
+    bottom: '13%',
+    right: '12%',
+    rotate: '-11deg',
+  },
 ];
 
 export default function DecoCards() {
@@ -20,7 +27,10 @@ export default function DecoCards() {
             boxShadow: 'inset 0 0 24px rgba(255,255,255,0.04), 0 18px 42px rgba(0,0,0,0.26)',
             filter: 'blur(0.2px)',
             color: card.color,
-            top: card.top, left: card.left, right: card.right, bottom: card.bottom,
+            top: card.top,
+            left: card.left,
+            right: card.right,
+            bottom: card.bottom,
             transform: `rotate(${card.rotate})`,
           }}
         >

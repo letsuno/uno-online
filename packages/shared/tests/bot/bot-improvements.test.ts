@@ -17,9 +17,12 @@ function makePlayer(id: string, hand: Card[], botConfig?: BotConfig, extra: Part
     name: id,
     hand,
     score: 0,
+    roundWins: 0,
     connected: true,
     autopilot: false,
     calledUno: false,
+    unoCaught: false,
+    eliminated: false,
     isBot: botConfig !== undefined,
     botConfig,
     ...extra,
@@ -79,19 +82,29 @@ describe('WD4 legality self-check', () => {
     const safeRed = n('safe-red', 'red', 6);
     const state = makeState({
       players: [
-        makePlayer('bot', [
-          wd4a, safeRed, wd4b, n('red-9', 'red', 9),
-          n('yellow-2', 'yellow', 2), n('green-4', 'green', 4),
-        ], chaoticHardBot),
+        makePlayer(
+          'bot',
+          [wd4a, safeRed, wd4b, n('red-9', 'red', 9), n('yellow-2', 'yellow', 2), n('green-4', 'green', 4)],
+          chaoticHardBot,
+        ),
         makePlayer('human-close', [n('human-green', 'green', 5)]),
-        makePlayer('ally', [
-          n('ally-yellow-6a', 'yellow', 6), n('ally-yellow-4a', 'yellow', 4),
-          n('ally-green-8', 'green', 8), n('ally-yellow-4b', 'yellow', 4),
-          n('ally-red-0', 'red', 0), n('ally-yellow-8', 'yellow', 8),
-          n('ally-yellow-6b', 'yellow', 6), n('ally-blue-9', 'blue', 9),
-          n('ally-red-1', 'red', 1), n('ally-red-8', 'red', 8),
-          n('ally-blue-5', 'blue', 5),
-        ], normalBot),
+        makePlayer(
+          'ally',
+          [
+            n('ally-yellow-6a', 'yellow', 6),
+            n('ally-yellow-4a', 'yellow', 4),
+            n('ally-green-8', 'green', 8),
+            n('ally-yellow-4b', 'yellow', 4),
+            n('ally-red-0', 'red', 0),
+            n('ally-yellow-8', 'yellow', 8),
+            n('ally-yellow-6b', 'yellow', 6),
+            n('ally-blue-9', 'blue', 9),
+            n('ally-red-1', 'red', 1),
+            n('ally-red-8', 'red', 8),
+            n('ally-blue-5', 'blue', 5),
+          ],
+          normalBot,
+        ),
         makePlayer('human-last', [n('human-red', 'red', 8)]),
       ],
       deckLeft: [],
@@ -112,19 +125,36 @@ describe('WD4 legality self-check', () => {
     const wd4b = makeCard('wild_draw_four', null, { id: 'wd4-b' });
     const state = makeState({
       players: [
-        makePlayer('bot', [
-          wd4a, n('safe-red', 'red', 6), wd4b, n('red-9', 'red', 9),
-          n('yellow-2', 'yellow', 2), n('green-4', 'green', 4),
-        ], chaoticHardBot),
+        makePlayer(
+          'bot',
+          [
+            wd4a,
+            n('safe-red', 'red', 6),
+            wd4b,
+            n('red-9', 'red', 9),
+            n('yellow-2', 'yellow', 2),
+            n('green-4', 'green', 4),
+          ],
+          chaoticHardBot,
+        ),
         makePlayer('human-close', [n('human-green', 'green', 5)]),
-        makePlayer('ally', [
-          n('ally-yellow-6a', 'yellow', 6), n('ally-yellow-4a', 'yellow', 4),
-          n('ally-green-8', 'green', 8), n('ally-yellow-4b', 'yellow', 4),
-          n('ally-red-0', 'red', 0), n('ally-yellow-8', 'yellow', 8),
-          n('ally-yellow-6b', 'yellow', 6), n('ally-blue-9', 'blue', 9),
-          n('ally-red-1', 'red', 1), n('ally-red-8', 'red', 8),
-          n('ally-blue-5', 'blue', 5),
-        ], normalBot),
+        makePlayer(
+          'ally',
+          [
+            n('ally-yellow-6a', 'yellow', 6),
+            n('ally-yellow-4a', 'yellow', 4),
+            n('ally-green-8', 'green', 8),
+            n('ally-yellow-4b', 'yellow', 4),
+            n('ally-red-0', 'red', 0),
+            n('ally-yellow-8', 'yellow', 8),
+            n('ally-yellow-6b', 'yellow', 6),
+            n('ally-blue-9', 'blue', 9),
+            n('ally-red-1', 'red', 1),
+            n('ally-red-8', 'red', 8),
+            n('ally-blue-5', 'blue', 5),
+          ],
+          normalBot,
+        ),
         makePlayer('human-last', [n('human-red', 'red', 8)]),
       ],
       discardPile: [n('top', 'red', 7)],
@@ -149,10 +179,7 @@ describe('endgame solver ranks winning starts with the evaluator', () => {
     const red5 = n('r5', 'red', 5);
     const redD2 = makeCard('draw_two', 'red', { id: 'rd2' });
     const state = makeState({
-      players: [
-        makePlayer('bot', [red5, redD2], hardBot),
-        makePlayer('h1', [n('x1', 'blue', 1), n('x2', 'green', 2)]),
-      ],
+      players: [makePlayer('bot', [red5, redD2], hardBot), makePlayer('h1', [n('x1', 'blue', 1), n('x2', 'green', 2)])],
       discardPile: [n('top', 'red', 7)],
       currentColor: 'red',
       currentPlayerIndex: 0,
@@ -237,7 +264,11 @@ describe('elimination-aware targeting', () => {
     const d2 = makeCard('draw_two', 'red', { id: 'rd2' });
     const state = makeState({
       players: [
-        makePlayer('bot', [d2, n('g9', 'green', 9), n('g8', 'green', 8), n('g7', 'green', 3), n('b9', 'blue', 9)], hardBot),
+        makePlayer(
+          'bot',
+          [d2, n('g9', 'green', 9), n('g8', 'green', 8), n('g7', 'green', 3), n('b9', 'blue', 9)],
+          hardBot,
+        ),
         makePlayer('gone', [], undefined, { eliminated: true }),
         makePlayer('h1', [n('x1', 'red', 1)]),
         makePlayer('h2', [n('y1', 'blue', 1), n('y2', 'blue', 2), n('y3', 'green', 5), n('y4', 'yellow', 6)]),

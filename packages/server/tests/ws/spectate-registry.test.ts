@@ -3,15 +3,11 @@ import type { Server as SocketIOServer } from 'socket.io';
 import { MemoryKvStore } from '../../src/kv/memory';
 import {
   addSpectatorToRoom,
-  removeSpectatorFromRoom,
   getRoomSpectators,
   clearRoomSpectators,
   setSpectatorConnected,
 } from '../../src/plugins/core/room/store';
-import {
-  broadcastSpectatorLeft,
-  broadcastSpectatorList,
-} from '../../src/plugins/core/spectate/ws';
+import { broadcastSpectatorLeft, broadcastSpectatorList } from '../../src/plugins/core/spectate/ws';
 
 const kv = new MemoryKvStore();
 const ROOM_A = 'TESTAA';
@@ -22,11 +18,17 @@ async function resetRegistry(): Promise<void> {
 }
 
 function spectator(userId: string, nickname: string, avatarUrl?: string | null) {
-  return { userId, nickname, avatarUrl: avatarUrl ?? null, role: 'normal', connected: true };
+  return {
+    userId,
+    nickname,
+    avatarUrl: avatarUrl ?? null,
+    role: 'normal',
+    connected: true,
+  };
 }
 
-function info(nickname: string, connected = true, avatarUrl?: string | null) {
-  return { nickname, avatarUrl: avatarUrl ?? null, connected };
+function info(userId: string, nickname: string, connected = true, avatarUrl?: string | null) {
+  return { userId, nickname, avatarUrl: avatarUrl ?? null, connected };
 }
 
 describe('spectator registry', () => {
@@ -43,24 +45,6 @@ describe('spectator registry', () => {
     await addSpectatorToRoom(kv, ROOM_A, spectator('u1', 'OldName'));
     await addSpectatorToRoom(kv, ROOM_A, spectator('u1', 'NewName'));
     expect((await getRoomSpectators(kv, ROOM_A)).map(s => s.nickname)).toEqual(['NewName']);
-  });
-
-  it('removeSpectatorFromRoom returns the removed nickname', async () => {
-    await addSpectatorToRoom(kv, ROOM_A, spectator('u1', 'Alice'));
-    expect(await removeSpectatorFromRoom(kv, ROOM_A, 'u1')).toBe('Alice');
-    expect(await getRoomSpectators(kv, ROOM_A)).toEqual([]);
-  });
-
-  it('removeSpectatorFromRoom on unknown user returns null', async () => {
-    expect(await removeSpectatorFromRoom(kv, ROOM_A, 'ghost')).toBeNull();
-  });
-
-  it('keeps rooms isolated', async () => {
-    await addSpectatorToRoom(kv, ROOM_A, spectator('u1', 'Alice'));
-    await addSpectatorToRoom(kv, ROOM_B, spectator('u1', 'Alice'));
-    await removeSpectatorFromRoom(kv, ROOM_A, 'u1');
-    expect(await getRoomSpectators(kv, ROOM_A)).toEqual([]);
-    expect(await getRoomSpectators(kv, ROOM_B)).toHaveLength(1);
   });
 
   it('setSpectatorConnected toggles the connected flag', async () => {
@@ -95,7 +79,7 @@ describe('spectator registry', () => {
       await setSpectatorConnected(kv, ROOM_A, 'u2', false);
       await broadcastSpectatorList(io, kv, ROOM_A);
       expect(emits).toEqual([
-        { event: 'room:spectator_list', payload: { spectators: [info('Alice'), info('Bob', false)] } },
+        { event: 'room:spectator_list', payload: { spectators: [info('u1', 'Alice'), info('u2', 'Bob', false)] } },
       ]);
     });
 
@@ -105,8 +89,11 @@ describe('spectator registry', () => {
       await addSpectatorToRoom(kv, ROOM_A, spectator('u2', 'Bob'));
       await broadcastSpectatorLeft(io, kv, ROOM_A, 'u1', 'Alice');
       expect(emits).toEqual([
-        { event: 'room:spectator_list', payload: { spectators: [info('Alice'), info('Bob')] } },
-        { event: 'room:spectator_left', payload: { nickname: 'Alice', spectators: [info('Alice'), info('Bob')] } },
+        { event: 'room:spectator_list', payload: { spectators: [info('u1', 'Alice'), info('u2', 'Bob')] } },
+        {
+          event: 'room:spectator_left',
+          payload: { nickname: 'Alice', spectators: [info('u1', 'Alice'), info('u2', 'Bob')] },
+        },
       ]);
     });
   });

@@ -54,12 +54,12 @@ export default function ViewportFxLayer() {
   const [swaps, setSwaps] = useState<SwapFx[]>([]);
   const [plays, setPlays] = useState<PlayFlight[]>([]);
 
-  const players = useGameStore((s) => s.players);
+  const players = useGameStore(s => s.players);
   const chatMessages = useChatBubbles();
-  const lastAction = useGameStore((s) => s.lastAction);
-  const settings = useGameStore((s) => s.settings);
-  const direction = useGameStore((s) => s.direction);
-  const roundNumber = useGameStore((s) => s.roundNumber);
+  const lastAction = useGameStore(s => s.lastAction);
+  const settings = useGameStore(s => s.settings);
+  const direction = useGameStore(s => s.direction);
+  const roundNumber = useGameStore(s => s.roundNumber);
   const userId = useEffectiveUserId();
 
   // socket 监听用 ref 读最新 userId，避免重复订阅
@@ -75,20 +75,20 @@ export default function ViewportFxLayer() {
   const lastHandSwapActionKeyRef = useRef<string | null>(null);
 
   const removeThrow = useCallback((id: string) => {
-    setThrows((prev) => prev.filter((t) => t.id !== id));
+    setThrows(prev => prev.filter(t => t.id !== id));
   }, []);
   const removeDraw = useCallback((id: string) => {
-    const flight = drawsRef.current.find((d) => d.id === id);
+    const flight = drawsRef.current.find(d => d.id === id);
     if (flight?.handCardId) useFxStore.getState().revealHandCard(flight.handCardId);
-    setDraws((prev) => prev.filter((d) => d.id !== id));
+    setDraws(prev => prev.filter(d => d.id !== id));
   }, []);
   const removeSwap = useCallback((id: string) => {
-    setSwaps((prev) => prev.filter((s) => s.id !== id));
+    setSwaps(prev => prev.filter(s => s.id !== id));
   }, []);
   const removePlay = useCallback((id: string) => {
-    const flight = playsRef.current.find((p) => p.id === id);
+    const flight = playsRef.current.find(p => p.id === id);
     if (flight) useFxStore.getState().revealDiscardCard(flight.card.id);
-    setPlays((prev) => prev.filter((p) => p.id !== id));
+    setPlays(prev => prev.filter(p => p.id !== id));
   }, []);
 
   // 1. 投掷道具：socket 广播 → 从投掷者锚点飞到目标锚点
@@ -101,10 +101,12 @@ export default function ViewportFxLayer() {
       const from = getPlayerAnchor(data.fromId);
       const to = getPlayerAnchor(data.targetId);
       if (!from || !to) return; // 观战者等无锚点场景：跳过动画
-      setThrows((prev) => [...prev, { id: nextFxId('throw'), from, to, item: data.item }]);
+      setThrows(prev => [...prev, { id: nextFxId('throw'), from, to, item: data.item }]);
     };
     socket.on('throw:item', handler);
-    return () => { socket.off('throw:item', handler); };
+    return () => {
+      socket.off('throw:item', handler);
+    };
   }, []);
 
   // 2 + 3. 摸牌 / 换手牌：对 players 的 handCount 与 lastAction 做差分（逻辑沿用原 useDrawAnimation）
@@ -116,7 +118,7 @@ export default function ViewportFxLayer() {
     const topCard = pile[pile.length - 1];
     const isZeroRotate =
       lastAction?.type === 'PLAY_CARD' &&
-      settings?.houseRules?.zeroRotateHands &&
+      settings?.houseRules.zeroRotateHands &&
       topCard?.type === 'number' &&
       topCard.value === 0;
     const isSevenSwap = lastAction?.type === 'CHOOSE_SWAP_TARGET';
@@ -137,9 +139,8 @@ export default function ViewportFxLayer() {
         );
       } else if (isZeroRotate) {
         for (let index = 0; index < players.length; index++) {
-          const sourceIndex = direction === 'clockwise'
-            ? (index - 1 + players.length) % players.length
-            : (index + 1) % players.length;
+          const sourceIndex =
+            direction === 'clockwise' ? (index - 1 + players.length) % players.length : (index + 1) % players.length;
           const source = players[sourceIndex]!;
           const playedCardAdjustment = source.id === lastAction.playerId ? 1 : 0;
           routes.push({
@@ -159,7 +160,7 @@ export default function ViewportFxLayer() {
         newSwaps.push({ id: nextFxId('swap'), from, to, count: route.count });
       }
       if (newSwaps.length > 0) {
-        setSwaps((prev) => [...prev, ...newSwaps]);
+        setSwaps(prev => [...prev, ...newSwaps]);
       }
     }
 
@@ -177,7 +178,7 @@ export default function ViewportFxLayer() {
         let newCardIds: string[] = [];
         if (isSelfDraw) {
           const prevIds = prevSelfHandIdsRef.current;
-          newCardIds = player.hand.map((c) => c.id).filter((cid) => !prevIds.includes(cid));
+          newCardIds = player.hand.map(c => c.id).filter(cid => !prevIds.includes(cid));
           if (newCardIds.length !== added) newCardIds = []; // 换手等复杂情况退化为锚点飞行
           if (newCardIds.length > 0) useFxStore.getState().hideHandCards(newCardIds);
         }
@@ -196,7 +197,7 @@ export default function ViewportFxLayer() {
           const id = nextFxId('draw');
           const toSize = isSelfDraw ? 'hand' : 'avatar';
           const delay = handCardId ? 0.05 + i * 0.15 : i * 0.3;
-          setDraws((prev) => [...prev, { id, from, to: target, delay, toSize, handCardId }]);
+          setDraws(prev => [...prev, { id, from, to: target, delay, toSize, handCardId }]);
         }
       }
     }
@@ -210,44 +211,44 @@ export default function ViewportFxLayer() {
       if (playedCard && slot) {
         const isSelf = lastAction.playerId === userIdRef.current;
         // 自己：优先用点击时记录的精确槽位；否则退化为玩家锚点
-        const from = (isSelf && useFxStore.getState().takePlayOrigin(playedCard.id)) || getPlayerAnchor(lastAction.playerId);
+        const from =
+          (isSelf && useFxStore.getState().takePlayOrigin(playedCard.id)) || getPlayerAnchor(lastAction.playerId);
         if (from) {
           useFxStore.getState().hideDiscardCard(playedCard.id);
           const id = nextFxId('play');
           // 去重：同一 topCard 只飞一次
-          setPlays((prev) => prev.some((p) => p.card.id === playedCard.id)
-            ? prev
-            : [...prev, { id, from, to: { x: slot.x, y: slot.y }, card: playedCard, isSelf, toW: slot.w, toH: slot.h }]);
+          setPlays(prev =>
+            prev.some(p => p.card.id === playedCard.id)
+              ? prev
+              : [
+                  ...prev,
+                  { id, from, to: { x: slot.x, y: slot.y }, card: playedCard, isSelf, toW: slot.w, toH: slot.h },
+                ],
+          );
         }
       }
     }
 
-    prevHandCountsRef.current = new Map(players.map((p) => [p.id, p.handCount]));
-    const selfPlayer = players.find((p) => p.id === userIdRef.current);
-    if (selfPlayer) prevSelfHandIdsRef.current = selfPlayer.hand.map((c) => c.id);
+    prevHandCountsRef.current = new Map(players.map(p => [p.id, p.handCount]));
+    const selfPlayer = players.find(p => p.id === userIdRef.current);
+    if (selfPlayer) prevSelfHandIdsRef.current = selfPlayer.hand.map(c => c.id);
   }, [players, lastAction, settings, direction, roundNumber]);
 
   return createPortal(
     <div className="fixed inset-0 pointer-events-none z-effects" data-fx-layer>
       <AnimatePresence>
-        {throws.map((t) => (
-          <ThrowAnimation
-            key={t.id}
-            from={t.from}
-            to={t.to}
-            item={t.item}
-            onComplete={() => removeThrow(t.id)}
-          />
+        {throws.map(t => (
+          <ThrowAnimation key={t.id} from={t.from} to={t.to} item={t.item} onComplete={() => removeThrow(t.id)} />
         ))}
       </AnimatePresence>
-      {draws.map((d) => (
+      {draws.map(d => (
         <DrawCardFlight key={d.id} flight={d} onComplete={() => removeDraw(d.id)} />
       ))}
-      {plays.map((p) => (
+      {plays.map(p => (
         <PlayCardFlight key={p.id} flight={p} onComplete={() => removePlay(p.id)} />
       ))}
       <AnimatePresence>
-        {swaps.map((s) => (
+        {swaps.map(s => (
           <HandSwapAnimation key={s.id} swap={s} onComplete={() => removeSwap(s.id)} />
         ))}
       </AnimatePresence>

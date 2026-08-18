@@ -25,7 +25,7 @@ export class VoiceChannelManager {
     const existing = await this.kv.get(key);
     if (existing) {
       const channelId = Number(existing);
-      if (Number.isInteger(channelId) && await this.channelExists(channelId)) {
+      if (Number.isInteger(channelId) && (await this.channelExists(channelId))) {
         return channelId;
       }
     }
@@ -68,28 +68,47 @@ export class VoiceChannelManager {
 
     const key = this.roomChannelKey(roomCode);
     const existing = await this.kv.get(key);
-    await this.kv.del(key);
     if (!existing) return;
 
     const channelId = Number(existing);
-    if (!Number.isInteger(channelId) || channelId <= 0) return;
+    if (!Number.isInteger(channelId) || channelId <= 0) {
+      await this.kv.compareAndDelete(key, existing);
+      return;
+    }
 
     try {
       const server = await this.getServer();
       await server.removeChannel(channelId, this.context());
     } catch (err) {
+      if (err instanceof MumbleServer.InvalidChannelException) {
+        await this.clearDeletedChannelMapping(key, existing, roomCode);
+        return;
+      }
       console.warn(`[voice] Failed to remove Mumble channel ${channelId} for room ${roomCode}:`, err);
+      return;
     }
+
+    await this.clearDeletedChannelMapping(key, existing, roomCode);
   }
 
   async reconcileActiveRooms(): Promise<void> {
     if (!this.enabled) return;
 
-    const allKeys = await this.kv.keys('room:*');
-    const roomCodes = allKeys
-      .filter(k => /^room:[^:]+$/.test(k))
-      .map(k => k.slice('room:'.length));
-    await Promise.all(roomCodes.map((code) => this.ensureRoomChannel(code)));
+    const [roomKeys, channelKeys] = await Promise.all([
+      this.kv.keys('room:*'),
+      this.kv.keys(`${VOICE_CHANNEL_KEY_PREFIX}*:channelId`),
+    ]);
+    const roomCodes = roomKeys.filter(k => /^room:[^:]+$/.test(k)).map(k => k.slice('room:'.length));
+    const activeRoomCodes = new Set(roomCodes);
+    const staleRoomCodes = channelKeys.flatMap(key => {
+      const match = /^voice:room:([^:]+):channelId$/u.exec(key);
+      return match?.[1] && !activeRoomCodes.has(match[1]) ? [match[1]] : [];
+    });
+
+    await Promise.all([
+      ...roomCodes.map(code => this.ensureRoomChannel(code)),
+      ...staleRoomCodes.map(code => this.deleteRoomChannel(code)),
+    ]);
   }
 
   async close(): Promise<void> {
@@ -99,10 +118,6 @@ export class VoiceChannelManager {
     if (communicator) {
       await communicator.destroy();
     }
-  }
-
-  async clearRoomChannelMapping(roomCode: string): Promise<void> {
-    await this.kv.del(this.roomChannelKey(roomCode));
   }
 
   private async getServer(): Promise<MumbleServer.ServerPrx> {
@@ -134,13 +149,29 @@ export class VoiceChannelManager {
     }
   }
 
-  private async setChannelDescription(server: MumbleServer.ServerPrx, channelId: number, roomCode: string): Promise<void> {
+  private async setChannelDescription(
+    server: MumbleServer.ServerPrx,
+    channelId: number,
+    roomCode: string,
+  ): Promise<void> {
     try {
       const channel = await server.getChannelState(channelId, this.context());
       channel.description = `UNO Online 房间 ${roomCode}`;
       await server.setChannelState(channel, this.context());
     } catch (err) {
       console.warn(`[voice] Failed to set Mumble channel description for room ${roomCode}:`, err);
+    }
+  }
+
+  private async clearDeletedChannelMapping(key: string, expected: string, roomCode: string): Promise<void> {
+    try {
+      // A concurrent ensure may already have installed a new mapping. Only
+      // remove the value that identifies the channel deleted above.
+      await this.kv.compareAndDelete(key, expected);
+    } catch (err) {
+      // Keep the mapping as a retry marker. Startup reconciliation will retry
+      // it; an InvalidChannel response then confirms the remote side is clean.
+      console.warn(`[voice] Failed to clear Mumble channel mapping for room ${roomCode}:`, err);
     }
   }
 

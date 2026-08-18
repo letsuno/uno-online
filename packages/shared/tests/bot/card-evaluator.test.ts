@@ -4,10 +4,7 @@ import type { GameState } from '../../src/types/game';
 import { DEFAULT_HOUSE_RULES } from '../../src/types/house-rules';
 import { DIFFICULTY_PARAMS } from '../../src/rules/bot/difficulty-params';
 import { PERSONALITY_WEIGHTS } from '../../src/rules/bot/personality-weights';
-import {
-  evaluateCards,
-  bestColorForHand,
-} from '../../src/rules/bot/card-evaluator';
+import { evaluateCards, bestColorForHand } from '../../src/rules/bot/card-evaluator';
 import { makeState } from '../helpers/test-utils';
 
 function makeNumberCard(id: string, color: Color, value: number): Card {
@@ -37,17 +34,22 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
 
 describe('evaluateCards', () => {
   it('returns a CardScore for each playable card', () => {
-    const hand: Card[] = [
-      makeNumberCard('n1', 'red', 5),
-      makeNumberCard('n2', 'blue', 3),
-      makeWildCard('w1'),
-    ];
+    const hand: Card[] = [makeNumberCard('n1', 'red', 5), makeNumberCard('n2', 'blue', 3), makeWildCard('w1')];
     const playable: Card[] = [hand[0]!, hand[2]!]; // red 5 and wild
 
     const state = makeGameState({
       players: [
         { id: 'bot', name: 'Bot', hand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: [makeNumberCard('h1', 'green', 2)], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: [makeNumberCard('h1', 'green', 2)],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
@@ -79,7 +81,16 @@ describe('evaluateCards', () => {
     const state = makeGameState({
       players: [
         { id: 'bot', name: 'Bot', hand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: [], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: [],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
@@ -103,7 +114,16 @@ describe('evaluateCards', () => {
     const state = makeGameState({
       players: [
         { id: 'bot', name: 'Bot', hand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: [], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: [],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
@@ -132,7 +152,16 @@ describe('evaluateCards', () => {
     const state = makeGameState({
       players: [
         { id: 'bot', name: 'Bot', hand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: [], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: [],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
@@ -146,7 +175,14 @@ describe('evaluateCards', () => {
     });
 
     // normal difficulty has finishRestrictionAwareness: true
-    const results = evaluateCards(hand, [numberCard], state, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
+    const results = evaluateCards(
+      hand,
+      [numberCard],
+      state,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     const numberResult = results.find(r => r.card.id === 'n1')!;
     expect(numberResult.factors.finishSafety).toBeLessThan(0);
@@ -160,7 +196,16 @@ describe('evaluateCards', () => {
     const state = makeGameState({
       players: [
         { id: 'bot', name: 'Bot', hand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: [], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: [],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
@@ -173,7 +218,14 @@ describe('evaluateCards', () => {
       },
     });
 
-    const results = evaluateCards(hand, [numberCard], state, 'bot', DIFFICULTY_PARAMS.novice, PERSONALITY_WEIGHTS.balanced);
+    const results = evaluateCards(
+      hand,
+      [numberCard],
+      state,
+      'bot',
+      DIFFICULTY_PARAMS.novice,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     const numberResult = results.find(r => r.card.id === 'n1')!;
     // novice doesn't consider finish restrictions, so finishSafety should be 0
@@ -187,13 +239,29 @@ describe('evaluateCards', () => {
     const state = makeGameState({
       players: [
         { id: 'bot', name: 'Bot', hand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: [], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: [],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
     });
 
-    const results = evaluateCards(hand, [onlyCard], state, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
+    const results = evaluateCards(
+      hand,
+      [onlyCard],
+      state,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     const result = results[0]!;
     expect(result.factors.handReduction).toBe(20);
@@ -205,7 +273,16 @@ describe('evaluateCards', () => {
     const state = makeGameState({
       players: [
         { id: 'bot', name: 'Bot', hand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: [], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: [],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
@@ -287,8 +364,26 @@ describe('elimination mode', () => {
 
     const stateWithElimination = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
@@ -303,15 +398,47 @@ describe('elimination mode', () => {
 
     const stateNoElimination = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
     });
 
-    const withElim = evaluateCards(botHand, playable, stateWithElimination, 'bot', DIFFICULTY_PARAMS.hard, PERSONALITY_WEIGHTS.balanced);
-    const noElim = evaluateCards(botHand, playable, stateNoElimination, 'bot', DIFFICULTY_PARAMS.hard, PERSONALITY_WEIGHTS.balanced);
+    const withElim = evaluateCards(
+      botHand,
+      playable,
+      stateWithElimination,
+      'bot',
+      DIFFICULTY_PARAMS.hard,
+      PERSONALITY_WEIGHTS.balanced,
+    );
+    const noElim = evaluateCards(
+      botHand,
+      playable,
+      stateNoElimination,
+      'bot',
+      DIFFICULTY_PARAMS.hard,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     // handReduction factor should be higher when elimination is active and bot is at max cards
     expect(withElim[0]!.factors.handReduction).toBeGreaterThan(noElim[0]!.factors.handReduction);
@@ -342,9 +469,36 @@ describe('elimination mode', () => {
 
     const stateWithElimination = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human2', hand: p2Hand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p3', name: 'Human3', hand: p3Hand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human2',
+          hand: p2Hand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p3',
+          name: 'Human3',
+          hand: p3Hand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
@@ -359,16 +513,57 @@ describe('elimination mode', () => {
 
     const stateNoElimination = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human2', hand: p2Hand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p3', name: 'Human3', hand: p3Hand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human2',
+          hand: p2Hand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p3',
+          name: 'Human3',
+          hand: p3Hand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
     });
 
-    const withElim = evaluateCards(botHand, playable, stateWithElimination, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
-    const noElim = evaluateCards(botHand, playable, stateNoElimination, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
+    const withElim = evaluateCards(
+      botHand,
+      playable,
+      stateWithElimination,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
+    const noElim = evaluateCards(
+      botHand,
+      playable,
+      stateNoElimination,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     expect(withElim[0]!.factors.handReduction).toBeGreaterThan(noElim[0]!.factors.handReduction);
   });
@@ -387,8 +582,26 @@ describe('elimination mode', () => {
 
     const stateWithElimination = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
@@ -403,15 +616,47 @@ describe('elimination mode', () => {
 
     const stateNoElimination = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
     });
 
-    const withElim = evaluateCards(botHand, playable, stateWithElimination, 'bot', DIFFICULTY_PARAMS.novice, PERSONALITY_WEIGHTS.balanced);
-    const noElim = evaluateCards(botHand, playable, stateNoElimination, 'bot', DIFFICULTY_PARAMS.novice, PERSONALITY_WEIGHTS.balanced);
+    const withElim = evaluateCards(
+      botHand,
+      playable,
+      stateWithElimination,
+      'bot',
+      DIFFICULTY_PARAMS.novice,
+      PERSONALITY_WEIGHTS.balanced,
+    );
+    const noElim = evaluateCards(
+      botHand,
+      playable,
+      stateNoElimination,
+      'bot',
+      DIFFICULTY_PARAMS.novice,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     // novice has considerOpponentHandSize: false, so no boost
     expect(withElim[0]!.factors.handReduction).toBe(noElim[0]!.factors.handReduction);
@@ -436,9 +681,36 @@ describe('elimination mode', () => {
     const criticalHand: Card[] = Array.from({ length: 8 }, (_, i) => makeNumberCard(`c${i}`, 'red', i % 10));
     const criticalState = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: criticalHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human2', hand: p2Hand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p3', name: 'Human3', hand: p3Hand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: criticalHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human2',
+          hand: p2Hand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p3',
+          name: 'Human3',
+          hand: p3Hand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
@@ -449,17 +721,58 @@ describe('elimination mode', () => {
     const modBotHand: Card[] = Array.from({ length: 6 }, (_, i) => makeNumberCard(`m${i}`, 'red', i % 10));
     const moderateState = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: modBotHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human2', hand: p2Hand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p3', name: 'Human3', hand: p3Hand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: modBotHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human2',
+          hand: p2Hand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p3',
+          name: 'Human3',
+          hand: p3Hand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
       settings: eliminationSettings,
     });
 
-    const criticalResult = evaluateCards(criticalHand, [criticalHand[0]!], criticalState, 'bot', DIFFICULTY_PARAMS.hard, PERSONALITY_WEIGHTS.balanced);
-    const moderateResult = evaluateCards(modBotHand, [modBotHand[0]!], moderateState, 'bot', DIFFICULTY_PARAMS.hard, PERSONALITY_WEIGHTS.balanced);
+    const criticalResult = evaluateCards(
+      criticalHand,
+      [criticalHand[0]!],
+      criticalState,
+      'bot',
+      DIFFICULTY_PARAMS.hard,
+      PERSONALITY_WEIGHTS.balanced,
+    );
+    const moderateResult = evaluateCards(
+      modBotHand,
+      [modBotHand[0]!],
+      moderateState,
+      'bot',
+      DIFFICULTY_PARAMS.hard,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     // Critical (+15) should give higher handReduction than moderate (+8)
     expect(criticalResult[0]!.factors.handReduction).toBeGreaterThan(moderateResult[0]!.factors.handReduction);
@@ -480,8 +793,26 @@ describe('revengeMode', () => {
 
     const stateWithRevenge = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       drawStack: 2,
@@ -497,16 +828,48 @@ describe('revengeMode', () => {
 
     const stateNoRevenge = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       drawStack: 2,
       discardPile: [makeDrawTwoCard('prev', 'red')],
     });
 
-    const withRevenge = evaluateCards(botHand, playable, stateWithRevenge, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
-    const noRevenge = evaluateCards(botHand, playable, stateNoRevenge, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
+    const withRevenge = evaluateCards(
+      botHand,
+      playable,
+      stateWithRevenge,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
+    const noRevenge = evaluateCards(
+      botHand,
+      playable,
+      stateNoRevenge,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     const drawTwoWithRevenge = withRevenge.find(r => r.card.id === 'd2')!;
     const drawTwoNoRevenge = noRevenge.find(r => r.card.id === 'd2')!;
@@ -521,8 +884,26 @@ describe('revengeMode', () => {
 
     const stateWithRevenge = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       drawStack: 0,
@@ -538,16 +919,48 @@ describe('revengeMode', () => {
 
     const stateNoRevenge = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       drawStack: 0,
       discardPile: [makeNumberCard('d1', 'red', 5)],
     });
 
-    const withRevenge = evaluateCards(botHand, [drawTwoCard], stateWithRevenge, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
-    const noRevenge = evaluateCards(botHand, [drawTwoCard], stateNoRevenge, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
+    const withRevenge = evaluateCards(
+      botHand,
+      [drawTwoCard],
+      stateWithRevenge,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
+    const noRevenge = evaluateCards(
+      botHand,
+      [drawTwoCard],
+      stateNoRevenge,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     // No drawStack — revenge mode still gives a bonus for initiating stacks against humans
     expect(withRevenge[0]!.factors.targetPressure).toBeGreaterThan(noRevenge[0]!.factors.targetPressure);
@@ -557,15 +970,30 @@ describe('revengeMode', () => {
     const drawTwoCard = makeDrawTwoCard('d2', 'red');
     const botHand: Card[] = [drawTwoCard];
     // Next player has a draw_two — can stack back with doubled penalty
-    const opponentHand: Card[] = [
-      makeDrawTwoCard('o_d2', 'blue'),
-      makeNumberCard('o1', 'red', 1),
-    ];
+    const opponentHand: Card[] = [makeDrawTwoCard('o_d2', 'blue'), makeNumberCard('o1', 'red', 1)];
 
     const stateHardRevenge = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       drawStack: 2,
@@ -582,8 +1010,26 @@ describe('revengeMode', () => {
     // Normal bot can't see hands — no retaliation penalty
     const stateNormalRevenge = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       drawStack: 2,
@@ -597,8 +1043,22 @@ describe('revengeMode', () => {
       },
     });
 
-    const hardResult = evaluateCards(botHand, [drawTwoCard], stateHardRevenge, 'bot', DIFFICULTY_PARAMS.hard, PERSONALITY_WEIGHTS.balanced);
-    const normalResult = evaluateCards(botHand, [drawTwoCard], stateNormalRevenge, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
+    const hardResult = evaluateCards(
+      botHand,
+      [drawTwoCard],
+      stateHardRevenge,
+      'bot',
+      DIFFICULTY_PARAMS.hard,
+      PERSONALITY_WEIGHTS.balanced,
+    );
+    const normalResult = evaluateCards(
+      botHand,
+      [drawTwoCard],
+      stateNormalRevenge,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     // Hard bot sees the retaliation risk — targetPressure should be lower than normal bot
     expect(hardResult[0]!.factors.targetPressure).toBeLessThan(normalResult[0]!.factors.targetPressure);
@@ -614,8 +1074,26 @@ describe('revengeMode', () => {
 
     const stateWithRevenge = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       drawStack: 2,
@@ -631,16 +1109,48 @@ describe('revengeMode', () => {
 
     const stateNoRevenge = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       drawStack: 2,
       discardPile: [makeDrawTwoCard('prev', 'red')],
     });
 
-    const withRevenge = evaluateCards(botHand, playable, stateWithRevenge, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
-    const noRevenge = evaluateCards(botHand, playable, stateNoRevenge, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
+    const withRevenge = evaluateCards(
+      botHand,
+      playable,
+      stateWithRevenge,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
+    const noRevenge = evaluateCards(
+      botHand,
+      playable,
+      stateNoRevenge,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     const reverseWithRevenge = withRevenge.find(r => r.card.id === 'rev1')!;
     const reverseNoRevenge = noRevenge.find(r => r.card.id === 'rev1')!;
@@ -658,8 +1168,26 @@ describe('revengeMode', () => {
 
     const stateWithRevenge = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       drawStack: 2,
@@ -675,16 +1203,48 @@ describe('revengeMode', () => {
 
     const stateNoRevenge = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       drawStack: 2,
       discardPile: [makeDrawTwoCard('prev', 'red')],
     });
 
-    const withRevenge = evaluateCards(botHand, [drawTwoCard], stateWithRevenge, 'bot', DIFFICULTY_PARAMS.novice, PERSONALITY_WEIGHTS.balanced);
-    const noRevenge = evaluateCards(botHand, [drawTwoCard], stateNoRevenge, 'bot', DIFFICULTY_PARAMS.novice, PERSONALITY_WEIGHTS.balanced);
+    const withRevenge = evaluateCards(
+      botHand,
+      [drawTwoCard],
+      stateWithRevenge,
+      'bot',
+      DIFFICULTY_PARAMS.novice,
+      PERSONALITY_WEIGHTS.balanced,
+    );
+    const noRevenge = evaluateCards(
+      botHand,
+      [drawTwoCard],
+      stateNoRevenge,
+      'bot',
+      DIFFICULTY_PARAMS.novice,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     // novice has specialCardAwareness: 0, so no revengeMode boost applied
     expect(withRevenge[0]!.factors.targetPressure).toBe(noRevenge[0]!.factors.targetPressure);
@@ -706,8 +1266,26 @@ describe('handLimit', () => {
 
     const stateWithLimit = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
@@ -722,15 +1300,47 @@ describe('handLimit', () => {
 
     const stateNoLimit = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
     });
 
-    const withLimit = evaluateCards(botHand, playable, stateWithLimit, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
-    const noLimit = evaluateCards(botHand, playable, stateNoLimit, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
+    const withLimit = evaluateCards(
+      botHand,
+      playable,
+      stateWithLimit,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
+    const noLimit = evaluateCards(
+      botHand,
+      playable,
+      stateNoLimit,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     expect(withLimit[0]!.factors.handReduction).toBeGreaterThan(noLimit[0]!.factors.handReduction);
   });
@@ -749,8 +1359,26 @@ describe('handLimit', () => {
 
     const stateWithLimit = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
@@ -765,15 +1393,47 @@ describe('handLimit', () => {
 
     const stateNoLimit = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
     });
 
-    const withLimit = evaluateCards(botHand, playable, stateWithLimit, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
-    const noLimit = evaluateCards(botHand, playable, stateNoLimit, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
+    const withLimit = evaluateCards(
+      botHand,
+      playable,
+      stateWithLimit,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
+    const noLimit = evaluateCards(
+      botHand,
+      playable,
+      stateNoLimit,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     // Exactly limit-1: +8 boost
     expect(withLimit[0]!.factors.handReduction - noLimit[0]!.factors.handReduction).toBe(8);
@@ -793,8 +1453,26 @@ describe('handLimit', () => {
 
     const stateWithLimit = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
@@ -809,15 +1487,47 @@ describe('handLimit', () => {
 
     const stateNoLimit = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
     });
 
-    const withLimit = evaluateCards(botHand, playable, stateWithLimit, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
-    const noLimit = evaluateCards(botHand, playable, stateNoLimit, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
+    const withLimit = evaluateCards(
+      botHand,
+      playable,
+      stateWithLimit,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
+    const noLimit = evaluateCards(
+      botHand,
+      playable,
+      stateNoLimit,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     // Exactly limit-2: +4 boost
     expect(withLimit[0]!.factors.handReduction - noLimit[0]!.factors.handReduction).toBe(4);
@@ -835,8 +1545,26 @@ describe('handLimit', () => {
 
     const stateWithLimit = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
@@ -851,15 +1579,47 @@ describe('handLimit', () => {
 
     const stateNoLimit = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: botHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: botHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
     });
 
-    const withLimit = evaluateCards(botHand, playable, stateWithLimit, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
-    const noLimit = evaluateCards(botHand, playable, stateNoLimit, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
+    const withLimit = evaluateCards(
+      botHand,
+      playable,
+      stateWithLimit,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
+    const noLimit = evaluateCards(
+      botHand,
+      playable,
+      stateNoLimit,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     // Hand is 3 cards below limit — no boost applied
     expect(withLimit[0]!.factors.handReduction).toBe(noLimit[0]!.factors.handReduction);
@@ -880,8 +1640,26 @@ describe('handLimit', () => {
     const atLimitHand: Card[] = Array.from({ length: limit }, (_, i) => makeNumberCard(`n${i}`, 'red', i));
     const atLimitState = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: atLimitHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: atLimitHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
@@ -892,16 +1670,48 @@ describe('handLimit', () => {
     const oneFromHand: Card[] = Array.from({ length: limit - 1 }, (_, i) => makeNumberCard(`m${i}`, 'red', i));
     const oneFromState = makeGameState({
       players: [
-        { id: 'bot', name: 'Bot', hand: oneFromHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: true },
-        { id: 'p2', name: 'Human', hand: opponentHand, score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'bot',
+          name: 'Bot',
+          hand: oneFromHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: true,
+        },
+        {
+          id: 'p2',
+          name: 'Human',
+          hand: opponentHand,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       currentColor: 'red',
       discardPile: [makeNumberCard('d1', 'red', 5)],
       settings: limitSettings,
     });
 
-    const atLimitResult = evaluateCards(atLimitHand, [atLimitHand[0]!], atLimitState, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
-    const oneFromResult = evaluateCards(oneFromHand, [oneFromHand[0]!], oneFromState, 'bot', DIFFICULTY_PARAMS.normal, PERSONALITY_WEIGHTS.balanced);
+    const atLimitResult = evaluateCards(
+      atLimitHand,
+      [atLimitHand[0]!],
+      atLimitState,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
+    const oneFromResult = evaluateCards(
+      oneFromHand,
+      [oneFromHand[0]!],
+      oneFromState,
+      'bot',
+      DIFFICULTY_PARAMS.normal,
+      PERSONALITY_WEIGHTS.balanced,
+    );
 
     expect(atLimitResult[0]!.factors.handReduction).toBeGreaterThan(oneFromResult[0]!.factors.handReduction);
   });

@@ -8,13 +8,16 @@ import spectatePlugin from './plugins/core/spectate/index.js';
 import apiKeyPlugin from './plugins/core/api-key/index.js';
 
 export async function loadPlugins(fastify: FastifyInstance, ctx: PluginContext): Promise<void> {
-  await fastify.register(async (api) => {
-    await api.register(authPlugin, { ctx });
-    await api.register(profilePlugin, { ctx });
-    await api.register(adminPlugin, { ctx });
-    await api.register(serverInfoPlugin, { ctx });
-    await api.register(spectatePlugin, { ctx });
-    await api.register(apiKeyPlugin, { ctx });
-    api.get('/health', async () => ({ status: 'ok' }));
-  }, { prefix: '/api' });
+  await fastify.register(
+    async api => {
+      await api.register(authPlugin, { ctx });
+      await api.register(profilePlugin, { ctx });
+      await api.register(adminPlugin, { ctx });
+      await api.register(serverInfoPlugin, { ctx });
+      await api.register(spectatePlugin, { ctx });
+      await api.register(apiKeyPlugin, { ctx });
+      api.get('/health', async () => ({ status: 'ok' }));
+    },
+    { prefix: '/api' },
+  );
 }

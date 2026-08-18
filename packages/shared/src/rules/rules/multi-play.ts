@@ -9,7 +9,7 @@ export const multiPlayPass: HouseRulePlugin = {
     label: '同数字全出（结束）',
     description: '相同数字不同颜色可一次打出',
   },
-  isEnabled: (hr) => hr.multiplePlaySameNumber || hr.bombCard,
+  isEnabled: hr => hr.multiplePlaySameNumber || hr.bombCard,
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     if (action.type !== 'PASS') return { handled: false };
     if (state.phase !== 'playing') return { handled: false };
@@ -50,7 +50,7 @@ export const multiPlayPost: HouseRulePlugin = {
     label: '同数字全出（保持回合）',
     description: '相同数字不同颜色可一次打出',
   },
-  isEnabled: (hr) => hr.multiplePlaySameNumber || hr.bombCard,
+  isEnabled: hr => hr.multiplePlaySameNumber || hr.bombCard,
   postProcess: (before: GameState, after: GameState, action: GameAction, _ctx: RuleContext): GameState => {
     if (action.type !== 'PLAY_CARD') return after;
     if (after === before) return after;

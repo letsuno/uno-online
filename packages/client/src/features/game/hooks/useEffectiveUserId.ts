@@ -1,8 +1,7 @@
 import { useGameStore } from '../stores/game-store';
-import { useAuthStore } from '@/features/auth/stores/auth-store';
 
 export function useEffectiveUserId(): string | undefined {
-  const viewerId = useGameStore((s) => s.viewerId);
-  const authUserId = useAuthStore((s) => s.user?.id);
-  return viewerId ?? authUserId;
+  // PlayerView is the sole game-identity source. Spectators deliberately use
+  // the synthetic "__spectator__" viewer id rather than their auth user id.
+  return useGameStore(state => state.viewerId ?? undefined);
 }

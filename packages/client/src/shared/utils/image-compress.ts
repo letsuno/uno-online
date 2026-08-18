@@ -7,7 +7,10 @@ export function loadImage(file: File): Promise<HTMLImageElement> {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => resolve(img);
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')); };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Failed to load image'));
+    };
     img.src = url;
   });
 }
@@ -25,8 +28,14 @@ export function cropAndCompress(img: HTMLImageElement, croppedArea: Area, rotati
   if (rotation === 0) {
     ctx.drawImage(
       img,
-      croppedArea.x, croppedArea.y, croppedArea.width, croppedArea.height,
-      0, 0, TARGET_SIZE, TARGET_SIZE,
+      croppedArea.x,
+      croppedArea.y,
+      croppedArea.width,
+      croppedArea.height,
+      0,
+      0,
+      TARGET_SIZE,
+      TARGET_SIZE,
     );
   } else {
     const rad = (rotation * Math.PI) / 180;
@@ -45,27 +54,16 @@ export function cropAndCompress(img: HTMLImageElement, croppedArea: Area, rotati
 
     ctx.drawImage(
       tmp,
-      croppedArea.x, croppedArea.y, croppedArea.width, croppedArea.height,
-      0, 0, TARGET_SIZE, TARGET_SIZE,
+      croppedArea.x,
+      croppedArea.y,
+      croppedArea.width,
+      croppedArea.height,
+      0,
+      0,
+      TARGET_SIZE,
+      TARGET_SIZE,
     );
   }
 
   return canvas.toDataURL('image/png');
-}
-
-export function compressImage(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const size = Math.min(img.width, img.height);
-      const sx = (img.width - size) / 2;
-      const sy = (img.height - size) / 2;
-      const area: Area = { x: sx, y: sy, width: size, height: size };
-      resolve(cropAndCompress(img, area));
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')); };
-    img.src = url;
-  });
 }

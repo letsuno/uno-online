@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import AppRouter from './router';
 import ToastContainer from '@/shared/components/Toast';
 import ChangelogModal from '@/shared/components/ChangelogModal';
@@ -12,12 +12,14 @@ import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { resetClientRoomState } from '@/shared/stores/reset-room';
 
 export default function App() {
-  const token = useAuthStore((s) => s.token);
-  const initialized = useAuthStore((s) => s.initialized);
-  const loadUser = useAuthStore((s) => s.loadUser);
+  const token = useAuthStore(s => s.token);
+  const initialized = useAuthStore(s => s.initialized);
+  const loadUser = useAuthStore(s => s.loadUser);
+  const authInitializationStarted = useRef(false);
 
   useEffect(() => {
-    if (!initialized) {
+    if (!initialized && !authInitializationStarted.current) {
+      authInitializationStarted.current = true;
       void loadUser().catch(() => {});
     }
   }, [initialized, loadUser]);
@@ -36,7 +38,9 @@ export default function App() {
       // Room/game stores outlive the login session (module-level zustand) —
       // without this, the next account to log in through this SPA instance
       // inherits the previous account's full game snapshot, hand included.
-      resetClientRoomState();
+      // Authentication failure disconnects this tab but does not prove that
+      // the room membership ended; another tab may also own the shared marker.
+      resetClientRoomState({ preserveSuspendedRoom: true });
       disconnectSocket();
     };
     window.addEventListener('auth:unauthorized', handleUnauthorized);

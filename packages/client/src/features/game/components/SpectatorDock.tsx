@@ -1,19 +1,14 @@
-import { useEffect, useState } from 'react';
 import { LogOut, UserPlus, X } from 'lucide-react';
 import SpectatorActions from './SpectatorActions';
-import { useGameStore } from '../stores/game-store';
-import { useSpectatorStore } from '../stores/spectator-store';
-import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useGameActions } from '../hooks/useGameActions';
-import { getSocket } from '@/shared/socket';
-import { useToastStore } from '@/shared/stores/toast-store';
 import { cn } from '@/shared/lib/utils';
+import { useSpectatorQueue } from '../hooks/useSpectatorQueue';
+import { getSocket } from '@/shared/socket';
 
 const EMOJIS = ['👍', '😂', '🎉', '😱', '💪'];
 
 interface SpectatorDockProps {
   onBackToLobby: () => void;
-  onJoined: () => void;
   /** 短横屏：全部压成单行 */
   compact?: boolean;
 }
@@ -22,43 +17,9 @@ interface SpectatorDockProps {
  * 观战控制坞（PC 底部控制条 / 移动端底部控制坞共享）：
  * 抓 UNO + 快捷表情 + 下局加入/取消 + 退出。
  */
-export default function SpectatorDock({ onBackToLobby, onJoined, compact = false }: SpectatorDockProps) {
+export default function SpectatorDock({ onBackToLobby, compact = false }: SpectatorDockProps) {
   const { catchUno } = useGameActions();
-  const pendingJoinQueue = useSpectatorStore((s) => s.pendingJoinQueue);
-  const [queued, setQueued] = useState(false);
-
-  useEffect(() => {
-    const nickname = useAuthStore.getState().user?.nickname;
-    if (nickname && pendingJoinQueue.includes(nickname)) setQueued(true);
-  }, [pendingJoinQueue]);
-
-  useEffect(() => {
-    const socket = getSocket();
-    const handleState = () => {
-      const { isSpectator } = useGameStore.getState();
-      if (!isSpectator && queued) {
-        onJoined();
-        setQueued(false);
-      }
-    };
-    socket.on('game:state', handleState);
-    return () => { socket.off('game:state', handleState); };
-  }, [queued, onJoined]);
-
-  const toggleQueue = () => {
-    getSocket().emit('game:spectator_join', (res: { success?: boolean; error?: string; queued?: boolean; joined?: boolean }) => {
-      if (res?.success) {
-        if (res.joined) {
-          onJoined();
-          setQueued(false);
-        } else {
-          setQueued(res.queued ?? false);
-        }
-      } else {
-        useToastStore.getState().addToast(res?.error ?? '操作失败', 'error');
-      }
-    });
-  };
+  const { queued, toggle: toggleQueue } = useSpectatorQueue();
 
   const sendEmoji = (emoji: string) => getSocket().emit('chat:message', { text: emoji });
 
@@ -87,7 +48,7 @@ export default function SpectatorDock({ onBackToLobby, onJoined, compact = false
   const emojiRow = (
     <div className="flex items-center gap-1.5">
       {!compact && <span className="text-[11px] text-muted-foreground shrink-0">表情</span>}
-      {EMOJIS.map((emoji) => (
+      {EMOJIS.map(emoji => (
         <button
           key={emoji}
           onClick={() => sendEmoji(emoji)}

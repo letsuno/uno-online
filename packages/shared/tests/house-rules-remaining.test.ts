@@ -20,8 +20,22 @@ describe('stackDrawTwo', () => {
       drawStack: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [d2Play, extra], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('draw_two', 'blue', { id: 'p2d2' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('draw_two', 'blue', { id: 'p2d2' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -48,8 +62,22 @@ describe('stackDrawTwo', () => {
       drawStack: 2, // someone already played a +2
       players: [
         { id: 'p1', name: 'Alice', hand: [d2Play, extra], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -85,8 +113,22 @@ describe('stackDrawTwo', () => {
       deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [d2Play, extra], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
     });
 
@@ -111,8 +153,22 @@ describe('stackDrawTwo', () => {
       deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -145,9 +201,30 @@ describe('stackDrawTwo', () => {
       deckLeftInitialCount: deck.length,
       deckRightInitialCount: 0,
       players: [
-        { id: 'p1', name: 'Alice', hand: [firstD2, makeCard('number', 'blue', { value: 1, id: 'p1c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [secondD2, makeCard('number', 'blue', { value: 2, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 3, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [firstD2, makeCard('number', 'blue', { value: 1, id: 'p1c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [secondD2, makeCard('number', 'blue', { value: 2, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 3, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -160,7 +237,11 @@ describe('stackDrawTwo', () => {
     expect(afterFirstD2.drawStack).toBe(2);
     expect(afterFirstD2.currentPlayerIndex).toBe(1);
 
-    const afterSecondD2 = applyActionWithHouseRules(afterFirstD2, { type: 'PLAY_CARD', playerId: 'p2', cardId: 'second_d2' });
+    const afterSecondD2 = applyActionWithHouseRules(afterFirstD2, {
+      type: 'PLAY_CARD',
+      playerId: 'p2',
+      cardId: 'second_d2',
+    });
     expect(afterSecondD2.drawStack).toBe(4);
     expect(afterSecondD2.currentPlayerIndex).toBe(2);
 
@@ -188,9 +269,23 @@ describe('stackDrawTwo', () => {
       deckRightInitialCount: 0,
       lastAction: { type: 'PLAY_CARD', playerId: 'p2', cardId: 'd2top' },
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'blue', { value: 1, id: 'p1c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p1c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -221,8 +316,22 @@ describe('stackDrawFour', () => {
       drawStack: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [wd4Play, extra], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('wild_draw_four', null, { id: 'p2wd4' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('wild_draw_four', null, { id: 'p2wd4' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -254,8 +363,22 @@ describe('stackDrawFour', () => {
       drawStack: 4,
       players: [
         { id: 'p1', name: 'Alice', hand: [wd4Play, extra], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -279,7 +402,9 @@ describe('stackDrawFour', () => {
 
   it('allows normal play after a +4 stack penalty is paid one card at a time', () => {
     const wd4Top = makeCard('wild_draw_four', null, { id: 'wd4top' });
-    const deck = Array.from({ length: 12 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `wd4deck_${i}` }));
+    const deck = Array.from({ length: 12 }, (_, i) =>
+      makeCard('number', 'blue', { value: i % 10, id: `wd4deck_${i}` }),
+    );
     const state = makeState({
       discardPile: [makeCard('number', 'red', { value: 1, id: 'base' }), wd4Top],
       currentColor: 'green',
@@ -292,8 +417,22 @@ describe('stackDrawFour', () => {
       lastAction: { type: 'PLAY_CARD', playerId: 'p3', cardId: 'wd4top' },
       players: [
         { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 3, id: 'p2green3' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 4, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'green', { value: 3, id: 'p2green3' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'yellow', { value: 4, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -326,11 +465,32 @@ describe('stackDrawFour', () => {
       currentColor: 'green',
       currentPlayerIndex: 0,
       drawStack: 4,
-      lastAction: { type: 'DRAW_CARD', playerId: 'p1' },
+      lastAction: { type: 'DRAW_CARD', playerId: 'p1', side: 'left' },
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'green', { value: 3, id: 'p1green3' })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'green', { value: 4, id: 'p2green4' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 5, id: 'p3green5' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'green', { value: 3, id: 'p1green3' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'green', { value: 4, id: 'p2green4' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 5, id: 'p3green5' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -355,9 +515,30 @@ describe('stackDrawFour', () => {
       deckLeftInitialCount: deck.length,
       deckRightInitialCount: 0,
       players: [
-        { id: 'p1', name: 'Alice', hand: [wd4Play, makeCard('number', 'blue', { value: 1, id: 'p1c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 2, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 3, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [wd4Play, makeCard('number', 'blue', { value: 1, id: 'p1c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 2, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 3, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -367,18 +548,23 @@ describe('stackDrawFour', () => {
     });
 
     const afterPlay = applyActionWithHouseRules(state, {
-      type: 'PLAY_CARD', playerId: 'p1', cardId: 'first_wd4',
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: 'first_wd4',
     });
     expect(afterPlay.phase).toBe('choosing_color');
 
     const afterColor = applyActionWithHouseRules(afterPlay, {
-      type: 'CHOOSE_COLOR', playerId: 'p1', color: 'red',
+      type: 'CHOOSE_COLOR',
+      playerId: 'p1',
+      color: 'red',
     });
     expect(afterColor.phase).toBe('challenging');
     expect(afterColor.pendingDrawPlayerId).toBe('p2');
 
     const afterAccept = applyActionWithHouseRules(afterColor, {
-      type: 'ACCEPT', playerId: 'p2',
+      type: 'ACCEPT',
+      playerId: 'p2',
     });
     expect(afterAccept.phase).toBe('playing');
     expect(afterAccept.pendingPenaltyDraws).toBe(4);
@@ -400,8 +586,22 @@ describe('crossStack', () => {
       drawStack: 4,
       players: [
         { id: 'p1', name: 'Alice', hand: [d2Play, extra], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -428,8 +628,22 @@ describe('crossStack', () => {
       drawStack: 2,
       players: [
         { id: 'p1', name: 'Alice', hand: [wd4Play, extra], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -460,9 +674,30 @@ describe('crossStack', () => {
       currentColor: 'red',
       drawStack: 2,
       players: [
-        { id: 'p1', name: 'Alice', hand: [wd4Play, makeCard('number', 'blue', { value: 1, id: 'extra_no_color' })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c_no_color' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c_no_color' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [wd4Play, makeCard('number', 'blue', { value: 1, id: 'extra_no_color' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c_no_color' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3c_no_color' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -488,9 +723,30 @@ describe('crossStack', () => {
       deckLeftInitialCount: deck.length,
       deckRightInitialCount: 0,
       players: [
-        { id: 'p1', name: 'Alice', hand: [firstD2, makeCard('number', 'blue', { value: 1, id: 'p1c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [secondWd4, makeCard('number', 'blue', { value: 2, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 3, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [firstD2, makeCard('number', 'blue', { value: 1, id: 'p1c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [secondWd4, makeCard('number', 'blue', { value: 2, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 3, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: {
         turnTimeLimit: 30,
@@ -499,7 +755,11 @@ describe('crossStack', () => {
       },
     });
 
-    const afterFirstD2 = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'first_d2_cross' });
+    const afterFirstD2 = applyActionWithHouseRules(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: 'first_d2_cross',
+    });
     expect(afterFirstD2.drawStack).toBe(2);
     expect(afterFirstD2.currentPlayerIndex).toBe(1);
 
@@ -512,7 +772,11 @@ describe('crossStack', () => {
     expect(afterSecondWd4.drawStack).toBe(6);
     expect(afterSecondWd4.currentPlayerIndex).toBe(2);
 
-    const next = applyActionWithHouseRules(afterSecondWd4, { type: 'DRAW_CARD', playerId: 'p3', side: 'left' as const });
+    const next = applyActionWithHouseRules(afterSecondWd4, {
+      type: 'DRAW_CARD',
+      playerId: 'p3',
+      side: 'left' as const,
+    });
 
     expect(next).not.toBe(afterSecondWd4);
     expect(next.pendingPenaltyDraws).toBe(5);
@@ -557,14 +821,39 @@ describe('penalty draws with forced draw/play rules', () => {
       deckLeftInitialCount: 2,
       deckRightInitialCount: 0,
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'green', { value: 1, id: 'p1extra' })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 9, id: 'p2old' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'green', { value: 1, id: 'p1extra' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 9, id: 'p2old' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'yellow', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: forcedDrawRules },
     });
 
-    const afterFirstDraw = applyActionWithHouseRules(state, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
+    const afterFirstDraw = applyActionWithHouseRules(state, {
+      type: 'DRAW_CARD',
+      playerId: 'p2',
+      side: 'left' as const,
+    });
     expect(afterFirstDraw.players[1]!.hand.map(c => c.id)).toEqual(['p2old', 'drawn_playable']);
     expect(afterFirstDraw.pendingPenaltyDraws).toBe(1);
     expect(afterFirstDraw.currentPlayerIndex).toBe(1);
@@ -580,7 +869,11 @@ describe('penalty draws with forced draw/play rules', () => {
     const passAttempt = applyActionWithHouseRules(afterFirstDraw, { type: 'PASS', playerId: 'p2' });
     expect(passAttempt).toBe(afterFirstDraw);
 
-    const afterSecondDraw = applyActionWithHouseRules(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' as const });
+    const afterSecondDraw = applyActionWithHouseRules(afterFirstDraw, {
+      type: 'DRAW_CARD',
+      playerId: 'p2',
+      side: 'left' as const,
+    });
     expect(afterSecondDraw.pendingPenaltyDraws).toBe(0);
     expect(afterSecondDraw.currentPlayerIndex).toBe(2);
     expect(afterSecondDraw.players[1]!.hand.map(c => c.id)).toEqual(['p2old', 'drawn_playable', 'second_penalty']);
@@ -602,8 +895,22 @@ describe('penalty draws with forced draw/play rules', () => {
       deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 9, id: 'p2old' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 9, id: 'p2old' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'yellow', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       lastAction: { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4top' },
       settings: { turnTimeLimit: 30, targetScore: 500, houseRules: forcedDrawRules },
@@ -750,7 +1057,14 @@ describe('forcedPlay', () => {
       deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [playable, unplayable], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
       settings: {
@@ -780,7 +1094,14 @@ describe('forcedPlay', () => {
       deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [unplayable], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
       settings: {
@@ -809,7 +1130,14 @@ describe('forcedPlay', () => {
       deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [playable], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
     });
@@ -841,7 +1169,14 @@ describe('misplayPenalty', () => {
       deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [invalidCard, validCard], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
       settings: {
@@ -876,7 +1211,14 @@ describe('misplayPenalty', () => {
       deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: [invalidCard], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
     });
@@ -900,8 +1242,22 @@ describe('misplayPenalty', () => {
       deckLeftInitialCount: deck.length,
       deckRightInitialCount: 0,
       players: [
-        { id: 'p1', name: 'Alice', hand: [validCard, makeCard('number', 'blue', { value: 1, id: 'extra' })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [validCard, makeCard('number', 'blue', { value: 1, id: 'extra' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
       settings: {
@@ -930,7 +1286,14 @@ describe('misplayPenalty', () => {
       deckLeftInitialCount: deck.length,
       deckRightInitialCount: 0,
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'red', { value: 1, id: 'p1c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'red', { value: 1, id: 'p1c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p2', name: 'Bob', hand: [invalidCard], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
@@ -953,9 +1316,7 @@ describe('misplayPenalty', () => {
 
 describe('handLimit', () => {
   it('rejects DRAW_CARD when hand size is at the limit', () => {
-    const handCards = Array.from({ length: 10 }, (_, i) =>
-      makeCard('number', 'blue', { value: i % 10, id: `hc${i}` })
-    );
+    const handCards = Array.from({ length: 10 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `hc${i}` }));
     const deck = [makeCard('number', 'green', { value: 1, id: 'd1' })];
 
     const state = makeState({
@@ -965,7 +1326,14 @@ describe('handLimit', () => {
       deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: handCards, score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
       settings: {
@@ -983,9 +1351,7 @@ describe('handLimit', () => {
   });
 
   it('rejects DRAW_CARD when hand size exceeds the limit', () => {
-    const handCards = Array.from({ length: 12 }, (_, i) =>
-      makeCard('number', 'blue', { value: i % 10, id: `hc${i}` })
-    );
+    const handCards = Array.from({ length: 12 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `hc${i}` }));
     const deck = [makeCard('number', 'green', { value: 1, id: 'd1' })];
 
     const state = makeState({
@@ -995,7 +1361,14 @@ describe('handLimit', () => {
       deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: handCards, score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
       settings: {
@@ -1013,9 +1386,7 @@ describe('handLimit', () => {
   });
 
   it('allows DRAW_CARD when hand size is below the limit', () => {
-    const handCards = Array.from({ length: 5 }, (_, i) =>
-      makeCard('number', 'blue', { value: i, id: `hc${i}` })
-    );
+    const handCards = Array.from({ length: 5 }, (_, i) => makeCard('number', 'blue', { value: i, id: `hc${i}` }));
     const deck = [makeCard('number', 'green', { value: 1, id: 'd1' })];
 
     const state = makeState({
@@ -1025,7 +1396,14 @@ describe('handLimit', () => {
       deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: handCards, score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
       settings: {
@@ -1042,9 +1420,7 @@ describe('handLimit', () => {
   });
 
   it('allows DRAW_CARD freely when handLimit is null', () => {
-    const handCards = Array.from({ length: 50 }, (_, i) =>
-      makeCard('number', 'blue', { value: i % 10, id: `hc${i}` })
-    );
+    const handCards = Array.from({ length: 50 }, (_, i) => makeCard('number', 'blue', { value: i % 10, id: `hc${i}` }));
     const deck = [makeCard('number', 'green', { value: 1, id: 'd1' })];
 
     const state = makeState({
@@ -1054,7 +1430,14 @@ describe('handLimit', () => {
       deckRightInitialCount: 0,
       players: [
         { id: 'p1', name: 'Alice', hand: handCards, score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
       // handLimit: null is the default
@@ -1073,7 +1456,7 @@ describe('handLimit', () => {
   /** 10 blue cards, values 1-4 — none playable on the default red-5 top card. */
   function unplayableHandAtLimit(prefix = 'hc'): ReturnType<typeof makeCard>[] {
     return Array.from({ length: 10 }, (_, i) =>
-      makeCard('number', 'blue', { value: (i % 4) + 1, id: `${prefix}${i}` })
+      makeCard('number', 'blue', { value: (i % 4) + 1, id: `${prefix}${i}` }),
     );
   }
 
@@ -1081,7 +1464,14 @@ describe('handLimit', () => {
     return makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: unplayableHandAtLimit(), score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
       settings: {
@@ -1120,12 +1510,20 @@ describe('handLimit', () => {
       deckRight: [],
       players: [
         {
-          id: 'p1', name: 'Alice', hand: unplayableHandAtLimit('p1-'),
-          score: 0, connected: true, calledUno: false,
+          id: 'p1',
+          name: 'Alice',
+          hand: unplayableHandAtLimit('p1-'),
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         {
-          id: 'p2', name: 'Bob', hand: unplayableHandAtLimit('p2-'),
-          score: 0, connected: true, calledUno: false,
+          id: 'p2',
+          name: 'Bob',
+          hand: unplayableHandAtLimit('p2-'),
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
       ],
       settings: {

@@ -10,19 +10,44 @@ describe('latest house rule bug fixes', () => {
       phase: 'challenging',
       players: [
         {
-          id: 'p1', name: 'Alice', hand: [], score: 0, connected: true,
-          autopilot: false, calledUno: false, isBot: false,
-        },
-        {
-          id: 'p2', name: 'Bob', hand: [reverse, makeCard('number', 'green', {
-            value: 3, id: 'p2-other',
-          })], score: 0, connected: true, autopilot: false, calledUno: false,
+          id: 'p1',
+          name: 'Alice',
+          hand: [],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
           isBot: false,
         },
         {
-          id: 'p3', name: 'Carol', hand: [makeCard('number', 'yellow', {
-            value: 1, id: 'p3-card',
-          })], score: 0, connected: true, autopilot: false, calledUno: false,
+          id: 'p2',
+          name: 'Bob',
+          hand: [
+            reverse,
+            makeCard('number', 'green', {
+              value: 3,
+              id: 'p2-other',
+            }),
+          ],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [
+            makeCard('number', 'yellow', {
+              value: 1,
+              id: 'p3-card',
+            }),
+          ],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
           isBot: false,
         },
       ],
@@ -44,7 +69,9 @@ describe('latest house rule bug fixes', () => {
     });
 
     const next = applyActionWithHouseRules(state, {
-      type: 'PLAY_CARD', playerId: 'p2', cardId: reverse.id,
+      type: 'PLAY_CARD',
+      playerId: 'p2',
+      cardId: reverse.id,
     });
 
     expect(next).not.toBe(state);
@@ -57,9 +84,36 @@ describe('latest house rule bug fixes', () => {
     const skip = makeCard('skip', 'red', { id: 'skip' });
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [skip, makeCard('number', 'blue', { value: 8, id: 'p1_blue' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'yellow', { value: 1, id: 'p2_yellow' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'blue', { value: 2, id: 'p3_blue' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [skip, makeCard('number', 'blue', { value: 8, id: 'p1_blue' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'yellow', { value: 1, id: 'p2_yellow' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'blue', { value: 2, id: 'p3_blue' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       deckLeft: [
         makeCard('number', 'green', { value: 1, id: 'first_unplayable' }),
@@ -85,15 +139,41 @@ describe('latest house rule bug fixes', () => {
     expect(afterFirstDraw.players[2]!.hand.map(c => c.id)).toEqual(['p3_blue', 'first_unplayable']);
     expect(afterFirstDraw.deckLeft.map(c => c.id)).toEqual(['second_unplayable']);
 
-    const afterSecondDraw = applyActionWithHouseRules(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p3', side: 'left' });
-    expect(afterSecondDraw.players[2]!.hand.map(c => c.id)).toEqual(['p3_blue', 'first_unplayable', 'second_unplayable']);
+    const afterSecondDraw = applyActionWithHouseRules(afterFirstDraw, {
+      type: 'DRAW_CARD',
+      playerId: 'p3',
+      side: 'left',
+    });
+    expect(afterSecondDraw.players[2]!.hand.map(c => c.id)).toEqual([
+      'p3_blue',
+      'first_unplayable',
+      'second_unplayable',
+    ]);
   });
 
   it('does not auto-play the first drawn card when draw-until-playable is combined with forced draw play', () => {
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'blue', { value: 8, id: 'p1_blue' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'yellow', { value: 1, id: 'p2_yellow' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'blue', { value: 8, id: 'p1_blue' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'yellow', { value: 1, id: 'p2_yellow' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       deckLeft: [makeCard('number', 'red', { value: 8, id: 'drawn_playable' })],
       deckRight: [],
@@ -118,9 +198,36 @@ describe('latest house rule bug fixes', () => {
     const skip = makeCard('skip', 'red', { id: 'skip' });
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [skip, makeCard('number', 'blue', { value: 8, id: 'p1_blue' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'yellow', { value: 1, id: 'p2_yellow' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'blue', { value: 2, id: 'p3_blue' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [skip, makeCard('number', 'blue', { value: 8, id: 'p1_blue' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'yellow', { value: 1, id: 'p2_yellow' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'blue', { value: 2, id: 'p3_blue' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       deckLeft: [
         makeCard('number', 'green', { value: 1, id: 'first_unplayable' }),
@@ -143,15 +250,41 @@ describe('latest house rule bug fixes', () => {
     expect(afterFirstDraw.players[2]!.hand.map(c => c.id)).toEqual(['p3_blue', 'first_unplayable']);
     expect(afterFirstDraw.deckLeft.map(c => c.id)).toEqual(['second_unplayable']);
 
-    const afterSecondDraw = applyActionWithHouseRules(afterFirstDraw, { type: 'DRAW_CARD', playerId: 'p3', side: 'left' });
-    expect(afterSecondDraw.players[2]!.hand.map(c => c.id)).toEqual(['p3_blue', 'first_unplayable', 'second_unplayable']);
+    const afterSecondDraw = applyActionWithHouseRules(afterFirstDraw, {
+      type: 'DRAW_CARD',
+      playerId: 'p3',
+      side: 'left',
+    });
+    expect(afterSecondDraw.players[2]!.hand.map(c => c.id)).toEqual([
+      'p3_blue',
+      'first_unplayable',
+      'second_unplayable',
+    ]);
   });
 
   it('does not auto-play the first drawn card when drawUntilPlayable is combined with forced draw play', () => {
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'blue', { value: 8, id: 'p1_blue' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'yellow', { value: 1, id: 'p2_yellow' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'blue', { value: 8, id: 'p1_blue' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'yellow', { value: 1, id: 'p2_yellow' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       deckLeft: [makeCard('number', 'red', { value: 8, id: 'drawn_playable' })],
       deckRight: [],
@@ -176,9 +309,36 @@ describe('latest house rule bug fixes', () => {
     const wd4 = makeCard('wild_draw_four', null, { id: 'wd4' });
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [wd4, makeCard('number', 'blue', { value: 8, id: 'p1_blue' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'yellow', { value: 1, id: 'p2_yellow' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3_green' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [wd4, makeCard('number', 'blue', { value: 8, id: 'p1_blue' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'yellow', { value: 1, id: 'p2_yellow' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3_green' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       deckLeft: Array.from({ length: 5 }, (_, i) => makeCard('number', 'red', { value: i, id: `penalty_${i}` })),
       deckRight: [],
@@ -206,7 +366,11 @@ describe('latest house rule bug fixes', () => {
     const challengeAttempt = applyActionWithHouseRules(afterColor, { type: 'CHALLENGE', playerId: 'p2' });
     expect(challengeAttempt).toBe(afterColor);
 
-    const afterFirstPenaltyDraw = applyActionWithHouseRules(afterColor, { type: 'DRAW_CARD', playerId: 'p2', side: 'left' });
+    const afterFirstPenaltyDraw = applyActionWithHouseRules(afterColor, {
+      type: 'DRAW_CARD',
+      playerId: 'p2',
+      side: 'left',
+    });
     expect(afterFirstPenaltyDraw.pendingPenaltyDraws).toBe(3);
     expect(afterFirstPenaltyDraw.players[1]!.hand.map(c => c.id)).toEqual(['p2_yellow', 'penalty_0']);
   });
@@ -214,9 +378,36 @@ describe('latest house rule bug fixes', () => {
   it('still allows draw then pass when forced-play-after-draw draws an unplayable card', () => {
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'blue', { value: 8, id: 'p1_blue' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'yellow', { value: 1, id: 'p2_yellow' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3_green' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'blue', { value: 8, id: 'p1_blue' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'yellow', { value: 1, id: 'p2_yellow' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3_green' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       deckLeft: [makeCard('number', 'green', { value: 9, id: 'drawn_unplayable' })],
       deckRight: [],
@@ -250,9 +441,36 @@ describe('latest house rule bug fixes', () => {
       pendingPenaltyNextPlayerIndex: 2,
       pendingPenaltySourcePlayerId: 'p1',
       players: [
-        { id: 'p1', name: 'Alice', hand: [makeCard('number', 'red', { value: 1, id: 'p1_card' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p2', name: 'Bob', hand: [drawnAttack], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3_card' })], score: 0, connected: true, autopilot: false, calledUno: false, isBot: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'red', { value: 1, id: 'p1_card' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [drawnAttack],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3_card' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+          isBot: false,
+        },
       ],
       deckLeft: [penaltyCard],
       deckRight: [],
@@ -289,10 +507,6 @@ describe('latest house rule bug fixes', () => {
     expect(settled.pendingPenaltyDraws).toBe(0);
     expect(settled.drawStack).toBe(0);
     expect(settled.currentPlayerIndex).toBe(2);
-    expect(settled.players[1]!.hand.map(card => card.id)).toEqual([
-      drawnAttack.id,
-      penaltyCard.id,
-    ]);
+    expect(settled.players[1]!.hand.map(card => card.id)).toEqual([drawnAttack.id, penaltyCard.id]);
   });
-
 });

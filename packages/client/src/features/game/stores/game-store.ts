@@ -1,29 +1,19 @@
 import { create } from 'zustand';
-import type { Card, Color, GameAction, HouseRules, PlayerView, PlayerViewPlayer } from '@uno-online/shared';
+import type {
+  Card,
+  Color,
+  CommittedGameAction,
+  GamePhase,
+  PlayerView,
+  PlayerViewPlayer,
+  RoomSettings,
+} from '@uno-online/shared';
 
 export type PlayerInfo = PlayerViewPlayer;
 
-function shallowPlayersEqual(a: PlayerViewPlayer[], b: PlayerViewPlayer[]): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    const pa = a[i], pb = b[i];
-    if (pa.id !== pb.id || pa.handCount !== pb.handCount || pa.score !== pb.score ||
-        pa.connected !== pb.connected || pa.autopilot !== pb.autopilot ||
-        pa.calledUno !== pb.calledUno || pa.hand.length !== pb.hand.length ||
-        pa.eliminated !== pb.eliminated || pa.roundWins !== pb.roundWins) return false;
-  }
-  return true;
-}
-
-function shallowDiscardEqual(a: Card[], b: Card[]): boolean {
-  if (a.length !== b.length) return false;
-  if (a.length === 0) return true;
-  return a[a.length - 1].id === b[b.length - 1].id;
-}
-
 export type InfoDrawerTab = 'rules' | 'house-rules' | 'log' | 'chat';
 
-export interface NextRoundVoteState {
+interface NextRoundVoteState {
   votes: number;
   required: number;
   voters: string[];
@@ -31,7 +21,7 @@ export interface NextRoundVoteState {
 
 interface GameState {
   viewerId: string | null;
-  phase: string | null;
+  phase: GamePhase | null;
   players: PlayerInfo[];
   currentPlayerIndex: number;
   direction: 'clockwise' | 'counter_clockwise';
@@ -45,8 +35,8 @@ interface GameState {
   roundNumber: number;
   winnerId: string | null;
   pendingDrawPlayerId: string | null;
-  settings: { turnTimeLimit: number; targetScore: number; houseRules?: HouseRules } | null;
-  lastAction: GameAction | null;
+  settings: RoomSettings | null;
+  lastAction: CommittedGameAction | null;
   turnEndTime: number | null;
   lastDrawnCard: Card | null;
   hasDrawnThisTurn: boolean;
@@ -58,12 +48,10 @@ interface GameState {
   /** 终局展示窗剩余秒数：>0 时压住结算板、保留牌桌（可继续扔表情、查看最后一张牌） */
   endRevealLeft: number;
   cheatDetected: boolean;
-  dissolvedReason: string | null;
   ownerTransferAt: number | null;
   gameStartedAt: number | null;
   turnStartedAt: number | null;
   setCheatDetected: (value: boolean) => void;
-  setDissolvedReason: (reason: string | null) => void;
   setOwnerTransferAt: (transferAt: number | null) => void;
   setSpectator: (value: boolean) => void;
   infoDrawerOpen: boolean;
@@ -71,17 +59,16 @@ interface GameState {
   toggleInfoDrawer: () => void;
   openInfoDrawer: (tab?: InfoDrawerTab) => void;
   setInfoDrawerTab: (tab: InfoDrawerTab) => void;
-  setGameState: (view: PlayerView, turnEndTime?: number | null) => void;
+  setGameState: (view: PlayerView) => void;
   setNextRoundVote: (vote: NextRoundVoteState | null) => void;
   setRoundEndAt: (t: number | null) => void;
   setGameOverAt: (t: number | null) => void;
   setEndRevealLeft: (n: number) => void;
   setDrawnCard: (card: Card | null) => void;
-  setTurnEndTime: (t: number | null) => void;
   clearGame: () => void;
 }
 
-export const useGameStore = create<GameState>((set) => ({
+export const useGameStore = create<GameState>(set => ({
   phase: null,
   viewerId: null,
   players: [],
@@ -109,33 +96,37 @@ export const useGameStore = create<GameState>((set) => ({
   gameOverAt: null,
   endRevealLeft: 0,
   cheatDetected: false,
-  dissolvedReason: null,
   ownerTransferAt: null,
   gameStartedAt: null,
   turnStartedAt: null,
-  setCheatDetected: (value) => set({ cheatDetected: value }),
-  setDissolvedReason: (reason) => set({ dissolvedReason: reason }),
-  setOwnerTransferAt: (transferAt) => set({ ownerTransferAt: transferAt }),
-  setSpectator: (value) => set({ isSpectator: value }),
+  setCheatDetected: value => set({ cheatDetected: value }),
+  setOwnerTransferAt: transferAt => set({ ownerTransferAt: transferAt }),
+  setSpectator: value => set({ isSpectator: value }),
   infoDrawerOpen: false,
   infoDrawerTab: 'rules' as InfoDrawerTab,
-  toggleInfoDrawer: () => set((state) => ({ infoDrawerOpen: !state.infoDrawerOpen })),
+  toggleInfoDrawer: () => set(state => ({ infoDrawerOpen: !state.infoDrawerOpen })),
   openInfoDrawer: (tab = 'rules') => set({ infoDrawerOpen: true, infoDrawerTab: tab }),
   setInfoDrawerTab: (tab: InfoDrawerTab) => set({ infoDrawerTab: tab }),
-  setGameState: (view, turnEndTime) =>
-    set((state) => {
+  setGameState: view =>
+    set(state => {
       const players = view.players;
-      const viewerId = view.viewerId ?? state.viewerId;
+      const viewerId = view.viewerId;
       const currentPlayerIndex = view.currentPlayerIndex;
       const phase = view.phase;
-      const lastAction = view.lastAction ?? null;
+      const lastAction = view.lastAction;
       const currentPlayerId = players[currentPlayerIndex]?.id;
       const hasDrawnThisTurn =
-        phase === 'playing' &&
-        lastAction?.type === 'DRAW_CARD' &&
-        lastAction.playerId === currentPlayerId;
+        phase === 'playing' && lastAction?.type === 'DRAW_CARD' && lastAction.playerId === currentPlayerId;
 
       const isSpectatorView = viewerId === '__spectator__';
+      const turnEndTime =
+        phase === 'round_end' || phase === 'game_over'
+          ? null
+          : view.turnStartedAt +
+            (view.settings.houseRules.fastMode
+              ? Math.floor(view.settings.turnTimeLimit / 2)
+              : view.settings.turnTimeLimit) *
+              1000;
       const spectatorChange = isSpectatorView
         ? { isSpectator: true }
         : state.isSpectator && !isSpectatorView
@@ -145,27 +136,27 @@ export const useGameStore = create<GameState>((set) => ({
       return {
         phase,
         viewerId,
-        gameStartedAt: view.gameStartedAt ?? state.gameStartedAt,
-        turnStartedAt: view.turnStartedAt ?? state.turnStartedAt,
-        players: shallowPlayersEqual(state.players, players) ? state.players : players,
+        gameStartedAt: view.gameStartedAt,
+        turnStartedAt: view.turnStartedAt,
+        players,
         currentPlayerIndex,
         direction: view.direction,
-        discardPile: shallowDiscardEqual(state.discardPile, view.discardPile) ? state.discardPile : view.discardPile,
+        discardPile: view.discardPile,
         currentColor: view.currentColor,
         drawStack: view.drawStack,
-        pendingPenaltyDraws: view.pendingPenaltyDraws ?? 0,
+        pendingPenaltyDraws: view.pendingPenaltyDraws,
         deckLeftCount: view.deckLeftCount,
         deckRightCount: view.deckRightCount,
-        discardPileCount: view.discardPileCount ?? view.discardPile.length,
+        discardPileCount: view.discardPileCount,
         roundNumber: view.roundNumber,
         winnerId: view.winnerId,
         pendingDrawPlayerId: view.pendingDrawPlayerId,
         settings: view.settings,
         lastAction,
-        turnEndTime: turnEndTime !== undefined ? turnEndTime : state.turnEndTime,
+        turnEndTime,
         hasDrawnThisTurn,
         lastDrawnCard: hasDrawnThisTurn ? state.lastDrawnCard : null,
-        deckHash: view.deckHash ?? state.deckHash,
+        deckHash: view.deckHash,
         nextRoundVote: phase === 'round_end' ? state.nextRoundVote : null,
         roundEndAt: phase === 'round_end' ? state.roundEndAt : null,
         gameOverAt: phase === 'game_over' ? state.gameOverAt : null,
@@ -173,12 +164,11 @@ export const useGameStore = create<GameState>((set) => ({
         ...spectatorChange,
       };
     }),
-  setNextRoundVote: (vote) => set({ nextRoundVote: vote }),
-  setRoundEndAt: (t) => set({ roundEndAt: t }),
-  setGameOverAt: (t) => set({ gameOverAt: t }),
-  setEndRevealLeft: (n) => set({ endRevealLeft: n }),
-  setDrawnCard: (card) => set({ lastDrawnCard: card, hasDrawnThisTurn: true }),
-  setTurnEndTime: (t) => set({ turnEndTime: t }),
+  setNextRoundVote: vote => set({ nextRoundVote: vote }),
+  setRoundEndAt: t => set({ roundEndAt: t }),
+  setGameOverAt: t => set({ gameOverAt: t }),
+  setEndRevealLeft: n => set({ endRevealLeft: n }),
+  setDrawnCard: card => set({ lastDrawnCard: card, hasDrawnThisTurn: true }),
   clearGame: () =>
     set({
       phase: null,
@@ -208,7 +198,6 @@ export const useGameStore = create<GameState>((set) => ({
       gameOverAt: null,
       endRevealLeft: 0,
       cheatDetected: false,
-      dissolvedReason: null,
       ownerTransferAt: null,
       gameStartedAt: null,
       turnStartedAt: null,

@@ -10,7 +10,11 @@ import { evaluateCards, bestColorsForHand, evaluateHandQuality, electLeadBot } f
 import type { AutomationCycleGuard } from './automation-cycle-guard.js';
 import { enumerateLegalActionPlans } from './legal-action-plans.js';
 
-function isFinishBlocked(card: Card, hand: Card[], hr: { noWildFinish: boolean; noFunctionCardFinish: boolean }): boolean {
+function isFinishBlocked(
+  card: Card,
+  hand: Card[],
+  hr: { noWildFinish: boolean; noFunctionCardFinish: boolean },
+): boolean {
   if (hand.length !== 1) return false;
   if (hr.noWildFinish && isWildCard(card)) return true;
   if (hr.noFunctionCardFinish && (card.type === 'draw_two' || card.type === 'wild_draw_four')) return true;
@@ -30,18 +34,15 @@ function requireBotConfig(player: { id: string; botConfig?: BotConfig }): BotCon
  * Emit PLAY_CARD (and optionally CHOOSE_COLOR) for the given card.
  * `chooseColorOnPlay` is used when stacking a WD4 on an existing draw stack.
  */
-function playCardActions(
-  playerId: string,
-  card: Card,
-  color: Color,
-  chooseColorOnPlay = false,
-): GameAction[] {
-  const actions: GameAction[] = [{
-    type: 'PLAY_CARD',
-    playerId,
-    cardId: card.id,
-    ...(chooseColorOnPlay ? { chosenColor: color } : {}),
-  }];
+function playCardActions(playerId: string, card: Card, color: Color, chooseColorOnPlay = false): GameAction[] {
+  const actions: GameAction[] = [
+    {
+      type: 'PLAY_CARD',
+      playerId,
+      cardId: card.id,
+      ...(chooseColorOnPlay ? { chosenColor: color } : {}),
+    },
+  ];
   if ((card.type === 'wild' || card.type === 'wild_draw_four') && !chooseColorOnPlay) {
     actions.push({ type: 'CHOOSE_COLOR', playerId, color });
   }
@@ -86,7 +87,13 @@ function chooseDrawSide(state: GameState, config: BotStrategyConfig): DrawSide {
 /**
  * Choose the best color to declare after playing a wild card.
  */
-function chooseBestColor(state: GameState, botId: string, hand: Card[], playedCardId: string, config: BotStrategyConfig): Color {
+function chooseBestColor(
+  state: GameState,
+  botId: string,
+  hand: Card[],
+  playedCardId: string,
+  config: BotStrategyConfig,
+): Color {
   const params = DIFFICULTY_PARAMS[config.difficulty];
 
   if (config.difficulty === 'novice') {
@@ -100,11 +107,16 @@ function chooseBestColor(state: GameState, botId: string, hand: Card[], playedCa
     const botIndex = state.players.findIndex(p => p.id === botId);
     const colors: Color[] = ['red', 'blue', 'green', 'yellow'];
 
-    const isAlly = (p: { id: string; isBot: boolean; eliminated?: boolean; teamId?: number }): boolean => {
+    const isAlly = (p: { id: string; isBot: boolean; eliminated: boolean; teamId?: number }): boolean => {
       if (p.id === botId || p.eliminated) return false;
       if (params.botCoalition && p.isBot) return true;
-      if (params.considerTeamStrategy && state.settings.houseRules.teamMode
-        && bot?.teamId !== undefined && p.teamId === bot.teamId) return true;
+      if (
+        params.considerTeamStrategy &&
+        state.settings.houseRules.teamMode &&
+        bot?.teamId !== undefined &&
+        p.teamId === bot.teamId
+      )
+        return true;
       return false;
     };
 
@@ -187,12 +199,12 @@ function handleChallenging(state: GameState, playerId: string, config: BotStrate
   const candidates: Card[] = [];
 
   if (hr.stackDrawFour || hr.crossStack) {
-    const stackable = player.hand.filter(c =>
-      (hr.stackDrawFour && c.type === 'wild_draw_four' && topCard.type === 'wild_draw_four') ||
-      (hr.crossStack && (
-        (c.type === 'draw_two' && topCard.type === 'wild_draw_four') ||
-        (c.type === 'wild_draw_four' && topCard.type === 'draw_two')
-      )),
+    const stackable = player.hand.filter(
+      c =>
+        (hr.stackDrawFour && c.type === 'wild_draw_four' && topCard.type === 'wild_draw_four') ||
+        (hr.crossStack &&
+          ((c.type === 'draw_two' && topCard.type === 'wild_draw_four') ||
+            (c.type === 'wild_draw_four' && topCard.type === 'draw_two'))),
     );
     candidates.push(...stackable);
   }
@@ -227,9 +239,8 @@ function handleChallenging(state: GameState, playerId: string, config: BotStrate
       }
     }
 
-    const chosenColor = pick.type === 'wild_draw_four'
-      ? chooseBestColor(state, playerId, player.hand, pick.id, config)
-      : undefined;
+    const chosenColor =
+      pick.type === 'wild_draw_four' ? chooseBestColor(state, playerId, player.hand, pick.id, config) : undefined;
     return [{ type: 'PLAY_CARD', playerId, cardId: pick.id, ...(chosenColor ? { chosenColor } : {}) }];
   }
 
@@ -254,9 +265,7 @@ function handleChallenging(state: GameState, playerId: string, config: BotStrate
     // If the previous card was also a wild, its effective color is unknown
     // from the card alone — accept conservatively rather than guess wrong.
     const prevDiscardCard = state.discardPile[state.discardPile.length - 2];
-    const colorBeforeWD4: Color | null = prevDiscardCard
-      ? (getEffectiveColor(prevDiscardCard) ?? null)
-      : null;
+    const colorBeforeWD4: Color | null = prevDiscardCard ? (getEffectiveColor(prevDiscardCard) ?? null) : null;
 
     if (prevPlayer && colorBeforeWD4) {
       // Check if the previous player had a playable colored card matching colorBeforeWD4
@@ -295,21 +304,23 @@ function handleChoosingSwapTarget(state: GameState, playerId: string, config: Bo
 
   // Novice/easy: random
   if (config.difficulty === 'novice' || config.difficulty === 'easy') {
-    return [{ type: 'CHOOSE_SWAP_TARGET', playerId, targetId: targets[Math.floor(Math.random() * targets.length)]!.id }];
+    return [
+      { type: 'CHOOSE_SWAP_TARGET', playerId, targetId: targets[Math.floor(Math.random() * targets.length)]!.id },
+    ];
   }
 
   // Team mode: help struggling teammate
   if (params.considerTeamStrategy && state.settings.houseRules.teamMode && player.teamId !== undefined) {
     const teammates = targets.filter(t => t.teamId === player.teamId && t.hand.length > player.hand.length);
     if (teammates.length > 0) {
-      const worst = teammates.reduce((a, b) => a.hand.length > b.hand.length ? a : b, teammates[0]!);
+      const worst = teammates.reduce((a, b) => (a.hand.length > b.hand.length ? a : b), teammates[0]!);
       return [{ type: 'CHOOSE_SWAP_TARGET', playerId, targetId: worst.id }];
     }
   }
 
   // Hard with transparency: pick target whose hand improves our position the most
   if (params.infoAccess.canSeeOpponentHands) {
-    const isAlly = (t: typeof targets[number]): boolean => {
+    const isAlly = (t: (typeof targets)[number]): boolean => {
       if (params.botCoalition && t.isBot) return true;
       if (state.settings.houseRules.teamMode && player.teamId !== undefined && t.teamId === player.teamId) return true;
       return false;
@@ -317,7 +328,7 @@ function handleChoosingSwapTarget(state: GameState, playerId: string, config: Bo
 
     const myQuality = evaluateHandQuality(player.hand, state);
 
-    let bestTarget: typeof targets[number] | null = null;
+    let bestTarget: (typeof targets)[number] | null = null;
     let bestDelta = -Infinity;
     for (const t of targets) {
       let delta = evaluateHandQuality(t.hand, state) - myQuality;
@@ -330,7 +341,10 @@ function handleChoosingSwapTarget(state: GameState, playerId: string, config: Bo
         // Extra bonus if our hand is large (dumping junk on human)
         if (player.hand.length > t.hand.length + 2) delta += 4;
       }
-      if (delta > bestDelta) { bestDelta = delta; bestTarget = t; }
+      if (delta > bestDelta) {
+        bestDelta = delta;
+        bestTarget = t;
+      }
     }
     if (bestTarget) {
       return [{ type: 'CHOOSE_SWAP_TARGET', playerId, targetId: bestTarget.id }];
@@ -338,11 +352,12 @@ function handleChoosingSwapTarget(state: GameState, playerId: string, config: Bo
   }
 
   // Normal: pick fewest cards (exclude teammates in team mode)
-  const candidates = (state.settings.houseRules.teamMode && player.teamId !== undefined)
-    ? targets.filter(t => t.teamId !== player.teamId)
-    : targets;
+  const candidates =
+    state.settings.houseRules.teamMode && player.teamId !== undefined
+      ? targets.filter(t => t.teamId !== player.teamId)
+      : targets;
   const fallback = candidates.length > 0 ? candidates : targets;
-  const target = fallback.reduce((a, b) => a.hand.length < b.hand.length ? a : b, fallback[0]!);
+  const target = fallback.reduce((a, b) => (a.hand.length < b.hand.length ? a : b), fallback[0]!);
   return [{ type: 'CHOOSE_SWAP_TARGET', playerId, targetId: target.id }];
 }
 
@@ -355,7 +370,12 @@ const ALL_COLORS: Color[] = ['red', 'blue', 'green', 'yellow'];
  * strategically best line wins instead of whichever card happens to sit
  * first in the hand.
  */
-function solveEndgame(hand: Card[], topCard: Card, currentColor: Color, hr: { noWildFinish: boolean; noFunctionCardFinish: boolean }): Card[] {
+function solveEndgame(
+  hand: Card[],
+  topCard: Card,
+  currentColor: Color,
+  hr: { noWildFinish: boolean; noFunctionCardFinish: boolean },
+): Card[] {
   if (hand.length > 3 || hand.length === 0) return [];
 
   function canWin(remaining: Card[], top: Card, color: Color): boolean {
@@ -408,15 +428,12 @@ function handlePlaying(state: GameState, playerId: string, config: BotStrategyCo
   const hr = state.settings.houseRules;
   const drawSide = chooseDrawSide(state, config);
 
-  const noCards =
-    state.deckLeft.length === 0 &&
-    state.deckRight.length === 0 &&
-    state.discardPile.length <= 1;
+  const noCards = state.deckLeft.length === 0 && state.deckRight.length === 0 && state.discardPile.length <= 1;
   // handLimit rejects non-obligation draws at/above the limit; PASS instead.
   const atHandLimit = hr.handLimit !== null && player.hand.length >= hr.handLimit;
 
   // Pending penalty draws (from misplay or uno catch)
-  if ((state.pendingPenaltyDraws ?? 0) > 0) {
+  if (state.pendingPenaltyDraws > 0) {
     if (noCards) return [{ type: 'PASS', playerId }];
     return [{ type: 'DRAW_CARD', playerId, side: drawSide }];
   }
@@ -428,9 +445,7 @@ function handlePlaying(state: GameState, playerId: string, config: BotStrategyCo
   }
 
   // After drawing this turn (not a draw stack response)
-  const hasDrawnThisTurn =
-    state.lastAction?.type === 'DRAW_CARD' &&
-    state.lastAction.playerId === playerId;
+  const hasDrawnThisTurn = state.lastAction?.type === 'DRAW_CARD' && state.lastAction.playerId === playerId;
 
   if (hasDrawnThisTurn && state.drawStack === 0) {
     let playableAfterDraw = getPlayableCards(player.hand, topCard, state.currentColor);
@@ -465,10 +480,12 @@ function handlePlaying(state: GameState, playerId: string, config: BotStrategyCo
       const stackable = player.hand.filter(c => {
         if (hr.stackDrawTwo && c.type === 'draw_two' && topCard.type === 'draw_two') return true;
         if (hr.stackDrawFour && c.type === 'wild_draw_four' && topCard.type === 'wild_draw_four') return true;
-        if (hr.crossStack && (
-          (c.type === 'draw_two' && topCard.type === 'wild_draw_four') ||
-          (c.type === 'wild_draw_four' && topCard.type === 'draw_two')
-        )) return true;
+        if (
+          hr.crossStack &&
+          ((c.type === 'draw_two' && topCard.type === 'wild_draw_four') ||
+            (c.type === 'wild_draw_four' && topCard.type === 'draw_two'))
+        )
+          return true;
         return false;
       });
       candidates.push(...stackable);
@@ -523,8 +540,12 @@ function handlePlaying(state: GameState, playerId: string, config: BotStrategyCo
   // Hard bot endgame solver: restrict candidates to cards that start a
   // winning sequence, then let the evaluator pick the strongest of them
   // (e.g. prefer a draw-two that guarantees the follow-up over a gamble).
-  if ((config.difficulty === 'hard' || config.difficulty === 'rl')
-    && player.hand.length <= 3 && topCard && state.currentColor) {
+  if (
+    (config.difficulty === 'hard' || config.difficulty === 'rl') &&
+    player.hand.length <= 3 &&
+    topCard &&
+    state.currentColor
+  ) {
     const winningStarts = solveEndgame(player.hand, topCard, state.currentColor, hr);
     if (winningStarts.length > 0) {
       const scored = evaluateCards(player.hand, winningStarts, state, playerId, params, weights);
@@ -542,8 +563,8 @@ function handlePlaying(state: GameState, playerId: string, config: BotStrategyCo
   // Multi-card play: chain same-number cards if rule enabled
   if (hr.multiplePlaySameNumber && pick.type === 'number') {
     const pickValue = (pick as { value: number }).value;
-    const sameValue = player.hand.filter(c =>
-      c.id !== pick.id && c.type === 'number' && (c as { value: number }).value === pickValue,
+    const sameValue = player.hand.filter(
+      c => c.id !== pick.id && c.type === 'number' && (c as { value: number }).value === pickValue,
     );
     if (sameValue.length > 0 && params.specialCardAwareness > 0) {
       let chainCount: number;
@@ -561,12 +582,9 @@ function handlePlaying(state: GameState, playerId: string, config: BotStrategyCo
       }
       // Order the chain: dump scarce colors first and finish on the color
       // the bot holds most of — the last card played sets the table color.
-      const restAfterChain = player.hand.filter(c =>
-        c.id !== pick.id && !sameValue.some(s => s.id === c.id));
+      const restAfterChain = player.hand.filter(c => c.id !== pick.id && !sameValue.some(s => s.id === c.id));
       const remainingColorCount = (card: Card): number =>
-        isColoredCard(card)
-          ? restAfterChain.filter(c => isColoredCard(c) && c.color === card.color).length
-          : 0;
+        isColoredCard(card) ? restAfterChain.filter(c => isColoredCard(c) && c.color === card.color).length : 0;
       const orderedSameValue = [...sameValue].sort((a, b) => remainingColorCount(a) - remainingColorCount(b));
 
       // Cap chain to avoid leaving a single finish-blocked card
@@ -595,11 +613,7 @@ function handlePlaying(state: GameState, playerId: string, config: BotStrategyCo
  * Main bot action chooser. Dispatches to the appropriate phase handler.
  * Returns an array of actions to be applied sequentially.
  */
-function chooseRuleBotActionUnchecked(
-  state: GameState,
-  playerId: string,
-  config: BotStrategyConfig,
-): GameAction[] {
+function chooseRuleBotActionUnchecked(state: GameState, playerId: string, config: BotStrategyConfig): GameAction[] {
   switch (state.phase) {
     case 'challenging':
       return handleChallenging(state, playerId, config);
@@ -614,10 +628,7 @@ function chooseRuleBotActionUnchecked(
   }
 }
 
-function chooseBotActionUnchecked(
-  state: GameState,
-  playerId: string,
-): GameAction[] {
+function chooseBotActionUnchecked(state: GameState, playerId: string): GameAction[] {
   const player = state.players.find(p => p.id === playerId);
   if (!player) return [];
 
@@ -630,10 +641,7 @@ function chooseBotActionUnchecked(
  * Fair rule-based fallback for production ONNX inference. It uses the RL
  * difficulty's no-peeking information limits.
  */
-export function chooseFairRuleBotAction(
-  state: GameState,
-  playerId: string,
-): GameAction[] {
+export function chooseFairRuleBotAction(state: GameState, playerId: string): GameAction[] {
   const player = state.players.find(candidate => candidate.id === playerId);
   if (!player) return [];
   const botConfig = requireBotConfig(player);
@@ -644,11 +652,7 @@ export function chooseFairRuleBotAction(
   return chooseRuleBotActionUnchecked(state, playerId, config);
 }
 
-export function chooseBotAction(
-  state: GameState,
-  playerId: string,
-  cycleGuard?: AutomationCycleGuard,
-): GameAction[] {
+export function chooseBotAction(state: GameState, playerId: string, cycleGuard?: AutomationCycleGuard): GameAction[] {
   const preferred = chooseBotActionUnchecked(state, playerId);
   if (!cycleGuard || preferred.length === 0) return preferred;
   const legal = enumerateLegalActionPlans(state, playerId, { kind: 'turn' });
@@ -659,15 +663,12 @@ export function chooseBotAction(
  * Bot jump-in check. Called asynchronously while it's another player's turn.
  * Uses `specialCardAwareness` as the probability to attempt a jump-in.
  */
-function chooseBotJumpInActionUnchecked(
-  state: GameState,
-  playerId: string,
-): GameAction[] {
+function chooseBotJumpInActionUnchecked(state: GameState, playerId: string): GameAction[] {
   if (!state.settings.houseRules.jumpIn) return [];
   if (state.phase !== 'playing') return [];
 
   // Don't jump in during a draw stack
-  if ((state.pendingPenaltyDraws ?? 0) > 0 || state.drawStack > 0) return [];
+  if (state.pendingPenaltyDraws > 0 || state.drawStack > 0) return [];
 
   const currentPlayer = state.players[state.currentPlayerIndex];
   if (!currentPlayer || currentPlayer.id === playerId) return [];
@@ -734,9 +735,7 @@ export function chooseBotJumpInAction(
   if (!cycleGuard || preferred.length === 0) return preferred;
   const player = state.players.find(candidate => candidate.id === playerId);
   const topCard = state.discardPile[state.discardPile.length - 1];
-  const card = topCard
-    ? player?.hand.find(candidate => isExactJumpInMatch(candidate, topCard))
-    : undefined;
+  const card = topCard ? player?.hand.find(candidate => isExactJumpInMatch(candidate, topCard)) : undefined;
   if (!card) return preferred;
   const legal = enumerateLegalActionPlans(state, playerId, { kind: 'jumpin', card });
   return cycleGuard.selectPlan(state, preferred, legal);

@@ -29,9 +29,7 @@ export default function HotkeySettingsModal({ open, onClose }: Props) {
         return;
       }
 
-      const override: HotkeyOverride = e.key.length === 1
-        ? { key: e.key.toLowerCase() }
-        : { code: e.code };
+      const override: HotkeyOverride = e.key.length === 1 ? { key: e.key.toLowerCase() } : { code: e.code };
 
       setHotkey(listening, override);
       setListening(null);
@@ -68,7 +66,7 @@ export default function HotkeySettingsModal({ open, onClose }: Props) {
       }
     >
       <div className="space-y-1">
-        {HOTKEY_ACTIONS.map((action) => {
+        {HOTKEY_ACTIONS.map(action => {
           const isListening = listening === action.id;
           const hasOverride = action.id in overrides;
           return (

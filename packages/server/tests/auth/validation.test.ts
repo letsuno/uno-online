@@ -64,4 +64,3 @@ describe('validateNickname', () => {
     expect(validateNickname('​​abc').valid).toBe(true);
   });
 });
-

@@ -7,7 +7,6 @@ interface ConfirmRequest {
   confirmText: string;
   cancelText: string;
   variant: 'default' | 'danger';
-  type: 'confirm' | 'alert';
   resolve: (ok: boolean) => void;
 }
 
@@ -21,13 +20,13 @@ let nextId = 1;
 
 export const useConfirmStore = create<ConfirmStore>((set, get) => ({
   current: null,
-  push: (req) => {
+  push: req => {
     // If another dialog is already open, cancel it before showing the new one.
     const prev = get().current;
     if (prev) prev.resolve(false);
     set({ current: req });
   },
-  resolve: (ok) => {
+  resolve: ok => {
     const cur = get().current;
     if (!cur) return;
     cur.resolve(ok);
@@ -53,7 +52,7 @@ export interface ConfirmOptions {
  * ```
  */
 export function showConfirm(opts: ConfirmOptions): Promise<boolean> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     useConfirmStore.getState().push({
       id: nextId++,
       title: opts.title,
@@ -61,27 +60,7 @@ export function showConfirm(opts: ConfirmOptions): Promise<boolean> {
       confirmText: opts.confirmText ?? '确定',
       cancelText: opts.cancelText ?? '取消',
       variant: opts.variant ?? 'default',
-      type: 'confirm',
       resolve,
-    });
-  });
-}
-
-/**
- * Imperative replacement for `window.alert`. Single button, resolves when the
- * user dismisses it.
- */
-export function showAlert(opts: Omit<ConfirmOptions, 'cancelText' | 'variant'> & { variant?: 'default' | 'danger' }): Promise<void> {
-  return new Promise((resolve) => {
-    useConfirmStore.getState().push({
-      id: nextId++,
-      title: opts.title,
-      message: opts.message,
-      confirmText: opts.confirmText ?? '确定',
-      cancelText: '',
-      variant: opts.variant ?? 'default',
-      type: 'alert',
-      resolve: () => resolve(),
     });
   });
 }

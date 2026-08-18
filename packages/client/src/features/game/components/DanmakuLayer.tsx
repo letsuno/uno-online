@@ -12,7 +12,7 @@ const TRACK_COUNT = 5;
 const DURATION = 8000;
 
 export default function DanmakuLayer() {
-  const latestMessage = useChatStore((s) => s.latestLiveMessage);
+  const latestMessage = useChatStore(s => s.latestLiveMessage);
   const [items, setItems] = useState<DanmakuItem[]>([]);
   const nextTrackRef = useRef(0);
 
@@ -21,9 +21,9 @@ export default function DanmakuLayer() {
     const track = nextTrackRef.current % TRACK_COUNT;
     nextTrackRef.current = track + 1;
     const item: DanmakuItem = { id: latestMessage.id, message: latestMessage, track };
-    setItems((prev) => [...prev, item]);
+    setItems(prev => [...prev, item]);
     const timer = setTimeout(() => {
-      setItems((prev) => prev.filter((i) => i.id !== item.id));
+      setItems(prev => prev.filter(i => i.id !== item.id));
     }, DURATION);
     return () => clearTimeout(timer);
   }, [latestMessage]);
@@ -32,7 +32,7 @@ export default function DanmakuLayer() {
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 15 }}>
-      {items.map((item) => (
+      {items.map(item => (
         <div
           key={item.id}
           className="danmaku-item absolute whitespace-nowrap text-sm font-bold"

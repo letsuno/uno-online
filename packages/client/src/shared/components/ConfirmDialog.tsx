@@ -5,20 +5,20 @@ import { Button } from '@/shared/components/ui/Button';
 import { useConfirmStore } from '../stores/confirm-store';
 
 /**
- * Top-level mount for in-app confirm/alert dialogs. Reads from `confirm-store`
+ * Top-level mount for in-app confirm dialogs. Reads from `confirm-store`
  * and renders at most one dialog at a time. Keyboard: Enter confirms, Esc
- * cancels (alerts treat both as confirm).
+ * cancels.
  */
 export default function ConfirmDialog() {
-  const current = useConfirmStore((s) => s.current);
-  const resolve = useConfirmStore((s) => s.resolve);
+  const current = useConfirmStore(s => s.current);
+  const resolve = useConfirmStore(s => s.resolve);
 
   useEffect(() => {
     if (!current) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        resolve(current.type === 'alert');
+        resolve(false);
       } else if (e.key === 'Enter') {
         e.preventDefault();
         resolve(true);
@@ -31,13 +31,11 @@ export default function ConfirmDialog() {
   return (
     <Modal
       open={!!current}
-      onClose={() => current && resolve(current.type === 'alert')}
+      onClose={() => current && resolve(false)}
       title={
         current && (
           <>
-            {current.variant === 'danger' && (
-              <AlertTriangle size={20} className="shrink-0 text-destructive" />
-            )}
+            {current.variant === 'danger' && <AlertTriangle size={20} className="shrink-0 text-destructive" />}
             {current.title}
           </>
         )
@@ -45,11 +43,9 @@ export default function ConfirmDialog() {
       footer={
         current && (
           <div className="flex items-center justify-end gap-2">
-            {current.type === 'confirm' && (
-              <Button variant="secondary" onClick={() => resolve(false)}>
-                {current.cancelText}
-              </Button>
-            )}
+            <Button variant="secondary" onClick={() => resolve(false)}>
+              {current.cancelText}
+            </Button>
             <Button
               variant={current.variant === 'danger' ? 'danger' : 'primary'}
               onClick={() => resolve(true)}
@@ -61,9 +57,7 @@ export default function ConfirmDialog() {
         )
       }
     >
-      {current?.message && (
-        <p className="text-sm text-foreground/80 whitespace-pre-line">{current.message}</p>
-      )}
+      {current?.message && <p className="text-sm text-foreground/80 whitespace-pre-line">{current.message}</p>}
     </Modal>
   );
 }

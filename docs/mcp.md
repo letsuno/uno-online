@@ -13,14 +13,7 @@ UNO Online 提供 MCP (Model Context Protocol) 服务端，AI 客户端可以通
   "mcpServers": {
     "uno": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@uno-online/mcp",
-        "--api-key",
-        "uno_ak_your_key_here",
-        "--server",
-        "https://your-server.com"
-      ]
+      "args": ["-y", "@uno-online/mcp", "--api-key", "uno_ak_your_key_here", "--server", "https://your-server.com"]
     }
   }
 }
@@ -62,10 +55,10 @@ npx -y @uno-online/mcp
 
 ## 工具列表
 
-| 分类 | 工具 |
-|------|------|
+| 分类     | 工具                                                                                                                                                                                                                 |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 房间管理 | `create_room`, `join_room`, `leave_room`, `ready`, `start_game`, `update_room_settings`, `dissolve_room`, `kick_player`, `take_seat`（入座指定座位 0-9，加入房间后默认在观战席）, `leave_seat`（离开座位回到观战席） |
-| 游戏操作 | `play_card`, `draw_card`, `pass`, `call_uno`, `catch_uno`, `challenge`, `accept`, `choose_color`, `choose_swap_target`, `vote_next_round`, `rematch` |
-| 查询 | `get_game_state`, `get_hand`, `get_room_info`, `get_rules` |
+| 游戏操作 | `play_card`, `draw_card`, `pass`, `call_uno`, `catch_uno`, `challenge`, `accept`, `choose_color`, `choose_swap_target`, `vote_next_round`, `rematch`                                                                 |
+| 查询     | `get_game_state`, `get_hand`, `get_room_info`, `get_rules`                                                                                                                                                           |
 
 MCP 服务端会通过日志通道推送实时通知，例如轮到你出牌、游戏事件和状态变化。

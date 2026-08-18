@@ -26,7 +26,7 @@ export function Select({ value, options, onChange, disabled, className = '' }: S
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const selected = options.find((o) => o.value === value);
+  const selected = options.find(o => o.value === value);
 
   return (
     <div ref={ref} className={`relative ${className}`}>
@@ -43,11 +43,14 @@ export function Select({ value, options, onChange, disabled, className = '' }: S
       </button>
       {open && (
         <div className="absolute z-50 mt-1 w-full rounded-md border border-slate-600 bg-slate-800 py-1 shadow-lg">
-          {options.map((opt) => (
+          {options.map(opt => (
             <button
               key={opt.value}
               type="button"
-              onClick={() => { onChange(opt.value); setOpen(false); }}
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
               className={`flex w-full items-center px-2 py-1.5 text-sm transition-colors hover:bg-slate-700 ${
                 opt.value === value ? 'text-white bg-slate-700/50' : 'text-slate-300'
               }`}

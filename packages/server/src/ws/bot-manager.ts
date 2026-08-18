@@ -1,9 +1,18 @@
 import { randomUUID } from 'node:crypto';
-import type { Server as SocketIOServer } from 'socket.io';
+import type { UnoServer as SocketIOServer } from './types.js';
 import type { KvStore } from '../kv/types.js';
 import type { BotConfig, BotDifficulty, BotPersonality, BotSelection, RuleBotDifficulty } from '@uno-online/shared';
 import { pickBotName, DIFFICULTY_PARAMS, BOT_PERSONALITIES } from '@uno-online/shared';
-import { getRoomSeats, getRoom, takeSeat, clearSeatByUserId, getFirstEmptySeatIndex, getSeatedPlayers, setSeatPlayerBotConfig, getRoomSpectators } from '../plugins/core/room/store.js';
+import {
+  getRoomSeats,
+  getRoom,
+  takeSeat,
+  clearSeatByUserId,
+  getFirstEmptySeatIndex,
+  getSeatedPlayers,
+  setSeatPlayerBotConfig,
+  getRoomSpectators,
+} from '../plugins/core/room/store.js';
 import type { RoomSeatPlayer } from '../plugins/core/room/store.js';
 import type { GameSession } from '../plugins/core/game/session.js';
 import { isAiProviderCompatible } from '../ai/rl-onnx.js';
@@ -27,27 +36,41 @@ export async function addBot(
   if (!room) return { success: false, error: '房间不存在' };
   if (room.ownerId !== requesterId) return { success: false, error: '只有房主可以添加机器人' };
 
-  const seats = await getRoomSeats(redis, roomCode);
-  const seatIndex = targetSeatIndex !== undefined && targetSeatIndex >= 0 && targetSeatIndex < seats.length && seats[targetSeatIndex] === null
-    ? targetSeatIndex
-    : getFirstEmptySeatIndex(seats);
+  if (room.status !== 'waiting' || session) {
+    return { success: false, error: '只能在等待房间添加机器人' };
+  }
+
+  const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
+  if (
+    targetSeatIndex !== undefined &&
+    (!Number.isInteger(targetSeatIndex) || targetSeatIndex < 0 || targetSeatIndex >= seats.length)
+  ) {
+    return { success: false, error: '无效座位编号' };
+  }
+  if (targetSeatIndex !== undefined && seats[targetSeatIndex] !== null) {
+    return { success: false, error: '座位已被占用' };
+  }
+  const seatIndex = targetSeatIndex ?? getFirstEmptySeatIndex(seats);
   if (seatIndex === -1) return { success: false, error: '没有空座位' };
-  if (selection.difficulty === 'rl' && !(await isAiProviderCompatible(
-    selection.aiProviderId,
-    getSeatedPlayers(seats).length + 1,
-    room.settings.houseRules,
-  ))) {
+  if (
+    selection.difficulty === 'rl' &&
+    !(await isAiProviderCompatible(
+      selection.aiProviderId,
+      getSeatedPlayers(seats).length + 1,
+      room.settings.houseRules,
+    ))
+  ) {
     return { success: false, error: 'AI 引擎不存在、未启用或不适用于当前人数与村规' };
   }
 
   const botId = `bot_${randomUUID()}`;
-  const usedNames = new Set(getSeatedPlayers(seats).map((p) => p.nickname));
+  const usedNames = new Set(getSeatedPlayers(seats).map(p => p.nickname));
   const name = pickBotName(usedNames);
-  const personality: BotPersonality =
-    BOT_PERSONALITIES[Math.floor(Math.random() * BOT_PERSONALITIES.length)]!;
-  const botConfig: BotConfig = selection.difficulty === 'rl'
-    ? { difficulty: 'rl', personality, aiProviderId: selection.aiProviderId }
-    : { difficulty: selection.difficulty, personality };
+  const personality: BotPersonality = BOT_PERSONALITIES[Math.floor(Math.random() * BOT_PERSONALITIES.length)]!;
+  const botConfig: BotConfig =
+    selection.difficulty === 'rl'
+      ? { difficulty: 'rl', personality, aiProviderId: selection.aiProviderId }
+      : { difficulty: selection.difficulty, personality };
 
   const botPlayer: RoomSeatPlayer = {
     userId: botId,
@@ -60,22 +83,23 @@ export async function addBot(
     botConfig,
   };
 
-  if (room.status === 'waiting') {
-    await takeSeat(redis, roomCode, seatIndex, botPlayer);
-  } else if (session) {
-    await takeSeat(redis, roomCode, seatIndex, botPlayer);
-    session.addPlayer({ id: botId, name, avatarUrl: null, isBot: true, botConfig }, true);
-  } else {
-    return { success: false, error: '游戏进行中，无法添加机器人' };
-  }
+  await takeSeat(redis, roomCode, seatIndex, botPlayer);
 
-  const [updatedSeats, spectators] = await Promise.all([
-    getRoomSeats(redis, roomCode),
-    getRoomSpectators(redis, roomCode),
+  const committedSeats = [...seats];
+  for (let index = 0; index < committedSeats.length; index++) {
+    if (committedSeats[index]?.userId === botId) committedSeats[index] = null;
+  }
+  committedSeats[seatIndex] = botPlayer;
+  const [updatedSeats, updatedSpectators] = await Promise.all([
+    getRoomSeats(redis, roomCode).catch(() => committedSeats),
+    getRoomSpectators(redis, roomCode).catch(() => spectators),
   ]);
 
-  io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators });
-  io.to(roomCode).emit('room:bot_added', { botId, name, difficulty: selection.difficulty, personality });
+  try {
+    io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators: updatedSpectators });
+  } catch (error) {
+    console.warn(`[bot:add] Failed to broadcast roster in ${roomCode}:`, error);
+  }
 
   return { success: true, botId };
 }
@@ -92,21 +116,28 @@ export async function removeBot(
   if (!room) return { success: false, error: '房间不存在' };
   if (room.ownerId !== requesterId) return { success: false, error: '只有房主可以移除机器人' };
 
-  const seats = await getRoomSeats(redis, roomCode);
-  const target = seats.find((s) => s !== null && s.userId === botId);
+  if (room.status !== 'waiting' || session) {
+    return { success: false, error: '只能在等待房间移除机器人' };
+  }
+
+  const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
+  const target = seats.find(s => s !== null && s.userId === botId);
   if (!target) return { success: false, error: '机器人不在房间中' };
   if (!target.isBot) return { success: false, error: '目标玩家不是机器人' };
 
-  session?.removePlayer(botId);
   await clearSeatByUserId(redis, roomCode, botId);
 
-  const [updatedSeats, spectators] = await Promise.all([
-    getRoomSeats(redis, roomCode),
-    getRoomSpectators(redis, roomCode),
+  const committedSeats = seats.map(seat => (seat?.userId === botId ? null : seat));
+  const [updatedSeats, updatedSpectators] = await Promise.all([
+    getRoomSeats(redis, roomCode).catch(() => committedSeats),
+    getRoomSpectators(redis, roomCode).catch(() => spectators),
   ]);
 
-  io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators });
-  io.to(roomCode).emit('room:bot_removed', { botId });
+  try {
+    io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators: updatedSpectators });
+  } catch (error) {
+    console.warn(`[bot:remove] Failed to broadcast roster in ${roomCode}:`, error);
+  }
 
   return { success: true };
 }
@@ -123,9 +154,12 @@ export async function setBotDifficulty(
   const room = await getRoom(redis, roomCode);
   if (!room) return { success: false, error: '房间不存在' };
   if (room.ownerId !== requesterId) return { success: false, error: '只有房主可以修改机器人难度' };
+  if (room.status !== 'waiting' || session) {
+    return { success: false, error: '只能在等待房间修改机器人' };
+  }
 
-  const seats = await getRoomSeats(redis, roomCode);
-  const target = seats.find((s) => s !== null && s.userId === botId);
+  const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
+  const target = seats.find(s => s !== null && s.userId === botId);
   if (!target || !target.isBot) return { success: false, error: '目标不是人机' };
   if (!target.botConfig) return { success: false, error: '人机配置缺失' };
   const newBotConfig: BotConfig = {
@@ -134,15 +168,16 @@ export async function setBotDifficulty(
   };
   await setSeatPlayerBotConfig(redis, roomCode, botId, newBotConfig);
 
-  session?.setPlayerBotConfig(botId, newBotConfig);
-
-  io.to(roomCode).emit('room:bot_updated', { botId, difficulty });
-
-  const [updatedSeats, spectators] = await Promise.all([
-    getRoomSeats(redis, roomCode),
-    getRoomSpectators(redis, roomCode),
+  const committedSeats = seats.map(seat => (seat?.userId === botId ? { ...seat, botConfig: newBotConfig } : seat));
+  const [updatedSeats, updatedSpectators] = await Promise.all([
+    getRoomSeats(redis, roomCode).catch(() => committedSeats),
+    getRoomSpectators(redis, roomCode).catch(() => spectators),
   ]);
-  io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators });
+  try {
+    io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators: updatedSpectators });
+  } catch (error) {
+    console.warn(`[bot:update] Failed to broadcast roster in ${roomCode}:`, error);
+  }
 
   return { success: true };
 }
@@ -159,16 +194,15 @@ export async function setBotAi(
   const room = await getRoom(redis, roomCode);
   if (!room) return { success: false, error: '房间不存在' };
   if (room.ownerId !== requesterId) return { success: false, error: '只有房主可以修改 AI 引擎' };
+  if (room.status !== 'waiting' || session) {
+    return { success: false, error: '只能在等待房间修改机器人' };
+  }
 
-  const seats = await getRoomSeats(redis, roomCode);
-  const target = seats.find((seat) => seat?.userId === botId);
+  const [seats, spectators] = await Promise.all([getRoomSeats(redis, roomCode), getRoomSpectators(redis, roomCode)]);
+  const target = seats.find(seat => seat?.userId === botId);
   if (!target?.isBot) return { success: false, error: '目标不是人机' };
   if (!target.botConfig) return { success: false, error: '人机配置缺失' };
-  if (!(await isAiProviderCompatible(
-    providerId,
-    getSeatedPlayers(seats).length,
-    room.settings.houseRules,
-  ))) {
+  if (!(await isAiProviderCompatible(providerId, getSeatedPlayers(seats).length, room.settings.houseRules))) {
     return { success: false, error: 'AI 引擎不存在、未启用或不适用于当前人数与村规' };
   }
   const botConfig: BotConfig = {
@@ -177,12 +211,15 @@ export async function setBotAi(
     aiProviderId: providerId,
   };
   await setSeatPlayerBotConfig(redis, roomCode, botId, botConfig);
-  session?.setPlayerBotConfig(botId, botConfig);
-  io.to(roomCode).emit('room:bot_updated', { botId, difficulty: botConfig.difficulty });
-  const [updatedSeats, spectators] = await Promise.all([
-    getRoomSeats(redis, roomCode),
-    getRoomSpectators(redis, roomCode),
+  const committedSeats = seats.map(seat => (seat?.userId === botId ? { ...seat, botConfig } : seat));
+  const [updatedSeats, updatedSpectators] = await Promise.all([
+    getRoomSeats(redis, roomCode).catch(() => committedSeats),
+    getRoomSpectators(redis, roomCode).catch(() => spectators),
   ]);
-  io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators });
+  try {
+    io.to(roomCode).emit('seat:updated', { seats: updatedSeats, spectators: updatedSpectators });
+  } catch (error) {
+    console.warn(`[bot:update] Failed to broadcast roster in ${roomCode}:`, error);
+  }
   return { success: true };
 }

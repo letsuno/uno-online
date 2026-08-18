@@ -62,19 +62,11 @@ export async function createPasskey(data: {
 
 export async function updatePasskeyCounter(id: string, counter: number): Promise<void> {
   const db = getDb();
-  await db
-    .updateTable('passkeys')
-    .set({ counter })
-    .where('id', '=', id)
-    .execute();
+  await db.updateTable('passkeys').set({ counter }).where('id', '=', id).execute();
 }
 
 export async function deletePasskey(id: string, userId: string): Promise<boolean> {
   const db = getDb();
-  const result = await db
-    .deleteFrom('passkeys')
-    .where('id', '=', id)
-    .where('userId', '=', userId)
-    .executeTakeFirst();
+  const result = await db.deleteFrom('passkeys').where('id', '=', id).where('userId', '=', userId).executeTakeFirst();
   return (result.numDeletedRows ?? 0n) > 0n;
 }

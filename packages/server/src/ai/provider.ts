@@ -12,7 +12,7 @@ export const AI_PLUGIN_DATA_ACCESS = [
   'chat-history',
 ] as const;
 
-export type AiPluginDataAccess = typeof AI_PLUGIN_DATA_ACCESS[number];
+export type AiPluginDataAccess = (typeof AI_PLUGIN_DATA_ACCESS)[number];
 export type AiPluginFairness = 'fair' | 'privileged' | 'cheat';
 
 export interface AiCandidateInput {
@@ -80,8 +80,7 @@ export function providerSupportsContext(
   enabledHouseRules: readonly string[],
 ): boolean {
   const { capabilities } = metadata;
-  if (playerCount < capabilities.minPlayers
-    || playerCount > capabilities.maxPlayers) return false;
+  if (playerCount < capabilities.minPlayers || playerCount > capabilities.maxPlayers) return false;
   if (capabilities.supportedHouseRules === 'all') return true;
   const supported = new Set(capabilities.supportedHouseRules);
   return enabledHouseRules.every(rule => supported.has(rule));

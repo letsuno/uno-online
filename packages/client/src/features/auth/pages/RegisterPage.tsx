@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth-store';
 import { useToastStore } from '@/shared/stores/toast-store';
@@ -12,7 +12,7 @@ import { useBgm } from '@/shared/sound/useBgm';
 import { Turnstile } from 'react-turnstile';
 
 export default function RegisterPage() {
-  const register = useAuthStore((s) => s.register);
+  const register = useAuthStore(s => s.register);
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [nickname, setNickname] = useState('');
@@ -23,22 +23,46 @@ export default function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [authConfigLoaded, setAuthConfigLoaded] = useState(false);
+  const [authConfigError, setAuthConfigError] = useState<string | null>(null);
 
   useBgm('lobby');
 
-  useEffect(() => {
-    apiGet<{ turnstileSiteKey: string | null }>('/auth/config')
-      .then((cfg) => setTurnstileSiteKey(cfg.turnstileSiteKey))
-      .catch(() => {});
+  const loadAuthConfig = useCallback(async () => {
+    setAuthConfigLoaded(false);
+    setAuthConfigError(null);
+    try {
+      const config = await apiGet<{ turnstileSiteKey: string | null }>('/auth/config');
+      setTurnstileSiteKey(config.turnstileSiteKey);
+      setAuthConfigLoaded(true);
+    } catch (error) {
+      setAuthConfigError(error instanceof Error ? error.message : '注册配置加载失败');
+    }
   }, []);
+
+  useEffect(() => {
+    void loadAuthConfig();
+  }, [loadAuthConfig]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFieldError('');
-    if (!username.trim()) { setFieldError('请输入用户名'); return; }
-    if (password.length < 8) { setFieldError('密码至少 8 位，需包含字母和数字'); return; }
-    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) { setFieldError('密码必须同时包含字母和数字'); return; }
-    if (password !== confirm) { setFieldError('两次密码不一致'); return; }
+    if (!username.trim()) {
+      setFieldError('请输入用户名');
+      return;
+    }
+    if (password.length < 8) {
+      setFieldError('密码至少 8 位，需包含字母和数字');
+      return;
+    }
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+      setFieldError('密码必须同时包含字母和数字');
+      return;
+    }
+    if (password !== confirm) {
+      setFieldError('两次密码不一致');
+      return;
+    }
     setSubmitting(true);
     try {
       await register(username, password, nickname || username, avatar ?? undefined, turnstileToken ?? undefined);
@@ -50,10 +74,38 @@ export default function RegisterPage() {
     }
   };
 
+  if (!authConfigLoaded) {
+    return (
+      <AuthLayout
+        title="注册"
+        footer={
+          <Link to="/" className="text-primary font-extrabold no-underline hover:opacity-80">
+            已有账号？去登录
+          </Link>
+        }
+      >
+        <div className="flex flex-col items-center gap-4 py-8 text-center">
+          <p className={authConfigError ? 'text-destructive' : 'text-muted-foreground'}>
+            {authConfigError ?? '加载中...'}
+          </p>
+          {authConfigError && (
+            <Button variant="game" onClick={() => void loadAuthConfig()} sound="click">
+              重试
+            </Button>
+          )}
+        </div>
+      </AuthLayout>
+    );
+  }
+
   return (
     <AuthLayout
       title="注册"
-      footer={<Link to="/" className="text-primary font-extrabold no-underline hover:opacity-80">已有账号？去登录</Link>}
+      footer={
+        <Link to="/" className="text-primary font-extrabold no-underline hover:opacity-80">
+          已有账号？去登录
+        </Link>
+      }
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-[22px]">
         <div className="flex justify-center">
@@ -66,7 +118,10 @@ export default function RegisterPage() {
             icon={<User size={24} />}
             inputSize="lg"
             value={username}
-            onChange={(e) => { setUsername(e.target.value); setFieldError(''); }}
+            onChange={e => {
+              setUsername(e.target.value);
+              setFieldError('');
+            }}
             required
             autoComplete="username"
           />
@@ -78,19 +133,24 @@ export default function RegisterPage() {
             icon={<Pencil size={24} />}
             inputSize="lg"
             value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
+            onChange={e => setNickname(e.target.value)}
             placeholder="留空则使用用户名"
           />
         </div>
 
         <div>
-          <label className="block text-foreground text-[18px] font-bold mb-2.5">密码（至少 8 位，需包含字母和数字）</label>
+          <label className="block text-foreground text-[18px] font-bold mb-2.5">
+            密码（至少 8 位，需包含字母和数字）
+          </label>
           <Input
             icon={<Lock size={24} />}
             inputSize="lg"
             type="password"
             value={password}
-            onChange={(e) => { setPassword(e.target.value); setFieldError(''); }}
+            onChange={e => {
+              setPassword(e.target.value);
+              setFieldError('');
+            }}
             required
             autoComplete="new-password"
           />
@@ -103,7 +163,10 @@ export default function RegisterPage() {
             inputSize="lg"
             type="password"
             value={confirm}
-            onChange={(e) => { setConfirm(e.target.value); setFieldError(''); }}
+            onChange={e => {
+              setConfirm(e.target.value);
+              setFieldError('');
+            }}
             required
             autoComplete="new-password"
           />
@@ -115,7 +178,13 @@ export default function RegisterPage() {
 
         {fieldError && <p className="text-sm text-destructive m-0">{fieldError}</p>}
 
-        <Button type="submit" variant="game" className="w-full h-[76px] text-2xl tracking-[0.35em] mt-1" disabled={submitting} sound="click">
+        <Button
+          type="submit"
+          variant="game"
+          className="w-full h-[76px] text-2xl tracking-[0.35em] mt-1"
+          disabled={submitting}
+          sound="click"
+        >
           {submitting ? '注册中...' : '注 册'}
         </Button>
       </form>

@@ -9,7 +9,7 @@ export const silentUno: HouseRulePlugin = {
     label: '静默 UNO',
     description: '取消 UNO 喊话机制',
   },
-  isEnabled: (hr) => hr.silentUno,
+  isEnabled: hr => hr.silentUno,
   preCheck: (state: GameState, action: GameAction): PreCheckResult => {
     if (action.type !== 'CATCH_UNO') return { handled: false };
     return { handled: true, state };

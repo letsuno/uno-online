@@ -9,18 +9,34 @@ function makeFakeReply() {
   let status = 200;
   let body: any;
   const reply: any = {
-    code(c: number) { status = c; return reply; },
-    header(_k: string, _v: string) { return reply; },
-    send(b: any) { body = b; return reply; },
-    get statusCode() { return status; },
-    get sentBody() { return body; },
+    code(c: number) {
+      status = c;
+      return reply;
+    },
+    header(_k: string, _v: string) {
+      return reply;
+    },
+    send(b: any) {
+      body = b;
+      return reply;
+    },
+    get statusCode() {
+      return status;
+    },
+    get sentBody() {
+      return body;
+    },
   };
   return reply;
 }
 
 describe('createRateLimiter', () => {
-  beforeEach(() => { vi.useFakeTimers(); });
-  afterEach(() => { vi.useRealTimers(); });
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it('allows requests under the limit', async () => {
     const handler = createRateLimiter({ windowMs: 60_000, max: 3 });

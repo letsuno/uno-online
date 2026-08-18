@@ -24,14 +24,19 @@ export default function SpinningCard({ size = 80 }: Props) {
       >
         {/* 卡牌外形：圆角矩形，amber 描边，深色填充 */}
         <rect
-          x="2" y="2" width="76" height="108" rx="8"
+          x="2"
+          y="2"
+          width="76"
+          height="108"
+          rx="8"
           fill="rgba(20,20,28,0.95)"
           stroke="var(--color-uno-yellow)"
           strokeWidth="2"
         />
         {/* 中央 ♠ UNO 字样 */}
         <text
-          x="40" y="58"
+          x="40"
+          y="58"
           textAnchor="middle"
           fill="var(--color-uno-yellow)"
           fontFamily="var(--font-game, sans-serif)"
@@ -41,7 +46,8 @@ export default function SpinningCard({ size = 80 }: Props) {
           ♠
         </text>
         <text
-          x="40" y="82"
+          x="40"
+          y="82"
           textAnchor="middle"
           fill="var(--color-uno-yellow)"
           fontFamily="var(--font-game, sans-serif)"

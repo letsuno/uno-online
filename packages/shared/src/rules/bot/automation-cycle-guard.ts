@@ -36,9 +36,7 @@ function hashExactState(value: unknown): string {
     h3 = Math.imul(h3 ^ code, 0x165667b1);
     h4 = Math.imul(h4 ^ code, 0x9e3779b1);
   }
-  return [h1, h2, h3, h4]
-    .map(hash => (hash >>> 0).toString(16).padStart(8, '0'))
-    .join('');
+  return [h1, h2, h3, h4].map(hash => (hash >>> 0).toString(16).padStart(8, '0')).join('');
 }
 
 /**
@@ -55,7 +53,7 @@ export function automationStateFingerprint(state: GameState): string {
       hand: player.hand.map(card => card.id),
       score: player.score,
       calledUno: player.calledUno,
-      eliminated: player.eliminated ?? false,
+      eliminated: player.eliminated,
       teamId: player.teamId ?? null,
     })),
     currentPlayerIndex: state.currentPlayerIndex,
@@ -66,11 +64,11 @@ export function automationStateFingerprint(state: GameState): string {
     currentColor: state.currentColor,
     drawStack: state.drawStack,
     pendingDrawPlayerId: state.pendingDrawPlayerId,
-    pendingPenaltyDraws: state.pendingPenaltyDraws ?? 0,
-    pendingPenaltyNextPlayerIndex: state.pendingPenaltyNextPlayerIndex ?? null,
-    pendingPenaltySourcePlayerId: state.pendingPenaltySourcePlayerId ?? null,
-    pendingPenaltyQueue: state.pendingPenaltyQueue ?? [],
-    pendingRevengeDraws: state.pendingRevengeDraws ?? 0,
+    pendingPenaltyDraws: state.pendingPenaltyDraws,
+    pendingPenaltyNextPlayerIndex: state.pendingPenaltyNextPlayerIndex,
+    pendingPenaltySourcePlayerId: state.pendingPenaltySourcePlayerId,
+    pendingPenaltyQueue: state.pendingPenaltyQueue,
+    pendingRevengeDraws: state.pendingRevengeDraws,
     lastAction: state.lastAction,
   });
 }
@@ -78,13 +76,7 @@ export function automationStateFingerprint(state: GameState): string {
 function actionSignature(action: GameAction): unknown {
   switch (action.type) {
     case 'PLAY_CARD':
-      return [
-        action.type,
-        action.playerId,
-        action.cardId,
-        action.chosenColor ?? null,
-        action.isJumpIn ?? false,
-      ];
+      return [action.type, action.playerId, action.cardId, action.chosenColor ?? null, action.isJumpIn ?? false];
     case 'DRAW_CARD':
       return [action.type, action.playerId, action.side];
     case 'PASS':
@@ -152,10 +144,7 @@ export class AutomationCycleGuard {
     return `${automationStateFingerprint(state)}:${planSignature(plan)}`;
   }
 
-  private planAfterFingerprint(
-    state: GameState,
-    plan: readonly GameAction[],
-  ): string | null {
+  private planAfterFingerprint(state: GameState, plan: readonly GameAction[]): string | null {
     let after = state;
     for (const action of plan) {
       const next = applyActionWithHouseRules(after, action);
@@ -177,11 +166,7 @@ export class AutomationCycleGuard {
     visits.set(fingerprint, next);
   }
 
-  private repeatCountForAfter(
-    state: GameState,
-    plan: readonly GameAction[],
-    afterFingerprint: string | null,
-  ): number {
+  private repeatCountForAfter(state: GameState, plan: readonly GameAction[], afterFingerprint: string | null): number {
     if (plan.length === 0) return 0;
     this.syncRound(state);
     const bucket = this.transitions.get(this.key(state, plan));
@@ -191,29 +176,19 @@ export class AutomationCycleGuard {
         edgeMax = Math.max(edgeMax, visits);
       }
     }
-    const stateCount = afterFingerprint === null
-      ? 0
-      : (this.stateVisits.get(afterFingerprint) ?? 0);
+    const stateCount = afterFingerprint === null ? 0 : (this.stateVisits.get(afterFingerprint) ?? 0);
     return Math.max(edgeMax, stateCount);
   }
 
   repeatCount(state: GameState, plan: readonly GameAction[]): number {
-    return this.repeatCountForAfter(
-      state,
-      plan,
-      this.planAfterFingerprint(state, plan),
-    );
+    return this.repeatCountForAfter(state, plan, this.planAfterFingerprint(state, plan));
   }
 
   shouldAvoidPlan(state: GameState, plan: readonly GameAction[]): boolean {
     return this.repeatCount(state, plan) >= this.repeatLimit;
   }
 
-  recordTransition(
-    before: GameState,
-    plan: readonly GameAction[],
-    after: GameState,
-  ): void {
+  recordTransition(before: GameState, plan: readonly GameAction[], after: GameState): void {
     if (plan.length === 0) return;
     this.syncRound(before);
     if (after.roundNumber !== before.roundNumber) {
@@ -240,10 +215,7 @@ export class AutomationCycleGuard {
       this.transitions.set(key, bucket);
     }
     const afterFingerprint = automationStateFingerprint(after);
-    bucket.afterVisits.set(
-      afterFingerprint,
-      (bucket.afterVisits.get(afterFingerprint) ?? 0) + 1,
-    );
+    bucket.afterVisits.set(afterFingerprint, (bucket.afterVisits.get(afterFingerprint) ?? 0) + 1);
     this.boundedIncrement(this.stateVisits, afterFingerprint);
     this.lastAfterFingerprint = afterFingerprint;
   }
@@ -256,8 +228,7 @@ export class AutomationCycleGuard {
   filterLegalActions<T extends LegalActionSet>(state: GameState, legal: T): T {
     const avoid = legal.plans.map(plan => {
       const afterFingerprint = this.planAfterFingerprint(state, plan);
-      return this.repeatCountForAfter(state, plan, afterFingerprint)
-        >= this.repeatLimit;
+      return this.repeatCountForAfter(state, plan, afterFingerprint) >= this.repeatLimit;
     });
     const hasAllowedPlan = legal.plans.some((_, index) => !avoid[index]);
     if (!hasAllowedPlan || !avoid.some(Boolean)) return legal;
@@ -271,15 +242,8 @@ export class AutomationCycleGuard {
    * Keep a chooser's preferred plan unless it has demonstrated recurrence.
    * On intervention, choose the least-repeated remaining engine-legal plan.
    */
-  selectPlan<T extends LegalActionSet>(
-    state: GameState,
-    preferred: GameAction[],
-    legal: T,
-  ): GameAction[] {
-    if (
-      preferred.length === 0
-      || !this.shouldAvoidPlan(state, preferred)
-    ) {
+  selectPlan<T extends LegalActionSet>(state: GameState, preferred: GameAction[], legal: T): GameAction[] {
+    if (preferred.length === 0 || !this.shouldAvoidPlan(state, preferred)) {
       return preferred;
     }
 

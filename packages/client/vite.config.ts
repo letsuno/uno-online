@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 import pkg from './package.json' with { type: 'json' };
 
+const proxyTarget = process.env['VITE_PROXY_TARGET'] ?? 'http://localhost:3001';
+
 export default defineConfig({
   build: {
     sourcemap: true,
@@ -11,7 +13,6 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   define: {
     'import.meta.env.BUILD_VERSION': JSON.stringify(pkg.version),
-    'import.meta.env.BUILD_TIME': JSON.stringify(new Date().toISOString()),
   },
   resolve: {
     alias: {
@@ -22,11 +23,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: proxyTarget,
         changeOrigin: true,
       },
       '/socket.io': {
-        target: 'http://localhost:3001',
+        target: proxyTarget,
         changeOrigin: true,
         ws: true,
       },
@@ -37,11 +38,11 @@ export default defineConfig({
     port: 4173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: proxyTarget,
         changeOrigin: true,
       },
       '/socket.io': {
-        target: 'http://localhost:3001',
+        target: proxyTarget,
         changeOrigin: true,
         ws: true,
       },

@@ -9,18 +9,15 @@ interface SpectatorSeatsProps {
 }
 
 function SpectatorSeats({ top }: SpectatorSeatsProps) {
-  const spectators = useSpectatorStore((s) => s.spectators);
-  const pendingJoinQueue = useSpectatorStore((s) => s.pendingJoinQueue);
+  const spectators = useSpectatorStore(s => s.spectators);
+  const pendingJoinQueue = useSpectatorStore(s => s.pendingJoinQueue);
   const constraintsRef = useRef<HTMLDivElement>(null);
 
   if (spectators.length === 0) return null;
 
   return (
     <div ref={constraintsRef} className="absolute inset-0 z-fab pointer-events-none">
-      <div
-        className="absolute left-0 right-0 flex justify-center"
-        style={top != null ? { top } : { bottom: 8 }}
-      >
+      <div className="absolute left-0 right-0 flex justify-center" style={top != null ? { top } : { bottom: 8 }}>
         <motion.div
           drag
           dragConstraints={constraintsRef}
@@ -30,8 +27,8 @@ function SpectatorSeats({ top }: SpectatorSeatsProps) {
         >
           <Eye size={12} className="text-muted-foreground shrink-0" />
           <div className="flex items-center gap-1">
-            {spectators.map((s) => {
-              const queued = pendingJoinQueue.includes(s.nickname);
+            {spectators.map(s => {
+              const queued = pendingJoinQueue.some(entry => entry.userId === s.userId);
               return (
                 <div
                   key={s.nickname}
@@ -44,9 +41,19 @@ function SpectatorSeats({ top }: SpectatorSeatsProps) {
                   )}
                   title={s.nickname + (queued ? ' (下局加入)' : '') + (!s.connected ? ' (已断线)' : '')}
                 >
-                  {s.avatarUrl
-                    ? <img src={s.avatarUrl} alt={s.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                    : s.nickname.charAt(0).toUpperCase()}
+                  {s.avatarUrl ? (
+                    <img
+                      src={s.avatarUrl}
+                      alt={s.nickname}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                      onError={e => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    s.nickname.charAt(0).toUpperCase()
+                  )}
                 </div>
               );
             })}

@@ -7,7 +7,15 @@ describe('penalty draw flow', () => {
     const drawTwo = makeCard('draw_two', 'red', { id: 'd2' });
     const state = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [drawTwo, makeCard('number', 'blue', { value: 1, id: 'p1b' })], score: 0, connected: true, autopilot: false, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [drawTwo, makeCard('number', 'blue', { value: 1, id: 'p1b' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+        },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, autopilot: false, calledUno: false },
       ],
@@ -48,10 +56,7 @@ describe('penalty draw flow', () => {
       pendingPenaltyDraws: 8,
       pendingPenaltyNextPlayerIndex: 2,
       pendingPenaltySourcePlayerId: 'p1',
-      deckLeft: [
-        playableDrawn,
-        makeCard('number', 'blue', { value: 1, id: 'draw2' }),
-      ],
+      deckLeft: [playableDrawn, makeCard('number', 'blue', { value: 1, id: 'draw2' })],
       deckRight: [],
       deckLeftInitialCount: 2,
       deckRightInitialCount: 0,
@@ -73,19 +78,31 @@ describe('penalty draw flow', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [makeCard('number', 'blue', { value: 1, id: 'p1-card' })],
-          score: 0, connected: true, autopilot: false, calledUno: false,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
         },
         {
-          id: 'p2', name: 'Bob',
+          id: 'p2',
+          name: 'Bob',
           hand: [makeCard('number', 'yellow', { value: 1, id: 'p2-card' })],
-          score: 0, connected: true, autopilot: false, calledUno: false,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
         },
         {
-          id: 'p3', name: 'Carol',
+          id: 'p3',
+          name: 'Carol',
           hand: [makeCard('number', 'green', { value: 1, id: 'p3-card' })],
-          score: 0, connected: true, autopilot: false, calledUno: false,
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
         },
       ],
       currentPlayerIndex: 1,
@@ -98,7 +115,9 @@ describe('penalty draw flow', () => {
     });
 
     const settled = applyAction(state, {
-      type: 'DRAW_CARD', playerId: 'p2', side: 'left',
+      type: 'DRAW_CARD',
+      playerId: 'p2',
+      side: 'left',
     });
 
     expect(settled.players[1]!.hand.map(card => card.id)).toEqual(['p2-card']);
@@ -107,7 +126,9 @@ describe('penalty draw flow', () => {
   });
 
   it('requires all 4 wild draw four penalty cards to be drawn after accepting', () => {
-    const deckCards = Array.from({ length: 6 }, (_, i) => makeCard('number', 'blue', { value: i, id: `wd4_draw_${i}` }));
+    const deckCards = Array.from({ length: 6 }, (_, i) =>
+      makeCard('number', 'blue', { value: i, id: `wd4_draw_${i}` }),
+    );
     const state = makeState({
       phase: 'challenging',
       players: [
@@ -132,12 +153,7 @@ describe('penalty draw flow', () => {
       expect(next.pendingPenaltyDraws).toBe(expectedRemaining);
     }
 
-    expect(next.players[1]!.hand.map(c => c.id)).toEqual([
-      'wd4_draw_0',
-      'wd4_draw_1',
-      'wd4_draw_2',
-      'wd4_draw_3',
-    ]);
+    expect(next.players[1]!.hand.map(c => c.id)).toEqual(['wd4_draw_0', 'wd4_draw_1', 'wd4_draw_2', 'wd4_draw_3']);
     expect(next.currentPlayerIndex).toBe(2);
   });
 
@@ -165,7 +181,12 @@ describe('penalty draw flow', () => {
       deckRightInitialCount: 0,
     });
 
-    const caught = applyAction(state, { type: 'CATCH_UNO', catcherId: 'p1', targetId: 'p2' });
+    const caught = applyAction(state, {
+      type: 'CATCH_UNO',
+      catcherId: 'p1',
+      targetId: 'p2',
+      catcherName: 'Player p1',
+    });
     expect(caught.players[1]!.unoCaught).toBe(true);
     expect(caught.pendingPenaltyDraws).toBe(2);
 
@@ -185,8 +206,24 @@ describe('penalty draw flow', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [drawTwo], score: 0, connected: true, autopilot: false, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, autopilot: false, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 1, id: 'p3c' })], score: 0, connected: true, autopilot: false, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 1, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          autopilot: false,
+          calledUno: false,
+        },
       ],
       deckLeft: [
         makeCard('number', 'green', { value: 2, id: 'draw1' }),

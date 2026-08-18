@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyAction } from '../src/rules/game-engine';
+import { applyAction, checkRoundEnd } from '../src/rules/game-engine';
 import type { GameState } from '../src/types/game';
 import { DEFAULT_HOUSE_RULES } from '../src/types/house-rules';
 import { makeCard, makeState, drawPendingPenalty as _drawPendingPenalty } from './helpers/test-utils';
@@ -72,8 +72,22 @@ describe('PLAY_CARD - skip', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [card], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'blue', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'blue', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
     });
     const next = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'c1' });
@@ -87,8 +101,22 @@ describe('PLAY_CARD - reverse', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [card], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'blue', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'blue', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       direction: 'clockwise',
     });
@@ -106,7 +134,14 @@ describe('PLAY_CARD - reverse in 2-player', () => {
       phase: 'playing',
       players: [
         { id: 'p1', name: 'Alice', hand: [card], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       currentPlayerIndex: 0,
       direction: 'clockwise',
@@ -141,8 +176,22 @@ describe('PLAY_CARD - draw_two', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [card, extra], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 1, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 1, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       deckLeft: deckCards,
       deckRight: [],
@@ -165,8 +214,22 @@ describe('PLAY_CARD - wild', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [card, extra], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 1, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 1, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
     });
     const next = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'c1' });
@@ -179,7 +242,14 @@ describe('PLAY_CARD - wild', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [card], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
     });
     const next = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'c1' });
@@ -195,8 +265,22 @@ describe('PLAY_CARD - wild_draw_four', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [card, extra], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 1, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 1, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
     });
     const next = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'c1' });
@@ -209,7 +293,14 @@ describe('PLAY_CARD - wild_draw_four', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [card], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
     });
     const next = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'c1' });
@@ -225,8 +316,22 @@ describe('PLAY_CARD - last card triggers round end', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [card], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       deckLeft: [makeCard('number', 'blue', { value: 3, id: 'd1' })],
       deckRight: [],
@@ -377,6 +482,10 @@ describe('CHOOSE_COLOR', () => {
       ],
       currentColor: 'red',
       pendingDrawPlayerId: null,
+      discardPile: [
+        makeCard('number', 'red', { value: 5, id: 'prev_top' }),
+        makeCard('wild', null, { id: 'wild_card' }),
+      ],
     });
     const next = applyAction(state, { type: 'CHOOSE_COLOR', playerId: 'p1', color: 'blue' });
     expect(next.phase).toBe('playing');
@@ -394,12 +503,15 @@ describe('CHOOSE_COLOR', () => {
       ],
       currentColor: 'red',
       pendingDrawPlayerId: 'p2',
+      discardPile: [
+        makeCard('number', 'red', { value: 5, id: 'prev_top' }),
+        makeCard('wild_draw_four', null, { id: 'wd4_card' }),
+      ],
     });
     const next = applyAction(state, { type: 'CHOOSE_COLOR', playerId: 'p1', color: 'green' });
     expect(next.phase).toBe('challenging');
     expect(next.currentColor).toBe('green');
   });
-
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -410,17 +522,18 @@ describe('CHALLENGE - WD4 was legal (challenge fails)', () => {
   it('challenger draws 6 and play advances past challenger', () => {
     // p1 played WD4, p2 is challenging
     // p1 had no red cards (so WD4 was legal)
-    const deckCards = Array.from({ length: 10 }, (_, i) =>
-      makeCard('number', 'blue', { value: i % 9, id: `d${i}` })
-    );
+    const deckCards = Array.from({ length: 10 }, (_, i) => makeCard('number', 'blue', { value: i % 9, id: `d${i}` }));
     const state = makeState({
       phase: 'challenging',
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           // p1's hand at time of play - no red cards, WD4 legal
           hand: [makeCard('number', 'blue', { value: 1, id: 'p1c1' })],
-          score: 0, connected: true, calledUno: false
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -433,14 +546,21 @@ describe('CHALLENGE - WD4 was legal (challenge fails)', () => {
       deckLeftInitialCount: deckCards.length,
       deckRightInitialCount: 0,
       discardPile: [
-        makeCard('number', 'red', { value: 5, id: 'prev_top' }),  // previous top (red)
-        makeCard('wild_draw_four', null, { id: 'wd4_card' }),     // WD4 on top
+        makeCard('number', 'red', { value: 5, id: 'prev_top' }), // previous top (red)
+        { ...makeCard('wild_draw_four', null, { id: 'wd4_card' }), chosenColor: 'green' }, // WD4 on top
       ],
     });
     const next = applyAction(state, { type: 'CHALLENGE', playerId: 'p2' });
     expect(next.players[1]!.hand).toHaveLength(0);
     expect(next.currentPlayerIndex).toBe(1);
     expect(next.pendingPenaltyDraws).toBe(6);
+    expect(next.lastAction).toEqual({
+      type: 'CHALLENGE',
+      playerId: 'p2',
+      succeeded: false,
+      penaltyPlayerId: 'p2',
+      penaltyCount: 6,
+    });
     const afterPenalty = drawPendingPenalty(next);
     expect(afterPenalty.players[1]!.hand).toHaveLength(6);
     expect(afterPenalty.currentPlayerIndex).toBe(2);
@@ -451,17 +571,18 @@ describe('CHALLENGE - WD4 was legal (challenge fails)', () => {
 
 describe('CHALLENGE - WD4 was illegal (challenge wins)', () => {
   it('WD4 player draws 4 and play advances', () => {
-    const deckCards = Array.from({ length: 10 }, (_, i) =>
-      makeCard('number', 'blue', { value: i % 9, id: `d${i}` })
-    );
+    const deckCards = Array.from({ length: 10 }, (_, i) => makeCard('number', 'blue', { value: i % 9, id: `d${i}` }));
     const state = makeState({
       phase: 'challenging',
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           // p1 has a red card - WD4 was illegal!
           hand: [makeCard('number', 'red', { value: 3, id: 'p1_red' })],
-          score: 0, connected: true, calledUno: false
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -475,11 +596,18 @@ describe('CHALLENGE - WD4 was illegal (challenge wins)', () => {
       deckRightInitialCount: 0,
       discardPile: [
         makeCard('number', 'red', { value: 5, id: 'prev_top' }),
-        makeCard('wild_draw_four', null, { id: 'wd4_card' }),
+        { ...makeCard('wild_draw_four', null, { id: 'wd4_card' }), chosenColor: 'green' },
       ],
     });
     const next = applyAction(state, { type: 'CHALLENGE', playerId: 'p2' });
     expect(next.players[0]!.hand).toHaveLength(1);
+    expect(next.lastAction).toEqual({
+      type: 'CHALLENGE',
+      playerId: 'p2',
+      succeeded: true,
+      penaltyPlayerId: 'p1',
+      penaltyCount: 4,
+    });
     expect(next.currentPlayerIndex).toBe(0);
     expect(next.pendingPenaltyDraws).toBe(4);
     const afterPenalty = drawPendingPenalty(next);
@@ -489,16 +617,17 @@ describe('CHALLENGE - WD4 was illegal (challenge wins)', () => {
   });
 
   it('uses the previous wild card chosen color when checking legality', () => {
-    const deckCards = Array.from({ length: 10 }, (_, i) =>
-      makeCard('number', 'blue', { value: i % 9, id: `d${i}` })
-    );
+    const deckCards = Array.from({ length: 10 }, (_, i) => makeCard('number', 'blue', { value: i % 9, id: `d${i}` }));
     const state = makeState({
       phase: 'challenging',
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [makeCard('number', 'red', { value: 3, id: 'p1_red' })],
-          score: 0, connected: true, calledUno: false
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -512,7 +641,7 @@ describe('CHALLENGE - WD4 was illegal (challenge wins)', () => {
       deckRightInitialCount: 0,
       discardPile: [
         { id: 'prev_wild', type: 'wild', color: null, chosenColor: 'red' },
-        makeCard('wild_draw_four', null, { id: 'wd4_card' }),
+        { ...makeCard('wild_draw_four', null, { id: 'wd4_card' }), chosenColor: 'green' },
       ],
     });
 
@@ -531,9 +660,7 @@ describe('CHALLENGE - WD4 was illegal (challenge wins)', () => {
 
 describe('ACCEPT', () => {
   it('accepter draws 4 and advances past them', () => {
-    const deckCards = Array.from({ length: 6 }, (_, i) =>
-      makeCard('number', 'blue', { value: i % 9, id: `d${i}` })
-    );
+    const deckCards = Array.from({ length: 6 }, (_, i) => makeCard('number', 'blue', { value: i % 9, id: `d${i}` }));
     const state = makeState({
       phase: 'challenging',
       players: [
@@ -552,6 +679,12 @@ describe('ACCEPT', () => {
     expect(next.players[1]!.hand).toHaveLength(0);
     expect(next.currentPlayerIndex).toBe(1);
     expect(next.pendingPenaltyDraws).toBe(4);
+    expect(next.lastAction).toEqual({
+      type: 'ACCEPT',
+      playerId: 'p2',
+      penaltyPlayerId: 'p2',
+      penaltyCount: 4,
+    });
     const afterPenalty = drawPendingPenalty(next);
     expect(afterPenalty.players[1]!.hand).toHaveLength(4);
     expect(afterPenalty.currentPlayerIndex).toBe(2);
@@ -573,8 +706,22 @@ describe('ACCEPT', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [wd4], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'yellow', { value: 4, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'yellow', { value: 4, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
     });
 
@@ -594,9 +741,12 @@ describe('CALL_UNO', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [makeCard('number', 'red', { value: 1, id: 'c1' })],
-          score: 0, connected: true, calledUno: false
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -610,12 +760,12 @@ describe('CALL_UNO', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
-          hand: [
-            makeCard('number', 'red', { value: 1, id: 'c1' }),
-            makeCard('number', 'blue', { value: 2, id: 'c2' }),
-          ],
-          score: 0, connected: true, calledUno: false
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'red', { value: 1, id: 'c1' }), makeCard('number', 'blue', { value: 2, id: 'c2' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -629,12 +779,15 @@ describe('CALL_UNO', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [
             makeCard('number', 'blue', { value: 1, id: 'c1' }),
             makeCard('number', 'green', { value: 2, id: 'c2' }),
           ],
-          score: 0, connected: true, calledUno: false
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -650,12 +803,12 @@ describe('CALL_UNO', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
-          hand: [
-            makeCard('wild', null, { id: 'wild1' }),
-            makeCard('number', 'green', { value: 2, id: 'c2' }),
-          ],
-          score: 0, connected: true, calledUno: false
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('wild', null, { id: 'wild1' }), makeCard('number', 'green', { value: 2, id: 'c2' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -671,12 +824,12 @@ describe('CALL_UNO', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
-          hand: [
-            makeCard('draw_two', 'blue', { id: 'd2_blue' }),
-            makeCard('number', 'green', { value: 2, id: 'c2' }),
-          ],
-          score: 0, connected: true, calledUno: false
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('draw_two', 'blue', { id: 'd2_blue' }), makeCard('number', 'green', { value: 2, id: 'c2' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -700,12 +853,12 @@ describe('CALL_UNO', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
-          hand: [
-            makeCard('reverse', 'blue', { id: 'rev_blue' }),
-            makeCard('number', 'green', { value: 2, id: 'c2' }),
-          ],
-          score: 0, connected: true, calledUno: false
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('reverse', 'blue', { id: 'rev_blue' }), makeCard('number', 'green', { value: 2, id: 'c2' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -729,12 +882,12 @@ describe('CALL_UNO', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
-          hand: [
-            makeCard('number', 'red', { value: 1, id: 'c1' }),
-            makeCard('number', 'blue', { value: 2, id: 'c2' }),
-          ],
-          score: 0, connected: true, calledUno: false
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'red', { value: 1, id: 'c1' }), makeCard('number', 'blue', { value: 2, id: 'c2' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -751,9 +904,12 @@ describe('CALL_UNO', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [makeCard('number', 'red', { value: 1, id: 'c1' })],
-          score: 0, connected: true, calledUno: false
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -770,12 +926,12 @@ describe('CALL_UNO', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
-          hand: [
-            makeCard('number', 'red', { value: 1, id: 'c1' }),
-            makeCard('number', 'blue', { value: 2, id: 'c2' }),
-          ],
-          score: 0, connected: true, calledUno: false
+          id: 'p1',
+          name: 'Alice',
+          hand: [makeCard('number', 'red', { value: 1, id: 'c1' }), makeCard('number', 'blue', { value: 2, id: 'c2' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -796,13 +952,16 @@ describe('CALL_UNO', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [
             makeCard('number', 'red', { value: 1, id: 'c1' }),
             makeCard('number', 'blue', { value: 2, id: 'c2' }),
             makeCard('number', 'green', { value: 3, id: 'c3' }),
           ],
-          score: 0, connected: true, calledUno: false
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -841,9 +1000,12 @@ describe('CATCH_UNO - uncalled', () => {
       players: [
         { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
         {
-          id: 'p2', name: 'Bob',
+          id: 'p2',
+          name: 'Bob',
           hand: [makeCard('number', 'red', { value: 5, id: 'p2c1' })],
-          score: 0, connected: true, calledUno: false
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
@@ -852,10 +1014,21 @@ describe('CATCH_UNO - uncalled', () => {
       deckLeftInitialCount: deckCards.length,
       deckRightInitialCount: 0,
     });
-    const next = applyAction(state, { type: 'CATCH_UNO', catcherId: 'p1', targetId: 'p2' });
+    const next = applyAction(state, {
+      type: 'CATCH_UNO',
+      catcherId: 'p1',
+      targetId: 'p2',
+      catcherName: 'Player p1',
+    });
     expect(next.players[1]!.hand).toHaveLength(1);
     expect(next.players[1]!.unoCaught).toBe(true);
     expect(next.pendingPenaltyDraws).toBe(2);
+    expect(next.lastAction).toEqual({
+      type: 'CATCH_UNO',
+      catcherId: 'p1',
+      targetId: 'p2',
+      catcherName: 'Player p1',
+    });
     const afterPenalty = drawPendingPenalty(next);
     expect(afterPenalty.players[1]!.hand).toHaveLength(3);
     expect(afterPenalty.players[1]!.unoCaught).toBe(false);
@@ -872,9 +1045,12 @@ describe('CATCH_UNO - uncalled', () => {
       players: [
         { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
         {
-          id: 'p2', name: 'Bob',
+          id: 'p2',
+          name: 'Bob',
           hand: [makeCard('number', 'red', { value: 5, id: 'p2c1' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
@@ -884,8 +1060,18 @@ describe('CATCH_UNO - uncalled', () => {
       deckRightInitialCount: 0,
     });
 
-    const firstCatch = applyAction(state, { type: 'CATCH_UNO', catcherId: 'p1', targetId: 'p2' });
-    const secondCatch = applyAction(firstCatch, { type: 'CATCH_UNO', catcherId: 'p3', targetId: 'p2' });
+    const firstCatch = applyAction(state, {
+      type: 'CATCH_UNO',
+      catcherId: 'p1',
+      targetId: 'p2',
+      catcherName: 'Player p1',
+    });
+    const secondCatch = applyAction(firstCatch, {
+      type: 'CATCH_UNO',
+      catcherId: 'p3',
+      targetId: 'p2',
+      catcherName: 'Player p3',
+    });
 
     expect(secondCatch).toStrictEqual(firstCatch);
     const afterPenalty = drawPendingPenalty(secondCatch);
@@ -899,9 +1085,12 @@ describe('CATCH_UNO - already called', () => {
       players: [
         { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
         {
-          id: 'p2', name: 'Bob',
+          id: 'p2',
+          name: 'Bob',
           hand: [makeCard('number', 'red', { value: 5, id: 'p2c1' })],
-          score: 0, connected: true, calledUno: true
+          score: 0,
+          connected: true,
+          calledUno: true,
         },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
@@ -910,7 +1099,12 @@ describe('CATCH_UNO - already called', () => {
       deckLeftInitialCount: 1,
       deckRightInitialCount: 0,
     });
-    const next = applyAction(state, { type: 'CATCH_UNO', catcherId: 'p1', targetId: 'p2' });
+    const next = applyAction(state, {
+      type: 'CATCH_UNO',
+      catcherId: 'p1',
+      targetId: 'p2',
+      catcherName: 'Player p1',
+    });
     expect(next).toStrictEqual(state);
   });
 });
@@ -921,12 +1115,15 @@ describe('CATCH_UNO - target has more than 1 card', () => {
       players: [
         { id: 'p1', name: 'Alice', hand: [], score: 0, connected: true, calledUno: false },
         {
-          id: 'p2', name: 'Bob',
+          id: 'p2',
+          name: 'Bob',
           hand: [
             makeCard('number', 'red', { value: 5, id: 'p2c1' }),
             makeCard('number', 'blue', { value: 3, id: 'p2c2' }),
           ],
-          score: 0, connected: true, calledUno: false
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
@@ -935,7 +1132,12 @@ describe('CATCH_UNO - target has more than 1 card', () => {
       deckLeftInitialCount: 1,
       deckRightInitialCount: 0,
     });
-    const next = applyAction(state, { type: 'CATCH_UNO', catcherId: 'p1', targetId: 'p2' });
+    const next = applyAction(state, {
+      type: 'CATCH_UNO',
+      catcherId: 'p1',
+      targetId: 'p2',
+      catcherName: 'Player p1',
+    });
     expect(next).toStrictEqual(state);
   });
 });
@@ -975,9 +1177,12 @@ describe('PLAY_CARD - keeps or resets calledUno when playing', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [card, extraCard],
-          score: 0, connected: true, calledUno: true
+          score: 0,
+          connected: true,
+          calledUno: true,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -993,9 +1198,12 @@ describe('PLAY_CARD - keeps or resets calledUno when playing', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [wild, extraCard],
-          score: 0, connected: true, calledUno: true
+          score: 0,
+          connected: true,
+          calledUno: true,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -1016,9 +1224,12 @@ describe('PLAY_CARD - keeps or resets calledUno when playing', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [card, extra1, extra2],
-          score: 0, connected: true, calledUno: true
+          score: 0,
+          connected: true,
+          calledUno: true,
         },
         { id: 'p2', name: 'Bob', hand: [], score: 0, connected: true, calledUno: false },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
@@ -1035,8 +1246,22 @@ describe('PLAY_CARD - last draw_two ends round immediately', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [card], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'yellow', { value: 4, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'yellow', { value: 4, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
     });
     const next = applyAction(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'c1' });
@@ -1052,9 +1277,19 @@ describe('CATCH_UNO during choosing_color phase', () => {
     const state = makeState({
       players: [
         { id: 'p1', name: 'Alice', hand: [wildCard], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'red', { value: 1, id: 'b1' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'red', { value: 1, id: 'b1' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
-      deckLeft: [makeCard('number', 'blue', { value: 3, id: 'd1' }), makeCard('number', 'green', { value: 4, id: 'd2' })],
+      deckLeft: [
+        makeCard('number', 'blue', { value: 3, id: 'd1' }),
+        makeCard('number', 'green', { value: 4, id: 'd2' }),
+      ],
       currentPlayerIndex: 0,
     });
 
@@ -1066,10 +1301,27 @@ describe('CATCH_UNO during choosing_color phase', () => {
     const wildCard2 = makeCard('wild', null, { id: 'w2' });
     const state2 = makeState({
       players: [
-        { id: 'p1', name: 'Alice', hand: [wildCard2, makeCard('number', 'red', { value: 5, id: 'x1' })], score: 0, connected: true, calledUno: false },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'red', { value: 1, id: 'b1' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p1',
+          name: 'Alice',
+          hand: [wildCard2, makeCard('number', 'red', { value: 5, id: 'x1' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'red', { value: 1, id: 'b1' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
-      deckLeft: [makeCard('number', 'blue', { value: 3, id: 'd1' }), makeCard('number', 'green', { value: 4, id: 'd2' })],
+      deckLeft: [
+        makeCard('number', 'blue', { value: 3, id: 'd1' }),
+        makeCard('number', 'green', { value: 4, id: 'd2' }),
+      ],
       currentPlayerIndex: 0,
     });
 
@@ -1079,16 +1331,71 @@ describe('CATCH_UNO during choosing_color phase', () => {
     expect(afterPlay2.players[0]!.calledUno).toBe(false);
 
     // p2 catches p1 during choosing_color
-    const afterCatch = applyAction(afterPlay2, { type: 'CATCH_UNO', catcherId: 'p2', targetId: 'p1' });
+    const afterCatch = applyAction(afterPlay2, {
+      type: 'CATCH_UNO',
+      catcherId: 'p2',
+      targetId: 'p1',
+      catcherName: 'Player p2',
+    });
     // Phase should still be choosing_color - penalty is queued
     expect(afterCatch.phase).toBe('choosing_color');
     expect(afterCatch.players[0]!.unoCaught).toBe(true);
-    expect(afterCatch.pendingPenaltyQueue?.length).toBeGreaterThan(0);
+    expect(afterCatch.pendingPenaltyQueue.length).toBeGreaterThan(0);
 
     // p1 chooses color -> penalty kicks in
     const afterColor = applyAction(afterCatch, { type: 'CHOOSE_COLOR', playerId: 'p1', color: 'blue' });
     expect(afterColor.phase).toBe('playing');
     expect(afterColor.pendingPenaltyDraws).toBeGreaterThan(0);
     expect(afterColor.players[afterColor.currentPlayerIndex]!.id).toBe('p1');
+  });
+});
+
+describe('state invariants', () => {
+  it('rejects a round winner that is absent from the state', () => {
+    expect(() => checkRoundEnd(makeState(), 'missing')).toThrow('Cannot check round end for unknown player: missing');
+  });
+
+  it('rejects a WD4 challenge without a previous discard', () => {
+    const state = makeState({
+      phase: 'challenging',
+      currentPlayerIndex: 0,
+      pendingDrawPlayerId: 'p2',
+      discardPile: [{ ...makeCard('wild_draw_four', null, { id: 'wd4' }), chosenColor: 'green' }],
+    });
+
+    expect(() => applyAction(state, { type: 'CHALLENGE', playerId: 'p2' })).toThrow(
+      'Wild Draw Four challenge is missing the previous discard',
+    );
+  });
+
+  it('rejects a WD4 challenge before its color has been recorded', () => {
+    const state = makeState({
+      phase: 'challenging',
+      currentPlayerIndex: 0,
+      pendingDrawPlayerId: 'p2',
+      discardPile: [
+        makeCard('number', 'red', { value: 5, id: 'previous' }),
+        makeCard('wild_draw_four', null, { id: 'wd4' }),
+      ],
+    });
+
+    expect(() => applyAction(state, { type: 'CHALLENGE', playerId: 'p2' })).toThrow(
+      'Wild Draw Four challenge is missing its played card and chosen color',
+    );
+  });
+
+  it('rejects an active penalty without a continuation index', () => {
+    const state = makeState({
+      pendingPenaltyDraws: 1,
+      pendingPenaltyNextPlayerIndex: null,
+      deckLeft: [makeCard('number', 'blue', { value: 1, id: 'penalty' })],
+      deckRight: [],
+      deckLeftInitialCount: 1,
+      deckRightInitialCount: 0,
+    });
+
+    expect(() => applyAction(state, { type: 'DRAW_CARD', playerId: 'p1', side: 'left' })).toThrow(
+      'Active penalty is missing its next player index',
+    );
   });
 });

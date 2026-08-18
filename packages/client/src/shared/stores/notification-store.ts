@@ -16,7 +16,9 @@ function loadPreferences(): NotificationPreferences {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return { ...defaultPreferences, ...JSON.parse(raw) };
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return { ...defaultPreferences };
 }
 
@@ -33,10 +35,10 @@ interface NotificationState {
   setPreference: (key: NotificationEventType, value: boolean) => void;
 }
 
-export const useNotificationStore = create<NotificationState>((set) => ({
+export const useNotificationStore = create<NotificationState>(set => ({
   preferences: loadPreferences(),
   setPreference: (key, value) =>
-    set((state) => {
+    set(state => {
       const next = { ...state.preferences, [key]: value };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return { preferences: next };

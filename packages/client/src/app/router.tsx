@@ -14,32 +14,24 @@ function NavigateRegistrar() {
 }
 
 const allPublicRoutes = [...authRoutes];
-const allProtectedRoutes = [
-  ...authProtectedRoutes,
-  ...gameProtectedRoutes,
-  ...profileProtectedRoutes,
-];
+const allProtectedRoutes = [...authProtectedRoutes, ...gameProtectedRoutes, ...profileProtectedRoutes];
 
 export default function AppRouter() {
   return (
     <BrowserRouter>
       <NavigateRegistrar />
       <Suspense
-        fallback={
-          <div className="flex items-center justify-center h-screen text-muted-foreground">
-            Loading...
-          </div>
-        }
+        fallback={<div className="flex items-center justify-center h-screen text-muted-foreground">Loading...</div>}
       >
         <Routes>
           {/* `/` 由 RootSwitch 智能分发：未登录 → HomePage，已登录 → LobbyPage */}
           <Route path="/" element={<RootSwitch />} />
 
-          {allPublicRoutes.map((r) => (
+          {allPublicRoutes.map(r => (
             <Route key={r.path} path={r.path} element={r.element} />
           ))}
           <Route element={<ProtectedRoute />}>
-            {allProtectedRoutes.map((r) => (
+            {allProtectedRoutes.map(r => (
               <Route key={r.path} path={r.path} element={r.element} />
             ))}
           </Route>

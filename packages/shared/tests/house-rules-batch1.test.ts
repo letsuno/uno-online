@@ -32,20 +32,14 @@ describe('wildFirstTurn (handleFirstDiscard skipWild)', () => {
   });
 
   it('allows wild cards when skipWild is false', () => {
-    const deck: Card[] = [
-      makeCard('wild', null, { id: 'w1' }),
-      makeCard('number', 'red', { value: 3, id: 'r3' }),
-    ];
+    const deck: Card[] = [makeCard('wild', null, { id: 'w1' }), makeCard('number', 'red', { value: 3, id: 'r3' })];
     const result = handleFirstDiscard(deck, false);
     expect(result.topCard.id).toBe('w1');
     expect(result.effect).toEqual({ type: 'choose_color' });
   });
 
   it('allows wild cards when skipWild is undefined (default)', () => {
-    const deck: Card[] = [
-      makeCard('wild', null, { id: 'w1' }),
-      makeCard('number', 'red', { value: 3, id: 'r3' }),
-    ];
+    const deck: Card[] = [makeCard('wild', null, { id: 'w1' }), makeCard('number', 'red', { value: 3, id: 'r3' })];
     const result = handleFirstDiscard(deck);
     expect(result.topCard.id).toBe('w1');
     expect(result.effect).toEqual({ type: 'choose_color' });
@@ -83,11 +77,21 @@ describe('revengeMode', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [d2, makeCard('number', 'red', { value: 1, id: 'extra' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
       // Previous top card is a draw_two (someone attacked p1)
@@ -113,11 +117,21 @@ describe('revengeMode', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [wd4, makeCard('number', 'red', { value: 1, id: 'extra' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
       discardPile: [makeCard('draw_two', 'red', { id: 'prev_d2' })],
@@ -128,7 +142,12 @@ describe('revengeMode', () => {
         houseRules: { ...DEFAULT_HOUSE_RULES, revengeMode: true },
       },
     });
-    const next = applyActionWithHouseRules(state, { type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4_play', chosenColor: 'blue' });
+    const next = applyActionWithHouseRules(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: 'wd4_play',
+      chosenColor: 'blue',
+    });
     // The revenge bonus waits for the WD4 challenge flow to determine who pays.
     expect(next.drawStack).toBe(0);
     expect(next.pendingRevengeDraws).toBe(4);
@@ -137,19 +156,35 @@ describe('revengeMode', () => {
 
   it('consumes the revenge WD4 bonus during accept without using drawStack', () => {
     const wd4 = makeCard('wild_draw_four', null, { id: 'wd4_play' });
-    const deck = Array.from(
-      { length: 12 },
-      (_, i) => makeCard('number', 'green', { value: i % 10, id: `revenge-deck-${i}` }),
+    const deck = Array.from({ length: 12 }, (_, i) =>
+      makeCard('number', 'green', { value: i % 10, id: `revenge-deck-${i}` }),
     );
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [wd4, makeCard('number', 'red', { value: 1, id: 'extra' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       discardPile: [makeCard('draw_two', 'red', { id: 'prev_d2' })],
       currentColor: 'red',
@@ -165,12 +200,16 @@ describe('revengeMode', () => {
     });
 
     const played = applyActionWithHouseRules(state, {
-      type: 'PLAY_CARD', playerId: 'p1', cardId: 'wd4_play',
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: 'wd4_play',
     });
     expect(played.drawStack).toBe(0);
     expect(played.pendingRevengeDraws).toBe(4);
     const colored = applyActionWithHouseRules(played, {
-      type: 'CHOOSE_COLOR', playerId: 'p1', color: 'blue',
+      type: 'CHOOSE_COLOR',
+      playerId: 'p1',
+      color: 'blue',
     });
     const accepted = applyActionWithHouseRules(colored, { type: 'ACCEPT', playerId: 'p2' });
 
@@ -188,12 +227,29 @@ describe('revengeMode', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [wd4, makeCard('number', 'red', { value: 1, id: 'p1-extra' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2-card' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2-card' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       discardPile: [makeCard('draw_two', 'red', { id: 'previous-attack' })],
       currentColor: 'red',
@@ -209,10 +265,14 @@ describe('revengeMode', () => {
     });
 
     const played = applyActionWithHouseRules(state, {
-      type: 'PLAY_CARD', playerId: 'p1', cardId: wd4.id,
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: wd4.id,
     });
     const colored = applyActionWithHouseRules(played, {
-      type: 'CHOOSE_COLOR', playerId: 'p1', color: 'blue',
+      type: 'CHOOSE_COLOR',
+      playerId: 'p1',
+      color: 'blue',
     });
 
     expect(colored.phase).toBe('playing');
@@ -228,16 +288,29 @@ describe('revengeMode', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [wd4, makeCard('number', 'red', { value: 1, id: 'p1-extra' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         {
-          id: 'p2', name: 'Bob',
+          id: 'p2',
+          name: 'Bob',
           hand: [reverse, makeCard('number', 'yellow', { value: 1, id: 'p2-extra' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       discardPile: [makeCard('draw_two', 'red', { id: 'previous-attack' })],
       currentColor: 'red',
@@ -253,13 +326,19 @@ describe('revengeMode', () => {
     });
 
     const played = applyActionWithHouseRules(state, {
-      type: 'PLAY_CARD', playerId: 'p1', cardId: wd4.id,
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: wd4.id,
     });
     const colored = applyActionWithHouseRules(played, {
-      type: 'CHOOSE_COLOR', playerId: 'p1', color: 'blue',
+      type: 'CHOOSE_COLOR',
+      playerId: 'p1',
+      color: 'blue',
     });
     const deflected = applyActionWithHouseRules(colored, {
-      type: 'PLAY_CARD', playerId: 'p2', cardId: reverse.id,
+      type: 'PLAY_CARD',
+      playerId: 'p2',
+      cardId: reverse.id,
     });
 
     expect(deflected.phase).toBe('playing');
@@ -276,16 +355,29 @@ describe('revengeMode', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [wd4, makeCard('number', 'red', { value: 1, id: 'p1-extra' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         {
-          id: 'p2', name: 'Bob',
+          id: 'p2',
+          name: 'Bob',
           hand: [skip, makeCard('number', 'yellow', { value: 1, id: 'p2-extra' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       discardPile: [makeCard('draw_two', 'red', { id: 'previous-attack' })],
       currentColor: 'red',
@@ -301,13 +393,19 @@ describe('revengeMode', () => {
     });
 
     const played = applyActionWithHouseRules(state, {
-      type: 'PLAY_CARD', playerId: 'p1', cardId: wd4.id,
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: wd4.id,
     });
     const colored = applyActionWithHouseRules(played, {
-      type: 'CHOOSE_COLOR', playerId: 'p1', color: 'blue',
+      type: 'CHOOSE_COLOR',
+      playerId: 'p1',
+      color: 'blue',
     });
     const deflected = applyActionWithHouseRules(colored, {
-      type: 'PLAY_CARD', playerId: 'p2', cardId: skip.id,
+      type: 'PLAY_CARD',
+      playerId: 'p2',
+      cardId: skip.id,
     });
 
     expect(deflected.phase).toBe('playing');
@@ -323,12 +421,29 @@ describe('revengeMode', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [wd4, makeCard('number', 'red', { value: 1, id: 'matching-color' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2-card' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2-card' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       discardPile: [makeCard('draw_two', 'red', { id: 'previous-attack' })],
       currentColor: 'red',
@@ -340,13 +455,18 @@ describe('revengeMode', () => {
     });
 
     const played = applyActionWithHouseRules(state, {
-      type: 'PLAY_CARD', playerId: 'p1', cardId: wd4.id,
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: wd4.id,
     });
     const colored = applyActionWithHouseRules(played, {
-      type: 'CHOOSE_COLOR', playerId: 'p1', color: 'blue',
+      type: 'CHOOSE_COLOR',
+      playerId: 'p1',
+      color: 'blue',
     });
     const challenged = applyActionWithHouseRules(colored, {
-      type: 'CHALLENGE', playerId: 'p2',
+      type: 'CHALLENGE',
+      playerId: 'p2',
     });
 
     expect(challenged.lastAction).toMatchObject({
@@ -365,12 +485,29 @@ describe('revengeMode', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [wd4, makeCard('number', 'blue', { value: 1, id: 'different-color' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'yellow', { value: 1, id: 'p2-card' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'yellow', { value: 1, id: 'p2-card' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       discardPile: [makeCard('draw_two', 'red', { id: 'previous-attack' })],
       currentColor: 'red',
@@ -382,13 +519,18 @@ describe('revengeMode', () => {
     });
 
     const played = applyActionWithHouseRules(state, {
-      type: 'PLAY_CARD', playerId: 'p1', cardId: wd4.id,
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: wd4.id,
     });
     const colored = applyActionWithHouseRules(played, {
-      type: 'CHOOSE_COLOR', playerId: 'p1', color: 'green',
+      type: 'CHOOSE_COLOR',
+      playerId: 'p1',
+      color: 'green',
     });
     const challenged = applyActionWithHouseRules(colored, {
-      type: 'CHALLENGE', playerId: 'p2',
+      type: 'CHALLENGE',
+      playerId: 'p2',
     });
 
     expect(challenged.lastAction).toMatchObject({
@@ -408,16 +550,29 @@ describe('revengeMode', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [firstWd4, makeCard('number', 'red', { value: 1, id: 'p1-extra' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         {
-          id: 'p2', name: 'Bob',
+          id: 'p2',
+          name: 'Bob',
           hand: [counterWd4, makeCard('number', 'yellow', { value: 1, id: 'p2-extra' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       discardPile: [makeCard('draw_two', 'red', { id: 'previous-attack' })],
       currentColor: 'red',
@@ -433,10 +588,14 @@ describe('revengeMode', () => {
     });
 
     const played = applyActionWithHouseRules(state, {
-      type: 'PLAY_CARD', playerId: 'p1', cardId: firstWd4.id,
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: firstWd4.id,
     });
     const colored = applyActionWithHouseRules(played, {
-      type: 'CHOOSE_COLOR', playerId: 'p1', color: 'blue',
+      type: 'CHOOSE_COLOR',
+      playerId: 'p1',
+      color: 'blue',
     });
     const countered = applyActionWithHouseRules(colored, {
       type: 'PLAY_CARD',
@@ -460,19 +619,28 @@ describe('revengeMode', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [firstWd4, makeCard('number', 'red', { value: 1, id: 'p1-extra-uncolored' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         {
-          id: 'p2', name: 'Bob',
+          id: 'p2',
+          name: 'Bob',
           hand: [counterWd4, makeCard('number', 'yellow', { value: 1, id: 'p2-extra-uncolored' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
         {
-          id: 'p3', name: 'Carol',
+          id: 'p3',
+          name: 'Carol',
           hand: [makeCard('number', 'green', { value: 2, id: 'p3-card-uncolored' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
       ],
       settings: {
@@ -485,10 +653,14 @@ describe('revengeMode', () => {
       },
     });
     const played = applyActionWithHouseRules(state, {
-      type: 'PLAY_CARD', playerId: 'p1', cardId: firstWd4.id,
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: firstWd4.id,
     });
     const challenged = applyActionWithHouseRules(played, {
-      type: 'CHOOSE_COLOR', playerId: 'p1', color: 'blue',
+      type: 'CHOOSE_COLOR',
+      playerId: 'p1',
+      color: 'blue',
     });
     const rejected = applyActionWithHouseRules(challenged, {
       type: 'PLAY_CARD',
@@ -507,12 +679,29 @@ describe('revengeMode', () => {
       drawStack: 2,
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [drawTwo, makeCard('number', 'red', { value: 1, id: 'p1-extra' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2-card' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2-card' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       discardPile: [makeCard('draw_two', 'red', { id: 'previous-attack' })],
       currentColor: 'red',
@@ -528,7 +717,9 @@ describe('revengeMode', () => {
     });
 
     const countered = applyActionWithHouseRules(state, {
-      type: 'PLAY_CARD', playerId: 'p1', cardId: drawTwo.id,
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: drawTwo.id,
     });
 
     expect(countered.drawStack).toBe(4);
@@ -541,11 +732,29 @@ describe('revengeMode', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice', hand: [wd4],
-          score: 0, connected: true, calledUno: false,
+          id: 'p1',
+          name: 'Alice',
+          hand: [wd4],
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2-card' })], score: 0, connected: true, calledUno: false },
-        { id: 'p3', name: 'Carol', hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2-card' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
+        {
+          id: 'p3',
+          name: 'Carol',
+          hand: [makeCard('number', 'green', { value: 2, id: 'p3-card' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
       ],
       discardPile: [makeCard('draw_two', 'red', { id: 'previous-attack' })],
       currentColor: 'red',
@@ -557,7 +766,9 @@ describe('revengeMode', () => {
     });
 
     const won = applyActionWithHouseRules(state, {
-      type: 'PLAY_CARD', playerId: 'p1', cardId: wd4.id,
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: wd4.id,
     });
 
     expect(won.phase).toBe('round_end');
@@ -572,11 +783,21 @@ describe('revengeMode', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [d2, makeCard('number', 'red', { value: 1, id: 'extra' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
       // Previous top card is a normal number card (no attack)
@@ -600,11 +821,21 @@ describe('revengeMode', () => {
     const state = makeState({
       players: [
         {
-          id: 'p1', name: 'Alice',
+          id: 'p1',
+          name: 'Alice',
           hand: [d2, makeCard('number', 'red', { value: 1, id: 'extra' })],
-          score: 0, connected: true, calledUno: false,
+          score: 0,
+          connected: true,
+          calledUno: false,
         },
-        { id: 'p2', name: 'Bob', hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })], score: 0, connected: true, calledUno: false },
+        {
+          id: 'p2',
+          name: 'Bob',
+          hand: [makeCard('number', 'blue', { value: 1, id: 'p2c' })],
+          score: 0,
+          connected: true,
+          calledUno: false,
+        },
         { id: 'p3', name: 'Carol', hand: [], score: 0, connected: true, calledUno: false },
       ],
       discardPile: [makeCard('draw_two', 'red', { id: 'prev_d2' })],

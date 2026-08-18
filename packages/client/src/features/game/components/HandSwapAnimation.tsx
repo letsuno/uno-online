@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { motion } from 'framer-motion';
 import CardBack from './CardBack';
 
-export interface ActiveHandSwap {
+interface ActiveHandSwap {
   id: string;
   from: { x: number; y: number };
   to: { x: number; y: number };

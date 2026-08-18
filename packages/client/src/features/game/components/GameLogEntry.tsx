@@ -30,13 +30,20 @@ function formatTime(timestamp: number): string {
 function getActionDescription(entry: LogEntry): string {
   if (entry.type.startsWith('play_')) return entry.isJumpIn ? '抢出' : '打出';
   switch (entry.type) {
-    case 'draw': return '摸牌';
-    case 'call_uno': return '喊出';
-    case 'catch_uno': return '抓到';
-    case 'challenge': return '质疑';
-    case 'accept': return '接受';
-    case 'pass': return '过牌';
-    default: return '';
+    case 'draw':
+      return '摸牌';
+    case 'call_uno':
+      return '喊出';
+    case 'catch_uno':
+      return '抓到';
+    case 'challenge':
+      return '质疑';
+    case 'accept':
+      return '接受';
+    case 'pass':
+      return '过牌';
+    default:
+      return '';
   }
 }
 
@@ -58,13 +65,9 @@ export default function GameLogEntry({ entry }: GameLogEntryProps) {
         isJumpIn && 'bg-sky-500/10 border border-sky-500/20 rounded-lg',
       )}
     >
-      <span className="text-2xs text-muted-foreground min-w-8 shrink-0">
-        {formatTime(entry.timestamp)}
-      </span>
+      <span className="text-2xs text-muted-foreground min-w-8 shrink-0">{formatTime(entry.timestamp)}</span>
 
-      <span className={cn('text-2xs font-bold shrink-0', getPlayerColor(entry.playerName))}>
-        {entry.playerName}
-      </span>
+      <span className={cn('text-2xs font-bold shrink-0', getPlayerColor(entry.playerName))}>{entry.playerName}</span>
 
       <span className="text-2xs text-muted-foreground shrink-0">
         {getActionDescription(entry)}
@@ -72,11 +75,7 @@ export default function GameLogEntry({ entry }: GameLogEntryProps) {
       </span>
 
       {entry.card && (
-        <Card
-          card={entry.card}
-          mini
-          className="!w-card-log-w !h-card-log-h !text-2xs !border !rounded-none shrink-0"
-        />
+        <Card card={entry.card} mini className="!w-card-log-w !h-card-log-h !text-2xs !border !rounded-none shrink-0" />
       )}
 
       {entry.targetName && (
@@ -88,11 +87,7 @@ export default function GameLogEntry({ entry }: GameLogEntryProps) {
         </>
       )}
 
-      {entry.extra && (
-        <span className="text-2xs text-muted-foreground">
-          {entry.extra}
-        </span>
-      )}
+      {entry.extra && <span className="text-2xs text-muted-foreground">{entry.extra}</span>}
     </div>
   );
 }

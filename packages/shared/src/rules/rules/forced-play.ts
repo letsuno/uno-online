@@ -10,7 +10,7 @@ export const forcedPlay: HouseRulePlugin = {
     label: '强制出牌',
     description: '有能出的牌就必须出',
   },
-  isEnabled: (hr) => hr.forcedPlay,
+  isEnabled: hr => hr.forcedPlay,
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     if (action.type !== 'DRAW_CARD') return { handled: false };
     if (hasPendingDrawObligation(state)) return { handled: false };

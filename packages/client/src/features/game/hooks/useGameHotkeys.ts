@@ -9,7 +9,7 @@ function isInputFocused(e: KeyboardEvent): boolean {
 }
 
 export function useGameHotkeys(handlers: HandlerMap): void {
-  const overrides = useHotkeyStore((s) => s.overrides);
+  const overrides = useHotkeyStore(s => s.overrides);
   const ref = useRef({ handlers, overrides });
   ref.current = { handlers, overrides };
 

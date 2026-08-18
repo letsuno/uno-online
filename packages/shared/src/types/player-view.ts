@@ -1,6 +1,7 @@
 import type { Card } from './card.js';
 import type { GameState } from './game.js';
 import type { BotConfig } from './bot.js';
+import type { UserRole } from './role.js';
 
 export interface PlayerViewPlayer {
   id: string;
@@ -8,15 +9,15 @@ export interface PlayerViewPlayer {
   hand: Card[];
   handCount: number;
   score: number;
-  roundWins?: number;
+  roundWins: number;
   connected: boolean;
   autopilot: boolean;
   calledUno: boolean;
-  unoCaught?: boolean;
-  eliminated?: boolean;
+  unoCaught: boolean;
+  eliminated: boolean;
   teamId?: number;
-  avatarUrl?: string | null;
-  role?: string;
+  avatarUrl: string | null;
+  role: UserRole;
   isBot: boolean;
   botConfig?: BotConfig;
 }
@@ -30,7 +31,7 @@ export interface PlayerView {
   discardPile: Card[];
   currentColor: GameState['currentColor'];
   drawStack: number;
-  pendingPenaltyDraws?: number;
+  pendingPenaltyDraws: number;
   deckLeftCount: number;
   deckRightCount: number;
   roundNumber: number;
@@ -38,8 +39,8 @@ export interface PlayerView {
   settings: GameState['settings'];
   pendingDrawPlayerId: string | null;
   lastAction: GameState['lastAction'];
-  deckHash?: string;
-  discardPileCount?: number;
-  gameStartedAt?: number;
-  turnStartedAt?: number;
+  deckHash: string;
+  discardPileCount: number;
+  gameStartedAt: number;
+  turnStartedAt: number;
 }

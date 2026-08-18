@@ -24,4 +24,3 @@ export function validateNickname(nickname: string): { valid: boolean; error?: st
   if (!/[\p{L}\p{N}]/u.test(cleaned)) return { valid: false, error: '昵称必须包含至少一个字母或数字' };
   return { valid: true };
 }
-

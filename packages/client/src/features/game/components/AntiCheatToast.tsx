@@ -19,9 +19,7 @@ export default function AntiCheatToast() {
       { delay: 4600, value: 91 },
       { delay: 5200, value: 100 },
     ];
-    const timers = steps.map(({ delay, value }) =>
-      setTimeout(() => setProgress(value), delay),
-    );
+    const timers = steps.map(({ delay, value }) => setTimeout(() => setProgress(value), delay));
     const switchTimer = setTimeout(() => setPhase('running'), 5600);
     const doneTimer = setTimeout(() => setPhase('done'), 9600);
     return () => {
@@ -59,7 +57,10 @@ export default function AntiCheatToast() {
             <div className="ace-running-content">
               <div className="ace-status-row">
                 <span className="ace-status-label">反作弊系统已加载</span>
-                <span className="ace-status-badge"><span className="ace-status-dot" />运行中</span>
+                <span className="ace-status-badge">
+                  <span className="ace-status-dot" />
+                  运行中
+                </span>
               </div>
               <div className="ace-desc">请遵守游戏规则，享受公平对局</div>
             </div>

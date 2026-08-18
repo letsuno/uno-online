@@ -11,8 +11,11 @@ export interface LastPlayed {
  * 每个玩家最近打出的牌（5 秒后自动清除）。
  * 桌面 GameTable（PlayerNode 迷你牌）与移动端 OpponentRow 共用。
  */
-export function useLastPlayedCards(): { lastPlayedCards: Map<string, LastPlayed>; clearLastPlayed: (playerId: string) => void } {
-  const lastAction = useGameStore((s) => s.lastAction);
+export function useLastPlayedCards(): {
+  lastPlayedCards: Map<string, LastPlayed>;
+  clearLastPlayed: (playerId: string) => void;
+} {
+  const lastAction = useGameStore(s => s.lastAction);
   const [lastPlayedCards, setLastPlayedCards] = useState<Map<string, LastPlayed>>(new Map());
 
   useEffect(() => {
@@ -20,7 +23,7 @@ export function useLastPlayedCards(): { lastPlayedCards: Map<string, LastPlayed>
     const topCard = useGameStore.getState().discardPile.at(-1);
     if (!topCard) return;
 
-    setLastPlayedCards((prev) => {
+    setLastPlayedCards(prev => {
       const next = new Map(prev);
       next.set(lastAction.playerId, { card: topCard, time: Date.now() });
       return next;
@@ -28,7 +31,7 @@ export function useLastPlayedCards(): { lastPlayedCards: Map<string, LastPlayed>
 
     const playerId = lastAction.playerId;
     const timer = window.setTimeout(() => {
-      setLastPlayedCards((prev) => {
+      setLastPlayedCards(prev => {
         const next = new Map(prev);
         next.delete(playerId);
         return next;
@@ -39,7 +42,7 @@ export function useLastPlayedCards(): { lastPlayedCards: Map<string, LastPlayed>
   }, [lastAction]);
 
   const clearLastPlayed = (playerId: string) => {
-    setLastPlayedCards((prev) => {
+    setLastPlayedCards(prev => {
       if (!prev.has(playerId)) return prev;
       const next = new Map(prev);
       next.delete(playerId);

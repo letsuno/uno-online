@@ -1,5 +1,6 @@
-import type { Server as SocketIOServer, Socket } from 'socket.io';
-import { ROLE_CONFIG, type UserRole } from '@uno-online/shared';
+import type { UnoServer as SocketIOServer, UnoSocket as Socket } from '../../../ws/types.js';
+import { ROLE_CONFIG } from '@uno-online/shared';
+import { hasExactKeys, isNonEmptyString } from '../../../ws/payload-validation.js';
 
 const VALID_ITEMS = ['🥚', '🍅', '🌹', '💩', '🐷', '👍', '💖'];
 const MIN_THROW_INTERVAL_MS = 300;
@@ -7,16 +8,20 @@ const MIN_THROW_INTERVAL_MS = 300;
 const throwTimestamps = new Map<string, number>();
 
 export function registerInteractionEvents(socket: Socket, io: SocketIOServer) {
-  socket.on('throw:item', (payload: { targetId: string; item: string }, callback?: (res: any) => void) => {
-    const userId = socket.data.user?.userId;
-    const roomCode = socket.data.roomCode;
-    if (!userId || !roomCode) return callback?.({ success: false, error: 'Not in a room' });
-
-    if (!VALID_ITEMS.includes(payload.item)) {
-      return callback?.({ success: false, error: 'Invalid item' });
+  socket.on('throw:item', (payload, callback) => {
+    if (
+      !hasExactKeys(payload, ['targetId', 'item']) ||
+      !isNonEmptyString(payload['targetId']) ||
+      typeof payload['item'] !== 'string' ||
+      !VALID_ITEMS.includes(payload['item'])
+    ) {
+      return callback?.({ success: false, error: '互动请求无效' });
     }
+    const userId = socket.data.user.userId;
+    const roomCode = socket.data.roomCode;
+    if (!roomCode) return callback?.({ success: false, error: 'Not in a room' });
 
-    const role = (socket.data.user?.role ?? 'normal') as UserRole;
+    const role = socket.data.user.role;
     const cooldownMs = Math.max(ROLE_CONFIG[role].cooldownMs, MIN_THROW_INTERVAL_MS);
 
     const lastThrow = throwTimestamps.get(userId);

@@ -10,11 +10,7 @@ function getCardSymbol(card: Card): string | null {
   return null;
 }
 
-export function canPlayCard(
-  card: Card,
-  topCard: Card,
-  currentColor: Color,
-): boolean {
+export function canPlayCard(card: Card, topCard: Card, currentColor: Color): boolean {
   if (isWildCard(card)) {
     return true;
   }
@@ -32,18 +28,11 @@ export function canPlayCard(
   return false;
 }
 
-export function getPlayableCards(
-  hand: readonly Card[],
-  topCard: Card,
-  currentColor: Color,
-): Card[] {
+export function getPlayableCards(hand: readonly Card[], topCard: Card, currentColor: Color): Card[] {
   return hand.filter(card => canPlayCard(card, topCard, currentColor));
 }
 
-export function isValidWildDrawFour(
-  hand: readonly Card[],
-  currentColor: Color,
-): boolean {
+export function isValidWildDrawFour(hand: readonly Card[], currentColor: Color): boolean {
   return !hand.some(card => isColoredCard(card) && card.color === currentColor);
 }
 
@@ -53,10 +42,9 @@ export function canRespondToDrawStack(card: Card, topCard: Card, houseRules?: Ho
   return (
     (houseRules.stackDrawTwo && card.type === 'draw_two' && topCard.type === 'draw_two') ||
     (houseRules.stackDrawFour && card.type === 'wild_draw_four' && topCard.type === 'wild_draw_four') ||
-    (houseRules.crossStack && (
-      (card.type === 'draw_two' && topCard.type === 'wild_draw_four') ||
-      (card.type === 'wild_draw_four' && topCard.type === 'draw_two')
-    )) ||
+    (houseRules.crossStack &&
+      ((card.type === 'draw_two' && topCard.type === 'wild_draw_four') ||
+        (card.type === 'wild_draw_four' && topCard.type === 'draw_two'))) ||
     (houseRules.reverseDeflectDrawTwo && card.type === 'reverse' && topCard.type === 'draw_two') ||
     (houseRules.reverseDeflectDrawFour && card.type === 'reverse' && topCard.type === 'wild_draw_four') ||
     (houseRules.skipDeflect && card.type === 'skip')

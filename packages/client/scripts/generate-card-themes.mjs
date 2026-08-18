@@ -30,18 +30,24 @@ function text(str, fontSize, attrs = '') {
   const run = fredoka.layout(str);
   let x = 0;
   const parts = [];
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity;
   for (const g of run.glyphs) {
     const b = g.bbox;
     if (b.width > 0) {
-      minX = Math.min(minX, x + b.minX); maxX = Math.max(maxX, x + b.maxX);
-      minY = Math.min(minY, b.minY); maxY = Math.max(maxY, b.maxY);
+      minX = Math.min(minX, x + b.minX);
+      maxX = Math.max(maxX, x + b.maxX);
+      minY = Math.min(minY, b.minY);
+      maxY = Math.max(maxY, b.maxY);
       parts.push(`<path transform="translate(${x} 0)" d="${g.path.toSVG()}"/>`);
     }
     x += g.advanceWidth;
   }
   const s = fontSize / UPEM;
-  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  const cx = (minX + maxX) / 2,
+    cy = (minY + maxY) / 2;
   return `<g ${attrs} transform="scale(${s} ${-s}) translate(${-cx} ${-cy})">${parts.join('')}</g>`;
 }
 
@@ -65,7 +71,9 @@ function cornerSymbol(kind, fill, scale = 0.38) {
 }
 
 const underline = (v, y, w, color, h = 8, opacity = 1) =>
-  v === 6 || v === 9 ? `<rect x="${-w / 2}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="${color}" opacity="${opacity}"/>` : '';
+  v === 6 || v === 9
+    ? `<rect x="${-w / 2}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="${color}" opacity="${opacity}"/>`
+    : '';
 
 const miniCard = (x, y, w, h, fill, stroke, strokeW, rot = 12) =>
   `<rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="${w * 0.18}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}" transform="rotate(${rot} ${x} ${y})"/>`;
@@ -91,25 +99,34 @@ function themeRetro(card) {
     center = `${ELL}${miniCard(-17, 12, 36, 52, c, '#fff', 5)}${miniCard(17, -12, 36, 52, c, '#fff', 5)}`;
   } else if (type === 'wild') {
     const wedges = ALL.map((col, i) => {
-      const a0 = (i * Math.PI) / 2, a1 = ((i + 1) * Math.PI) / 2;
-      const rx = 88, ry = 54;
+      const a0 = (i * Math.PI) / 2,
+        a1 = ((i + 1) * Math.PI) / 2;
+      const rx = 88,
+        ry = 54;
       return `<path d="M0 0L${Math.cos(a0) * rx} ${Math.sin(a0) * ry}A${rx} ${ry} 0 0 1 ${Math.cos(a1) * rx} ${Math.sin(a1) * ry}Z" fill="${col}"/>`;
     }).join('');
     center = `<g transform="rotate(-32)"><ellipse rx="92" ry="56" fill="#fff"/>${wedges}</g>`;
   } else if (type === 'wild_draw_four') {
-    center = [[-39, 8, COLORS.yellow], [-13, -4, COLORS.green], [13, -4, COLORS.blue], [39, 8, COLORS.red]]
-      .map(([x, y, col]) => miniCard(x, y, 34, 52, col, '#fff', 5)).join('');
+    center = [
+      [-39, 8, COLORS.yellow],
+      [-13, -4, COLORS.green],
+      [13, -4, COLORS.blue],
+      [39, 8, COLORS.red],
+    ]
+      .map(([x, y, col]) => miniCard(x, y, 34, 52, col, '#fff', 5))
+      .join('');
   }
 
-  const cornerContent = (fill) => {
+  const cornerContent = fill => {
     if (type === 'skip' || type === 'reverse') return cornerSymbol(type, fill);
     const label = { number: String(value), draw_two: '+2', wild: '', wild_draw_four: '+4' }[type];
     if (!label) return '';
     return `${text(label, 46, `fill="${fill}"`)}${underline(value, 25, 30, fill, 5.5)}`;
   };
-  const corner = (x, y, rot = 0) => cornerContent('#fff')
-    ? `<g transform="translate(${x} ${y}) rotate(${rot})"><g transform="translate(2 3)">${cornerContent('rgba(0,0,0,.35)')}</g>${cornerContent('#fff')}</g>`
-    : '';
+  const corner = (x, y, rot = 0) =>
+    cornerContent('#fff')
+      ? `<g transform="translate(${x} ${y}) rotate(${rot})"><g transform="translate(2 3)">${cornerContent('rgba(0,0,0,.35)')}</g>${cornerContent('#fff')}</g>`
+      : '';
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300">
   <rect width="200" height="300" rx="52" fill="#fff"/>
@@ -128,10 +145,11 @@ function themeMinimal(card) {
   const ground = isWild ? '#23232e' : c;
   const tall = value === 6 || value === 9;
 
-  const dots = (r, d) => ALL.map((col, i) => {
-    const a = (i * Math.PI) / 2 - Math.PI / 4;
-    return `<circle cx="${Math.cos(a) * d}" cy="${Math.sin(a) * d}" r="${r}" fill="${col}"/>`;
-  }).join('');
+  const dots = (r, d) =>
+    ALL.map((col, i) => {
+      const a = (i * Math.PI) / 2 - Math.PI / 4;
+      return `<circle cx="${Math.cos(a) * d}" cy="${Math.sin(a) * d}" r="${r}" fill="${col}"/>`;
+    }).join('');
 
   let center = '';
   if (type === 'number') {
@@ -154,8 +172,8 @@ function themeMinimal(card) {
     if (!label) return '';
     return `${text(label, 38, 'fill="rgba(255,255,255,.92)"')}${underline(value, 22, 26, 'rgba(255,255,255,.92)', 4.5)}`;
   };
-  const corner = (x, y, rot = 0) => cornerContent()
-    ? `<g transform="translate(${x} ${y}) rotate(${rot})">${cornerContent()}</g>` : '';
+  const corner = (x, y, rot = 0) =>
+    cornerContent() ? `<g transform="translate(${x} ${y}) rotate(${rot})">${cornerContent()}</g>` : '';
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300">
   <rect width="200" height="300" rx="52" fill="${ground}"/>
@@ -171,9 +189,18 @@ function themeMinimal(card) {
 
 /** hex 颜色线性混合：mix('#ff3366', '#ffffff', 0.25) */
 function mix(hexA, hexB, t) {
-  const a = hexA.match(/\w\w/g).map((x) => parseInt(x, 16));
-  const b = hexB.match(/\w\w/g).map((x) => parseInt(x, 16));
-  return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, '0')).join('');
+  const a = hexA.match(/\w\w/g).map(x => parseInt(x, 16));
+  const b = hexB.match(/\w\w/g).map(x => parseInt(x, 16));
+  return (
+    '#' +
+    a
+      .map((v, i) =>
+        Math.round(v + (b[i] - v) * t)
+          .toString(16)
+          .padStart(2, '0'),
+      )
+      .join('')
+  );
 }
 
 function themeNeon(card) {
@@ -196,14 +223,13 @@ function themeNeon(card) {
 
   /** 柔光：模糊副本垫底 + 清晰实心层 */
   const glow = (inner, opacity = 0.45) => `<g filter="url(#glow)" opacity="${opacity}">${inner}</g>${inner}`;
-  const solidText = (txt, size, dy = 0, fill = bright) => glow(
-    `<g transform="translate(0 ${dy})">${text(txt, size, `fill="${fill}"`)}</g>`,
-  );
+  const solidText = (txt, size, dy = 0, fill = bright) =>
+    glow(`<g transform="translate(0 ${dy})">${text(txt, size, `fill="${fill}"`)}</g>`);
 
   let center = '';
   if (type === 'number') {
-    center = solidText(String(value), tall ? 116 : 128, tall ? -10 : 0)
-      + (tall ? underline(value, 50, 60, bright) : '');
+    center =
+      solidText(String(value), tall ? 116 : 128, tall ? -10 : 0) + (tall ? underline(value, 50, 60, bright) : '');
   } else if (type === 'draw_two') {
     center = solidText('+2', 96);
   } else if (type === 'wild_draw_four') {
@@ -211,7 +237,8 @@ function themeNeon(card) {
   } else if (type === 'wild') {
     center = ALL.map((col, i) => {
       const a = (i * Math.PI) / 2 - Math.PI / 4;
-      const cx = Math.cos(a) * 36, cy = Math.sin(a) * 36;
+      const cx = Math.cos(a) * 36,
+        cy = Math.sin(a) * 36;
       return `<circle cx="${cx}" cy="${cy}" r="17" fill="${col}" filter="url(#glow)" opacity=".5"/><circle cx="${cx}" cy="${cy}" r="17" fill="${col}"/>`;
     }).join('');
   } else if (type === 'skip') {
@@ -226,8 +253,8 @@ function themeNeon(card) {
     if (!label) return '';
     return `${text(label, 40, `fill="${isWild ? '#f2f2f8' : bright}"`)}${underline(value, 23, 27, bright, 5)}`;
   };
-  const corner = (x, y, rot = 0) => cornerContent()
-    ? `<g transform="translate(${x} ${y}) rotate(${rot})">${cornerContent()}</g>` : '';
+  const corner = (x, y, rot = 0) =>
+    cornerContent() ? `<g transform="translate(${x} ${y}) rotate(${rot})">${cornerContent()}</g>` : '';
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300">
   <defs>${gradient}

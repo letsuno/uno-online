@@ -9,7 +9,7 @@ export const misplayPenalty: HouseRulePlugin = {
     label: '误操作惩罚 / 暗牌模式',
     description: '出非法牌罚摸 1 张',
   },
-  isEnabled: (hr) => hr.misplayPenalty || hr.blindDraw,
+  isEnabled: hr => hr.misplayPenalty || hr.blindDraw,
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     if (action.type !== 'PLAY_CARD') return { handled: false };
     const currentPlayer = state.players[state.currentPlayerIndex];

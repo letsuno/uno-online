@@ -4,7 +4,19 @@ import type { Card } from '../src/types/card';
 import type { Player } from '../src/types/game';
 
 function makePlayer(id: string, hand: Card[]): Player {
-  return { id, name: id, hand, score: 0, connected: true, calledUno: false };
+  return {
+    id,
+    name: id,
+    hand,
+    score: 0,
+    roundWins: 0,
+    connected: true,
+    autopilot: false,
+    calledUno: false,
+    unoCaught: false,
+    eliminated: false,
+    isBot: false,
+  };
 }
 
 describe('calculateRoundScore', () => {
@@ -49,5 +61,11 @@ describe('calculateRoundScores', () => {
     expect(scores['winner']).toBe(55);
     expect(scores['p2']).toBe(0);
     expect(scores['p3']).toBe(0);
+  });
+
+  it('rejects a winner that is not in the player list', () => {
+    expect(() => calculateRoundScores([makePlayer('p1', [])], 'missing')).toThrow(
+      'Cannot calculate round scores for unknown winner: missing',
+    );
   });
 });

@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function getRoleColor(role?: string): string | undefined {
+export function getRoleColor(role?: UserRole): string | undefined {
   if (!role || role === 'normal') return undefined;
-  return ROLE_CONFIG[role as UserRole]?.color;
+  return ROLE_CONFIG[role].color;
 }

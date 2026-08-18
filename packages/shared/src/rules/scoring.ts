@@ -6,10 +6,10 @@ export function calculateRoundScore(hand: readonly Card[]): number {
   return hand.reduce((sum, card) => sum + getCardScore(card), 0);
 }
 
-export function calculateRoundScores(
-  players: readonly Player[],
-  winnerId: string,
-): Record<string, number> {
+export function calculateRoundScores(players: readonly Player[], winnerId: string): Record<string, number> {
+  if (!players.some(player => player.id === winnerId)) {
+    throw new Error(`Cannot calculate round scores for unknown winner: ${winnerId}`);
+  }
   const scores: Record<string, number> = {};
   let winnerPoints = 0;
 

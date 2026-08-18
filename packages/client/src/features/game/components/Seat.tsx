@@ -59,25 +59,27 @@ export default function Seat({ index, player, isMe, isOwnerSeat, compact = false
             isMe && 'ring-2 ring-primary ring-offset-1 ring-offset-background',
           )}
           style={
-            botDiff
-              ? { background: botDiff.avatarBg }
-              : { background: AVATAR_COLORS[index % AVATAR_COLORS.length] }
+            botDiff ? { background: botDiff.avatarBg } : { background: AVATAR_COLORS[index % AVATAR_COLORS.length] }
           }
         >
           {isBot ? (
-            <BotAvatarIcon difficulty={player.botConfig?.difficulty} size={compact ? 16 : 22} className="text-white drop-shadow-sm" />
+            <BotAvatarIcon
+              difficulty={player.botConfig?.difficulty}
+              size={compact ? 16 : 22}
+              className="text-white drop-shadow-sm"
+            />
           ) : (
             <>
-              <span style={{ fontSize: compact ? 14 : 20 }}>
-                {AVATAR_EMOJIS[index % AVATAR_EMOJIS.length]}
-              </span>
+              <span style={{ fontSize: compact ? 14 : 20 }}>{AVATAR_EMOJIS[index % AVATAR_EMOJIS.length]}</span>
               {player.avatarUrl && (
                 <img
                   src={player.avatarUrl}
                   alt={player.nickname}
                   className="absolute inset-0 w-full h-full object-cover rounded-full"
                   referrerPolicy="no-referrer"
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  onError={e => {
+                    e.currentTarget.style.display = 'none';
+                  }}
                 />
               )}
             </>
@@ -94,10 +96,7 @@ export default function Seat({ index, player, isMe, isOwnerSeat, compact = false
 
         {/* Owner crown */}
         {isOwnerSeat && (
-          <Crown
-            size={compact ? 10 : 13}
-            className="absolute -top-1.5 -left-1 text-primary drop-shadow fill-primary"
-          />
+          <Crown size={compact ? 10 : 13} className="absolute -top-1.5 -left-1 text-primary drop-shadow fill-primary" />
         )}
 
         {/* Disconnect overlay icon */}
@@ -124,11 +123,7 @@ export default function Seat({ index, player, isMe, isOwnerSeat, compact = false
           {displayName}
         </span>
         {!isBot && player.connected && (
-          <PlayerVoiceStatus
-            playerId={player.userId}
-            playerName={player.nickname}
-            isSelf={isMe}
-          />
+          <PlayerVoiceStatus playerId={player.userId} playerName={player.nickname} isSelf={isMe} />
         )}
       </div>
 

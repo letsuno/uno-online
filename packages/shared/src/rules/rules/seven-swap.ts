@@ -9,7 +9,7 @@ export const sevenSwapPost: HouseRulePlugin = {
     label: '7 牌交换',
     description: '打出 7 时与下家交换手牌',
   },
-  isEnabled: (hr) => hr.sevenSwapHands,
+  isEnabled: hr => hr.sevenSwapHands,
   postProcess: (before: GameState, after: GameState, action: GameAction, _ctx: RuleContext): GameState => {
     if (action.type !== 'PLAY_CARD') return after;
     if (after === before) return after;
@@ -27,7 +27,7 @@ export const sevenSwapTarget: HouseRulePlugin = {
     label: '7 牌交换（选择目标）',
     description: '打出 7 时选择交换手牌的目标',
   },
-  isEnabled: (hr) => hr.sevenSwapHands,
+  isEnabled: hr => hr.sevenSwapHands,
   preCheck: (state: GameState, action: GameAction, ctx: RuleContext): PreCheckResult => {
     if (action.type !== 'CHOOSE_SWAP_TARGET') return { handled: false };
     if (state.phase !== 'choosing_swap_target') return { handled: true, state };
@@ -39,11 +39,15 @@ export const sevenSwapTarget: HouseRulePlugin = {
     const currentHand = [...state.players[state.currentPlayerIndex]!.hand];
     const targetHand = [...state.players[targetIdx]!.hand];
     const players = state.players.map((p, i) => {
-      if (i === state.currentPlayerIndex) return { ...p, hand: targetHand, calledUno: targetHand.length === 1, unoCaught: false };
+      if (i === state.currentPlayerIndex)
+        return { ...p, hand: targetHand, calledUno: targetHand.length === 1, unoCaught: false };
       if (i === targetIdx) return { ...p, hand: currentHand, calledUno: currentHand.length === 1, unoCaught: false };
       return p;
     });
     const nextIdx = ctx.getNextAliveIndex(players, state.currentPlayerIndex, state.direction);
-    return { handled: true, state: { ...state, players, phase: 'playing', currentPlayerIndex: nextIdx, lastAction: action } };
+    return {
+      handled: true,
+      state: { ...state, players, phase: 'playing', currentPlayerIndex: nextIdx, lastAction: action },
+    };
   },
 };

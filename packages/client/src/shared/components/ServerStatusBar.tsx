@@ -8,7 +8,7 @@ import FitScaler from './FitScaler';
 /** 左下角 HUD：服务器/延迟/版本。窄屏按宽度整体等比缩小，不重排。 */
 export default function ServerStatusBar() {
   const { servers, currentServerId, serverInfoMap, latencyMap, openModal, refreshServerInfo } = useServerStore();
-  const current = servers.find((s) => s.id === currentServerId);
+  const current = servers.find(s => s.id === currentServerId);
   const info = serverInfoMap[currentServerId];
   const latency = latencyMap[currentServerId];
   const ping = getPingColor(latency);
@@ -18,7 +18,12 @@ export default function ServerStatusBar() {
   }, [currentServerId, refreshServerInfo]);
 
   return (
-    <FitScaler mode="width" align="start" origin="left bottom" className="absolute bottom-7 left-8 right-[120px] z-card h-[46px] pointer-events-none">
+    <FitScaler
+      mode="width"
+      align="start"
+      origin="left bottom"
+      className="absolute bottom-7 left-8 right-[120px] z-card h-[46px] pointer-events-none"
+    >
       <button
         onClick={openModal}
         className="flex items-center gap-3.5 h-[46px] px-[18px] rounded-full bg-secondary border border-border cursor-pointer transition-all hover:bg-white/[0.07] backdrop-blur-[16px] pointer-events-auto"

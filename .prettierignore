@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+data/
+packages/e2e/output/
+packages/server/src/voice/generated/
+packages/server/src/voice/MumbleServer.ice
+pnpm-lock.yaml
+*.tsbuildinfo
