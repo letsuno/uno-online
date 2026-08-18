@@ -22,7 +22,7 @@ services:
       - ./data/redis:/data
 
   server:
-    image: djkcyl/uno-online-server:${UNO_IMAGE_TAG:-latest}
+    image: djkcyl/uno-online-server:latest
     depends_on:
       redis:
         condition: service_healthy
@@ -70,7 +70,7 @@ services:
     restart: unless-stopped
 
   caddy:
-    image: djkcyl/uno-online-caddy:${UNO_IMAGE_TAG:-latest}
+    image: djkcyl/uno-online-caddy:latest
     depends_on:
       server:
         condition: service_healthy

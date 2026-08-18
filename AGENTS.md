@@ -224,23 +224,29 @@ docker build -f mumble.Dockerfile -t djkcyl/uno-online-mumble-gateway:latest .
 - 发布期间保持 `JWT_SECRET` 不变，否则现有浏览器身份全部失效
 - server 必须接收 `SIGTERM` 并在 Compose 的 30 秒宽限内完成 drain/flush；不要直接 `SIGKILL`
 - 只运行一个 game server；不要用新旧 server 重叠的滚动发布
-- Compose 的 `UNO_IMAGE_TAG` 选择 `latest`、`beta` 或精确版本；`server` 与 `caddy` 必须始终使用同一 Tag
+- `docker-compose.yml` 使用明确的 `latest`，`docker-compose.beta.yml` 同时把 server/caddy 覆盖为 `beta`；
+  不要把镜像 Tag 改回环境变量插值，Komodo 无法据此可靠判断镜像更新
 - `server` 与 `caddy` 都有容器健康检查；部署工具应等待健康状态后再报告成功
 
 ### 生产 Komodo
 
-- 面板只通过 SSH 隧道访问服务器 `127.0.0.1:9120`，不要公开管理端口；新用户注册保持关闭
+- 面板当前公开在 `http://111.229.152.99:9120`，新用户注册保持关闭；这是未启用 TLS 的管理入口，后续应优先
+  改为 HTTPS 或收回到 SSH 隧道
 - UNO Stack 工作目录是 `/etc/komodo/stacks/uno-online`，Stack/Compose 项目名均为 `uno-online`
-- 面板管理的 `.env` 只包含 `UNO_IMAGE_TAG`；其余生产变量位于权限为 `0600` 的
-  `.env.secrets`，作为 Track Disabled 的 Additional Env File 使用
-- `Switch UNO to Beta` 与 `Switch UNO to Stable` Actions 负责切换通道并部署；精确回滚版本仍在 Stack
-  Environment 中手工设置
+- Stack Environment 不保存镜像通道；生产变量位于权限为 `0600` 的 `.env.secrets`，作为 Track Disabled 的
+  Additional Env File 使用
+- `Switch UNO to Beta` Action 把 Stack File Paths 设为 `docker-compose.yml` 加
+  `docker-compose.beta.yml`；`Switch UNO to Stable` 只保留 `docker-compose.yml`，两者随后部署 Stack
+- 精确回滚时新增临时 Compose override，以明确 Tag 同时覆盖 server/caddy，并把它加入 Stack File Paths；
+  不要使用 `image: ...:${...}` 形式
 - 每天 03:00 的 Global Auto Update 只检查 `server` 与 `caddy`；`redis`、`mumble` 和
   `mumble-gateway` 必须留在自动更新忽略列表
-- Stack 启用 Pre Pull Images，关闭 Destroy Before Deploy；不要让自动部署先执行 `compose down`
+- Stack 启用 Pre Pull Images，关闭 Full Stack Auto Update 与 Destroy Before Deploy；自动更新只重建检测到新镜像的
+  server/caddy，不要让自动部署先执行 `compose down`
+- Docker daemon 与 Komodo Periphery 的网络请求相互独立；当前 `/etc/komodo/compose/compose.env` 同时给 Core 和
+  Periphery 配置 `HTTP_PROXY`、`HTTPS_PROXY` 与内网 `NO_PROXY`，否则 Periphery 无法查询 Docker Hub manifest
 - 每天 01:00 备份 Komodo 数据库到 `/etc/komodo/backups`；默认保留最近 14 份
-- 手动执行 Compose 时必须同时传入 `--env-file .env --env-file .env.secrets`，且保持项目名为
-  `uno-online`
+- 手动执行 Compose 时必须传入 `--env-file .env.secrets`，且保持项目名为 `uno-online`
 
 ### 发布兼容性判定
 

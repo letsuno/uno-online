@@ -13,6 +13,7 @@ const checkScriptSource = readFileSync(checkScript, 'utf8');
 const stableDiffScript = readFileSync(join(releaseDirectory, 'stable-diff.mjs'), 'utf8');
 const releaseWorkflow = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
 const composeDefinition = readFileSync(join(repoRoot, 'docker-compose.yml'), 'utf8');
+const betaComposeDefinition = readFileSync(join(repoRoot, 'docker-compose.beta.yml'), 'utf8');
 const currentVersion = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')).version;
 const coreVersionMatch = /^(\d+)\.(\d+)\.(\d+)/u.exec(currentVersion);
 assert.ok(coreVersionMatch, 'root package version must start with major.minor.patch');
@@ -88,9 +89,12 @@ test('release workflow keeps prereleases away from stable distribution tags', ()
   assert.ok(releaseWorkflow.includes('elif [[ "$RELEASE_TAG" == *-* ]]; then'));
 });
 
-test('compose can switch release channels and waits for healthy application containers', () => {
-  assert.ok(composeDefinition.includes('djkcyl/uno-online-server:${UNO_IMAGE_TAG:-latest}'));
-  assert.ok(composeDefinition.includes('djkcyl/uno-online-caddy:${UNO_IMAGE_TAG:-latest}'));
+test('compose exposes concrete stable and beta image channels for deployment tooling', () => {
+  assert.ok(composeDefinition.includes('djkcyl/uno-online-server:latest'));
+  assert.ok(composeDefinition.includes('djkcyl/uno-online-caddy:latest'));
+  assert.ok(betaComposeDefinition.includes('djkcyl/uno-online-server:beta'));
+  assert.ok(betaComposeDefinition.includes('djkcyl/uno-online-caddy:beta'));
+  assert.doesNotMatch(composeDefinition + betaComposeDefinition, /UNO_IMAGE_TAG/u);
   assert.ok(composeDefinition.includes("fetch('http://127.0.0.1:3001/api/health')"));
   assert.ok(composeDefinition.includes('http://127.0.0.1:2019/config/'));
   assert.match(composeDefinition, /server:\s*\n\s*condition: service_healthy/u);
