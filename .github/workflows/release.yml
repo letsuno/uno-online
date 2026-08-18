@@ -91,7 +91,7 @@ jobs:
           images: djkcyl/uno-online-server
           flavor: latest=false
           tags: |
-            type=semver,pattern=v{{version}},value=${{ env.RELEASE_TAG }}
+            type=raw,value=${{ env.RELEASE_TAG }}
             type=raw,value=beta,enable=${{ contains(env.RELEASE_TAG, '-beta.') }}
             type=raw,value=latest,enable=${{ !contains(env.RELEASE_TAG, '-') }}
           labels: |
@@ -104,7 +104,7 @@ jobs:
           images: djkcyl/uno-online-caddy
           flavor: latest=false
           tags: |
-            type=semver,pattern=v{{version}},value=${{ env.RELEASE_TAG }}
+            type=raw,value=${{ env.RELEASE_TAG }}
             type=raw,value=beta,enable=${{ contains(env.RELEASE_TAG, '-beta.') }}
             type=raw,value=latest,enable=${{ !contains(env.RELEASE_TAG, '-') }}
           labels: |

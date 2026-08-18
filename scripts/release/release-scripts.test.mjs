@@ -76,8 +76,10 @@ test('release workflow can recover an existing tag from the default branch', () 
 });
 
 test('release workflow keeps prereleases away from stable distribution tags', () => {
+  const dockerVersionRule = 'type=raw,value=${{ env.RELEASE_TAG }}';
   const dockerLatestRule = "type=raw,value=latest,enable=${{ !contains(env.RELEASE_TAG, '-') }}";
   const dockerBetaRule = "type=raw,value=beta,enable=${{ contains(env.RELEASE_TAG, '-beta.') }}";
+  assert.equal(releaseWorkflow.split(dockerVersionRule).length - 1, 2);
   assert.equal(releaseWorkflow.split(dockerLatestRule).length - 1, 2);
   assert.equal(releaseWorkflow.split(dockerBetaRule).length - 1, 2);
   assert.ok(releaseWorkflow.includes('if [[ "$version" == *-* ]]; then'));
