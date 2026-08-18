@@ -9,8 +9,11 @@ server/caddy 镜像、MCP npm 包与 GitHub Release 由版本 Tag 自动发布�
 cp .env.example .env
 # 编辑 .env：生产环境至少设置 DOMAIN、CADDY_SITE_ADDRESS、JWT_SECRET、GitHub OAuth 凭证
 
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
+
+Compose 使用已经发布到镜像仓库的镜像，没有本地 `build:` 配置，因此部署时不要使用无效的 `--build` 参数。
 
 验证：
 
@@ -18,6 +21,17 @@ docker compose up -d --build
 curl http://localhost/api/health
 curl http://localhost/api/server/info
 ```
+
+状态兼容版本发布成功后，只更新应用容器，不重建 Redis、SQLite 或语音服务：
+
+```bash
+docker compose pull server caddy
+docker compose up -d --no-deps server
+docker compose up -d --no-deps caddy
+```
+
+执行 server 更新时，Compose 会先向旧容器发送 `SIGTERM` 并等待其在停机宽限内退出，再启动新容器。运行时
+schema 或 Socket 协议破坏性发布不能直接执行这组命令，必须先按下文策略排空活跃房间。
 
 ## 关键配置
 

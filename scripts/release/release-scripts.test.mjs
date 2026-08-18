@@ -9,6 +9,7 @@ const releaseDirectory = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(releaseDirectory, '../..');
 const checkScript = join(releaseDirectory, 'check-release.mjs');
 const notesScript = join(releaseDirectory, 'release-notes.mjs');
+const releaseWorkflow = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
 const currentVersion = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')).version;
 const coreVersionMatch = /^(\d+)\.(\d+)\.(\d+)/u.exec(currentVersion);
 assert.ok(coreVersionMatch, 'root package version must start with major.minor.patch');
@@ -50,4 +51,20 @@ test('release notes contain versioned Docker and MCP install commands', () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, new RegExp('uno-online-server:v' + currentVersion.replaceAll('.', '\\.'), 'u'));
   assert.match(result.stdout, new RegExp('@uno-online/mcp@' + currentVersion.replaceAll('.', '\\.'), 'u'));
+});
+
+test('release workflow can recover an existing tag from the default branch', () => {
+  assert.match(releaseWorkflow, /workflow_dispatch:\s*\n\s*inputs:\s*\n\s*tag:/u);
+  assert.ok(releaseWorkflow.includes('RELEASE_TAG: ${{ inputs.tag || github.ref_name }}'));
+  assert.ok(releaseWorkflow.includes('ref: ${{ env.RELEASE_TAG }}'));
+  assert.ok(releaseWorkflow.includes('refs/tags/$RELEASE_TAG^{commit}'));
+});
+
+test('release workflow keeps prereleases away from stable distribution tags', () => {
+  const dockerLatestRule = "type=raw,value=latest,enable=${{ !contains(env.RELEASE_TAG, '-') }}";
+  assert.equal(releaseWorkflow.split(dockerLatestRule).length - 1, 2);
+  assert.ok(releaseWorkflow.includes('if [[ "$version" == *-* ]]; then'));
+  assert.ok(releaseWorkflow.includes('prerelease_tag=${version#*-}'));
+  assert.ok(releaseWorkflow.includes('publish_args+=(--tag "$prerelease_tag")'));
+  assert.ok(releaseWorkflow.includes('elif [[ "$RELEASE_TAG" == *-* ]]; then'));
 });

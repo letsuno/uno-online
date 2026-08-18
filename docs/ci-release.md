@@ -41,10 +41,13 @@
 
 ### Docker Hub
 
-在 GitHub 仓库 `Settings → Secrets and variables → Actions` 添加：
+在 GitHub 仓库 `Settings → Environments → release → Environment secrets` 添加：
 
 - `DOCKERHUB_USERNAME`：对 `djkcyl/uno-online-server` 和 `djkcyl/uno-online-caddy` 有 push 权限的账号
 - `DOCKERHUB_TOKEN`：Docker Hub access token，不要保存账号密码
+
+Release job 绑定 `release` Environment，因此当前统一使用 Environment secrets，不需要再创建同名的仓库级
+Actions secrets。
 
 ### npm Trusted Publisher
 
@@ -65,7 +68,7 @@
 
 ### main 保护
 
-在 main 的规则中要求 PR，并把以下检查设为 required：
+在 `Settings → Rules → Rulesets` 中为 `main` 启用分支规则，要求 PR，并把以下检查设为 required：
 
 - `Validate`
 - `Docker targets`
