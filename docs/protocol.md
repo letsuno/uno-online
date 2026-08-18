@@ -17,8 +17,8 @@
 - JSON 字段名、事件名和联合类型值区分大小写。
 - 数字时间戳均为 Unix epoch 毫秒；标为 `string` 的日期时间由 SQLite 或 `Date#toISOString()` 生成。
 - 当前 Socket 对象载荷和房间设置补丁拒绝未知字段。调用方不得发送旧字段、额外字段或依赖服务端补默认响应字段。
-- 当前 `PROTOCOL_VERSION` 为 `1`。客户端和服务端必须完全相等，不协商降级，也不保留旧协议分支。
-- 兼容部署只恢复同一当前运行时 schema 的房间快照；破坏性 schema 发布不读取、不补齐、不迁移旧 Redis namespace。详见第 7 节。
+- 当前 `PROTOCOL_VERSION` 为 `2`。客户端和服务端必须完全相等，不协商降级，也不保留旧协议分支。
+- 兼容部署恢复当前 Redis 房间快照；破坏性运行时发布递增代码内代次，新服务启动时自动清空固定 namespace，不读取、补齐或迁移旧数据。详见第 7 节。
 
 ## 2. 认证
 
@@ -288,7 +288,7 @@ interface AvatarRequest {
 | `PATCH`  | `/api/admin/users/:id/profile` | `{ username?, nickname? }` | `{ success: true }`      | `400, 404, 409` |
 | `GET`    | `/api/admin/rooms`             | 无                         | `{ rooms: AdminRoom[] }` | 无              |
 | `DELETE` | `/api/admin/rooms/:code`       | 无                         | `{ success: true }`      | `404, 503`      |
-| `POST`   | `/api/admin/rooms/:code/cheat` | 无                         | `{ success: true }`      | 无              |
+| `POST`   | `/api/admin/rooms/:code/cheat` | 无                         | `{ success: true }`      | `404, 503`      |
 | `GET`    | `/api/admin/ai-plugins`        | 无                         | `AiRegistrySnapshot`     | 无              |
 | `PATCH`  | `/api/admin/ai-plugins/:id`    | `{ enabled: boolean }`     | `AiRegistrySnapshot`     | `400, 404`      |
 
@@ -361,7 +361,8 @@ interface AiRegistrySnapshot {
 - 管理面板的 `activeRooms` 与服务器信息口径相同，统计所有房间根记录，而不是仅统计 `playing` 房间。
 - 管理员资料修改当前没有复用普通用户校验：`username` trim 后只校验 2～20 个字符，`nickname` trim 后只校验 1～20 个字符。
 - 删除房间走统一实时解散生命周期，会通知成员并清理游戏、连接投影、语音及关联运行时状态，不是直接删除一个 KV key。
-- `cheat` 先向目标 Socket 房间发送 `game:cheat_detected`，约 1.5 秒后尝试解散；当前没有“房间不存在”的专门 `404` 分支。
+- `cheat` 先通过统一生命周期提交房间删除，再以 `room:membership_ended`
+  的 `cheat_detected` reason 通知已终止的成员；房间不存在时返回 `404`。
 - 内建 AI 不能停用；PATCH 只修改已加载的社区插件，并在成功后返回完整快照。
 
 ### 3.6 API Key 管理
@@ -616,7 +617,6 @@ interface ActiveRoomInfo {
 | `game:round_end`       | `{ winnerId, scores, roundEndAt }`                                  | 一轮结束但整场未结束                                    |
 | `game:back_to_room`    | `{ seats: RoomSeats; spectators: RoomSpectator[]; room: RoomData }` | 房主把终局会话转换回等待房间                            |
 | `game:spectator_queue` | `{ queue: Array<{ userId: string; nickname: string }> }`            | 下一轮加入队列权威快照                                  |
-| `game:cheat_detected`  | 无                                                                  | 管理端触发反作弊全屏提示                                |
 
 ```typescript
 interface GameOverPayload {
@@ -638,7 +638,8 @@ interface RoundEndPayload {
 #### 房间、座位、玩家与认证
 
 ```typescript
-type RoomMembershipEndReason = 'kicked' | 'host_closed' | 'idle_timeout' | 'empty';
+type RoomMembershipEndReason = 'kicked' | 'host_closed' | 'idle_timeout' | 'empty' | 'cheat_detected';
+type RoomDissolveReason = Exclude<RoomMembershipEndReason, 'kicked'>;
 
 interface SpectatorInfo {
   userId: string;
@@ -655,7 +656,7 @@ interface SpectatorInfo {
 | `seat:updated`                  | `{ seats: RoomSeats; spectators: RoomSpectator[] }`                   | 完整座位和持久观战成员投影                                        |
 | `seat:swap_requested`           | `{ requesterId, requesterName, requesterSeatIndex, targetSeatIndex }` | 目标真人收到换座请求                                              |
 | `seat:swap_resolved`            | `{ accepted, requesterId, targetUserId, reason? }`                    | 换座完成或取消；reason 见下方                                     |
-| `room:membership_ended`         | `{ roomCode: string; reason: RoomMembershipEndReason }`               | 该房间成员关系最终结束；不是所有超时清退的完整日志                |
+| `room:membership_ended`         | `{ roomCode: string; reason: RoomMembershipEndReason }`               | 该房间成员关系最终结束；`cheat_detected` 触发全屏终止提示         |
 | `room:moved_to_spectator`       | `{ roomCode: string; reason: string }`                                | 真人被结算计分板移至观战席，成员关系仍保留                        |
 | `room:spectator_joined`         | `{ nickname: string; spectators: SpectatorInfo[] }`                   | 其他观众加入后的持久观战成员精简投影                              |
 | `room:spectator_left`           | `{ nickname: string; spectators: SpectatorInfo[] }`                   | 观众离开后的持久观战成员精简投影                                  |
@@ -960,7 +961,7 @@ interface VoicePresence {
 
 | 常量 / 配置                    | 当前值              | 协议含义                           |
 | ------------------------------ | ------------------- | ---------------------------------- |
-| `PROTOCOL_VERSION`             | `1`                 | Socket 握手精确版本                |
+| `PROTOCOL_VERSION`             | `2`                 | Socket 握手精确版本                |
 | `MIN_PLAYERS`                  | `2`                 | 开局和下一轮至少玩家数             |
 | `MAX_PLAYERS`                  | `10`                | 玩家席人数上限，不含观战成员       |
 | `SEAT_COUNT`                   | `10`                | 固定座位数                         |
@@ -1020,7 +1021,7 @@ interface VoicePresence {
 
 前端和后端更新后，玩家刷新并继续同一对局需要同时满足：
 
-1. Redis 中当前运行时 namespace 保留，且 `RUNTIME_SCHEMA_VERSION` 不变。
+1. Redis 中固定的 `uno:runtime:` namespace 保留，且代码内 `RUNTIME_STATE_GENERATION` 不变。
 2. 新服务仍使用同一当前数据结构和 `PROTOCOL_VERSION`。
 3. `JWT_SECRET` 保持不变，浏览器原 JWT 仍可验证。
 4. 旧 server 收到 `SIGTERM` 后完成操作排空和最终快照写入，再启动新 server；当前架构不支持两个 game server 重叠滚动运行。
@@ -1031,9 +1032,9 @@ interface VoicePresence {
 这不是历史兼容：
 
 - Socket 有破坏性变更时递增 `PROTOCOL_VERSION`，旧前端握手直接失败，不走旧字段分支。
-- 运行时结构有破坏性变更时先排空现有房间，再递增 `RUNTIME_SCHEMA_VERSION`；新服务完全忽略旧 namespace，不迁移或猜测旧数据。
+- 运行时结构有破坏性变更时先排空现有房间，再递增代码内 `RUNTIME_STATE_GENERATION`；新服务启动时自动删除固定 namespace 中的旧状态，不需要人工清 Redis。
 - 如果部署流程主动清空 Redis/内存 KV，则所有房间和对局按设计终止，刷新后不能恢复；SQLite 中的用户、API Key 和 Passkey 不受影响。
-- 仅同一当前 schema 的兼容重启允许保留运行时数据。详细运维顺序见 [部署文档](./deployment.md)。
+- 仅代码代次不变的兼容重启允许保留运行时数据。详细运维顺序见 [部署文档](./deployment.md)。
 
 ## 8. 其他边界
 

@@ -91,7 +91,6 @@ export default function DashboardPage() {
                 {[
                   ['应用版本', `v${data.server.version}`],
                   ['协议版本', `v${data.server.protocolVersion}`],
-                  ['运行时结构', `v${data.server.runtimeSchemaVersion}`],
                   ['持续运行', formatDuration(data.server.uptimeSeconds)],
                   ['Node.js', data.server.nodeVersion],
                   ['常驻内存', formatBytes(data.server.memory.rssBytes)],

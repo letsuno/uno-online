@@ -60,7 +60,7 @@ packages/client/src/shared/   — 跨 Feature 的组件、API、Socket、store�
 - **Redis KV** — 生产运行时数据：房间、座位、观战者、游戏快照、离房状态和用户当前房间映射
 - **内存 KV** — 仅用于 `DEV_MODE=true` 的本地开发和测试
 
-运行时 key 位于 `uno:runtime:v<RUNTIME_SCHEMA_VERSION>:` namespace。游戏 Session、生命周期锁和
+运行时 key 位于固定的 `uno:runtime:` namespace。游戏 Session、生命周期锁和
 Socket.IO 房间适配器仍由单个服务端进程持有，因此当前不能水平扩展多个 game server 实例。
 
 ## 关键约束
@@ -80,7 +80,8 @@ Socket.IO 房间适配器仍由单个服务端进程持有，因此当前不能�
 - 用户可见文案使用中文
 - 数据库返回值不要展开（`...row`）；显式选择和返回字段，避免泄露密码散列等敏感数据
 - SQLite 中的用户、API Key、Passkey 属于必须保留的数据，schema 变化需要明确迁移
-- Redis 运行时结构不做旧 schema 兼容或迁移；破坏性变化通过新 `RUNTIME_SCHEMA_VERSION` 隔离
+- Redis 运行时结构不做旧 schema 兼容或迁移；破坏性变化递增代码内
+  `RUNTIME_STATE_GENERATION`，新服务启动时自动清空 UNO 运行时状态
 - Socket/ACK 不做旧前端协议降级；破坏性变化递增 `PROTOCOL_VERSION`，旧客户端直接刷新
 - 不要为旧 Redis 数据、旧前端 payload 或已删除的运行时结构增加猜测、补字段、双读双写等兼容分支
 
@@ -216,7 +217,7 @@ docker build -f mumble.Dockerfile -t djkcyl/uno-online-mumble-gateway:latest .
 
 - 生产环境必须配置 `REDIS_URL`；缺失时服务端拒绝启动
 - Compose Redis 开启 AOF，并把 `/data` 挂载到 `./data/redis`
-- 兼容发布不能清空、删除或重建 Redis 数据目录，也不能无范围执行 `FLUSHDB`
+- 兼容发布不能清空、删除或重建 Redis 数据目录；破坏性发布由新服务按代码代次自动清理
 - 发布期间保持 `JWT_SECRET` 不变，否则现有浏览器身份全部失效
 - server 必须接收 `SIGTERM` 并在 Compose 的 30 秒宽限内完成 drain/flush；不要直接 `SIGKILL`
 - 只运行一个 game server；不要用新旧 server 重叠的滚动发布
@@ -227,7 +228,7 @@ docker build -f mumble.Dockerfile -t djkcyl/uno-online-mumble-gateway:latest .
 
 - 面板只通过 SSH 隧道访问服务器 `127.0.0.1:9120`，不要公开管理端口；新用户注册保持关闭
 - UNO Stack 工作目录是 `/etc/komodo/stacks/uno-online`，Stack/Compose 项目名均为 `uno-online`
-- 面板管理的 `.env` 只包含 `UNO_IMAGE_TAG` 与 `RUNTIME_SCHEMA_VERSION`；其余生产变量位于权限为 `0600` 的
+- 面板管理的 `.env` 只包含 `UNO_IMAGE_TAG`；其余生产变量位于权限为 `0600` 的
   `.env.secrets`，作为 Track Disabled 的 Additional Env File 使用
 - `Switch UNO to Beta` 与 `Switch UNO to Stable` Actions 负责切换通道并部署；精确回滚版本仍在 Stack
   Environment 中手工设置
@@ -240,18 +241,18 @@ docker build -f mumble.Dockerfile -t djkcyl/uno-online-mumble-gateway:latest .
 
 ### 发布兼容性判定
 
-应用 SemVer、运行时 schema 与网络协议是三个独立版本维度。每次发版必须分别判断：
+应用 SemVer、Redis 运行时兼容性与网络协议是三个独立判定维度。每次发版必须分别判断：
 
-1. **状态兼容发布**：Redis 房间/游戏结构和 Socket 合约兼容。保持 `RUNTIME_SCHEMA_VERSION` 与
-   `PROTOCOL_VERSION` 不变，保留 Redis 和 `JWT_SECRET`；优雅重启后玩家刷新可继续对局。
-2. **运行时结构破坏性发布**：先停止创建新房间并排空活跃房间，再递增部署环境中的
-   `RUNTIME_SCHEMA_VERSION`。新服务只读取新 namespace，不迁移旧数据。
+1. **状态兼容发布**：Redis 房间/游戏结构和 Socket 合约兼容。保持代码内
+   `RUNTIME_STATE_GENERATION` 与 `PROTOCOL_VERSION` 不变，保留 Redis 和 `JWT_SECRET`；优雅重启后玩家刷新可继续对局。
+2. **运行时结构破坏性发布**：先停止创建新房间并排空活跃房间，再递增
+   `packages/server/src/kv/runtime-state.ts` 中的 `RUNTIME_STATE_GENERATION`。旧 server 退出后，新 server
+   启动时自动清空固定 namespace，不迁移旧数据，不需要运维人工清 Redis。
 3. **Socket/ACK 破坏性发布**：递增 `packages/shared/src/constants/protocol.ts` 中的
    `PROTOCOL_VERSION`，前后端与 MCP 协同发布；旧客户端握手失败并提示刷新，不做协议降级。
 
-从本次引入 namespace/严格协议版本之前的版本首次升级时属于破坏性发布：先排空旧房间；新服务默认使用
-`RUNTIME_SCHEMA_VERSION=1`，不会读取旧的无 namespace Redis key。完成这次上线后，后续兼容版本才可按
-第一类流程保留活跃对局。
+首次上线固定 namespace/代码代次机制时属于破坏性发布：新 server 找不到当前代次标记，
+会在启动期间自动删除 `uno:runtime:` 下的旧状态后再提供服务。
 
 兼容更新已运行的 Compose 环境时，仅拉取并重建应用容器：
 
@@ -263,8 +264,8 @@ docker compose --env-file .env --env-file .env.secrets up -d --no-deps --wait ca
 
 当前生产不使用省略 env 文件的裸 `docker compose up -d`。首次创建或完整恢复生产 Stack 由 Komodo 部署；
 必须脱离面板操作时，也要显式传入 `.env` 与 `.env.secrets` 并保持 Compose 项目名为 `uno-online`。破坏性发布
-应安排维护窗口：先停止接纳新房间，在旧 server 仍运行时等待或终止活跃房间，再停止旧 server，最后更新
-schema/protocol 并部署匹配的 server 与 caddy。具体变量和运维说明见 `docs/deployment.md`。
+应安排维护窗口：先停止接纳新房间，在旧 server 仍运行时等待或终止活跃房间，再停止旧 server，最后部署
+匹配的 server 与 caddy；新 server 会按代码代次自动清理不兼容运行时状态。具体说明见 `docs/deployment.md`。
 
 ## 版本号与完整发版流程
 
@@ -276,8 +277,8 @@ GitHub 自动发布只负责验证和发布制品；版本判断、兼容性判�
    - Beta 转正式版必须先执行 `git fetch --tags --prune` 和 `pnpm release:stable-diff`。该命令会自动选择
      `HEAD` 可达的上一个正式 `vX.Y.Z` Tag，并输出该 Tag 到 `HEAD` 的提交、`git diff --stat` 和文件清单；
      正式版说明以这个完整范围为准，不能只比较最后一个 Beta。
-3. **判定发布兼容性**：按上一节决定是否排空房间、调整 `RUNTIME_SCHEMA_VERSION` 或递增
-   `PROTOCOL_VERSION`。不要把应用 SemVer 直接当作 runtime/protocol 版本。
+3. **判定发布兼容性**：按上一节决定是否排空房间、递增 `RUNTIME_STATE_GENERATION` 或
+   `PROTOCOL_VERSION`。不要把应用 SemVer 直接当作运行时/协议兼容性标记。
 4. **同步包版本**：只修改根 `package.json#version`，然后执行：
 
    ```bash

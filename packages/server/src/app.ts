@@ -10,8 +10,8 @@ import { getDb } from './db/database.js';
 import { setupSocketHandlers } from './ws/socket-handler.js';
 import { dissolveRoom } from './ws/room-lifecycle.js';
 import { createKvStore } from './kv/index.js';
+import { initializeRuntimeState, RUNTIME_STATE_GENERATION } from './kv/runtime-state.js';
 import type { PluginContext } from './plugin-context.js';
-import { adminOnly } from './plugins/core/admin/middleware.js';
 import { aiProviderRegistry } from './ai/model-registry.js';
 import type { SocketData } from './ws/types.js';
 
@@ -58,7 +58,11 @@ export async function createApp(config: Config) {
     },
   );
 
-  const kv = createKvStore(config.redisUrl, `uno:runtime:v${config.runtimeSchemaVersion}`);
+  const kv = createKvStore(config.redisUrl);
+  const clearedRuntimeState = await initializeRuntimeState(kv);
+  if (clearedRuntimeState) {
+    fastify.log.warn({ generation: RUNTIME_STATE_GENERATION }, 'Cleared incompatible Redis runtime state');
+  }
 
   const ctx: PluginContext = { db: getDb(), kv, io, config };
   await loadPlugins(fastify, ctx);
@@ -78,18 +82,6 @@ export async function createApp(config: Config) {
       wsContext.voiceChannels,
       wsContext.cleanupRoomRuntime,
     );
-
-  fastify.post<{ Params: { code: string } }>(
-    '/api/admin/rooms/:code/cheat',
-    { preHandler: adminOnly(config.jwtSecret) },
-    async (request, _reply) => {
-      const { code } = request.params;
-      io.to(code).emit('game:cheat_detected');
-      await new Promise(r => setTimeout(r, 1500));
-      await ctx.dissolveRoom!(code, 'host_closed');
-      return { success: true };
-    },
-  );
 
   return { fastify, io, kv, ...wsContext };
 }

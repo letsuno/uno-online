@@ -1,4 +1,5 @@
 import type { Kysely } from 'kysely';
+import type { RoomDissolveReason } from '@uno-online/shared';
 import type { Database } from './db/database.js';
 import type { KvStore } from './kv/types.js';
 import type { Config } from './config.js';
@@ -10,5 +11,5 @@ export interface PluginContext {
   io: SocketIOServer;
   config: Config;
   /** Assigned after the websocket runtime owns the live session/timer maps. */
-  dissolveRoom?: (roomCode: string, reason?: 'host_closed' | 'idle_timeout' | 'empty') => Promise<void>;
+  dissolveRoom?: (roomCode: string, reason?: RoomDissolveReason) => Promise<void>;
 }

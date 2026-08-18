@@ -329,7 +329,7 @@ export default function RoomsPage() {
         title={confirmation?.type === 'cheat' ? '触发作弊提示并解散房间' : '强制解散房间'}
         description={
           confirmation?.type === 'cheat'
-            ? `房间 ${confirmation.code} 的所有玩家将看到作弊检测提示，随后对局和房间会被解散。`
+            ? `房间 ${confirmation.code} 的对局和房间将被解散，在线玩家会看到作弊检测提示。`
             : `房间 ${confirmation?.code ?? ''} 将立即关闭，所有玩家都会被移出。这项操作无法撤销。`
         }
         footer={

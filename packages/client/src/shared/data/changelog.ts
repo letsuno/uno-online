@@ -6,6 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.15.0-beta.2',
+    date: '2026-08-19',
+    changes: [
+      '作弊终止提示会一直保留到玩家点击继续，不再被房间清理流程提前关闭',
+      '管理后台标记作弊后，房间解散、玩家通知和返回大厅现在按统一顺序完成',
+      '更新后的旧页面会明确提示刷新，避免新旧协议混用造成异常',
+    ],
+  },
+  {
     version: '0.15.0-beta.1',
     date: '2026-08-18',
     changes: [

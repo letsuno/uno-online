@@ -47,11 +47,9 @@ interface GameState {
   gameOverAt: number | null;
   /** 终局展示窗剩余秒数：>0 时压住结算板、保留牌桌（可继续扔表情、查看最后一张牌） */
   endRevealLeft: number;
-  cheatDetected: boolean;
   ownerTransferAt: number | null;
   gameStartedAt: number | null;
   turnStartedAt: number | null;
-  setCheatDetected: (value: boolean) => void;
   setOwnerTransferAt: (transferAt: number | null) => void;
   setSpectator: (value: boolean) => void;
   infoDrawerOpen: boolean;
@@ -95,11 +93,9 @@ export const useGameStore = create<GameState>(set => ({
   roundEndAt: null,
   gameOverAt: null,
   endRevealLeft: 0,
-  cheatDetected: false,
   ownerTransferAt: null,
   gameStartedAt: null,
   turnStartedAt: null,
-  setCheatDetected: value => set({ cheatDetected: value }),
   setOwnerTransferAt: transferAt => set({ ownerTransferAt: transferAt }),
   setSpectator: value => set({ isSpectator: value }),
   infoDrawerOpen: false,
@@ -197,7 +193,6 @@ export const useGameStore = create<GameState>(set => ({
       roundEndAt: null,
       gameOverAt: null,
       endRevealLeft: 0,
-      cheatDetected: false,
       ownerTransferAt: null,
       gameStartedAt: null,
       turnStartedAt: null,

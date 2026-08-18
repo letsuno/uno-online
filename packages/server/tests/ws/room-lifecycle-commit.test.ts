@@ -136,7 +136,7 @@ describe('dissolveRoom durable commit boundary', () => {
     const voiceChannels = makeVoiceChannels();
 
     await expect(
-      dissolveRoom(io, kv, roomCode, sessions, timer, persister, 'host_closed', voiceChannels, runtimeCleanup),
+      dissolveRoom(io, kv, roomCode, sessions, timer, persister, 'cheat_detected', voiceChannels, runtimeCleanup),
     ).resolves.toBeUndefined();
 
     expect(kv.responseLost).toBe(true);
@@ -157,7 +157,7 @@ describe('dissolveRoom durable commit boundary', () => {
       expect(emitted).toContainEqual({
         target: `user:${userId}`,
         event: 'room:membership_ended',
-        payload: { roomCode, reason: 'host_closed' },
+        payload: { roomCode, reason: 'cheat_detected' },
       });
     }
 

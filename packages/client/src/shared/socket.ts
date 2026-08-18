@@ -3,6 +3,7 @@ import { getApiUrl } from './env';
 import { PROTOCOL_VERSION } from '@uno-online/shared';
 import type { ServerToClientEvents, ClientToServerEvents, PlayerView } from '@uno-online/shared';
 import { useGameStore } from '@/features/game/stores/game-store';
+import { useCheatNoticeStore } from '@/features/game/stores/cheat-notice-store';
 import { useRoomStore } from './stores/room-store';
 import { useToastStore } from './stores/toast-store';
 import { playSound } from './sound/sound-manager';
@@ -354,16 +355,19 @@ export function getSocket(): TypedSocket {
       const isCurrentRoom = useRoomStore.getState().roomCode === data.roomCode;
       if (!clearedSuspension && !isCurrentRoom) return;
 
-      const message =
-        data.reason === 'kicked'
-          ? '你已被房主移出房间'
-          : data.reason === 'idle_timeout'
-            ? '房间因长时间无活动已关闭'
-            : data.reason === 'host_closed'
-              ? '房主已解散房间'
-              : '房间已关闭';
-      if (data.reason === 'kicked') sendNotification('kicked', message);
-      useToastStore.getState().addToast(message, data.reason === 'kicked' ? 'error' : 'info');
+      const isCheatTermination = data.reason === 'cheat_detected';
+      if (!isCheatTermination) {
+        const message =
+          data.reason === 'kicked'
+            ? '你已被房主移出房间'
+            : data.reason === 'idle_timeout'
+              ? '房间因长时间无活动已关闭'
+              : data.reason === 'host_closed'
+                ? '房主已解散房间'
+                : '房间已关闭';
+        if (data.reason === 'kicked') sendNotification('kicked', message);
+        useToastStore.getState().addToast(message, data.reason === 'kicked' ? 'error' : 'info');
+      }
       // This event is the authoritative end of the suspended membership.
       // Clear stale player/spectator state even while the user is already in
       // the lobby; otherwise a prior "moved to spectator" notification can
@@ -371,14 +375,11 @@ export function getSocket(): TypedSocket {
       // clearSuspendedRoom already performed a compare-and-clear. Preserve a
       // newer scoped marker that may have appeared while this event travelled.
       resetClientRoomState({ preserveSuspendedRoom: true });
+      if (isCheatTermination) useCheatNoticeStore.getState().show();
       const roomPath = new RegExp(`^/(?:room|game)/${data.roomCode}$`, 'iu');
       if (roomPath.test(window.location.pathname)) {
         globalNavigate('/');
       }
-    });
-
-    socket.on('game:cheat_detected', () => {
-      useGameStore.getState().setCheatDetected(true);
     });
   }
   return socket;

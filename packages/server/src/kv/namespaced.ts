@@ -2,14 +2,7 @@ import type { KvStore, KvStringBatchOperation } from './types.js';
 
 const INVALID_NAMESPACE_CHARS = /[*?[\]]/u;
 
-/**
- * Isolates volatile runtime state by schema generation without teaching
- * individual room/game stores about deployment history.
- *
- * A state-compatible release keeps the same namespace. A breaking release
- * selects a new namespace and leaves the old generation unreachable until it
- * can be deleted after its rooms have drained.
- */
+/** Isolates UNO runtime keys from any other data in the same KV backend. */
 export class NamespacedKvStore implements KvStore {
   private readonly prefix: string;
 
