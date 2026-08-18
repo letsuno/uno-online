@@ -30,11 +30,13 @@
    - `djkcyl/uno-online-server:v<版本号>`
    - `djkcyl/uno-online-caddy:v<版本号>`
    - 稳定版本同时更新两个镜像的 `latest`
+   - `*-beta.N` 版本同时更新两个镜像的 `beta`，但不更新 `latest`
 6. 通过 npm Trusted Publishing（OIDC）发布 `@uno-online/mcp@<版本号>`。
 7. 从 CHANGELOG 生成或更新 GitHub Release。
 
-预发布 Tag（例如 `v1.2.0-beta.0`）会创建 GitHub prerelease，不更新 Docker `latest`；npm 包使用预发布标识的
-第一个字段作为 dist-tag，例如 `0.15.0-beta.0` 发布到 `beta`，不会覆盖 `latest`。
+预发布 Tag（例如 `v1.2.0-beta.0`）会创建 GitHub prerelease，更新 Docker `beta` 但不更新 Docker
+`latest`；npm 包使用预发布标识的第一个字段作为 dist-tag，例如 `0.15.0-beta.0` 发布到 `beta`，不会覆盖
+`latest`。
 工作流不发布 `mumble-gateway`，也不连接或重启生产服务器。
 
 ## 一次性配置

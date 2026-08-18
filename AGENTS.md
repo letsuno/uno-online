@@ -219,6 +219,8 @@ docker build -f mumble.Dockerfile -t djkcyl/uno-online-mumble-gateway:latest .
 - 发布期间保持 `JWT_SECRET` 不变，否则现有浏览器身份全部失效
 - server 必须接收 `SIGTERM` 并在 Compose 的 30 秒宽限内完成 drain/flush；不要直接 `SIGKILL`
 - 只运行一个 game server；不要用新旧 server 重叠的滚动发布
+- Compose 的 `UNO_IMAGE_TAG` 选择 `latest`、`beta` 或精确版本；`server` 与 `caddy` 必须始终使用同一 Tag
+- `server` 与 `caddy` 都有容器健康检查；部署工具应等待健康状态后再报告成功
 
 ### 发布兼容性判定
 
@@ -239,8 +241,8 @@ docker build -f mumble.Dockerfile -t djkcyl/uno-online-mumble-gateway:latest .
 
 ```bash
 docker compose pull server caddy
-docker compose up -d --no-deps server
-docker compose up -d --no-deps caddy
+docker compose up -d --no-deps --wait server
+docker compose up -d --no-deps --wait caddy
 ```
 
 首次部署使用 `docker compose up -d`。破坏性发布应安排维护窗口：先停止接纳新房间，在旧 server 仍运行时
@@ -285,6 +287,7 @@ GitHub 自动发布只负责验证和发布制品；版本判断、兼容性判�
     破坏性发布维护窗口切换 schema/protocol，再更新 Compose 应用容器。
 11. **发布后验证**：检查 `/api/health`、`/api/server/info`、浏览器登录/重连以及版本化 Docker/MCP 制品。
 
-预发布 Tag（如 `v1.2.0-beta.0`）会生成 prerelease，只推版本镜像，不更新 Docker `latest`；MCP npm 包会
-使用第一个预发布标识作为 dist-tag（该示例为 `beta`），不会覆盖 npm `latest`。语音网关镜像不在自动发版
-范围内。仓库 Secrets、npm Trusted Publisher、GitHub Environment、故障恢复命令等见 `docs/ci-release.md`。
+预发布 Tag（如 `v1.2.0-beta.0`）会生成 prerelease，推送精确版本镜像并更新 Docker `beta`，但不更新 Docker
+`latest`；MCP npm 包使用第一个预发布标识作为 dist-tag（该示例为 `beta`），不会覆盖 npm `latest`。语音网关
+镜像不在自动发版范围内。仓库 Secrets、npm Trusted Publisher、GitHub Environment、故障恢复命令等见
+`docs/ci-release.md`。

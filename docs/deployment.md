@@ -15,6 +15,18 @@ docker compose up -d
 
 Compose 使用已经发布到镜像仓库的镜像，没有本地 `build:` 配置，因此部署时不要使用无效的 `--build` 参数。
 
+`UNO_IMAGE_TAG` 同时控制 server 与 caddy 的镜像版本：
+
+| 值              | 用途                       |
+| --------------- | -------------------------- |
+| `latest`        | 跟随最新正式版             |
+| `beta`          | 跟随最新 `*-beta.N` 测试版 |
+| `v1.2.3`        | 锁定或回滚到精确正式版本   |
+| `v1.2.3-beta.0` | 锁定或回滚到精确测试版本   |
+
+Release workflow 只在所有构建、测试和打包预检通过后推送镜像。正式 Tag 更新 `latest`，Beta Tag 更新 `beta`；
+精确版本 Tag 永远保留，可用于回滚。
+
 验证：
 
 ```bash
@@ -26,12 +38,31 @@ curl http://localhost/api/server/info
 
 ```bash
 docker compose pull server caddy
-docker compose up -d --no-deps server
-docker compose up -d --no-deps caddy
+docker compose up -d --no-deps --wait server
+docker compose up -d --no-deps --wait caddy
 ```
 
 执行 server 更新时，Compose 会先向旧容器发送 `SIGTERM` 并等待其在停机宽限内退出，再启动新容器。运行时
 schema 或 Socket 协议破坏性发布不能直接执行这组命令，必须先按下文策略排空活跃房间。
+
+## Komodo 管理与自动更新
+
+[Komodo](https://komo.do/docs/deploy/compose) 可以直接接管现有 Compose 项目，不要求迁移数据目录或配置
+GitHub OAuth：
+
+1. Stack 使用 `Files on host`，`run_directory` 指向当前 Compose 所在目录。
+2. `project_name` 必须与服务器上 `docker compose ls` 显示的现有项目名相同。
+3. 初次接管保持当前 `.env`、相对挂载路径和 `./data` 目录不变。
+4. 在 Stack 环境变量中设置 `UNO_IMAGE_TAG=latest` 或 `UNO_IMAGE_TAG=beta`，修改后 Deploy 即可切换通道。
+5. 开启 `poll_for_updates` 可显示当前通道的新镜像；开启 `auto_update` 后会自动 pull 并重新部署当前通道。
+
+正式版与 Beta 共用 SQLite、Redis 和 JWT 时，自动更新仍受本页兼容性规则约束。若新版本改变运行时结构或
+Socket 协议，应先关闭 `auto_update`、排空房间并完成 schema/protocol 切换；若 Beta 修改了持久用户数据库
+schema，切回旧版本前必须确认迁移可回退。需要稳定回滚点时，把 `UNO_IMAGE_TAG` 改成上一个精确版本，而不是
+继续跟随可移动的 `latest`/`beta`。
+
+管理面板拥有 Docker 主机控制权限，不应直接暴露到公网。单人运维可只绑定到 `127.0.0.1`，通过 SSH 端口转发
+访问。
 
 ## 关键配置
 
@@ -41,6 +72,7 @@ schema 或 Socket 协议破坏性发布不能直接执行这组命令，必须�
 - `DATABASE_PATH`：SQLite 数据库路径，Docker 默认是 `/data/uno.db`。
 - `REDIS_URL`：生产环境必填；开发模式未设置时使用内存 KV。若设置 `REDIS_PASSWORD`，连接 URL 也必须包含同一密码。
 - `RUNTIME_SCHEMA_VERSION`：临时房间/游戏状态的 schema 代号，默认 `1`。状态兼容发布保持不变；破坏性发布先排空旧房间，再递增该值以隔离旧 namespace。服务端不会读取或迁移旧 namespace。
+- `UNO_IMAGE_TAG`：server/caddy 共用的镜像通道或精确版本，默认 `latest`。
 - `CADDY_SITE_ADDRESS`：Caddy 站点地址，可用域名或 `:80`。
 - `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`：可选；Cloudflare Turnstile 人机验证，两者同时配置后注册/登录页启用 CAPTCHA。
 - `WEBAUTHN_RP_NAME`：可选；WebAuthn 依赖方名称，默认 `UNO Online`。

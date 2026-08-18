@@ -22,7 +22,7 @@ services:
       - ./data/redis:/data
 
   server:
-    image: djkcyl/uno-online-server:latest
+    image: djkcyl/uno-online-server:${UNO_IMAGE_TAG:-latest}
     depends_on:
       redis:
         condition: service_healthy
@@ -55,13 +55,26 @@ services:
       - ./data/sqlite:/data
       - ${UNO_AI_PLUGINS_HOST_DIR:-./data/ai-plugins}:/ai/plugins:ro
       - ${UNO_AI_PLUGIN_STATE_HOST_DIR:-./data/ai-plugin-state}:/ai/state
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3001/api/health').then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
     stop_grace_period: 30s
     restart: unless-stopped
 
   caddy:
-    image: djkcyl/uno-online-caddy:latest
+    image: djkcyl/uno-online-caddy:${UNO_IMAGE_TAG:-latest}
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     environment:
       DOMAIN: ${DOMAIN:-localhost}
       CADDY_SITE_ADDRESS: ${CADDY_SITE_ADDRESS:-:80}
@@ -71,6 +84,12 @@ services:
     volumes:
       - ./data/caddy/data:/data
       - ./data/caddy/config:/config
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:2019/config/ || exit 1']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
 
   mumble:

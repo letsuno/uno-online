@@ -92,6 +92,7 @@ jobs:
           flavor: latest=false
           tags: |
             type=semver,pattern=v{{version}},value=${{ env.RELEASE_TAG }}
+            type=raw,value=beta,enable=${{ contains(env.RELEASE_TAG, '-beta.') }}
             type=raw,value=latest,enable=${{ !contains(env.RELEASE_TAG, '-') }}
           labels: |
             org.opencontainers.image.revision=${{ env.RELEASE_COMMIT }}
@@ -104,6 +105,7 @@ jobs:
           flavor: latest=false
           tags: |
             type=semver,pattern=v{{version}},value=${{ env.RELEASE_TAG }}
+            type=raw,value=beta,enable=${{ contains(env.RELEASE_TAG, '-beta.') }}
             type=raw,value=latest,enable=${{ !contains(env.RELEASE_TAG, '-') }}
           labels: |
             org.opencontainers.image.revision=${{ env.RELEASE_COMMIT }}
