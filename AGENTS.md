@@ -183,16 +183,18 @@ MCP 工具名称和参数以 `packages/mcp/src/tools/` 为准；修改 Socket �
 pnpm --filter shared build
 pnpm --filter @uno-online/mcp build
 pnpm --dir packages/mcp exec npm pack --dry-run
-cd packages/mcp && npm publish --access public
 ```
 
-发布包应只包含 `dist/index.js` 和 `package.json`。版本号由 `pnpm version:sync` 同步；
+以上命令只做本地构建与打包预检；正式 npm 发布统一由版本 Tag 触发的 GitHub Actions 通过 OIDC 完成，不把
+本地 `npm publish` 作为标准发版步骤。发布包应只包含 `dist/index.js` 和 `package.json`。版本号由
+`pnpm version:sync` 同步；
 `McpServer` 版本由 tsup 从包版本注入 `__PKG_VERSION__`，不要手工维护源码常量。
 
 ## Docker 与部署
 
 `.github/workflows/ci.yml` 会在 PR 与 main push 上执行完整验证和两个 Docker target 构建。
-`.github/workflows/release.yml` 只在推送合法 `vX.Y.Z` Tag 后发布 Docker、MCP npm 包和 GitHub Release。
+`.github/workflows/release.yml` 通常由合法 SemVer Tag push 触发；已有 Tag 的发布故障也可从 `main` 通过
+`workflow_dispatch` 指定原 Tag 恢复。两种入口都只检出现有 Tag，并执行相同的 Tag/main/版本校验。
 生产服务器部署仍是显式运维步骤，不由 GitHub 自动 SSH 或重启。
 
 `Dockerfile` 有两个发布目标：
@@ -217,6 +219,8 @@ docker build -f mumble.Dockerfile -t djkcyl/uno-online-mumble-gateway:latest .
 - 发布期间保持 `JWT_SECRET` 不变，否则现有浏览器身份全部失效
 - server 必须接收 `SIGTERM` 并在 Compose 的 30 秒宽限内完成 drain/flush；不要直接 `SIGKILL`
 - 只运行一个 game server；不要用新旧 server 重叠的滚动发布
+- Compose 的 `UNO_IMAGE_TAG` 选择 `latest`、`beta` 或精确版本；`server` 与 `caddy` 必须始终使用同一 Tag
+- `server` 与 `caddy` 都有容器健康检查；部署工具应等待健康状态后再报告成功
 
 ### 发布兼容性判定
 
@@ -237,8 +241,8 @@ docker build -f mumble.Dockerfile -t djkcyl/uno-online-mumble-gateway:latest .
 
 ```bash
 docker compose pull server caddy
-docker compose up -d --no-deps server
-docker compose up -d --no-deps caddy
+docker compose up -d --no-deps --wait server
+docker compose up -d --no-deps --wait caddy
 ```
 
 首次部署使用 `docker compose up -d`。破坏性发布应安排维护窗口：先停止接纳新房间，在旧 server 仍运行时
@@ -283,6 +287,7 @@ GitHub 自动发布只负责验证和发布制品；版本判断、兼容性判�
     破坏性发布维护窗口切换 schema/protocol，再更新 Compose 应用容器。
 11. **发布后验证**：检查 `/api/health`、`/api/server/info`、浏览器登录/重连以及版本化 Docker/MCP 制品。
 
-预发布 Tag（如 `v1.2.0-beta.0`）会生成 prerelease，只推版本镜像，不更新 Docker `latest`。语音网关镜像
-不在自动发版范围内。仓库 Secrets、npm Trusted Publisher 和 GitHub Environment 的一次性配置见
+预发布 Tag（如 `v1.2.0-beta.0`）会生成 prerelease，推送精确版本镜像并更新 Docker `beta`，但不更新 Docker
+`latest`；MCP npm 包使用第一个预发布标识作为 dist-tag（该示例为 `beta`），不会覆盖 npm `latest`。语音网关
+镜像不在自动发版范围内。仓库 Secrets、npm Trusted Publisher、GitHub Environment、故障恢复命令等见
 `docs/ci-release.md`。
