@@ -278,9 +278,7 @@ describe('myNewRule', () => {
         targetScore: 1000,
         allowSpectators: true,
         spectatorMode: 'hidden',
-        houseRules: {
-          /* DEFAULT_HOUSE_RULES + myNewRule */
-        } as any,
+        houseRules: {/* DEFAULT_HOUSE_RULES + myNewRule */} as any,
       },
     });
 

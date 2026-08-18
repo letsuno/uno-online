@@ -1,6 +1,6 @@
 {
   "name": "@uno-online/e2e",
-  "version": "0.15.0-beta.2",
+  "version": "0.15.0-beta.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,6 +9,6 @@
     "smoke": "node smoke.mjs"
   },
   "dependencies": {
-    "playwright-core": "^1.49.0"
+    "playwright-core": "^1.62.1"
   }
 }

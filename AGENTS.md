@@ -68,11 +68,14 @@ Socket.IO 房间适配器仍由单个服务端进程持有，因此当前不能�
 ### 运行时与格式
 
 - Node.js engine 为 `>=22`，`.nvmrc` 与 Docker 固定 Node 22
+- `@types/node` 固定使用最新的 22.x，与 CI 和生产运行时一致，不升级到更高 Node 主版本的类型
 - pnpm 固定为 `10.11.0`，以根 `package.json#packageManager` 为准
 - 全 ESM（所有包均为 `"type": "module"`）
 - TypeScript strict mode；类型导入使用 `import type`
+- workspace 的 `tsc` 统一使用 TypeScript 7；server 启动时通过 `esbuild` 转译社区 AI 插件，运行时不依赖
+  TypeScript Compiler API
 - 文本文件默认 LF；仅 `*.bat` 和 `*.cmd` 使用 CRLF，以 `.gitattributes` 为准
-- Prettier 固定为 `3.6.2`，配置以 `.prettierrc.json` 为准
+- Prettier 固定为 `3.9.6`，配置以 `.prettierrc.json` 为准
 - `pnpm format` 格式化全仓；`pnpm format:check` 只检查；不要手工格式化 `.prettierignore` 中的生成文件
 
 ### 代码与数据

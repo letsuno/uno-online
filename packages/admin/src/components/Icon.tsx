@@ -1,15 +1,5 @@
 export type IconName =
-  | 'dashboard'
-  | 'users'
-  | 'rooms'
-  | 'ai'
-  | 'refresh'
-  | 'search'
-  | 'logout'
-  | 'server'
-  | 'activity'
-  | 'key'
-  | 'shield';
+  'dashboard' | 'users' | 'rooms' | 'ai' | 'refresh' | 'search' | 'logout' | 'server' | 'activity' | 'key' | 'shield';
 
 interface IconProps {
   name: IconName;

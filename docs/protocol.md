@@ -323,12 +323,7 @@ interface AdminRoom {
 }
 
 type AiPluginDataAccess =
-  | 'candidate-features'
-  | 'public-state'
-  | 'own-hand'
-  | 'opponent-hands'
-  | 'draw-piles'
-  | 'chat-history';
+  'candidate-features' | 'public-state' | 'own-hand' | 'opponent-hands' | 'draw-piles' | 'chat-history';
 
 interface AiRegistrySnapshot {
   initializedAt: string;
@@ -420,8 +415,7 @@ API Key 路由在开发模式也注册，但 `dev-login` 临时身份没有 SQLi
 
 ```typescript
 type SocketResult<T extends object = Record<never, never>> =
-  | ({ success: true } & T)
-  | { success: false; error: string };
+  ({ success: true } & T) | { success: false; error: string };
 ```
 
 成功分支声明的业务字段都是必填。以下事件不使用 `SocketResult`：

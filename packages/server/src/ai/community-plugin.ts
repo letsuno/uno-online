@@ -2,7 +2,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { createContext, Script, type Context } from 'node:vm';
-import * as ts from 'typescript';
+import { transformSync } from 'esbuild';
 import type {
   AiDecisionRequest,
   AiProvider,
@@ -66,28 +66,21 @@ interface CommunityPluginRequest {
   deadlineMs: number;
 }
 
-function diagnosticsText(diagnostics: readonly ts.Diagnostic[] | undefined): string {
-  return (diagnostics ?? [])
-    .filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error)
-    .map(diagnostic => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))
-    .join('; ');
-}
-
 function compileStrategy(source: string, entry: string): string {
-  const result = ts.transpileModule(source, {
-    fileName: entry,
-    reportDiagnostics: true,
-    compilerOptions: {
-      target: ts.ScriptTarget.ES2022,
-      module: ts.ModuleKind.CommonJS,
-      strict: true,
-      esModuleInterop: true,
-      isolatedModules: true,
-    },
-  });
-  const errors = diagnosticsText(result.diagnostics);
-  if (errors) throw new Error(`TypeScript strategy compilation failed: ${errors}`);
-  return result.outputText;
+  try {
+    return transformSync(source, {
+      sourcefile: entry,
+      loader: 'ts',
+      target: 'es2022',
+      format: 'cjs',
+      platform: 'neutral',
+      charset: 'utf8',
+      legalComments: 'none',
+      sourcemap: false,
+    }).code;
+  } catch (error) {
+    throw new Error('TypeScript strategy compilation failed', { cause: error });
+  }
 }
 
 function createStrategyContext(compiledSource: string, pluginId: string, usesOnnx: boolean): Context {
