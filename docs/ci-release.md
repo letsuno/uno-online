@@ -19,7 +19,8 @@
 
 ### Release
 
-`.github/workflows/release.yml` 仅由 `v*.*.*` Tag push 触发。工作流会：
+`.github/workflows/release.yml` 通常由 `v*.*.*` Tag push 触发；已有 Tag 的故障恢复也可从 GitHub UI 或
+`gh workflow run` 手动触发。无论触发方式如何，工作流都只检出现有 Tag，并执行相同的 Tag/main/版本校验。工作流会：
 
 1. 确认 Tag 指向 `origin/main` 可达的提交。
 2. 确认 Tag、根版本、六个 workspace 版本一致。
@@ -32,7 +33,8 @@
 6. 通过 npm Trusted Publishing（OIDC）发布 `@uno-online/mcp@<版本号>`。
 7. 从 CHANGELOG 生成或更新 GitHub Release。
 
-预发布 Tag（例如 `v1.2.0-rc.1`）会创建 GitHub prerelease，不更新 Docker `latest`。
+预发布 Tag（例如 `v1.2.0-beta.0`）会创建 GitHub prerelease，不更新 Docker `latest`；npm 包使用预发布标识的
+第一个字段作为 dist-tag，例如 `0.15.0-beta.0` 发布到 `beta`，不会覆盖 `latest`。
 工作流不发布 `mumble-gateway`，也不连接或重启生产服务器。
 
 ## 一次性配置
@@ -91,4 +93,12 @@ Tag push 后在 GitHub Actions 等待 `Release / Publish release` 全部完成�
 - 同一 workflow 可以安全 rerun：已存在的 MCP 版本会跳过 npm publish，GitHub Release 会更新正文。
 - Docker 发布失败时可 rerun；相同版本 Tag 始终从同一 Git 提交重新构建。
 - 如果 Tag/版本/changelog 校验失败，删除尚未产生任何制品的错误 Tag，修正版本 PR 后创建正确的新 Tag。
-- 如果已经有任一制品成功发布，不要删除重用版本号；修复后发布新的 patch 版本。
+- 如果已经有任一制品成功发布，不要删除或移动 Tag。若只需修复发布工作流而制品源码不变，先通过 PR 修复
+  `release.yml`，再从默认分支针对原 Tag 执行恢复发布：
+
+  ```bash
+  gh workflow run release.yml --ref main -f tag=v<版本号>
+  ```
+
+  手动运行仍会检出原 Tag 并执行完整校验；已有 npm 版本会跳过，Docker 镜像从同一 Tag 重建，GitHub Release
+  会创建或更新。若必须修改制品源码，则发布新的版本，不能复用原版本号。

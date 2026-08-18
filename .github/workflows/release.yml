@@ -4,12 +4,18 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish or recover
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -18,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment: release
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     permissions:
       contents: write
       id-token: write
@@ -26,15 +34,21 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Verify tag commit belongs to main
         run: |
           git fetch origin main --no-tags
-          release_commit=$(git rev-list -n 1 "$GITHUB_REF_NAME")
+          if ! git rev-parse --verify --quiet "refs/tags/$RELEASE_TAG^{commit}" >/dev/null; then
+            echo "::error::Release input must name an existing Git tag."
+            exit 1
+          fi
+          release_commit=$(git rev-list -n 1 "refs/tags/$RELEASE_TAG")
           if ! git merge-base --is-ancestor "$release_commit" origin/main; then
             echo "::error::Release tag must point to a commit reachable from origin/main."
             exit 1
           fi
+          echo "RELEASE_COMMIT=$release_commit" >> "$GITHUB_ENV"
 
       - name: Set up pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
@@ -50,7 +64,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Verify release metadata
-        run: pnpm release:check "$GITHUB_REF_NAME"
+        run: pnpm release:check "$RELEASE_TAG"
 
       - name: Build all packages
         run: pnpm build
@@ -77,8 +91,10 @@ jobs:
           images: djkcyl/uno-online-server
           flavor: latest=false
           tags: |
-            type=semver,pattern=v{{version}}
-            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+            type=semver,pattern=v{{version}},value=${{ env.RELEASE_TAG }}
+            type=raw,value=latest,enable=${{ !contains(env.RELEASE_TAG, '-') }}
+          labels: |
+            org.opencontainers.image.revision=${{ env.RELEASE_COMMIT }}
 
       - name: Generate caddy image metadata
         id: caddy-meta
@@ -87,8 +103,10 @@ jobs:
           images: djkcyl/uno-online-caddy
           flavor: latest=false
           tags: |
-            type=semver,pattern=v{{version}}
-            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+            type=semver,pattern=v{{version}},value=${{ env.RELEASE_TAG }}
+            type=raw,value=latest,enable=${{ !contains(env.RELEASE_TAG, '-') }}
+          labels: |
+            org.opencontainers.image.revision=${{ env.RELEASE_COMMIT }}
 
       - name: Build and push server image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
@@ -126,20 +144,26 @@ jobs:
           if npm view "@uno-online/mcp@$version" version --json >/dev/null 2>&1; then
             echo "@uno-online/mcp@$version already exists; skipping npm publish."
           else
-            npm publish --access public --provenance
+            publish_args=(--access public --provenance)
+            if [[ "$version" == *-* ]]; then
+              prerelease_tag=${version#*-}
+              prerelease_tag=${prerelease_tag%%.*}
+              publish_args+=(--tag "$prerelease_tag")
+            fi
+            npm publish "${publish_args[@]}"
           fi
 
       - name: Generate release notes
-        run: pnpm release:notes "$GITHUB_REF_NAME" > "$RUNNER_TEMP/release-notes.md"
+        run: pnpm release:notes "$RELEASE_TAG" > "$RUNNER_TEMP/release-notes.md"
 
       - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release edit "$GITHUB_REF_NAME" --title "UNO Online $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
-          elif [[ "$GITHUB_REF_NAME" == *-* ]]; then
-            gh release create "$GITHUB_REF_NAME" --verify-tag --title "UNO Online $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md" --prerelease
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" --title "UNO Online $RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+          elif [[ "$RELEASE_TAG" == *-* ]]; then
+            gh release create "$RELEASE_TAG" --verify-tag --title "UNO Online $RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md" --prerelease
           else
-            gh release create "$GITHUB_REF_NAME" --verify-tag --title "UNO Online $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
+            gh release create "$RELEASE_TAG" --verify-tag --title "UNO Online $RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
           fi
