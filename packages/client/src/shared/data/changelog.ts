@@ -6,6 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.15.0-beta.4',
+    date: '2026-09-01',
+    changes: [
+      '修复并恢复 Komodo 自动更新策略，避免发布链路遗漏可用镜像',
+      '新增百度站点验证元数据，补齐站点索引与验证能力',
+      '升级 `docker/setup-buildx-action` 至 4.3.0，增强 CI 构建环境一致性',
+    ],
+  },
+  {
     version: '0.15.0-beta.3',
     date: '2026-08-19',
     changes: [
